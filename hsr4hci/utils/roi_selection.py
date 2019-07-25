@@ -16,7 +16,7 @@ from typing import List, Tuple
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def get_roi_pixels(mask_size: Tuple[int],
+def get_roi_pixels(mask_size: Tuple[int, int],
                    pixscale: float,
                    inner_exclusion_radius: float,
                    outer_exclusion_radius: float) -> List[tuple]:
