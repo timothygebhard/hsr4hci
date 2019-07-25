@@ -8,7 +8,7 @@ Half-Sibling Regression model.
 
 import numpy as np
 
-from hsr4hci.masking import get_annulus_mask
+from hsr4hci.utils.masking import get_annulus_mask
 from typing import List, Tuple
 
 
