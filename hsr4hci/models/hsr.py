@@ -9,6 +9,7 @@ Half-Sibling Regression model.
 import joblib
 import numpy as np
 import os
+import warnings
 
 from hsr4hci.models.prototypes import ModelPrototype
 from hsr4hci.utils.predictor_selection import get_predictor_mask
@@ -29,9 +30,9 @@ class HalfSiblingRegression(ModelPrototype):
     """
 
     def __init__(self,
-                 experiment_dir: str):
+                 config: dict):
 
-        self.m__experiment_dir = experiment_dir
+        self.m__experiment_dir = config['experiment_dir']
 
         # Define a models directory and ensure it exists
         self.m__models_dir = os.path.join(self.m__experiment_dir, 'models')
@@ -39,13 +40,14 @@ class HalfSiblingRegression(ModelPrototype):
         
         self.m__predictors = dict()
 
-        # TODO: Read in experiment config
+        self.m__mask_size = (int(config['dataset']['x_size']),
+                             int(config['dataset']['y_size']))
 
     def train(self,
               training_stack: np.ndarray):
 
         # Get positions of pixels in ROI
-        roi_pixels = get_roi_pixels(mask_size=tuple(training_stack.shape[1:]),
+        roi_pixels = get_roi_pixels(mask_size=self.m__mask_size,
                                     pixscale=0.0271,
                                     inner_exclusion_radius=0.15,
                                     outer_exclusion_radius=0.70)
@@ -60,7 +62,7 @@ class HalfSiblingRegression(ModelPrototype):
                        training_stack: np.ndarray):
 
         # Get sources mask
-        mask = get_predictor_mask(mask_size=tuple(training_stack.shape[1:]),
+        mask = get_predictor_mask(mask_size=self.m__mask_size,
                                   position=position,
                                   n_regions=1,
                                   region_size=5)
@@ -82,10 +84,24 @@ class HalfSiblingRegression(ModelPrototype):
         raise NotImplementedError
 
     def load(self):
-        raise NotImplementedError
+
+        # Get positions of pixels in ROI
+        roi_pixels = get_roi_pixels(mask_size=self.m__mask_size,
+                                    pixscale=0.0271,
+                                    inner_exclusion_radius=0.15,
+                                    outer_exclusion_radius=0.70)
+
+        # Load model for every position in the ROI
+        for position in roi_pixels:
+            predictor = PixelPredictor(position=position)
+            predictor.load(models_dir=self.m__models_dir)
+            self.m__predictors[position] = predictor
 
     def save(self):
-        raise NotImplementedError
+
+        # Save all predictors
+        for _, predictor in self.m__predictors.items():
+            predictor.save(models_dir=self.m__models_dir)
 
 
 class PixelPredictor(object):
@@ -116,5 +132,9 @@ class PixelPredictor(object):
     def load(self,
              models_dir: str):
 
+        # Try to load the model for this predictor from its *.pkl file
         file_path = os.path.join(models_dir, self.m__name)
-        self.m__model = joblib.load(filename=file_path)
+        if os.path.isfile(file_path):
+            self.m__model = joblib.load(filename=file_path)
+        else:
+            warnings.warn(f'Model file not found: {file_path}')
