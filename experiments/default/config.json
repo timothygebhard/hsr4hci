@@ -1,0 +1,24 @@
+{
+    "dataset": {
+        "file_path": "DATA_DIR/BetaPic/Lp/BetaPic_Lp_2013-01-31.hdf5",
+        "stack_key": "stack",
+        "parang_key": "parang",
+        "pixscale": 0.0271,
+        "x_size": 121,
+        "y_size": 121
+    },
+    "experiment": {
+        "roi": {
+            "inner_exclusion_radius": 0.15,
+            "outer_exclusion_radius": 0.70
+        },
+        "model": {
+            "module": "sklearn.linear_model",
+            "class": "Ridge",
+            "parameters": {
+                "alpha": 0,
+                "fit_intercept": true
+            }
+        }
+    }
+}
