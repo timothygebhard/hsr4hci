@@ -28,7 +28,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     script_start = time.time()
-    print('\nTRAIN PIXEL-WISE MODELS\n')
+    print('\nTRAIN PIXEL-WISE MODELS\n', flush=True)
 
     # -------------------------------------------------------------------------
     # Load config and data
@@ -38,28 +38,30 @@ if __name__ == '__main__':
 
     with h5py.File(config['dataset']['file_path'], 'r') as hdf_file:
         train_stack = \
-            np.array(hdf_file[config['dataset']['stack_key']][0:-1:100])
+            np.array(hdf_file[config['dataset']['stack_key']][0:-1:2])
         test_stack = \
-            np.array(hdf_file[config['dataset']['stack_key']][1:-1:100])
+            np.array(hdf_file[config['dataset']['stack_key']][1:-1:2])
         train_parang = \
-            np.array(hdf_file[config['dataset']['parang_key']][0:-1:100])
+            np.array(hdf_file[config['dataset']['parang_key']][0:-1:2])
         test_parang = \
-            np.array(hdf_file[config['dataset']['parang_key']][1:-1:100])
+            np.array(hdf_file[config['dataset']['parang_key']][1:-1:2])
 
     # -------------------------------------------------------------------------
     # Train model
     # -------------------------------------------------------------------------
 
-    print('Training model(s):')
+    print('Training model(s):', flush=True)
     hsr = HalfSiblingRegression(config=config)
     hsr.train(training_stack=train_stack)
+    print('', flush=True)
 
     # -------------------------------------------------------------------------
     # Apply model to test data
     # -------------------------------------------------------------------------
 
-    print('Making predictions:')
+    print('Making predictions:', flush=True)
     predictions = hsr.predict(test_stack=test_stack)
+    print('', flush=True)
 
     # -------------------------------------------------------------------------
     # Save predictions and parallactic angles to HDF
