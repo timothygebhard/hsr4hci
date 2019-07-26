@@ -49,7 +49,7 @@ def get_data_dir():
     hostname = str(socket.gethostname())
 
     if hostname == 'login2':
-        return '/is/cluster/tgebhard/datasets/exoplanets'
+        return '/is/cluster/tgebhard/datasets/exoplanets/Markus'
 
     elif hostname == 'Markuss-Macbook-Pro.local':
         return ''
