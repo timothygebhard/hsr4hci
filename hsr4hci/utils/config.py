@@ -30,7 +30,7 @@ def load_config(config_file_path: str) -> dict:
     # -------------------------------------------------------------------------
 
     # Add the path to the experiments folder to the config dict
-    config['experiment_dir'] = os.path.join(os.path.basename(config_file_path))
+    config['experiment_dir'] = os.path.basename(config_file_path)
 
     # Add implicitly defined variables
     config['dataset']['x_center'] = config['dataset']['x_size'] / 2
