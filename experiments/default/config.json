@@ -1,11 +1,11 @@
 {
     "dataset": {
         "file_path": "DATA_DIR/BetaPic/Lp/BetaPic_Lp_2013-01-31.hdf5",
-        "stack_key": "stack",
-        "parang_key": "parang",
+        "stack_key": "/psf_aligned_subset",
+        "parang_key": "/psf_aligned_subset/NEW_PARA",
         "pixscale": 0.0271,
-        "x_size": 121,
-        "y_size": 121
+        "x_size": 100,
+        "y_size": 100
     },
     "experiment": {
         "roi": {
