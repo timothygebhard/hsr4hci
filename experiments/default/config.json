@@ -1,11 +1,11 @@
 {
     "dataset": {
-        "file_path": "DATA_DIR/BetaPic/Lp/BetaPic_Lp_2013-01-31.hdf5",
-        "stack_key": "/psf_aligned_subset",
-        "parang_key": "/psf_aligned_subset/NEW_PARA",
+        "file_path": "DATA_DIR/Beta_Pic/Lp/BetaPic_Lp_2013-01-31.hdf5",
+        "stack_key": "/07_star_arr_normalized_bp_clean",
+        "parang_key": "/header_07_star_arr_normalized_bp_clean/NEW_PARA",
         "pixscale": 0.0271,
-        "x_size": 100,
-        "y_size": 100
+        "x_size": 121,
+        "y_size": 121
     },
     "experiment": {
         "roi": {
