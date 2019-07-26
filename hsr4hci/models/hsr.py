@@ -81,7 +81,24 @@ class HalfSiblingRegression(ModelPrototype):
 
     def predict(self,
                 test_stack: np.ndarray):
-        raise NotImplementedError
+
+        # Instantiate empty array to hold all predictions
+        predictions = np.full(test_stack.shape, np.nan)
+
+        # Loop over all ROI positions / models
+        for position, predictor in self.m__predictors.items():
+
+            # Get sources mask
+            mask = get_predictor_mask(mask_size=self.m__mask_size,
+                                      position=position,
+                                      n_regions=1,
+                                      region_size=5)
+            sources = test_stack[mask]
+
+            # Make prediction
+            predictions[position] = predictor.predict(sources=sources)
+
+        return predictions
 
     def load(self):
 
@@ -122,6 +139,11 @@ class PixelPredictor(object):
 
         # Fit to the training data
         self.m__model.fit(X=sources, y=targets)
+
+    def predict(self,
+                sources: np.ndarray) -> np.ndarray:
+
+        return self.m__model.predict(X=sources)
 
     def save(self,
              models_dir: str):
