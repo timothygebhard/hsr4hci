@@ -1,8 +1,8 @@
 {
     "dataset": {
         "file_path": "DATA_DIR/Beta_Pic/Lp/BetaPic_Lp_2013-01-31.hdf5",
-        "stack_key": "/07_star_arr_normalized_bp_clean",
-        "parang_key": "/header_07_star_arr_normalized_bp_clean/NEW_PARA",
+        "stack_key": "/07_star_arr_normalized_bp_cleaned",
+        "parang_key": "/header_07_star_arr_normalized_bp_cleaned/NEW_PARA",
         "pixscale": 0.0271,
         "x_size": 121,
         "y_size": 121
