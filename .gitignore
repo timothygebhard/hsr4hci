@@ -1,3 +1,8 @@
+# Ignore results, models, ... folders in experiment directories
+experiments/*/*
+!experiments/*/config.json
+!experiments/*/*.py
+
 # PyCharm project folder
 .idea
 
