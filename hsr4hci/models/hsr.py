@@ -16,6 +16,7 @@ from hsr4hci.utils.predictor_selection import get_predictor_mask
 from hsr4hci.utils.roi_selection import get_roi_pixels
 
 from sklearn.linear_model import Ridge
+from tqdm import tqdm
 from typing import Tuple
 from pathlib import Path
 
@@ -53,7 +54,7 @@ class HalfSiblingRegression(ModelPrototype):
                                     outer_exclusion_radius=0.70)
 
         # Train a model for every position
-        for position in roi_pixels:
+        for position in tqdm(roi_pixels, total=len(roi_pixels), ncols=80):
             self.train_position(position=position,
                                 training_stack=training_stack)
 
@@ -86,7 +87,7 @@ class HalfSiblingRegression(ModelPrototype):
         predictions = np.full(test_stack.shape, np.nan)
 
         # Loop over all ROI positions / models
-        for position, predictor in self.m__predictors.items():
+        for position, predictor in tqdm(self.m__predictors.items()):
 
             # Get sources mask
             mask = get_predictor_mask(mask_size=self.m__mask_size,
