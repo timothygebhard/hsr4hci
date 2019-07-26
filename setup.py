@@ -10,6 +10,7 @@ setup(name='hsr4hci',
                         'matplotlib',
                         'numpy',
                         'scikit-learn',
+                        'scipy',
                         'tqdm'],
       packages=['hsr4hci'],
       zip_safe=False)
