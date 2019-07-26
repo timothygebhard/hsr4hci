@@ -1,0 +1,24 @@
+{
+    "dataset": {
+        "file_path": "DATA_DIR/HD72106/HD72106.hdf5",
+        "stack_key": "/08_selected",
+        "parang_key": "/header_08_selected/PARANG",
+        "pixscale": 0.0271,
+        "x_size": 110,
+        "y_size": 110
+    },
+    "experiment": {
+        "roi": {
+            "inner_exclusion_radius": 0.15,
+            "outer_exclusion_radius": 1.10
+        },
+        "model": {
+            "module": "sklearn.linear_model",
+            "class": "Ridge",
+            "parameters": {
+                "alpha": 0,
+                "fit_intercept": true
+            }
+        }
+    }
+}
