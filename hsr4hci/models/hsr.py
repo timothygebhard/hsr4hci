@@ -33,25 +33,34 @@ class HalfSiblingRegression(ModelPrototype):
     def __init__(self,
                  config: dict):
 
+        # Store the experiment configuration
+        self.m__config = config
+
+        # Define shortcuts to config elements
         self.m__experiment_dir = config['experiment_dir']
+        self.m__mask_size = (int(config['dataset']['x_size']),
+                             int(config['dataset']['y_size']))
 
         # Define a models directory and ensure it exists
         self.m__models_dir = os.path.join(self.m__experiment_dir, 'models')
         Path(self.m__models_dir).mkdir(exist_ok=True)
-        
-        self.m__predictors = dict()
 
-        self.m__mask_size = (int(config['dataset']['x_size']),
-                             int(config['dataset']['y_size']))
+        # Initialize a dict that will hold all pixel models
+        self.m__predictors = dict()
 
     def train(self,
               training_stack: np.ndarray):
 
+        # Define shortcuts
+        pixscale = self.m__config['dataset']['pixscale']
+        roi_ier = self.m__config['experiment']['roi']['inner_exclusion_radius']
+        roi_oer = self.m__config['experiment']['roi']['outer_exclusion_radius']
+
         # Get positions of pixels in ROI
         roi_pixels = get_roi_pixels(mask_size=self.m__mask_size,
-                                    pixscale=0.0271,
-                                    inner_exclusion_radius=0.15,
-                                    outer_exclusion_radius=0.70)
+                                    pixscale=pixscale,
+                                    inner_exclusion_radius=roi_ier,
+                                    outer_exclusion_radius=roi_oer)
 
         # Train a model for every position
         for position in tqdm(roi_pixels, total=len(roi_pixels), ncols=80):
@@ -69,8 +78,8 @@ class HalfSiblingRegression(ModelPrototype):
                                   region_size=5)
 
         # Select sources (predictor pixels) and targets from stack
-        sources = training_stack[mask]
-        targets = training_stack[position]
+        sources = training_stack[:, mask]
+        targets = training_stack[:, position[0], position[1]]
 
         # Train and save a predictor for this position
         predictor = PixelPredictor(position=position)
@@ -87,27 +96,34 @@ class HalfSiblingRegression(ModelPrototype):
         predictions = np.full(test_stack.shape, np.nan)
 
         # Loop over all ROI positions / models
-        for position, predictor in tqdm(self.m__predictors.items()):
+        for position, predictor in tqdm(self.m__predictors.items(), ncols=80,
+                                        total=len(self.m__predictors)):
 
             # Get sources mask
             mask = get_predictor_mask(mask_size=self.m__mask_size,
                                       position=position,
                                       n_regions=1,
                                       region_size=5)
-            sources = test_stack[mask]
+            sources = test_stack[:, mask]
 
             # Make prediction
-            predictions[position] = predictor.predict(sources=sources)
+            predictions[:, position[0], position[1]] = \
+                predictor.predict(sources=sources)
 
         return predictions
 
     def load(self):
 
+        # Define shortcuts
+        pixscale = self.m__config['dataset']['pixscale']
+        roi_ier = self.m__config['experiment']['roi']['inner_exclusion_radius']
+        roi_oer = self.m__config['experiment']['roi']['outer_exclusion_radius']
+
         # Get positions of pixels in ROI
         roi_pixels = get_roi_pixels(mask_size=self.m__mask_size,
-                                    pixscale=0.0271,
-                                    inner_exclusion_radius=0.15,
-                                    outer_exclusion_radius=0.70)
+                                    pixscale=pixscale,
+                                    inner_exclusion_radius=roi_ier,
+                                    outer_exclusion_radius=roi_oer)
 
         # Load model for every position in the ROI
         for position in roi_pixels:
