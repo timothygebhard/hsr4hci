@@ -12,14 +12,14 @@ import os
 import warnings
 
 from hsr4hci.models.prototypes import ModelPrototype
+from hsr4hci.utils.model_loading import get_class_by_name
 from hsr4hci.utils.predictor_selection import get_predictor_mask
 from hsr4hci.utils.roi_selection import get_roi_pixels
 
-from sklearn.linear_model import Ridge
+from pathlib import Path
 from sklearn.decomposition import PCA
 from tqdm import tqdm
 from typing import Tuple
-from pathlib import Path
 
 
 # -----------------------------------------------------------------------------
@@ -38,6 +38,7 @@ class HalfSiblingRegression(ModelPrototype):
         self.m__pixscale = config['dataset']['pixscale']
         self.m__roi_ier = config['experiment']['roi']['inner_exclusion_radius']
         self.m__roi_oer = config['experiment']['roi']['outer_exclusion_radius']
+        self.m__model_config = config['experiment']['model']
 
         # Define shortcuts to config elements
         self.m__experiment_dir = config['experiment_dir']
@@ -80,7 +81,8 @@ class HalfSiblingRegression(ModelPrototype):
         targets = training_stack[:, position[0], position[1]]
 
         # Train and save a predictor for this position
-        predictor = PixelPredictor(position=position)
+        predictor = PixelPredictor(position=position,
+                                   model_config=self.m__model_config)
         predictor.train(sources=sources, targets=targets)
         predictor.save(models_dir=self.m__models_dir)
 
@@ -192,9 +194,14 @@ class PixelPredictor(object):
     """
 
     def __init__(self,
-                 position: tuple):
+                 position: tuple,
+                 model_config: dict):
 
+        # Store constructor arguments
         self.m__position = position
+        self.m__model_config = model_config
+
+        # Create predictor name and placeholder for model
         self.m__name = f'{position[0]}_{position[1]}__model.pkl'
         self.m__model = None
 
@@ -211,10 +218,13 @@ class PixelPredictor(object):
               sources: np.ndarray,
               targets: np.ndarray):
 
-        # Instantiate a ridge regression model
-        self.m__model = Ridge(alpha=0)
+        # Instantiate a new model according to the model_config
+        model_class = \
+            get_class_by_name(module_name=self.m__model_config['module'],
+                              class_name=self.m__model_config['class'])
+        self.m__model = model_class(**self.m__model_config['parameters'])
 
-        # Fit to the training data
+        # Fit model to the training data
         self.m__model.fit(X=sources, y=targets)
 
     def predict(self,
