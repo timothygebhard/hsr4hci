@@ -51,7 +51,8 @@ def get_data_dir():
     if hostname == 'login2':
         return '/is/cluster/tgebhard/datasets/exoplanets/Markus'
 
-    elif hostname == 'Markuss-MacBook-Pro.local':
+    elif hostname == 'Markuss-MacBook-Pro.local' or \
+         hostname == 'Markuss-MBP':
         return ''
 
     else:

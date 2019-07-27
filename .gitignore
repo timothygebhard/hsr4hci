@@ -2,6 +2,8 @@
 experiments/*/*
 !experiments/*/config.json
 !experiments/*/*.py
+!experiments/notebooks/*
+!experiments/notebooks
 
 # PyCharm project folder
 .idea
