@@ -16,6 +16,7 @@ from hsr4hci.utils.predictor_selection import get_predictor_mask
 from hsr4hci.utils.roi_selection import get_roi_pixels
 
 from sklearn.linear_model import Ridge
+from sklearn.decomposition import PCA
 from tqdm import tqdm
 from typing import Tuple
 from pathlib import Path
@@ -34,7 +35,9 @@ class HalfSiblingRegression(ModelPrototype):
                  config: dict):
 
         # Store the experiment configuration
-        self.m__config = config
+        self.m__pixscale = config['dataset']['pixscale']
+        self.m__roi_ier = config['experiment']['roi']['inner_exclusion_radius']
+        self.m__roi_oer = config['experiment']['roi']['outer_exclusion_radius']
 
         # Define shortcuts to config elements
         self.m__experiment_dir = config['experiment_dir']
@@ -51,16 +54,11 @@ class HalfSiblingRegression(ModelPrototype):
     def train(self,
               training_stack: np.ndarray):
 
-        # Define shortcuts
-        pixscale = self.m__config['dataset']['pixscale']
-        roi_ier = self.m__config['experiment']['roi']['inner_exclusion_radius']
-        roi_oer = self.m__config['experiment']['roi']['outer_exclusion_radius']
-
         # Get positions of pixels in ROI
         roi_pixels = get_roi_pixels(mask_size=self.m__mask_size,
-                                    pixscale=pixscale,
-                                    inner_exclusion_radius=roi_ier,
-                                    outer_exclusion_radius=roi_oer)
+                                    pixscale=self.m__pixscale,
+                                    inner_exclusion_radius=self.m__roi_ier,
+                                    outer_exclusion_radius=self.m__roi_oer)
 
         # Train a model for every position
         for position in tqdm(roi_pixels, total=len(roi_pixels), ncols=80):
@@ -114,16 +112,11 @@ class HalfSiblingRegression(ModelPrototype):
 
     def load(self):
 
-        # Define shortcuts
-        pixscale = self.m__config['dataset']['pixscale']
-        roi_ier = self.m__config['experiment']['roi']['inner_exclusion_radius']
-        roi_oer = self.m__config['experiment']['roi']['outer_exclusion_radius']
-
         # Get positions of pixels in ROI
         roi_pixels = get_roi_pixels(mask_size=self.m__mask_size,
-                                    pixscale=pixscale,
-                                    inner_exclusion_radius=roi_ier,
-                                    outer_exclusion_radius=roi_oer)
+                                    pixscale=self.m__pixscale,
+                                    inner_exclusion_radius=self.m__roi_ier,
+                                    outer_exclusion_radius=self.m__roi_oer)
 
         # Load model for every position in the ROI
         for position in roi_pixels:
@@ -136,6 +129,43 @@ class HalfSiblingRegression(ModelPrototype):
         # Save all predictors
         for _, predictor in self.m__predictors.items():
             predictor.save(models_dir=self.m__models_dir)
+
+    def get_pca_of_parameters(self,
+                              num_components: int=3,
+                              normalize: bool=False)-> np.ndarray:
+
+        if not bool(self.m__predictors):
+            raise ValueError("No local predictors found. "
+                             "Please load models first")
+
+        # Create PCA model
+        model_paras = {}
+        paras_list = []
+        for position, model in self.m__predictors.items():
+            # TODO change Ridge to predictor class later
+            if isinstance(model.m__model, Ridge):
+                model_paras[position] = model.m__model.coef_
+                paras_list.append(model.m__model.coef_)
+
+        pca_model = PCA(num_components)
+        pca_model.fit(np.array(paras_list))
+
+        # Create result frame and transform coeff
+        result = np.zeros((num_components,
+                                 self.m__mask_size[0],
+                                 self.m__mask_size[1]))
+
+        for position, coeff in model_paras.items():
+            result[:, position[0], position[1]] = \
+                pca_model.transform(np.array(coeff).reshape(-1, 1))[0, :]
+
+        # Normalize to range [0, 1] to be used as colors
+        if normalize:
+            # convert to colors
+            result = result - np.min(result)
+            result /= np.max(result)
+
+        return result
 
 
 class PixelPredictor(object):
