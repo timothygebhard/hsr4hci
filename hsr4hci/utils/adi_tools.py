@@ -8,10 +8,7 @@ residual creation
 # -----------------------------------------------------------------------------
 
 import numpy as np
-from astropy.io import fits
-import h5py
 from scipy.ndimage import rotate
-import matplotlib.pyplot as plt
 
 # -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
