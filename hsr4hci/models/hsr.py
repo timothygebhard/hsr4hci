@@ -169,6 +169,9 @@ class HalfSiblingRegression(ModelPrototype):
 
 
 class PixelPredictor(object):
+    """
+    Wrapper class for a predictor model of a single pixel.
+    """
 
     def __init__(self,
                  position: tuple):
@@ -176,6 +179,15 @@ class PixelPredictor(object):
         self.m__position = position
         self.m__name = f'{position[0]}_{position[1]}__model.pkl'
         self.m__model = None
+
+    @property
+    def coef_(self):
+
+        # If the base model has a coef_ attribute (which only exists for
+        # fitted models), we can return it; otherwise return None
+        if hasattr(self.m__model, 'coef_'):
+            return self.m__model.coef_
+        return None
 
     def train(self,
               sources: np.ndarray,
