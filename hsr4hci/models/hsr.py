@@ -130,38 +130,56 @@ class HalfSiblingRegression(ModelPrototype):
         for _, predictor in self.m__predictors.items():
             predictor.save(models_dir=self.m__models_dir)
 
-    def get_pca_of_parameters(self,
-                              num_components: int=3,
-                              normalize: bool=False)-> np.ndarray:
+    def get_pca_of_coefficients(self,
+                                n_components: int = 3,
+                                normalize: bool = False) -> np.ndarray:
+        """
+        Run PCA on the coefficients of the pixel predictors. This
+        dimensionality reduction is useful to investigate if predictors
+        that are spatially close also have similar components (i.e.,
+        they have learned a similar relation between input and output).
+        
+        Args:
+            n_components: Number of principal components to project
+                onto. Default is 3, as it allows to interpret the
+                result as an RGB color.
+            normalize: Whether or not to normalize all values in the
+                result into the [0, 1] interval.
 
-        if not bool(self.m__predictors):
+        Returns:
+            A numpy array of shape (n_components, width, height) that
+            contains the dimensionality-reduced model coefficients of
+            every pixel predictor.
+        """
+
+        # Check if we have some models on which we can run PCA.
+        # Empty dictionaries are evaluated as False by Python.
+        if not self.m__predictors:
             raise ValueError("No local predictors found. "
-                             "Please load models first")
+                             "Please train or load models first.")
 
-        # Create PCA model
-        model_paras = {}
-        paras_list = []
+        # Collect coefficients for all pixel models
+        model_coeffs = {}
         for position, model in self.m__predictors.items():
-            # TODO change Ridge to predictor class later
-            if isinstance(model.m__model, Ridge):
-                model_paras[position] = model.m__model.coef_
-                paras_list.append(model.m__model.coef_)
+            if model.m__model.coef_ is not None:
+                model_coeffs[position] = model.m__model.coef_
 
-        pca_model = PCA(num_components)
-        pca_model.fit(np.array(paras_list))
+        # Fit a PCA to the coefficients
+        pca_model = PCA(n_components)
+        pca_model.fit(np.array(model_coeffs.values()))
 
-        # Create result frame and transform coeff
-        result = np.zeros((num_components,
-                                 self.m__mask_size[0],
-                                 self.m__mask_size[1]))
+        # Create result array (default to NaN, which is ignored in plots)
+        result = np.full((n_components,
+                          self.m__mask_size[0],
+                          self.m__mask_size[1]), np.nan)
 
-        for position, coeff in model_paras.items():
+        # For each pixel model, project the coefficients onto the PCs
+        for position, coeff in model_coeffs.items():
             result[:, position[0], position[1]] = \
                 pca_model.transform(np.array(coeff).reshape(-1, 1))[0, :]
 
-        # Normalize to range [0, 1] to be used as colors
+        # If desired, normalize result to range [0, 1] to be used as colors
         if normalize:
-            # convert to colors
             result = result - np.min(result)
             result /= np.max(result)
 
