@@ -122,7 +122,8 @@ class HalfSiblingRegression(ModelPrototype):
 
         # Load model for every position in the ROI
         for position in roi_pixels:
-            predictor = PixelPredictor(position=position)
+            predictor = PixelPredictor(position=position,
+                                       model_config=self.m__model_config)
             predictor.load(models_dir=self.m__models_dir)
             self.m__predictors[position] = predictor
 
@@ -168,7 +169,7 @@ class HalfSiblingRegression(ModelPrototype):
 
         # Fit a PCA to the coefficients
         pca_model = PCA(n_components)
-        pca_model.fit(np.array(model_coeffs.values()))
+        pca_model.fit(np.array(list(model_coeffs.values())))
 
         # Create result array (default to NaN, which is ignored in plots)
         result = np.full((n_components,
@@ -182,8 +183,8 @@ class HalfSiblingRegression(ModelPrototype):
 
         # If desired, normalize result to range [0, 1] to be used as colors
         if normalize:
-            result = result - np.min(result)
-            result /= np.max(result)
+            result = result - np.nanmin(result)
+            result /= np.nanmax(result)
 
         return result
 
