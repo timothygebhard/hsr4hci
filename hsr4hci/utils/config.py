@@ -49,7 +49,8 @@ def get_data_dir():
     hostname = str(socket.gethostname())
 
     # TODO: Find a solution that works for all nodes on the MPI cluster
-    if hostname == 'login2':
+    if (hostname == 'login2' or
+        hostname == 'g025'):
         return '/is/cluster/tgebhard/datasets/exoplanets/Markus'
 
     elif (hostname == 'Markuss-MacBook-Pro.local' or
