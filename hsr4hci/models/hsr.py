@@ -14,7 +14,7 @@ import warnings
 from hsr4hci.models.prototypes import ModelPrototype
 from hsr4hci.utils.model_loading import get_class_by_name
 from hsr4hci.utils.predictor_selection import get_predictor_mask
-from hsr4hci.utils.roi_selection import get_roi_pixels
+from hsr4hci.utils.roi_selection import get_roi_mask, get_roi_pixels
 
 from pathlib import Path
 from sklearn.decomposition import PCA
@@ -45,6 +45,12 @@ class HalfSiblingRegression(ModelPrototype):
         self.m__mask_size = (int(config['dataset']['x_size']),
                              int(config['dataset']['y_size']))
 
+        # Get implicitly defined class variables
+        self.m__roi_mask = get_roi_mask(mask_size=self.m__mask_size,
+                                        pixscale=self.m__pixscale,
+                                        inner_exclusion_radius=self.m__roi_ier,
+                                        outer_exclusion_radius=self.m__roi_oer)
+
         # Define a models directory and ensure it exists
         self.m__models_dir = os.path.join(self.m__experiment_dir, 'models')
         Path(self.m__models_dir).mkdir(exist_ok=True)
@@ -56,10 +62,7 @@ class HalfSiblingRegression(ModelPrototype):
               training_stack: np.ndarray):
 
         # Get positions of pixels in ROI
-        roi_pixels = get_roi_pixels(mask_size=self.m__mask_size,
-                                    pixscale=self.m__pixscale,
-                                    inner_exclusion_radius=self.m__roi_ier,
-                                    outer_exclusion_radius=self.m__roi_oer)
+        roi_pixels = get_roi_pixels(self.m__roi_mask)
 
         # Train a model for every position
         for position in tqdm(roi_pixels, total=len(roi_pixels), ncols=80):
@@ -115,10 +118,7 @@ class HalfSiblingRegression(ModelPrototype):
     def load(self):
 
         # Get positions of pixels in ROI
-        roi_pixels = get_roi_pixels(mask_size=self.m__mask_size,
-                                    pixscale=self.m__pixscale,
-                                    inner_exclusion_radius=self.m__roi_ier,
-                                    outer_exclusion_radius=self.m__roi_oer)
+        roi_pixels = get_roi_pixels(self.m__roi_mask)
 
         # Load model for every position in the ROI
         for position in roi_pixels:
