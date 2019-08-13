@@ -8,7 +8,11 @@ Tools for classical angular differential imaging (ADI), such as frame
 # -----------------------------------------------------------------------------
 
 import numpy as np
+
 from scipy.ndimage import rotate
+from tqdm import tqdm
+
+from typing import Optional
 
 
 # -----------------------------------------------------------------------------
@@ -16,27 +20,44 @@ from scipy.ndimage import rotate
 # -----------------------------------------------------------------------------
 
 def derotate_frames(stack: np.ndarray,
-                    para_angles: np.ndarray) -> np.ndarray:
+                    parang: np.ndarray,
+                    mask: Optional[np.ndarray] = None,
+                    verbose: bool = False) -> np.ndarray:
     """
-    De-rotate every frame in the given stack by its respective
-    parallactic angle.
-    
+    Derotate all frames in the stack by their parallactic angle.
+
     Args:
         stack: Stack of frames to be de-rotated.
-        para_angles: Array of parallactic angles (one for each frame).
+        parang: Array of parallactic angles (one for each frame).
+        mask: Mask to apply after derotating. Usually, pixels for which
+            there exists no prediction are set to NaN. However, for
+            derotating, these have to be casted to zeros (otherwise the
+            interpolation turns everything into a NaN). This mask here
+            allows to restore these NaN values again.
+        verbose: Whether or not to print a progress bar.
 
     Returns:
-        The stack with every frame de-rotated by its parallactic angle.
+        The stack with every frame derotated by its parallactic angle.
     """
 
     # Initialize array that will hold the de-rotated frames
     derotated = np.zeros_like(stack)
 
-    # Loop over all frames and de-rotate them by their parallactic angle
-    for i in range(stack.shape[0]):
+    # If desired, use a tqdm decorator to show the progress
+    if verbose:
+        indices = tqdm(iterable=range(stack.shape[0]), ncols=80)
+    else:
+        indices = range(stack.shape[0])
+
+    # Loop over all frames and derotate them by their parallactic angle
+    for i in indices:
         derotated[i, :, :] = rotate(input=np.nan_to_num(stack[i, :, :]),
-                                    angle=-para_angles[i],
+                                    angle=-parang[i],
                                     reshape=False)
+
+    # Check if there is a mask that we need to apply after derotating
+    if mask is not None and mask.shape[1:] == stack.shape[1:]:
+        derotated[:, mask] = np.nan
 
     return derotated
 
