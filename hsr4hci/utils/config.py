@@ -16,6 +16,20 @@ import socket
 # -----------------------------------------------------------------------------
 
 def load_config(config_file_path: str) -> dict:
+    """
+    Load and amend an experiment configuration.
+
+    Args:
+        config_file_path: Path to the JSON file containing the
+            configuration to be loaded.
+
+    Returns:
+        A dictionary containing the amended configuration.
+    """
+
+    # -------------------------------------------------------------------------
+    # Load configuration from JSON file
+    # -------------------------------------------------------------------------
 
     # Build the full path to the config file and check if it exists
     if not os.path.exists(config_file_path):
@@ -26,7 +40,7 @@ def load_config(config_file_path: str) -> dict:
         config = json.load(json_file)
 
     # -------------------------------------------------------------------------
-    # Amend configuration
+    # Amend configuration (i.e., add implicitly defined variables)
     # -------------------------------------------------------------------------
 
     # Add the path to the experiments folder to the config dict
