@@ -6,8 +6,10 @@ Utilities for reading in config files.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+import getpass
 import json
 import os
+import re
 import socket
 
 
@@ -58,18 +60,55 @@ def load_config(config_file_path: str) -> dict:
     return config
 
 
-def get_data_dir():
+def get_data_dir() -> str:
+    """
+    Get the path to the data directory (based on the current host name).
 
+    Returns:
+        Path to the data directory.
+    """
+
+    # TODO: Getting the data directory based on the current hostname (and
+    #       possibly the username) seems increasingly messy (see below).
+    #       Can we maybe find a better solution here?
+
+    # Get current hostname and username
     hostname = str(socket.gethostname())
+    username = str(getpass.getuser())
 
-    # TODO: Find a solution that works for all nodes on the MPI cluster
-    if (hostname == 'login2' or
-        hostname == 'g025'):
+    # -------------------------------------------------------------------------
+    # Cluster at the MPI-IS
+    # -------------------------------------------------------------------------
+
+    # On the MPI cluster, there are two types of nodes:
+    #   1. login nodes (names "login1" and "login2)
+    #   2. worker nodes (naming scheme: [e|g|o|t] + 3 digits; e.g. "g002")
+    if bool(re.match(r'^login1$|^login2$|^[egot]\d{3}$', hostname)):
         return '/is/cluster/tgebhard/datasets/exoplanets/Markus'
+
+    # -------------------------------------------------------------------------
+    # Markus's computers
+    # -------------------------------------------------------------------------
 
     elif (hostname == 'Markuss-MacBook-Pro.local' or
           hostname == 'Markuss-MBP'):
         return ''
+
+    # -------------------------------------------------------------------------
+    # Timothy's computers
+    # -------------------------------------------------------------------------
+
+    # If connected to "normal" networks
+    elif hostname == 'Timothys-MacBook-Pro.local':
+        return os.path.expanduser('~/Documents/PhD/datasets/exoplanets')
+
+    # If connected to the ETH wifi (which changes the hostname)
+    elif bool(re.match(r'^\S+.ethz.ch$', hostname)) and username == 'timothy':
+        return os.path.expanduser('~/Documents/PhD/datasets/exoplanets')
+
+    # -------------------------------------------------------------------------
+    # Default: Raise ValueError
+    # -------------------------------------------------------------------------
 
     else:
         raise ValueError(f'Hostname "{hostname}" not known!')
