@@ -1,5 +1,5 @@
 """
-Half-Sibling Regression model.
+Select pixels in the region of interest (ROI).
 """
 
 # -----------------------------------------------------------------------------
@@ -16,12 +16,12 @@ from typing import List, Tuple
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def get_roi_pixels(mask_size: Tuple[int, int],
-                   pixscale: float,
-                   inner_exclusion_radius: float,
-                   outer_exclusion_radius: float) -> List[tuple]:
+def get_roi_mask(mask_size: Tuple[int, int],
+                 pixscale: float,
+                 inner_exclusion_radius: float,
+                 outer_exclusion_radius: float) -> np.ndarray:
     """
-    Get an iterator for the pixels (positions) in the region of interest.
+    Get a numpy array masking the pixels within the region of interest.
 
     Args:
         mask_size: (Spatial) size of the input stack.
@@ -32,7 +32,7 @@ def get_roi_pixels(mask_size: Tuple[int, int],
             region (in arcseconds).
 
     Returns:
-        A list of tuples (x, y) of the positions in the ROI.
+        A numpy array with the mask of the pixels in the ROI.
     """
     
     # Get exclusion radii of ROI and convert from arcsec to pixels
@@ -43,7 +43,21 @@ def get_roi_pixels(mask_size: Tuple[int, int],
     roi_mask = get_annulus_mask(mask_size=mask_size,
                                 inner_exclusion_radius=inner_exclusion_radius,
                                 outer_exclusion_radius=outer_exclusion_radius)
-    
+
+    return roi_mask
+
+
+def get_roi_pixels(roi_mask: np.ndarray) -> List[tuple]:
+    """
+    Convert the ROI mask into a list of pixels (positions).
+
+    Args:
+        roi_mask: A numpy array with the mask of the pixels in the ROI.
+
+    Returns:
+        A list of tuples (x, y) of the (positions of) pixels in the ROI.
+    """
+
     # Convert this mask into a list of (x, y)-tuples for explicit looping
     roi_pixels = list(zip(*np.where(roi_mask)))
 
