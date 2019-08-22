@@ -5,7 +5,10 @@
         "parang_key": "/header_07_star_arr_normalized_bp_cleaned/NEW_PARA",
         "pixscale": 0.0271,
         "x_size": 121,
-        "y_size": 121
+        "y_size": 121,
+        "subsample": 1,
+        "n_splits": 10,
+        "split_type": "even_odd"
     },
     "experiment": {
         "roi": {
@@ -19,6 +22,15 @@
                 "alpha": 0,
                 "fit_intercept": true
             }
+        },
+        "evaluation":{
+            "planet_position": {
+                "x": 72.5,
+                "y": 72.5
+            },
+            "aperture_size": 2,
+            "ignore_neighbors": false,
+            "optimize": "fpf"
         }
     }
 }
