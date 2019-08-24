@@ -9,7 +9,9 @@ Functions and classes for loading and splitting data.
 import h5py
 import numpy as np
 
-from typing import Tuple
+from typing import Optional, Tuple
+
+from hsr4hci.utils.general import crop_center
 
 
 # -----------------------------------------------------------------------------
@@ -117,7 +119,8 @@ class TrainTestSplitter:
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def load_data(dataset_config: dict) -> Tuple[np.ndarray, np.ndarray]:
+def load_data(dataset_config: dict) -> Tuple[np.ndarray, np.ndarray,
+                                             Optional[np.ndarray]]:
     """
     Load the dataset specified in the dataset_config.
 
@@ -126,19 +129,34 @@ def load_data(dataset_config: dict) -> Tuple[np.ndarray, np.ndarray]:
             experiment config file which specifies the dataset.
 
     Returns:
-        A tuple (stack, parang), containing numpy array with the frames
-        and the parallactic angles.
+        A tuple (stack, parang, psf_template), containing numpy array
+        with the frames, the parallactic angles and the unsaturated
+        PSF template.
     """
 
-    # Define shortcuts
+    # Define some shortcuts
     file_path = dataset_config['file_path']
     stack_key = dataset_config['stack_key']
     parang_key = dataset_config['parang_key']
+    psf_template_key = dataset_config['psf_template_key']
+    frame_size = dataset_config['frame_size']
     subsample = dataset_config['subsample']
 
-    # Read in the dataset and select subsample
+    # Read in the dataset from the HDf file
     with h5py.File(file_path, 'r') as hdf_file:
+
+        # Select stack and parallactic angles
         stack = np.array(hdf_file[stack_key][::subsample, ...])
         parang = np.array(hdf_file[parang_key][::subsample, ...])
 
-    return stack, parang
+        # Spatially crop the stack to the desired frame size without
+        # changing the number of frames in it
+        stack = crop_center(stack, (-1, frame_size[0], frame_size[1]))
+
+        # If applicable, also select the PSF template
+        if psf_template_key is not None:
+            psf_template = np.array(hdf_file[psf_template_key])
+        else:
+            psf_template = None
+
+    return stack, parang, psf_template
