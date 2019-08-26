@@ -49,8 +49,8 @@ def load_config(config_file_path: str) -> dict:
     config['experiment_dir'] = os.path.dirname(config_file_path)
 
     # Add implicitly defined variables
-    config['dataset']['x_center'] = config['dataset']['x_size'] / 2
-    config['dataset']['y_center'] = config['dataset']['y_size'] / 2
+    config['dataset']['frame_center'] = \
+        tuple(map(lambda x: x / 2, config['dataset']['frame_size']))
  
     # Replace dummy data directory with machine-specific data directory
     data_dir = get_data_dir()
