@@ -16,11 +16,17 @@ from hsr4hci.models.hsr import HalfSiblingRegression
 
 from pathlib import Path
 
+import line_profiler
+import atexit
+profile = line_profiler.LineProfiler()
+atexit.register(profile.print_stats)
+
 
 # -----------------------------------------------------------------------------
 # MAIN CODE
 # -----------------------------------------------------------------------------
 
+@profile
 if __name__ == '__main__':
 
     # -------------------------------------------------------------------------
