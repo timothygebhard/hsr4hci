@@ -12,13 +12,49 @@ from astropy.nddata import Cutout2D
 from astropy.nddata.utils import add_array
 from cmath import polar
 from photutils import centroid_2dg, CircularAperture
+from scipy import ndimage
 
-from typing import Tuple
+from typing import Tuple, Union
 
 
 # -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
+
+def add_array_with_interpolation(array_large: np.ndarray,
+                                 array_small: np.ndarray,
+                                 position: Tuple[Union[int, float],
+                                                 Union[int, float]]):
+    """
+    An extension of astropy.nddata.utils.add_array to add a smaller
+    array at a given position in a larger array. In this version, the
+    position may also be a float, in which case bilinear interpolation
+    is used when adding array_small into array_large.
+
+    Args:
+        array_large: Large array, into which array_small is added into.
+        array_small: Small array, which is added into array_large.
+        position: The target position of the small array’s center, with
+            respect to the large array. Coordinates should be in the
+            same order as the array shape, but can also be floats.
+
+    Returns:
+        The new array, constructed as the the sum of `array_large`
+        and `array_small`.
+    """
+
+    # Create an empty with the same size as array_larger and add the
+    # small array at the approximately correct position
+    dummy = np.zeros_like(array_large)
+    dummy = add_array(dummy, array_small, position)
+
+    # Compute the subpixel offset and use scipy.ndimage.shift to shift the
+    # array to the exact position, using bilinear interpolation
+    offset = (position[0] % 1, position[1] % 1)
+    dummy = ndimage.shift(dummy, offset, order=1)
+
+    return array_large + dummy
+
 
 def get_signal_stack(position: Tuple[int, int],
                      frame_size: Tuple[int, int],
@@ -124,16 +160,17 @@ def get_signal_stack(position: Tuple[int, int],
         # resulting position back to Cartesian coordinates.
         theta = np.deg2rad(rotation_angles[i])
         new_complex_position = r * np.exp(1j * (phi + theta))
-        injection_position = \
-            (int(np.imag(new_complex_position) + frame_center[0]),
-             int(np.real(new_complex_position) + frame_center[1]))
+        injection_position = (np.imag(new_complex_position) + frame_center[0],
+                              np.real(new_complex_position) + frame_center[1])
 
         # Add cropped and masked PSF template at the injection_position.
-        # The add_array() function is able to automatically deal with cases
-        # where the PSF template exceeds the bounds of the signal stack.
-        signal_stack[i] = add_array(array_large=signal_stack[i],
-                                    array_small=psf_masked,
-                                    position=injection_position)
+        # The add_array_with_interpolation() function is able to automatically
+        # deal with cases where the injection_position is a tuple of floats,
+        # or the PSF template exceeds the bounds of the signal stack.
+        signal_stack[i] = \
+            add_array_with_interpolation(array_large=signal_stack[i],
+                                         array_small=psf_masked,
+                                         position=injection_position)
 
     return signal_stack
 
