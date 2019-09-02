@@ -84,7 +84,7 @@ def get_data_dir() -> str:
     #   1. login nodes (names "login1" and "login2)
     #   2. worker nodes (naming scheme: [e|g|o|t] + 3 digits; e.g. "g002")
     if bool(re.match(r'^login1$|^login2$|^[egot]\d{3}$', hostname)):
-        return '/is/cluster/tgebhard/datasets/exoplanets/Markus'
+        return '/is/cluster/tgebhard/datasets/exoplanets'
 
     # -------------------------------------------------------------------------
     # Markus's computers
