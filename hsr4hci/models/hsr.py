@@ -89,6 +89,7 @@ class HalfSiblingRegression(ModelPrototype):
                                 parang=parang,
                                 psf_template=psf_template)
 
+    @profile
     def train_position(self,
                        position: Tuple[int, int],
                        stack: np.ndarray,
@@ -176,6 +177,7 @@ class PixelPredictorCollection(object):
         # Return the weighted average of the signal coefficients
         return np.average(a=signal_coefs, weights=1/signal_sigma_coefs)
 
+    @profile
     def train_collection(self,
                          stack: np.ndarray,
                          parang: np.ndarray,
