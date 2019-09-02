@@ -90,6 +90,9 @@ def get_data_dir() -> str:
     # Markus's computers
     # -------------------------------------------------------------------------
 
+    elif hostname == 'bluesky':
+        return '/net/ipa-gate.phys.ethz.ch/export/ipa/meyer/hsr'
+
     elif (hostname == 'Markuss-MacBook-Pro.local' or
           hostname == 'Markuss-MBP'):
         return ''
