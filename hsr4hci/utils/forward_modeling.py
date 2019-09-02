@@ -9,71 +9,16 @@ Utility methods for forward modeling.
 import numpy as np
 
 from astropy.nddata import Cutout2D
-from astropy.nddata.utils import add_array
 from cmath import polar
-from math import modf
 from photutils import centroid_2dg, CircularAperture
-from scipy import ndimage
+from typing import Tuple
 
-from typing import Sequence, Tuple, Union
+from hsr4hci.utils.general import add_array_with_interpolation
 
 
 # -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
-
-def split_integer_frac(sequence: Sequence[Union[float, int]]):
-    """
-    Takes a sequence of numbers and returns two tuples: the first tuple
-    contains the integer parts of every number in `sequence`, the second
-    tuple contains the fractional part of every number in `sequence`.
-
-    Args:
-        sequence: A sequence (list or tuple) of numbers (float or int).
-
-    Returns:
-        Two tuples, the first of which contains the integer parts of the
-        numbers in `sequence`, the second contains the fractional parts.
-    """
-    return tuple(zip(*tuple(modf(x)[::-1] for x in sequence)))
-
-
-def add_array_with_interpolation(array_large: np.ndarray,
-                                 array_small: np.ndarray,
-                                 position: Tuple[Union[int, float],
-                                                 Union[int, float]]):
-    """
-    An extension of astropy.nddata.utils.add_array to add a smaller
-    array at a given position in a larger array. In this version, the
-    position may also be a float, in which case bilinear interpolation
-    is used when adding array_small into array_large.
-
-    Args:
-        array_large: Large array, into which array_small is added into.
-        array_small: Small array, which is added into array_large.
-        position: The target position of the small array’s center, with
-            respect to the large array. Coordinates should be in the
-            same order as the array shape, but can also be floats.
-
-    Returns:
-        The new array, constructed as the the sum of `array_large`
-        and `array_small`.
-    """
-
-    # Split the position into its integer and its fractional parts
-    integer_position, frac_position = split_integer_frac(position)
-
-    # Create an empty with the same size as array_larger and add the
-    # small array at the approximately correct position
-    dummy = np.zeros_like(array_large)
-    dummy = add_array(dummy, array_small, integer_position)
-
-    # Use scipy.ndimage.shift to shift the array to the exact
-    # position, using bilinear interpolation
-    dummy = ndimage.shift(dummy, frac_position, order=1)
-
-    return array_large + dummy
-
 
 def get_signal_stack(position: Tuple[int, int],
                      frame_size: Tuple[int, int],
