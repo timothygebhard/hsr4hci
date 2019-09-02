@@ -11,15 +11,32 @@ import numpy as np
 from astropy.nddata import Cutout2D
 from astropy.nddata.utils import add_array
 from cmath import polar
+from math import modf
 from photutils import centroid_2dg, CircularAperture
 from scipy import ndimage
 
-from typing import Tuple, Union
+from typing import Sequence, Tuple, Union
 
 
 # -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
+
+def split_integer_frac(sequence: Sequence[Union[float, int]]):
+    """
+    Takes a sequence of numbers and returns two tuples: the first tuple
+    contains the integer parts of every number in `sequence`, the second
+    tuple contains the fractional part of every number in `sequence`.
+
+    Args:
+        sequence: A sequence (list or tuple) of numbers (float or int).
+
+    Returns:
+        Two tuples, the first of which contains the integer parts of the
+        numbers in `sequence`, the second contains the fractional parts.
+    """
+    return tuple(zip(*tuple(modf(x)[::-1] for x in sequence)))
+
 
 def add_array_with_interpolation(array_large: np.ndarray,
                                  array_small: np.ndarray,
@@ -43,15 +60,17 @@ def add_array_with_interpolation(array_large: np.ndarray,
         and `array_small`.
     """
 
+    # Split the position into its integer and its fractional parts
+    integer_position, frac_position = split_integer_frac(position)
+
     # Create an empty with the same size as array_larger and add the
     # small array at the approximately correct position
     dummy = np.zeros_like(array_large)
-    dummy = add_array(dummy, array_small, position)
+    dummy = add_array(dummy, array_small, integer_position)
 
-    # Compute the subpixel offset and use scipy.ndimage.shift to shift the
-    # array to the exact position, using bilinear interpolation
-    offset = (position[0] % 1, position[1] % 1)
-    dummy = ndimage.shift(dummy, offset, order=1)
+    # Use scipy.ndimage.shift to shift the array to the exact
+    # position, using bilinear interpolation
+    dummy = ndimage.shift(dummy, frac_position, order=1)
 
     return array_large + dummy
 
