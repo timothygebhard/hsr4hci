@@ -230,7 +230,7 @@ class PixelPredictorCollection(object):
 
             # Run PCA on sources and truncate based on a threshold criterion
             # on the explained variance of the principal components
-            pca = PCA(10)
+            pca = PCA(10, svd_solver="arpack")
             sources = pca.fit_transform(X=sources)
             #n_components = np.where(np.cumsum(pca.explained_variance_ratio_) >
             #                        variance_threshold)[0][0] + 1
