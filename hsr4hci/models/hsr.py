@@ -230,11 +230,11 @@ class PixelPredictorCollection(object):
 
             # Run PCA on sources and truncate based on a threshold criterion
             # on the explained variance of the principal components
-            pca = PCA()
+            pca = PCA(10)
             sources = pca.fit_transform(X=sources)
-            n_components = np.where(np.cumsum(pca.explained_variance_ratio_) >
-                                    variance_threshold)[0][0] + 1
-            sources = sources[:, :n_components]
+            #n_components = np.where(np.cumsum(pca.explained_variance_ratio_) >
+            #                        variance_threshold)[0][0] + 1
+            sources = sources[:, :]#n_components]
 
             # Add planet signal from forward modeling to sources
             sources = np.column_stack([sources,
