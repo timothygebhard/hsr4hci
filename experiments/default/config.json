@@ -1,7 +1,7 @@
 {
     "experiment_dir": null,
     "dataset": {
-        "file_path": "DATA_DIR/betapic_naco_lp_full.hdf5",
+        "file_path": "DATA_DIR/originals/betapic_naco_lp_full.hdf5",
         "stack_key": "/stack",
         "parang_key": "/header_stack/PARANG",
         "psf_template_key": "/flux",
