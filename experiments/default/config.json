@@ -1,36 +1,35 @@
 {
+    "experiment_dir": null,
     "dataset": {
-        "file_path": "DATA_DIR/Beta_Pic/Lp/BetaPic_Lp_2013-01-31.hdf5",
-        "stack_key": "/07_star_arr_normalized_bp_cleaned",
-        "parang_key": "/header_07_star_arr_normalized_bp_cleaned/NEW_PARA",
+        "file_path": "DATA_DIR/betapic_naco_lp_full.hdf5",
+        "stack_key": "/stack",
+        "parang_key": "/header_stack/PARANG",
+        "psf_template_key": "/flux",
         "pixscale": 0.0271,
-        "x_size": 121,
-        "y_size": 121,
-        "subsample": 1,
-        "n_splits": 10,
-        "split_type": "even_odd"
+        "frame_size": [
+            81,
+            81
+        ],
+        "subsample": 1
     },
     "experiment": {
         "roi": {
             "inner_exclusion_radius": 0.15,
             "outer_exclusion_radius": 0.70
         },
+        "collection": {
+            "use_forward_model": true,
+            "psf_radius": 3,
+            "predictor_region_radius": 5,
+            "explained_variance_threshold": 0.9
+        },
         "model": {
             "module": "sklearn.linear_model",
-            "class": "Ridge",
+            "class": "LinearRegression",
             "parameters": {
-                "alpha": 0,
-                "fit_intercept": true
+                "fit_intercept": false,
+                "n_jobs": -1
             }
-        },
-        "evaluation":{
-            "planet_position": {
-                "x": 72.5,
-                "y": 72.5
-            },
-            "aperture_size": 2,
-            "ignore_neighbors": false,
-            "optimize": "fpf"
         }
     }
 }
