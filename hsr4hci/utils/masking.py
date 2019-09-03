@@ -13,6 +13,20 @@ import numpy as np
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
+def get_positions_from_mask(mask: np.ndarray) -> list:
+    """
+    Convert a numpy mask into a list of positions selected by that mask.
+
+    Args:
+        mask: A numpy array containing only boolean values (or values
+            that can be interpreted as such).
+
+    Returns:
+        A list of all positions (x, y) with mask[x, y] == True.
+    """
+    return list(zip(*np.where(mask)))
+
+
 def get_circle_mask(mask_size: tuple,
                     radius: float,
                     center: tuple = None):
