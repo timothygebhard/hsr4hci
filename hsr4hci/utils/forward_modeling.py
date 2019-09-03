@@ -20,7 +20,6 @@ from hsr4hci.utils.general import add_array_with_interpolation
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-@profile
 def get_signal_stack(position: Tuple[int, int],
                      frame_size: Tuple[int, int],
                      parang: np.ndarray,
