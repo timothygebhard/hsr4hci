@@ -347,10 +347,6 @@ class PixelPredictorCollection(object):
         file_path_predictors = os.path.join(collection_dir, 'predictors.pkl')
         joblib.dump(self.m__predictors, filename=file_path_predictors)
 
-        # Loop over all PixelPredictors in the collection and save them
-        # for _, pixel_predictor in self.m__predictors.items():
-        #     pixel_predictor.save(collection_dir=collection_dir)
-
     def load(self,
              models_root_dir: str):
 
@@ -367,16 +363,6 @@ class PixelPredictorCollection(object):
         # Load the predictors
         file_path_predictors = os.path.join(collection_dir, 'predictors.pkl')
         self.m__predictors = joblib.load(filename=file_path_predictors)
-
-        # Loop over all positions in the collection region and load
-        # corresponding pixel predictors
-        # for position in self.m__collection_region:
-        #     pixel_predictor = \
-        #         PixelPredictor(position=position,
-        #                        config_model=self.m__config_model)
-        #     pixel_predictor.load(collection_dir=collection_dir)
-        #     self.m__predictors[position] = pixel_predictor
-
 
 # -----------------------------------------------------------------------------
 
@@ -402,7 +388,7 @@ class PixelPredictor(object):
 
     def get_signal_coef(self) -> Tuple[float, float]:
         # The coef of the linear model is a list of coef
-        return self.coef_[0][-1], self.sigma_coef_[-1]
+        return float(self.coef_[-1]), self.sigma_coef_[-1]
 
     @property
     def coef_(self) -> Optional[np.ndarray]:
