@@ -267,21 +267,12 @@ class PixelPredictorCollection(object):
                          parang: np.ndarray,
                          sources: dict,
                          psf_cropped: np.ndarray):
-    
-        # ---------------------------------------------------------------------
-        # Define shortcuts
-        # ---------------------------------------------------------------------
-
-        region_size = self.m__config_collection['predictor_region_radius']
-        variance_threshold = \
-            self.m__config_collection['explained_variance_threshold']
-        use_forward_model = self.m__config_collection['use_forward_model']
 
         # ---------------------------------------------------------------------
         # Get signal_stack and collection_region based on use_forward_model
         # ---------------------------------------------------------------------
 
-        if use_forward_model:
+        if self.m__config_collection['use_forward_model']:
             signal_stack = get_signal_stack(position=self.m__position,
                                             frame_size=stack.shape[1:],
                                             parang=parang,
