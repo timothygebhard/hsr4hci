@@ -437,31 +437,3 @@ class PixelPredictor(object):
                 sources: np.ndarray) -> np.ndarray:
 
         return self.m__model.predict(X=sources)
-
-    def save(self,
-             collection_dir: str):
-
-        # Save the model itself
-        file_path = os.path.join(collection_dir, self.m__name)
-        joblib.dump(self.m__model, filename=file_path)
-
-        # Save the coefficient uncertainties
-        file_path = os.path.join(collection_dir, 'sigma__' + self.m__name)
-        joblib.dump(self.sigma_coef_, filename=file_path)
-
-    def load(self,
-             collection_dir: str):
-
-        # Try to load the model for this predictor from its *.pkl file
-        file_path = os.path.join(collection_dir, self.m__name)
-        if os.path.isfile(file_path):
-            self.m__model = joblib.load(filename=file_path)
-        else:
-            warnings.warn(f'Model file not found: {file_path}')
-
-        # Try to load the coefficient uncertainties for this predictor
-        file_path = os.path.join(collection_dir, 'sigma__' + self.m__name)
-        if os.path.isfile(file_path):
-            self.sigma_coef_ = joblib.load(filename=file_path)
-        else:
-            warnings.warn(f'sigma_coef_ file not found: {file_path}')
