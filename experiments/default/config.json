@@ -15,11 +15,11 @@
     },
     "experiment": {
         "roi": {
-            "inner_exclusion_radius": 0.15,
-            "outer_exclusion_radius": 0.70
+            "inner_exclusion_radius": 0.25,
+            "outer_exclusion_radius": 0.65
         },
         "psf_template": {
-            "psf_radius": 3,
+            "psf_radius": 0.75,
             "rescale_psf": true
         },
         "collection": {
@@ -31,7 +31,7 @@
             "module": "sklearn.linear_model",
             "class": "LinearRegression",
             "parameters": {
-                "fit_intercept": false,
+                "fit_intercept": true,
                 "n_jobs": -1
             }
         }
