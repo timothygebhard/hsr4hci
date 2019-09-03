@@ -26,11 +26,6 @@ class ModelPrototype(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def predict(self,
-                test_stack: np.ndarray):
-        raise NotImplementedError
-
-    @abstractmethod
     def load(self):
         raise NotImplementedError
 

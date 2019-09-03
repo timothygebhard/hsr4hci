@@ -95,7 +95,7 @@ def get_data_dir() -> str:
 
     elif (hostname == 'Markuss-MacBook-Pro.local' or
           hostname == 'Markuss-MBP'):
-        return ''
+        return '/Users/markusbonse/Desktop/'
 
     # -------------------------------------------------------------------------
     # Timothy's computers

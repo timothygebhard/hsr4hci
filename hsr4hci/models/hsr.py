@@ -86,6 +86,16 @@ class HalfSiblingRegression(ModelPrototype):
                 detection_map[position] = avg
         return detection_map
 
+    def get_detection_stack(self):
+        detection_frames = []
+        for position, collection in self.m__collections.items():
+            tmp_detection_frame = \
+                collection.get_detection_frame(self.m__frame_size)
+            tmp_detection_frame[position] = 0.0
+            detection_frames.append(tmp_detection_frame)
+
+        return np.array(detection_frames)
+
     def precompute_pca(self,
                        stack: np.ndarray):
         """
@@ -130,12 +140,13 @@ class HalfSiblingRegression(ModelPrototype):
                                    region_size=region_size)
             sources = stack[:, predictor_mask]
 
+            # TODO fix sources!!!
             # Run PCA on sources and truncate based on a threshold criterion
             # on the explained variance of the principal components
-            pca = PCA()
+            pca = PCA(15)
             sources = pca.fit_transform(X=sources)
-            n_components = np.where(np.cumsum(pca.explained_variance_ratio_) >
-                                    variance_threshold)[0][0] + 1
+            n_components = 15#np.where(np.cumsum(pca.explained_variance_ratio_) >
+                             #      variance_threshold)[0][0] + 1
             self.m__sources[position] = sources[:, :n_components]
 
     def train(self,
@@ -144,11 +155,11 @@ class HalfSiblingRegression(ModelPrototype):
               psf_template: Optional[np.ndarray]):
         """
         Train the complete HSR model.
-        
+
         This function is essentially only a loop over all functions in
         the region of interest; the actual training at each position
         happens in train_position().
- 
+
         Args:
             stack: A 3D numpy array of shape (n_frames, width, height)
                 containing the stack of frames to train on.
@@ -218,16 +229,13 @@ class HalfSiblingRegression(ModelPrototype):
         # Add to dictionary of trained collections
         self.m__collections[position] = collection
 
-    def predict(self,
-                stack: np.ndarray):
-        raise NotImplementedError()
-
     def load(self):
 
         # Get positions of pixels in ROI
         roi_pixels = get_positions_from_mask(self.m__roi_mask)
 
         # Load collection for every position in the ROI
+        print("Loading ...")
         for position in tqdm(roi_pixels, ncols=80):
             config_collection = self.m__config_collection
             collection = \
@@ -240,16 +248,19 @@ class HalfSiblingRegression(ModelPrototype):
         # Restore pre-computed PCA sources
         file_path = os.path.join(self.m__models_root_dir, 'pca_sources.pkl')
         self.m__sources = joblib.load(filename=file_path)
+        print("\n[DONE]")
 
     def save(self):
 
         # Save all PixelPredictorCollections
+        print("Saving ...")
         for _, collection in tqdm(self.m__collections.items(), ncols=80):
             collection.save(models_root_dir=self.m__models_root_dir)
 
         # Save pre-computed PCA sources
         file_path = os.path.join(self.m__models_root_dir, 'pca_sources.pkl')
         joblib.dump(self.m__sources, filename=file_path)
+        print("\n[DONE]")
 
 
 # -----------------------------------------------------------------------------
@@ -286,7 +297,7 @@ class PixelPredictorCollection(object):
             signal_sigma_coefs.append(sigma_p)
 
         # 1.) Compute simple average
-        average = np.average(a=signal_coefs)
+        average = np.median(signal_coefs)
 
         # 2.) Compute weighted average
         # Find pixels with very large uncertainties and exclude them
@@ -298,6 +309,16 @@ class PixelPredictorCollection(object):
                                       weights=(1 / signal_sigma_coefs))
 
         return average_weighted, average
+
+    def get_detection_frame(self,
+                            frame_size):
+
+        detection_frame = np.zeros(frame_size)
+        for position, pixel_predictor in self.m__predictors.items():
+            w_p, _ = pixel_predictor.get_signal_coef()
+            detection_frame[position] = w_p
+
+        return detection_frame
 
     def train_collection(self,
                          stack: np.ndarray,
