@@ -262,15 +262,18 @@ class PixelPredictorCollection(object):
             signal_coefs.append(w_p)
             signal_sigma_coefs.append(sigma_p)
 
+        # 1.) Compute simple average
+        average = np.average(a=signal_coefs)
+
+        # 2.) Compute weighted average
         # Find pixels with very large uncertainties and exclude them
         threshold = np.percentile(signal_sigma_coefs, 90)
         excluded_idx = np.where(signal_sigma_coefs > threshold)[0]
         signal_coefs = np.array(signal_coefs)[~excluded_idx]
         signal_sigma_coefs = np.array(signal_sigma_coefs)[~excluded_idx]
+        average_weighted = np.average(a=signal_coefs, weights=1/signal_sigma_coefs)
 
-        # Return the weighted average of the signal coefficients
-        return np.average(a=signal_coefs, weights=1/signal_sigma_coefs), \
-               np.average(a=signal_coefs)
+        return average_weighted, average
 
     def train_collection(self,
                          stack: np.ndarray,
@@ -387,7 +390,8 @@ class PixelPredictor(object):
         self.sigma_coef_ = None
 
     def get_signal_coef(self) -> Tuple[float, float]:
-        return self.coef_[-1], self.sigma_coef_[-1]
+        # The coef of the linear model is a list of coef
+        return self.coef_[0][-1], self.sigma_coef_[-1]
 
     @property
     def coef_(self) -> Optional[np.ndarray]:
