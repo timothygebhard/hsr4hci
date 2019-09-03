@@ -31,13 +31,14 @@ from typing import Optional, Tuple
 
 class HalfSiblingRegression(ModelPrototype):
     """
-    Wrapper class for a half-sibling regression model. This class
-    essentially encapsulates the "outer loop", that is, looping over
-    every pixel in the (spatial) region of interest and learning a
-    model (or a collection of models) for it.
+    Wrapper class for a half-sibling regression model.
+    
+    This class essentially encapsulates the "outer loop", that is,
+    looping over every pixel in the (spatial) region of interest and
+    learning a model (or a collection of models) for it.
     
     Args:
-        config: A dictionary containing the experiment configuration
+        config: A dictionary containing the experiment configuration.
     """
 
     def __init__(self,
@@ -81,6 +82,24 @@ class HalfSiblingRegression(ModelPrototype):
               stack: np.ndarray,
               parang: Optional[np.ndarray],
               psf_template: Optional[np.ndarray]):
+        """
+        Train the complete HSR model.
+        
+        This function is essentially only a loop over all functions in
+        the region of interest; the actual training at each position
+        happens in train_position().
+ 
+        Args:
+            stack: A 3D numpy array of shape (n_frames, width, height)
+                containing the stack of frames to train on.
+            parang: A numpy array of length n_frames containing the
+                parallactic angle for each frame in the stack.
+            psf_template: A 2D numpy array containing the unsaturated
+                PSF template which is used for forward modeling of the
+                planet signal. If None is given instead, no forward
+                modeling is performed.
+
+        """
 
         # Get positions of pixels in ROI
         roi_pixels = get_roi_pixels(self.m__roi_mask)
