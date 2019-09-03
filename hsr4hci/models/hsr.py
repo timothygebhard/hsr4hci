@@ -12,8 +12,9 @@ import os
 import warnings
 
 from hsr4hci.models.prototypes import ModelPrototype
-from hsr4hci.utils.forward_modeling import get_signal_stack, \
-    get_collection_region_mask, get_collection_region_pixels
+from hsr4hci.utils.forward_modeling import crop_psf_template, \
+    get_signal_stack, get_collection_region_mask
+from hsr4hci.utils.masking import get_positions_from_mask
 from hsr4hci.utils.model_loading import get_class_by_name
 from hsr4hci.utils.predictor_selection import get_predictor_mask
 from hsr4hci.utils.roi_selection import get_roi_mask, get_roi_pixels
@@ -44,10 +45,12 @@ class HalfSiblingRegression(ModelPrototype):
 
         # Store the experiment configuration
         self.m__pixscale = config['dataset']['pixscale']
+        self.m__lambda_over_d = config['dataset']['lambda_over_d']
         self.m__roi_ier = config['experiment']['roi']['inner_exclusion_radius']
         self.m__roi_oer = config['experiment']['roi']['outer_exclusion_radius']
         self.m__config_collection = config['experiment']['collection']
         self.m__config_model = config['experiment']['model']
+        self.m__config_psf_template = config['experiment']['psf_template']
 
         # Define shortcuts to config elements
         self.m__experiment_dir = config['experiment_dir']
@@ -82,30 +85,38 @@ class HalfSiblingRegression(ModelPrototype):
         # Get positions of pixels in ROI
         roi_pixels = get_roi_pixels(self.m__roi_mask)
 
+        # Crop the PSF template to the size specified in the config
+        crop_psf_template_arguments = \
+            {'psf_radius': self.m__config_psf_template['psf_radius'],
+             'rescale_psf': self.m__config_psf_template['rescale_psf'],
+             'pixscale': self.m__pixscale,
+             'lambda_over_d': self.m__lambda_over_d}
+        psf_cropped = crop_psf_template(**crop_psf_template_arguments)
+
         # Process every position
         for position in tqdm(roi_pixels, total=len(roi_pixels), ncols=80):
             self.train_position(position=position,
                                 stack=stack,
                                 parang=parang,
-                                psf_template=psf_template)
+                                psf_cropped=psf_cropped)
 
-    @profile
     def train_position(self,
                        position: Tuple[int, int],
                        stack: np.ndarray,
                        parang: np.ndarray,
-                       psf_template: np.ndarray):
+                       psf_cropped: np.ndarray):
 
         # Create a PixelPredictorCollection for this position
+        config_collection = self.m__config_collection
         collection = \
             PixelPredictorCollection(position=position,
-                                     config_collection=self.m__config_collection,
+                                     config_collection=config_collection,
                                      config_model=self.m__config_model)
 
         # Train and save the collection for this position
         collection.train_collection(stack=stack,
                                     parang=parang,
-                                    psf_template=psf_template)
+                                    psf_cropped=psf_cropped)
 
         # Add to dictionary of trained collections
         self.m__collections[position] = collection
@@ -121,9 +132,10 @@ class HalfSiblingRegression(ModelPrototype):
 
         # Load collection for every position in the ROI
         for position in roi_pixels:
+            config_collection = self.m__config_collection
             collection = \
                 PixelPredictorCollection(position=position,
-                                         config_collection=self.m__config_collection,
+                                         config_collection=config_collection,
                                          config_model=self.m__config_model)
             collection.load(models_root_dir=self.m__models_root_dir)
             self.m__collections[position] = collection
@@ -167,7 +179,7 @@ class PixelPredictorCollection(object):
             w_p, sigma_p = pixel_predictor.get_signal_coef()
             signal_coefs.append(w_p)
             signal_sigma_coefs.append(sigma_p)
-            
+
         # Find pixels with very large uncertainties and exclude them
         threshold = np.percentile(signal_sigma_coefs, 90)
         excluded_idx = np.where(signal_sigma_coefs > threshold)[0]
@@ -177,11 +189,10 @@ class PixelPredictorCollection(object):
         # Return the weighted average of the signal coefficients
         return np.average(a=signal_coefs, weights=1/signal_sigma_coefs)
 
-    @profile
     def train_collection(self,
                          stack: np.ndarray,
                          parang: np.ndarray,
-                         psf_template: np.ndarray):
+                         psf_cropped: np.ndarray):
     
         # ---------------------------------------------------------------------
         # Define shortcuts
@@ -190,7 +201,6 @@ class PixelPredictorCollection(object):
         region_size = self.m__config_collection['predictor_region_radius']
         variance_threshold = \
             self.m__config_collection['explained_variance_threshold']
-        psf_radius = self.m__config_collection['psf_radius']
         use_forward_model = self.m__config_collection['use_forward_model']
 
         # ---------------------------------------------------------------------
@@ -198,15 +208,13 @@ class PixelPredictorCollection(object):
         # ---------------------------------------------------------------------
 
         if use_forward_model:
-            signal_stack = \
-                get_signal_stack(position=self.m__position,
-                                 frame_size=stack.shape[1:],
-                                 parang=parang,
-                                 psf_template=psf_template,
-                                 psf_radius=psf_radius)
+            signal_stack = get_signal_stack(position=self.m__position,
+                                            frame_size=stack.shape[1:],
+                                            parang=parang,
+                                            psf_cropped=psf_cropped)
             collection_region_mask = get_collection_region_mask(signal_stack)
             self.m__collection_region = \
-                get_collection_region_pixels(collection_region_mask)
+                get_positions_from_mask(collection_region_mask)
         else:
             signal_stack = None
             self.m__collection_region = [self.m__position]
