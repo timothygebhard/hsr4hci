@@ -104,17 +104,9 @@ class HalfSiblingRegression(ModelPrototype):
 
         """
 
-        # Get positions of pixels in ROI
-        roi_pixels = get_positions_from_mask(self.m__roi_mask)
-
-        # Crop the PSF template to the size specified in the config
-        crop_psf_template_arguments = \
-            {'psf_template': psf_template,
-             'psf_radius': self.m__config_psf_template['psf_radius'],
-             'rescale_psf': self.m__config_psf_template['rescale_psf'],
-             'pixscale': self.m__pixscale,
-             'lambda_over_d': self.m__lambda_over_d}
-        psf_cropped = crop_psf_template(**crop_psf_template_arguments)
+        # ---------------------------------------------------------------------
+        # Pre-compute PCA
+        # ---------------------------------------------------------------------
 
         # Run PCA for every position
         region_size = self.m__config_collection['predictor_region_radius']
@@ -122,10 +114,10 @@ class HalfSiblingRegression(ModelPrototype):
             self.m__config_collection['explained_variance_threshold']
 
         # Compute the region for which we need to pre-compute the PCA
-        psf_radius_pixel = int(self.m__config_psf_template['psf_radius'] *
-                               (self.m__lambda_over_d / self.m__pixscale))
-        roi_radius_pixel = self.m__roi_oer / self.m__pixscale
-        effective_radius = int(psf_radius_pixel + roi_radius_pixel) + 1
+        psf_radius_pixel = np.ceil(self.m__config_psf_template['psf_radius'] *
+                                   self.m__lambda_over_d / self.m__pixscale)
+        roi_radius_pixel = np.ceil(self.m__roi_oer / self.m__pixscale)
+        effective_radius = int(psf_radius_pixel + roi_radius_pixel + 1)
         pca_region_mask = get_circle_mask(mask_size=self.m__frame_size,
                                           radius=effective_radius)
         pca_region_positions = get_positions_from_mask(pca_region_mask)
@@ -149,8 +141,28 @@ class HalfSiblingRegression(ModelPrototype):
                                     variance_threshold)[0][0] + 1
             self.m__sources[position] = sources[:, :n_components]
 
-        # Process every position
-        print("Training model for all positions in the ROI:")
+        # ---------------------------------------------------------------------
+        # Crop the PSF template to the size specified in the config
+        # ---------------------------------------------------------------------
+
+        # Crop the PSF template to the size specified in the config
+        crop_psf_template_arguments = \
+            {'psf_template': psf_template,
+             'psf_radius': self.m__config_psf_template['psf_radius'],
+             'rescale_psf': self.m__config_psf_template['rescale_psf'],
+             'pixscale': self.m__pixscale,
+             'lambda_over_d': self.m__lambda_over_d}
+        psf_cropped = crop_psf_template(**crop_psf_template_arguments)
+
+        # ---------------------------------------------------------------------
+        # Train models for every position in the ROI
+        # ---------------------------------------------------------------------
+
+        # Get positions of pixels in ROI
+        roi_pixels = get_positions_from_mask(self.m__roi_mask)
+
+        # Run training
+        print("\nTraining model for all positions in the ROI:")
         for position in tqdm(roi_pixels, total=len(roi_pixels), ncols=80):
             self.train_position(position=position,
                                 stack=stack,
