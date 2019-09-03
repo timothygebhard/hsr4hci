@@ -56,7 +56,6 @@ if __name__ == '__main__':
     # Get the detection map
     print(f'Computing detection map...', end=' ', flush=True)
     detection_map = hsr.get_detection_map()
-    print('detection_map', detection_map.shape)
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
