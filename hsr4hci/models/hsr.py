@@ -177,8 +177,8 @@ class HalfSiblingRegression(ModelPrototype):
 
         # Make sure we have called self.precompute_pca() before start training
         if not self.m__sources:
-            raise RuntimeError('self.m__sources is empty! Did you call'
-                               'precompute_pca() before starting to train?')
+            print("\nPre-computing PCA ...")
+            self.precompute_pca(stack)
 
         # ---------------------------------------------------------------------
         # Crop the PSF template to the size specified in the config
@@ -200,6 +200,7 @@ class HalfSiblingRegression(ModelPrototype):
         # Get positions of pixels in ROI
         roi_pixels = get_positions_from_mask(self.m__roi_mask)
 
+        print("\n Training ...")
         # Run training by looping over the ROI and calling train_position()
         for position in tqdm(roi_pixels, total=len(roi_pixels), ncols=80):
             self.train_position(position=position,
@@ -235,7 +236,7 @@ class HalfSiblingRegression(ModelPrototype):
         roi_pixels = get_positions_from_mask(self.m__roi_mask)
 
         # Load collection for every position in the ROI
-        print("Loading ...")
+        print("\n Loading ...")
         for position in tqdm(roi_pixels, ncols=80):
             config_collection = self.m__config_collection
             collection = \
@@ -253,7 +254,7 @@ class HalfSiblingRegression(ModelPrototype):
     def save(self):
 
         # Save all PixelPredictorCollections
-        print("Saving ...")
+        print("\n Saving ...")
         for _, collection in tqdm(self.m__collections.items(), ncols=80):
             collection.save(models_root_dir=self.m__models_root_dir)
 
