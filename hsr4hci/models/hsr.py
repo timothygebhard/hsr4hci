@@ -101,7 +101,6 @@ class HalfSiblingRegression(ModelPrototype):
                 PSF template which is used for forward modeling of the
                 planet signal. If None is given instead, no forward
                 modeling is performed.
-
         """
 
         # ---------------------------------------------------------------------
@@ -117,7 +116,7 @@ class HalfSiblingRegression(ModelPrototype):
         psf_radius_pixel = np.ceil(self.m__config_psf_template['psf_radius'] *
                                    self.m__lambda_over_d / self.m__pixscale)
         roi_radius_pixel = np.ceil(self.m__roi_oer / self.m__pixscale)
-        effective_radius = int(psf_radius_pixel + roi_radius_pixel + 1)
+        effective_radius = int(psf_radius_pixel + roi_radius_pixel + 2)
         pca_region_mask = get_circle_mask(mask_size=self.m__frame_size,
                                           radius=effective_radius)
         pca_region_positions = get_positions_from_mask(pca_region_mask)
