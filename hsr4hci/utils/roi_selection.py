@@ -9,7 +9,7 @@ Select pixels in the region of interest (ROI).
 import numpy as np
 
 from hsr4hci.utils.masking import get_annulus_mask
-from typing import List, Tuple
+from typing import Tuple
 
 
 # -----------------------------------------------------------------------------
@@ -45,20 +45,3 @@ def get_roi_mask(mask_size: Tuple[int, int],
                                 outer_exclusion_radius=outer_exclusion_radius)
 
     return roi_mask
-
-
-def get_roi_pixels(roi_mask: np.ndarray) -> List[tuple]:
-    """
-    Convert the ROI mask into a list of pixels (positions).
-
-    Args:
-        roi_mask: A numpy array with the mask of the pixels in the ROI.
-
-    Returns:
-        A list of tuples (x, y) of the (positions of) pixels in the ROI.
-    """
-
-    # Convert this mask into a list of (x, y)-tuples for explicit looping
-    roi_pixels = list(zip(*np.where(roi_mask)))
-
-    return roi_pixels
