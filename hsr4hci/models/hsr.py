@@ -86,6 +86,58 @@ class HalfSiblingRegression(ModelPrototype):
                 detection_map[position] = avg
         return detection_map
 
+    def precompute_pca(self,
+                       stack: np.ndarray):
+        """
+        Pre-compute the PCA of the predictor pixels for every position.
+
+        Find all positions for which we at some point will need to learn
+        a model, select the data for their respective predictor pixels,
+        run PCA on them, and store the result.
+        This serves the purpose of reducing computational redundancy:
+        since many PixelPredictorCollection regions will overlap, we
+        do not want to run the PCA computation repeatedly; instead, we
+        only do it once up front.
+
+        Args:
+            stack: A 3D numpy array of shape (n_frames, width, height)
+                containing the stack of frames to train on.
+        """
+
+        # Define some shortcuts
+        region_size = self.m__config_collection['predictor_region_radius']
+        variance_threshold = \
+            self.m__config_collection['explained_variance_threshold']
+
+        # Compute the region for which we need to pre-compute the PCA
+        psf_radius_pixel = np.ceil(self.m__config_psf_template['psf_radius'] *
+                                   self.m__lambda_over_d / self.m__pixscale)
+        roi_radius_pixel = np.ceil(self.m__roi_oer / self.m__pixscale)
+        effective_radius = int(psf_radius_pixel + roi_radius_pixel + 2)
+        pca_region_mask = get_circle_mask(mask_size=self.m__frame_size,
+                                          radius=effective_radius)
+        pca_region_positions = get_positions_from_mask(pca_region_mask)
+
+        # Loop over all pixels for which we need to select the predictor
+        # pixels and run PCA on them
+        for position in tqdm(pca_region_positions,
+                             total=len(pca_region_positions), ncols=80):
+
+            # Get predictor pixels
+            predictor_mask = \
+                get_predictor_mask(mask_size=tuple(stack.shape[1:]),
+                                   position=position,
+                                   region_size=region_size)
+            sources = stack[:, predictor_mask]
+
+            # Run PCA on sources and truncate based on a threshold criterion
+            # on the explained variance of the principal components
+            pca = PCA()
+            sources = pca.fit_transform(X=sources)
+            n_components = np.where(np.cumsum(pca.explained_variance_ratio_) >
+                                    variance_threshold)[0][0] + 1
+            self.m__sources[position] = sources[:, :n_components]
+
     def train(self,
               stack: np.ndarray,
               parang: Optional[np.ndarray],
@@ -109,41 +161,13 @@ class HalfSiblingRegression(ModelPrototype):
         """
 
         # ---------------------------------------------------------------------
-        # Pre-compute PCA
+        # Basic sanity checks
         # ---------------------------------------------------------------------
 
-        # Run PCA for every position
-        region_size = self.m__config_collection['predictor_region_radius']
-        variance_threshold = \
-            self.m__config_collection['explained_variance_threshold']
-
-        # Compute the region for which we need to pre-compute the PCA
-        psf_radius_pixel = np.ceil(self.m__config_psf_template['psf_radius'] *
-                                   self.m__lambda_over_d / self.m__pixscale)
-        roi_radius_pixel = np.ceil(self.m__roi_oer / self.m__pixscale)
-        effective_radius = int(psf_radius_pixel + roi_radius_pixel + 2)
-        pca_region_mask = get_circle_mask(mask_size=self.m__frame_size,
-                                          radius=effective_radius)
-        pca_region_positions = get_positions_from_mask(pca_region_mask)
-
-        print("Pre-computing PCA:")
-        for position in tqdm(pca_region_positions,
-                             total=len(pca_region_positions), ncols=80):
-
-            # Get predictor pixels
-            predictor_mask = \
-                get_predictor_mask(mask_size=tuple(stack.shape[1:]),
-                                   position=position,
-                                   region_size=region_size)
-            sources = stack[:, predictor_mask]
-
-            # Run PCA on sources and truncate based on a threshold criterion
-            # on the explained variance of the principal components
-            pca = PCA()
-            sources = pca.fit_transform(X=sources)
-            n_components = np.where(np.cumsum(pca.explained_variance_ratio_) >
-                                    variance_threshold)[0][0] + 1
-            self.m__sources[position] = sources[:, :n_components]
+        # Make sure we have called self.precompute_pca() before start training
+        if not self.m__sources:
+            raise RuntimeError('self.m__sources is empty! Did you call'
+                               'precompute_pca() before starting to train?')
 
         # ---------------------------------------------------------------------
         # Crop the PSF template to the size specified in the config
@@ -165,8 +189,7 @@ class HalfSiblingRegression(ModelPrototype):
         # Get positions of pixels in ROI
         roi_pixels = get_positions_from_mask(self.m__roi_mask)
 
-        # Run training
-        print("\nTraining model for all positions in the ROI:")
+        # Run training by looping over the ROI and calling train_position()
         for position in tqdm(roi_pixels, total=len(roi_pixels), ncols=80):
             self.train_position(position=position,
                                 stack=stack,
@@ -205,7 +228,6 @@ class HalfSiblingRegression(ModelPrototype):
         roi_pixels = get_positions_from_mask(self.m__roi_mask)
 
         # Load collection for every position in the ROI
-        print("Loading ...")
         for position in tqdm(roi_pixels, ncols=80):
             config_collection = self.m__config_collection
             collection = \
@@ -218,19 +240,16 @@ class HalfSiblingRegression(ModelPrototype):
         # Restore pre-computed PCA sources
         file_path = os.path.join(self.m__models_root_dir, 'pca_sources.pkl')
         self.m__sources = joblib.load(filename=file_path)
-        print("\n[DONE]")
 
     def save(self):
 
         # Save all PixelPredictorCollections
-        print("Saving ...")
         for _, collection in tqdm(self.m__collections.items(), ncols=80):
             collection.save(models_root_dir=self.m__models_root_dir)
 
         # Save pre-computed PCA sources
         file_path = os.path.join(self.m__models_root_dir, 'pca_sources.pkl')
         joblib.dump(self.m__sources, filename=file_path)
-        print("\n[DONE]")
 
 
 # -----------------------------------------------------------------------------
@@ -275,7 +294,8 @@ class PixelPredictorCollection(object):
         excluded_idx = np.where(signal_sigma_coefs > threshold)[0]
         signal_coefs = np.array(signal_coefs)[~excluded_idx]
         signal_sigma_coefs = np.array(signal_sigma_coefs)[~excluded_idx]
-        average_weighted = np.average(a=signal_coefs, weights=1/signal_sigma_coefs)
+        average_weighted = np.average(a=signal_coefs,
+                                      weights=(1 / signal_sigma_coefs))
 
         return average_weighted, average
 
@@ -318,7 +338,6 @@ class PixelPredictorCollection(object):
 
             # Add planet signal from forward modeling to sources
             tmp_sources = np.column_stack([tmp_sources,
-                                           np.ones(stack.shape[0]),
                                            planet_signal.reshape(-1, 1)])
 
             # Create a new pixel predictor
@@ -387,7 +406,6 @@ class PixelPredictor(object):
         self.sigma_coef_ = None
 
     def get_signal_coef(self) -> Tuple[float, float]:
-        # The coef of the linear model is a list of coef
         return float(self.coef_[-1]), self.sigma_coef_[-1]
 
     @property
