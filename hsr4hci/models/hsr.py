@@ -14,10 +14,10 @@ import warnings
 from hsr4hci.models.prototypes import ModelPrototype
 from hsr4hci.utils.forward_modeling import crop_psf_template, \
     get_signal_stack, get_collection_region_mask
-from hsr4hci.utils.masking import get_positions_from_mask
+from hsr4hci.utils.masking import get_circle_mask, get_positions_from_mask
 from hsr4hci.utils.model_loading import get_class_by_name
 from hsr4hci.utils.predictor_selection import get_predictor_mask
-from hsr4hci.utils.roi_selection import get_roi_mask, get_roi_pixels
+from hsr4hci.utils.roi_selection import get_roi_mask
 
 from pathlib import Path
 from sklearn.decomposition import PCA
@@ -105,7 +105,7 @@ class HalfSiblingRegression(ModelPrototype):
         """
 
         # Get positions of pixels in ROI
-        roi_pixels = get_roi_pixels(self.m__roi_mask)
+        roi_pixels = get_positions_from_mask(self.m__roi_mask)
 
         # Crop the PSF template to the size specified in the config
         crop_psf_template_arguments = \
@@ -121,8 +121,19 @@ class HalfSiblingRegression(ModelPrototype):
         variance_threshold = \
             self.m__config_collection['explained_variance_threshold']
 
-        print("Pre-computing PCA for all pixel in ROI ...\n")
-        for position in tqdm(roi_pixels, total=len(roi_pixels), ncols=80):
+        # Compute the region for which we need to pre-compute the PCA
+        psf_radius_pixel = int(self.m__config_psf_template['psf_radius'] *
+                               (self.m__lambda_over_d / self.m__pixscale))
+        roi_radius_pixel = self.m__roi_oer / self.m__pixscale
+        effective_radius = int(psf_radius_pixel + roi_radius_pixel) + 1
+        pca_region_mask = get_circle_mask(mask_size=self.m__frame_size,
+                                          radius=effective_radius)
+        pca_region_positions = get_positions_from_mask(pca_region_mask)
+
+        print("Pre-computing PCA:")
+        for position in tqdm(pca_region_positions,
+                             total=len(pca_region_positions), ncols=80):
+
             # Get predictor pixels
             predictor_mask = \
                 get_predictor_mask(mask_size=tuple(stack.shape[1:]),
@@ -138,8 +149,8 @@ class HalfSiblingRegression(ModelPrototype):
                                     variance_threshold)[0][0] + 1
             self.m__sources[position] = sources[:, :n_components]
 
-        print("Training models ...\n")
         # Process every position
+        print("Training model for all positions in the ROI:")
         for position in tqdm(roi_pixels, total=len(roi_pixels), ncols=80):
             self.train_position(position=position,
                                 stack=stack,
@@ -175,7 +186,7 @@ class HalfSiblingRegression(ModelPrototype):
     def load(self):
 
         # Get positions of pixels in ROI
-        roi_pixels = get_roi_pixels(self.m__roi_mask)
+        roi_pixels = get_positions_from_mask(self.m__roi_mask)
 
         # Load collection for every position in the ROI
         for position in roi_pixels:
