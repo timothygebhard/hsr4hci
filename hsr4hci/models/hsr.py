@@ -109,7 +109,8 @@ class HalfSiblingRegression(ModelPrototype):
 
         # Crop the PSF template to the size specified in the config
         crop_psf_template_arguments = \
-            {'psf_radius': self.m__config_psf_template['psf_radius'],
+            {'psf_template': psf_template,
+             'psf_radius': self.m__config_psf_template['psf_radius'],
              'rescale_psf': self.m__config_psf_template['rescale_psf'],
              'pixscale': self.m__pixscale,
              'lambda_over_d': self.m__lambda_over_d}
