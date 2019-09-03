@@ -71,6 +71,9 @@ class HalfSiblingRegression(ModelPrototype):
         # Initialize a dict that will hold all pixel models
         self.m__collections = dict()
 
+        # Initialize a dict that will hold the PCA results for all positions
+        self.m__sources = dict()
+
     def get_detection_map(self):
 
         detection_map = np.full(self.m__frame_size, np.nan)
@@ -112,6 +115,29 @@ class HalfSiblingRegression(ModelPrototype):
              'lambda_over_d': self.m__lambda_over_d}
         psf_cropped = crop_psf_template(**crop_psf_template_arguments)
 
+        # Run PCA for every position
+        region_size = self.m__config_collection['predictor_region_radius']
+        variance_threshold = \
+            self.m__config_collection['explained_variance_threshold']
+
+        print("Pre-computing PCA for all pixel in ROI ...\n")
+        for position in tqdm(roi_pixels, total=len(roi_pixels), ncols=80):
+            # Get predictor pixels
+            predictor_mask = \
+                get_predictor_mask(mask_size=tuple(stack.shape[1:]),
+                                   position=position,
+                                   region_size=region_size)
+            sources = stack[:, predictor_mask]
+
+            # Run PCA on sources and truncate based on a threshold criterion
+            # on the explained variance of the principal components
+            pca = PCA()
+            sources = pca.fit_transform(X=sources)
+            n_components = np.where(np.cumsum(pca.explained_variance_ratio_) >
+                                    variance_threshold)[0][0] + 1
+            self.m__sources[position] = sources[:, :n_components]
+
+        print("Training models ...\n")
         # Process every position
         for position in tqdm(roi_pixels, total=len(roi_pixels), ncols=80):
             self.train_position(position=position,
@@ -135,6 +161,7 @@ class HalfSiblingRegression(ModelPrototype):
         # Train and save the collection for this position
         collection.train_collection(stack=stack,
                                     parang=parang,
+                                    sources=self.m__sources,
                                     psf_cropped=psf_cropped)
 
         # Add to dictionary of trained collections
@@ -159,11 +186,15 @@ class HalfSiblingRegression(ModelPrototype):
             collection.load(models_root_dir=self.m__models_root_dir)
             self.m__collections[position] = collection
 
+        # TODO restore sources
+
     def save(self):
 
         # Save all PixelPredictorCollections
         for _, collection in self.m__collections.items():
             collection.save(models_root_dir=self.m__models_root_dir)
+
+        # TODO save sources
 
 
 # -----------------------------------------------------------------------------
@@ -211,6 +242,7 @@ class PixelPredictorCollection(object):
     def train_collection(self,
                          stack: np.ndarray,
                          parang: np.ndarray,
+                         sources: dict,
                          psf_cropped: np.ndarray):
     
         # ---------------------------------------------------------------------
@@ -251,31 +283,19 @@ class PixelPredictorCollection(object):
             planet_signal = signal_stack[:, position[0], position[1]]
 
             # Get predictor pixels
-            predictor_mask = \
-                get_predictor_mask(mask_size=tuple(stack.shape[1:]),
-                                   position=position,
-                                   region_size=region_size)
-            sources = stack[:, predictor_mask]
-
-            # Run PCA on sources and truncate based on a threshold criterion
-            # on the explained variance of the principal components
-            pca = PCA()
-            sources = pca.fit_transform(X=sources)
-            n_components = np.where(np.cumsum(pca.explained_variance_ratio_) >
-                                    variance_threshold)[0][0] + 1
-            sources = sources[:, :n_components]
+            tmp_sources = sources[position]
 
             # Add planet signal from forward modeling to sources
-            sources = np.column_stack([sources,
-                                       np.ones(stack.shape[0]),
-                                       planet_signal.reshape(-1, 1)])
+            tmp_sources = np.column_stack([tmp_sources,
+                                           np.ones(stack.shape[0]),
+                                           planet_signal.reshape(-1, 1)])
 
             # Create a new pixel predictor
             pixel_predictor = PixelPredictor(position=position,
                                              config_model=self.m__config_model)
 
             # Train pixel predictor
-            pixel_predictor.train(sources=sources,
+            pixel_predictor.train(sources=tmp_sources,
                                   targets=targets)
 
             # Add trained PixelPredictor to PixelPredictorCollection
