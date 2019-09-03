@@ -50,6 +50,7 @@ if __name__ == '__main__':
     hsr.train(stack=stack,
               parang=parang,
               psf_template=psf_template)
+    hsr.save()
     print('', flush=True)
 
     # Get the detection map

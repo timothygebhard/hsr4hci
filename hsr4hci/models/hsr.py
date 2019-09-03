@@ -209,7 +209,9 @@ class HalfSiblingRegression(ModelPrototype):
             collection.load(models_root_dir=self.m__models_root_dir)
             self.m__collections[position] = collection
 
-        # TODO restore sources
+        # Restore pre-computed PCA sources
+        file_path = os.path.join(self.m__models_root_dir, 'pca_sources.pkl')
+        self.m__sources = joblib.load(filename=file_path)
 
     def save(self):
 
@@ -217,7 +219,9 @@ class HalfSiblingRegression(ModelPrototype):
         for _, collection in self.m__collections.items():
             collection.save(models_root_dir=self.m__models_root_dir)
 
-        # TODO save sources
+        # Save pre-computed PCA sources
+        file_path = os.path.join(self.m__models_root_dir, 'pca_sources.pkl')
+        joblib.dump(self.m__sources, filename=file_path)
 
 
 # -----------------------------------------------------------------------------
