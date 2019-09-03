@@ -205,7 +205,8 @@ class HalfSiblingRegression(ModelPrototype):
         roi_pixels = get_positions_from_mask(self.m__roi_mask)
 
         # Load collection for every position in the ROI
-        for position in roi_pixels:
+        print("Loading ...")
+        for position in tqdm(roi_pixels, ncols=80):
             config_collection = self.m__config_collection
             collection = \
                 PixelPredictorCollection(position=position,
@@ -217,16 +218,19 @@ class HalfSiblingRegression(ModelPrototype):
         # Restore pre-computed PCA sources
         file_path = os.path.join(self.m__models_root_dir, 'pca_sources.pkl')
         self.m__sources = joblib.load(filename=file_path)
+        print("\n[DONE]")
 
     def save(self):
 
         # Save all PixelPredictorCollections
-        for _, collection in self.m__collections.items():
+        print("Saving ...")
+        for _, collection in tqdm(self.m__collections.items(), ncols=80):
             collection.save(models_root_dir=self.m__models_root_dir)
 
         # Save pre-computed PCA sources
         file_path = os.path.join(self.m__models_root_dir, 'pca_sources.pkl')
         joblib.dump(self.m__sources, filename=file_path)
+        print("\n[DONE]")
 
 
 # -----------------------------------------------------------------------------
