@@ -20,32 +20,17 @@ from hsr4hci.utils.general import add_array_with_interpolation
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def get_signal_stack(position: Tuple[int, int],
-                     frame_size: Tuple[int, int],
-                     parang: np.ndarray,
-                     psf_template: np.ndarray,
-                     psf_radius: float,
-                     rescale_psf: bool = True,
-                     pixscale: float = 0.0271,
-                     lambda_over_d: float = 0.1) -> np.ndarray:
+def crop_psf_template(psf_template: np.ndarray,
+                      psf_radius: float,
+                      rescale_psf: bool = True,
+                      pixscale: float = 0.0271,
+                      lambda_over_d: float = 0.1) -> np.ndarray:
     """
-    Compute the forward model: Assume that at time t=0, the planet is
-    at the given `position. The apparent motion of the sky (and thus `
-    the planet) is given by the parallactic angles in `parang`. This
-    function now takes the provided `psf_template` and first crops it
-    to a desired size (given by `psf_radius`). Then, an empty stack of
-    size `(len(parang), *frame_size)` is created, and for each time t,
-    the cropped PSF template is added into the stack at the correct
-    position according to parang[t].
+    Take a raw unsaturated PSF template, and crop it to a circle of
+    radius `psf_radius` around it's center, which is determined by
+    fitting a 2D Gaussian to the template.
 
     Args:
-        position: A tuple containing the initial planet position (i.e.,
-            we compute the forward model under the assumption that the
-            planet is at this position for t=0).
-        frame_size: A tuple with the spatial size `(x_size, y_size)`
-            of the forward model stack to be created.
-        parang: A numpy array containing the parallactic angle for
-            every frame.
         psf_template: A numpy array containing the unsaturated PSF
             template which we use to create the planet signal.
         psf_radius: The radius (in units of lambda over D) of the
@@ -59,14 +44,8 @@ def get_signal_stack(position: Tuple[int, int],
             data in the L band (lambda=3800nm), this value is ~0.1".
 
     Returns:
-        A numpy array containing the forward model (i.e., a stack of
-        frames where every frame contains only the "planet signal" at
-        the correct position), computed under the given assumptions.
+        The cropped and circularly masked PSF template as a numpy array.
     """
-
-    # -------------------------------------------------------------------------
-    # Crop PSF template to a circular disk of the given radius
-    # -------------------------------------------------------------------------
 
     # Convert psf_radius from units of lambda over D to pixel
     psf_radius_pixel = int(psf_radius * (lambda_over_d / pixscale))
@@ -95,9 +74,38 @@ def get_signal_stack(position: Tuple[int, int],
     circular_mask = circular_aperture.to_mask(method='exact')
     psf_masked = circular_mask.multiply(psf_cropped)
 
-    # -------------------------------------------------------------------------
-    # Create the signal stack by injecting the PSF (= forward modeling)
-    # -------------------------------------------------------------------------
+    return psf_masked
+
+
+def get_signal_stack(position: Tuple[int, int],
+                     frame_size: Tuple[int, int],
+                     parang: np.ndarray,
+                     psf_cropped: np.ndarray) -> np.ndarray:
+    """
+    Compute the forward model: Assume that at time t=0, the planet is
+    at the given `position. The apparent motion of the sky (and thus `
+    the planet) is given by the parallactic angles in `parang`. This
+    function now takes the provided cropped and masked PSF. Then, an
+    empty stack of size `(len(parang), *frame_size)` is created, and
+    for each time t, the cropped PSF template is added into the stack
+    at the correct position according to parang[t].
+
+    Args:
+        position: A tuple containing the initial planet position (i.e.,
+            we compute the forward model under the assumption that the
+            planet is at this position for t=0).
+        frame_size: A tuple with the spatial size `(x_size, y_size)`
+            of the forward model stack to be created.
+        parang: A numpy array containing the parallactic angle for
+            every frame.
+        psf_cropped: A numpy array containing the cropped and masked
+            PSF template, as it is returned by `crop_psf_template()`.
+
+    Returns:
+        A numpy array containing the forward model (i.e., a stack of
+        frames where every frame contains only the "planet signal" at
+        the correct position), computed under the given assumptions.
+    """
 
     # Define some shortcuts
     n_frames = len(parang)
@@ -133,7 +141,7 @@ def get_signal_stack(position: Tuple[int, int],
         # or the PSF template exceeds the bounds of the signal stack.
         signal_stack[i] = \
             add_array_with_interpolation(array_large=signal_stack[i],
-                                         array_small=psf_masked,
+                                         array_small=psf_cropped,
                                          position=injection_position)
 
     return signal_stack
@@ -143,6 +151,8 @@ def get_collection_region_mask(signal_stack: np.ndarray) -> np.ndarray:
     """
     Get the spatial mask of pixels which, at some point in time,
     contain planet signal.
+
+    # TODO: Should this function rather go into masking.py?
 
     Args:
         signal_stack: A 3D numpy array of shape (n_frames, frame_width,
@@ -156,7 +166,3 @@ def get_collection_region_mask(signal_stack: np.ndarray) -> np.ndarray:
         is non-zero for at least one frame), and 0 everywhere else.
     """
     return np.sum(signal_stack, axis=0) > 0
-
-
-def get_collection_region_pixels(collection_region_mask: np.ndarray) -> list:
-    return list(zip(*np.where(collection_region_mask)))
