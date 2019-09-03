@@ -340,13 +340,16 @@ class PixelPredictorCollection(object):
         Path(collection_dir).mkdir(exist_ok=True)
 
         # Save file containing the positions of all pixels in the collection
-        # TODO: Maybe use a FITS file instead pickling the data?
         file_path = os.path.join(collection_dir, 'positions.pkl')
         joblib.dump(self.m__collection_region, filename=file_path)
 
+        # Save the predictors
+        file_path_predictors = os.path.join(collection_dir, 'predictors.pkl')
+        joblib.dump(self.m__predictors, filename=file_path_predictors)
+
         # Loop over all PixelPredictors in the collection and save them
-        for _, pixel_predictor in self.m__predictors.items():
-            pixel_predictor.save(collection_dir=collection_dir)
+        # for _, pixel_predictor in self.m__predictors.items():
+        #     pixel_predictor.save(collection_dir=collection_dir)
 
     def load(self,
              models_root_dir: str):
@@ -361,14 +364,18 @@ class PixelPredictorCollection(object):
         file_path = os.path.join(collection_dir, 'positions.pkl')
         self.m__collection_region = joblib.load(filename=file_path)
 
+        # Load the predictors
+        file_path_predictors = os.path.join(collection_dir, 'predictors.pkl')
+        self.m__predictors = joblib.load(filename=file_path_predictors)
+
         # Loop over all positions in the collection region and load
         # corresponding pixel predictors
-        for position in self.m__collection_region:
-            pixel_predictor = \
-                PixelPredictor(position=position,
-                               config_model=self.m__config_model)
-            pixel_predictor.load(collection_dir=collection_dir)
-            self.m__predictors[position] = pixel_predictor
+        # for position in self.m__collection_region:
+        #     pixel_predictor = \
+        #         PixelPredictor(position=position,
+        #                        config_model=self.m__config_model)
+        #     pixel_predictor.load(collection_dir=collection_dir)
+        #     self.m__predictors[position] = pixel_predictor
 
 
 # -----------------------------------------------------------------------------
