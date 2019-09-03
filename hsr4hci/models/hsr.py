@@ -74,11 +74,16 @@ class HalfSiblingRegression(ModelPrototype):
         # Initialize a dict that will hold the PCA results for all positions
         self.m__sources = dict()
 
-    def get_detection_map(self):
+    def get_detection_map(self,
+                          weighted=False):
 
         detection_map = np.full(self.m__frame_size, np.nan)
         for position, collection in self.m__collections.items():
-            detection_map[position] = collection.get_average_signal_coef()
+            avg_weighted, avg = collection.get_average_signal_coef()
+            if weighted:
+                detection_map[position] = avg_weighted
+            else:
+                detection_map[position] = avg
         return detection_map
 
     def train(self,
@@ -264,7 +269,8 @@ class PixelPredictorCollection(object):
         signal_sigma_coefs = np.array(signal_sigma_coefs)[~excluded_idx]
 
         # Return the weighted average of the signal coefficients
-        return np.average(a=signal_coefs, weights=1/signal_sigma_coefs)
+        return np.average(a=signal_coefs, weights=1/signal_sigma_coefs), \
+               np.average(a=signal_coefs)
 
     def train_collection(self,
                          stack: np.ndarray,
