@@ -9,7 +9,6 @@ Half-Sibling Regression model.
 import joblib
 import numpy as np
 import os
-import warnings
 
 from hsr4hci.models.prototypes import ModelPrototype
 from hsr4hci.utils.forward_modeling import crop_psf_template, \
@@ -45,13 +44,14 @@ class HalfSiblingRegression(ModelPrototype):
                  config: dict):
 
         # Store the experiment configuration
-        self.m__pixscale = config['dataset']['pixscale']
-        self.m__lambda_over_d = config['dataset']['lambda_over_d']
-        self.m__roi_ier = config['experiment']['roi']['inner_exclusion_radius']
-        self.m__roi_oer = config['experiment']['roi']['outer_exclusion_radius']
-        self.m__config_collection = config['experiment']['collection']
         self.m__config_model = config['experiment']['model']
         self.m__config_psf_template = config['experiment']['psf_template']
+        self.m__config_sources = config['experiment']['sources']
+        self.m__lambda_over_d = config['dataset']['lambda_over_d']
+        self.m__pixscale = config['dataset']['pixscale']
+        self.m__roi_ier = config['experiment']['roi']['inner_exclusion_radius']
+        self.m__roi_oer = config['experiment']['roi']['outer_exclusion_radius']
+        self.m__use_forward_model = False
 
         # Define shortcuts to config elements
         self.m__experiment_dir = config['experiment_dir']
@@ -115,9 +115,8 @@ class HalfSiblingRegression(ModelPrototype):
         """
 
         # Define some shortcuts
-        region_size = self.m__config_collection['predictor_region_radius']
-        variance_threshold = \
-            self.m__config_collection['explained_variance_threshold']
+        region_size = self.m__config_sources['predictor_region_radius']
+        n_components = self.m__config_sources['n_pca_components']
 
         # Compute the region for which we need to pre-compute the PCA
         psf_radius_pixel = np.ceil(self.m__config_psf_template['psf_radius'] *
@@ -140,14 +139,22 @@ class HalfSiblingRegression(ModelPrototype):
                                    region_size=region_size)
             sources = stack[:, predictor_mask]
 
-            # TODO fix sources!!!
-            # Run PCA on sources and truncate based on a threshold criterion
-            # on the explained variance of the principal components
-            pca = PCA(15)
-            sources = pca.fit_transform(X=sources)
-            n_components = 15#np.where(np.cumsum(pca.explained_variance_ratio_) >
-                             #      variance_threshold)[0][0] + 1
-            self.m__sources[position] = sources[:, :n_components]
+            # Set up a PCA and fit it to the predictor pixels
+            # Note: We take the transpose of the sources, such that the
+            # principal components found by the PCA are also time series
+            # which we then use as the basis for fitting the noise.
+            pca = PCA(n_components=n_components)
+            pca.fit(X=sources.T)
+
+            # Get the principal components and the mean (which is
+            # automatically removed by the PCA) and stack them together
+            pca_comp = pca.components_
+            pca_mean = pca.mean_
+            tmp_sources = np.row_stack([pca_comp,
+                                        pca_mean.reshape((1, -1))])
+
+            # Transpose back the result and and store it
+            self.m__sources[position] = tmp_sources.T
 
     def train(self,
               stack: np.ndarray,
@@ -172,13 +179,17 @@ class HalfSiblingRegression(ModelPrototype):
         """
 
         # ---------------------------------------------------------------------
-        # Basic sanity checks
+        # Basic sanity checks and preliminaries
         # ---------------------------------------------------------------------
 
         # Make sure we have called self.precompute_pca() before start training
         if not self.m__sources:
-            print("\nPre-computing PCA ...")
+            print('\nself.m__sources was empty! Running PCA pre-computation:')
             self.precompute_pca(stack)
+            print()
+
+        # If we have received a PSF template, we know we use forward modeling
+        self.m__use_forward_model = psf_template is not None
 
         # ---------------------------------------------------------------------
         # Crop the PSF template to the size specified in the config
@@ -200,7 +211,6 @@ class HalfSiblingRegression(ModelPrototype):
         # Get positions of pixels in ROI
         roi_pixels = get_positions_from_mask(self.m__roi_mask)
 
-        print("\n Training ...")
         # Run training by looping over the ROI and calling train_position()
         for position in tqdm(roi_pixels, total=len(roi_pixels), ncols=80):
             self.train_position(position=position,
@@ -215,11 +225,11 @@ class HalfSiblingRegression(ModelPrototype):
                        psf_cropped: np.ndarray):
 
         # Create a PixelPredictorCollection for this position
-        config_collection = self.m__config_collection
+        use_forward_model = self.m__use_forward_model
         collection = \
             PixelPredictorCollection(position=position,
-                                     config_collection=config_collection,
-                                     config_model=self.m__config_model)
+                                     config_model=self.m__config_model,
+                                     use_forward_model=use_forward_model)
 
         # Train and save the collection for this position
         collection.train_collection(stack=stack,
@@ -236,32 +246,28 @@ class HalfSiblingRegression(ModelPrototype):
         roi_pixels = get_positions_from_mask(self.m__roi_mask)
 
         # Load collection for every position in the ROI
-        print("\n Loading ...")
+        use_forward_model = self.m__use_forward_model
         for position in tqdm(roi_pixels, ncols=80):
-            config_collection = self.m__config_collection
             collection = \
                 PixelPredictorCollection(position=position,
-                                         config_collection=config_collection,
-                                         config_model=self.m__config_model)
+                                         config_model=self.m__config_model,
+                                         use_forward_model=use_forward_model)
             collection.load(models_root_dir=self.m__models_root_dir)
             self.m__collections[position] = collection
 
         # Restore pre-computed PCA sources
         file_path = os.path.join(self.m__models_root_dir, 'pca_sources.pkl')
         self.m__sources = joblib.load(filename=file_path)
-        print("\n[DONE]")
 
     def save(self):
 
         # Save all PixelPredictorCollections
-        print("\n Saving ...")
         for _, collection in tqdm(self.m__collections.items(), ncols=80):
             collection.save(models_root_dir=self.m__models_root_dir)
 
         # Save pre-computed PCA sources
         file_path = os.path.join(self.m__models_root_dir, 'pca_sources.pkl')
         joblib.dump(self.m__sources, filename=file_path)
-        print("\n[DONE]")
 
 
 # -----------------------------------------------------------------------------
@@ -274,15 +280,15 @@ class PixelPredictorCollection(object):
 
     def __init__(self,
                  position: Tuple[int, int],
-                 config_collection: dict,
-                 config_model: dict):
+                 config_model: dict,
+                 use_forward_model: bool):
 
+        self.m__collection_region = None
+        self.m__config_model = config_model
         self.m__position = position
         self.m__predictors = dict()
-        self.m__config_model = config_model
-        self.m__config_collection = config_collection
-        self.m__collection_region = None
-        
+        self.m__use_forward_model = use_forward_model
+
         self.m__collection_name = \
             f'collection_{self.m__position[0]}_{self.m__position[1]}'
 
@@ -331,7 +337,7 @@ class PixelPredictorCollection(object):
         # Get signal_stack and collection_region based on use_forward_model
         # ---------------------------------------------------------------------
 
-        if self.m__config_collection['use_forward_model']:
+        if self.m__use_forward_model:
             signal_stack = get_signal_stack(position=self.m__position,
                                             frame_size=stack.shape[1:],
                                             parang=parang,
@@ -346,7 +352,7 @@ class PixelPredictorCollection(object):
         # ---------------------------------------------------------------------
         # Loop over all positions in the collection region
         # ---------------------------------------------------------------------
-        
+
         for position in self.m__collection_region:
 
             # Get regression target
@@ -372,6 +378,12 @@ class PixelPredictorCollection(object):
 
             # Add trained PixelPredictor to PixelPredictorCollection
             self.m__predictors[position] = pixel_predictor
+
+        # ---------------------------------------------------------------------
+        # Clean up after training is complete (to use less memory)
+        # ---------------------------------------------------------------------
+
+        del signal_stack
 
     def save(self,
              models_root_dir: str):
