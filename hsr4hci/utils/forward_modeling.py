@@ -131,7 +131,7 @@ def get_signal_stack(position: Tuple[int, int],
         # the exponential representation of 2D vectors) and convert the
         # resulting position back to Cartesian coordinates.
         theta = np.deg2rad(rotation_angles[i])
-        new_complex_position = r * np.exp(1j * (phi + theta))
+        new_complex_position = r * np.exp(1j * (phi - theta))
         injection_position = (np.imag(new_complex_position) + frame_center[0],
                               np.real(new_complex_position) + frame_center[1])
 
