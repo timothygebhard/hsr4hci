@@ -129,6 +129,34 @@ class ConstrainedLeastSquares(LinearModel, RegressorMixin):
         return self
 
 
+class ExoplanetCLS(ConstrainedLeastSquares):
+    """
+    Constrained Least Squares for forward modeling-based planet search.
+    """
+
+    @staticmethod
+    def _get_default_bounds(n_features: int) -> Tuple[tuple, tuple]:
+        """
+        Get the default bounds for the coefficients and the intercept.
+
+        Args:
+            n_features: The number of features of the data X, that is,
+                the number of coefficients in the model (excluding the
+                intercept term).
+
+        Returns:
+            A tuple `(coef_bounds, intercept_bounds)`, containing the
+            default values for the bounds (which correspond to an
+            unconstrained linear model).
+        """
+
+        coef_bounds = (np.array(list(np.full(n_features - 1, -np.inf)) + [0]),
+                       np.full(n_features, np.inf))
+        intercept_bounds = (-np.inf, np.inf)
+
+        return coef_bounds, intercept_bounds
+
+
 # -----------------------------------------------------------------------------
 # TEST AREA
 # -----------------------------------------------------------------------------
