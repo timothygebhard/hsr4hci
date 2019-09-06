@@ -152,6 +152,7 @@ class HalfSiblingRegression(ModelPrototype):
             pca_mean = pca.mean_
             tmp_sources = np.row_stack([pca_comp,
                                         pca_mean.reshape((1, -1))])
+            tmp_sources /= np.max(tmp_sources, axis=0)
 
             # Transpose back the result and and store it
             self.m__sources[position] = tmp_sources.T
