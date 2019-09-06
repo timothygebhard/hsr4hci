@@ -321,7 +321,7 @@ class PixelPredictorCollection(object):
     def get_detection_frame(self,
                             frame_size):
 
-        detection_frame = np.zeros(frame_size)
+        detection_frame = np.full(frame_size, np.nan)
         for position, pixel_predictor in self.m__predictors.items():
             w_p, _ = pixel_predictor.get_signal_coef()
             detection_frame[position] = w_p
