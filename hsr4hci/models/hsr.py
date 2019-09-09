@@ -11,6 +11,7 @@ import numpy as np
 import os
 
 from hsr4hci.models.prototypes import ModelPrototype
+from hsr4hci.utils.adi_tools import derotate_frames
 from hsr4hci.utils.forward_modeling import crop_psf_template, \
     get_signal_stack, get_collection_region_mask
 from hsr4hci.utils.masking import get_circle_mask, get_positions_from_mask
@@ -18,7 +19,9 @@ from hsr4hci.utils.model_loading import get_class_by_name
 from hsr4hci.utils.predictor_selection import get_predictor_mask
 from hsr4hci.utils.roi_selection import get_roi_mask
 
+from copy import deepcopy
 from pathlib import Path
+from scipy.ndimage import rotate
 from sklearn.decomposition import PCA
 from tqdm import tqdm
 from typing import Optional, Tuple
@@ -73,6 +76,97 @@ class HalfSiblingRegression(ModelPrototype):
 
         # Initialize a dict that will hold the PCA results for all positions
         self.m__sources = dict()
+
+    def get_difference_image(self,
+                             stack: np.ndarray,
+                             parang: np.ndarray):
+        """
+        Compute a difference image, which is essentially obtained by
+        subtracting the "noise model" from the real data. This image
+        should then be in unit of flux and allow for a fair comparison
+        with, e.g., PCA-based PSF subtraction.
+
+        Args:
+            stack: A 3D numpy array of shape (n_frames, width, height)
+                containing the stack of frames which we trained the
+                model on (and now want to subtract the noise model's
+                predictions from).
+            parang: A numpy array of shape (n_frames,) containing the
+                parallactic angle for each frame in the stack.
+
+        Returns:
+            A 2D numpy array, containing the median (?) along the time
+            axis of the difference between the original data and the
+            noise model's predictions for any given pixel in the ROI.
+        """
+
+        # Define shortcuts
+        n_frames, width, height = stack.shape
+
+        # Compute rotation angles: Remove the offset (which usually makes sure
+        # that "up == North" in the derotated frames). This is necessary here
+        # because the position indices will lose their meaning if we orient
+        # the frames to the North before computing the full difference image.
+        rotation_angles = parang - parang[0]
+
+        # Initialize the result
+        difference_img = np.zeros(self.m__frame_size)
+
+        # Loop over all pixels in the ROI
+        for position_outer, collection in \
+                tqdm(self.m__collections.items(), ncols=80):
+
+            # Create an empty array that has the same size as the train stack
+            # which will hold our predictions for every pixel and time step
+            predictions = np.zeros(stack.shape)
+
+            # Make predictions for the current collection
+            for position_inner, predictor in collection.m__predictors.items():
+
+                # Create the "systematics only" model: Copy the model and set
+                # the coefficient that corresponds to the planet model to 0
+                model = deepcopy(predictor.m__model)
+                model.coef_[-1] = 0
+
+                # Create the sources for the prediction: We need still need to
+                # add a dummy column for the "planet signal" because the model
+                # expects that many input features. We simply set this column
+                # to all zeroes because the corresponding model coefficient is
+                # 0 anyway.
+                sources = np.column_stack([self.m__sources[position_inner],
+                                           np.zeros((n_frames, 1))])
+
+                # Make predictions for the current position (in the collection)
+                predictions[:, position_inner[0], position_inner[1]] = \
+                    model.predict(X=sources)
+
+                # Clean up the things we no longer need after this
+                del model
+
+            # Subtract the noise model's predictions from the original data
+            residuals = stack - predictions
+
+            # Derotate and average the residuals
+            derotated = derotate_frames(stack=residuals,
+                                        parang=rotation_angles)
+            averaged = np.median(derotated, axis=0)
+
+            # Keep only the result for the current position_outer
+            difference_img[position_outer[0], position_outer[1]] = \
+                averaged[position_outer[0], position_outer[1]]
+
+        # After we have assembled the full difference image, we can derotate
+        # it by the offset that is necessary to orient the result to the North
+        # (which may be useful for comparisons with PCA)
+        derotated_difference_image = rotate(input=difference_img,
+                                            angle=-parang[0],
+                                            reshape=False)
+
+        # Finally, apply the ROI mask to set everything to NaN for which we
+        # have not computed a result (to distinguish it from "zero residual")
+        derotated_difference_image[~self.m__roi_mask] = np.nan
+
+        return derotated_difference_image
 
     def get_detection_map(self,
                           weighted=False):
