@@ -88,6 +88,36 @@ if __name__ == '__main__':
         print(error_message, '\n\n')
 
     # -------------------------------------------------------------------------
+    # Get the difference image and save it
+    # -------------------------------------------------------------------------
+
+    # Wrap this part in a try/except block for now so we don't lose our
+    # training results simply because of an error in the difference_img
+    # calculation. Ultimately, this should no longer be necessary.
+    try:
+
+        # Get the detection map
+        print(f'\nComputing difference image:', flush=True)
+        detection_map = hsr.get_difference_image(stack=stack,
+                                                 parang=parang)
+
+        # Ensure the results dir exists
+        results_dir = os.path.join(config['experiment_dir'], 'results')
+        Path(results_dir).mkdir(exist_ok=True)
+
+        # Store the difference image to a FITS file
+        print(f'Saving difference image to FITS...', end=' ', flush=True)
+        fits_file_path = os.path.join(results_dir, f'difference_image.fits')
+        save_fits(array=detection_map, file_path=fits_file_path)
+        print('Done!', flush=True)
+
+    except Exception as error_message:
+
+        print('Something went wrong while computing the difference image!\n'
+              'Here is the error message we got:\n\n')
+        print(error_message, '\n\n')
+
+    # -------------------------------------------------------------------------
     # Save the complete HSR model (this may take a while)
     # -------------------------------------------------------------------------
 
