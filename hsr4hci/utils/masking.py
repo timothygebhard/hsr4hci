@@ -34,8 +34,9 @@ def get_circle_mask(mask_size: tuple,
     Create a circle mask of a given size.
 
     Args:
-        mask_size: Size of the mask to be created. Should match the
-            size of the array which is masked.
+        mask_size: A tuple (width, height) containing the size of the
+            mask (in pixels) to be created. Should match the size of
+            the array which is masked.
         radius: Radius of the disk in pixels.
         center: Center of the circle. If None is given, the disk
             will be centered within the array. This is the default.
@@ -58,21 +59,24 @@ def get_circle_mask(mask_size: tuple,
 
 
 def get_annulus_mask(mask_size: tuple,
-                     inner_exclusion_radius: float,
-                     outer_exclusion_radius: float) -> np.ndarray:
+                     inner_radius: float,
+                     outer_radius: float) -> np.ndarray:
     """
-    Create a annulus-shaped mask.
+    Create an annulus-shaped mask.
 
     Args:
-        mask_size:
-        inner_exclusion_radius:
-        outer_exclusion_radius:
+        mask_size: A tuple (width, height) containing the size of the
+            mask (in pixels) to be created. Should match the size of
+            the array which is masked.
+        inner_radius: Inner radius (in pixels) of the annulus mask.
+        outer_radius: Outer radius (in pixels) of the annulus mask.
 
     Returns:
-
+        A 2D numpy array of size `mask_size` which masks an annulus
+        with a given `inner_radius` and `outer_radius`.
     """
 
     return np.logical_xor(get_circle_mask(mask_size=mask_size,
-                                          radius=inner_exclusion_radius),
+                                          radius=inner_radius),
                           get_circle_mask(mask_size=mask_size,
-                                          radius=outer_exclusion_radius))
+                                          radius=outer_radius))

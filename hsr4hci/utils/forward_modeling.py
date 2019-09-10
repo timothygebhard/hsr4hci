@@ -6,12 +6,13 @@ Utility methods for forward modeling.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-import numpy as np
+from cmath import polar
+from typing import Tuple
 
 from astropy.nddata import Cutout2D
-from cmath import polar
 from photutils import centroid_2dg, CircularAperture
-from typing import Tuple
+
+import numpy as np
 
 from hsr4hci.utils.general import add_array_with_interpolation
 

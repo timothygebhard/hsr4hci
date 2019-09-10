@@ -6,10 +6,10 @@ Functions and classes for loading and splitting data.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from typing import Optional, Tuple
+
 import h5py
 import numpy as np
-
-from typing import Optional, Tuple
 
 from hsr4hci.utils.general import crop_center
 
@@ -19,6 +19,18 @@ from hsr4hci.utils.general import crop_center
 # -----------------------------------------------------------------------------
 
 class TrainTestSplitter:
+    """
+    A class that can be used for splitting a data set into train / test.
+
+    Args:
+        n_splits: Number of splits, essentially the "k" in k-fold cross
+            validation (see also documentation of split() method).
+        split_type: The split type, which must be either 'k_fold' or
+            'even_odd'.
+        shuffle: Whether or not to shuffle the data before splitting.
+        random_seed: Seed for the random number generator used when
+            `shuffle` is set to True.
+    """
 
     def __init__(self,
                  n_splits: int = 2,
@@ -35,7 +47,7 @@ class TrainTestSplitter:
 
         if split_type not in ('k_fold', 'even_odd'):
             raise ValueError(f'split_type must be either "k_fold" or '
-                             f'"even_odd", but is "{self.split_type}"!')
+                             f'"even_odd", but is "{split_type}"!')
 
         # ---------------------------------------------------------------------
         # Save constructor arguments
@@ -46,14 +58,31 @@ class TrainTestSplitter:
         self.shuffle = shuffle
         self.random_seed = random_seed
 
-    def split(self, stack):
+    def split(self, n_samples: int) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Take the number of samples and return the indices for the split.
+
+        Note that this function does not return, but instead yield its
+        results such that we can loop over the results, as we would
+        like to do, for example, for cross-validation.
+        Example: Assume we are doing a two-fold split where we split our
+        data into two parts A and B. In the first round, A will be the
+        training set and B the testing set. In the second round, the
+        roles are reversed and B is returned as the training set, while
+        A is used as the testing set.
+
+        Args:
+            n_samples: The number of samples in the data set we want to
+                split into training and test.
+
+        Returns:
+            A tuple (train_indices, test_indices) which can be used to
+            split the data set in the desired way.
+        """
 
         # ---------------------------------------------------------------------
         # Initialize indices
         # ---------------------------------------------------------------------
-
-        # Get the size of the stack
-        n_samples = stack.shape[0]
 
         # Initialize the array of indices that gets split into train / test
         indices = np.arange(n_samples)
@@ -89,7 +118,7 @@ class TrainTestSplitter:
 
                 test_idx = indices[current:(current + fold_size)]
                 train_idx = np.setdiff1d(indices, test_idx, assume_unique=True)
-    
+
                 yield train_idx, test_idx
 
                 current += fold_size

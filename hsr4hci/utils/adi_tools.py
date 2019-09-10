@@ -7,12 +7,12 @@ Tools for classical angular differential imaging (ADI), such as frame
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-import numpy as np
+from typing import Optional
 
 from scipy.ndimage import rotate
 from tqdm import tqdm
 
-from typing import Optional
+import numpy as np
 
 
 # -----------------------------------------------------------------------------
@@ -67,7 +67,7 @@ def classical_adi(stack: np.ndarray,
                   mean: bool = False) -> np.ndarray:
     """
     Perform classical ADI on the given input stack.
-    
+
     Args:
         stack: ADI stack of frames.
         para_angles: Array of parallactic angles.

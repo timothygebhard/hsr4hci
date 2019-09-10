@@ -6,12 +6,12 @@ Methods for performance evaluation (e.g., computing the SNR).
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-import numpy as np
+from typing import Optional, Tuple
 
 from pynpoint.util.analysis import false_alarm
 from scipy.optimize import minimize
 
-from typing import Optional, Tuple
+import numpy as np
 
 
 # -----------------------------------------------------------------------------
@@ -65,7 +65,7 @@ def compute_figures_of_merit(frame: np.ndarray,
 
     # Otherwise, we first need to find the "optimal" position
     elif optimize in ('signal', 'noise_level', 'snr', 'fpf'):
-    
+
         # Define a dummy function to get the FOM which we want to optimize by
         # adjusting the position (this is essentially just verbose currying.)
         def _get_fom(pos):
@@ -87,11 +87,11 @@ def compute_figures_of_merit(frame: np.ndarray,
             # Depending on the quantity, we either need to minimize x or 1/x
             if optimize == 'signal':
                 return 1 / (signal + np.finfo(float).eps)
-            elif optimize == 'noise_level':
+            if optimize == 'noise_level':
                 return noise_level
-            elif optimize == 'snr':
+            if optimize == 'snr':
                 return 1 / (snr + np.finfo(float).eps)
-            elif optimize == 'fpf':
+            if optimize == 'fpf':
                 return fpf
 
         # Actually run the optimization to find the optimal position

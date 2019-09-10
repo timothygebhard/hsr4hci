@@ -6,10 +6,11 @@ Functions for reading and writing FITS files.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from astropy.io import fits
-import numpy as np
-
 from typing import Optional
+
+from astropy.io import fits
+
+import numpy as np
 
 
 # -----------------------------------------------------------------------------
@@ -29,7 +30,7 @@ def read_fits(file_path: str) -> np.ndarray:
 
     with fits.open(file_path) as hdulist:
         array = np.array(hdulist[0].data)
-    
+
     return array
 
 

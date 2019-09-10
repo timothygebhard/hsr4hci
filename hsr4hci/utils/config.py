@@ -19,14 +19,14 @@ import socket
 
 def load_config(config_file_path: str) -> dict:
     """
-    Load and amend an experiment configuration.
+    Load and augment an experiment configuration.
 
     Args:
         config_file_path: Path to the JSON file containing the
             configuration to be loaded.
 
     Returns:
-        A dictionary containing the amended configuration.
+        A dictionary containing the augmented configuration.
     """
 
     # -------------------------------------------------------------------------
@@ -42,7 +42,7 @@ def load_config(config_file_path: str) -> dict:
         config = json.load(json_file)
 
     # -------------------------------------------------------------------------
-    # Amend configuration (i.e., add implicitly defined variables)
+    # Augment configuration (i.e., add implicitly defined variables)
     # -------------------------------------------------------------------------
 
     # Add the path to the experiments folder to the config dict
@@ -51,12 +51,12 @@ def load_config(config_file_path: str) -> dict:
     # Add implicitly defined variables
     config['dataset']['frame_center'] = \
         tuple(map(lambda x: x / 2, config['dataset']['frame_size']))
- 
+
     # Replace dummy data directory with machine-specific data directory
     data_dir = get_data_dir()
     config['dataset']['file_path'] = \
         config['dataset']['file_path'].replace('DATA_DIR', data_dir)
- 
+
     return config
 
 
@@ -90,11 +90,10 @@ def get_data_dir() -> str:
     # Markus's computers
     # -------------------------------------------------------------------------
 
-    elif hostname == 'bluesky':
+    if hostname == 'bluesky':
         return '/net/ipa-gate.phys.ethz.ch/export/ipa/meyer/hsr'
 
-    elif (hostname == 'Markuss-MacBook-Pro.local' or
-          hostname == 'Markuss-MBP'):
+    if hostname in ('Markuss-MacBook-Pro.local', 'Markuss-MBP'):
         return '/Users/markusbonse/Desktop/'
 
     # -------------------------------------------------------------------------
@@ -102,16 +101,16 @@ def get_data_dir() -> str:
     # -------------------------------------------------------------------------
 
     # If connected to "normal" networks
-    elif hostname == 'Timothys-MacBook-Pro.local':
+    if hostname == 'Timothys-MacBook-Pro.local':
         return os.path.expanduser('~/Documents/PhD/datasets/exoplanets')
 
     # If connected to the ETH wifi (which changes the hostname)
-    elif bool(re.match(r'^\S+.ethz.ch$', hostname)) and username == 'timothy':
+    if bool(re.match(r'^\S+.ethz.ch$', hostname)) and username == 'timothy':
         return os.path.expanduser('~/Documents/PhD/datasets/exoplanets')
 
     # -------------------------------------------------------------------------
     # Default: Raise ValueError
     # -------------------------------------------------------------------------
 
-    else:
-        raise ValueError(f'Hostname "{hostname}" not known!')
+    # If none of the if-statements above matched, the hostname is unknown!
+    raise ValueError(f'Hostname "{hostname}" not known!')

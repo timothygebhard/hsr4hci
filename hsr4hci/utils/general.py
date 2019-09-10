@@ -6,18 +6,19 @@ General purpose utilities, e.g., cropping arrays.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-import numpy as np
+from math import modf
+from typing import Tuple, Union
 
 from astropy.nddata.utils import add_array
-from math import modf
 from scipy import ndimage
 
-from typing import Tuple, Union
+import numpy as np
 
 
 # -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
+
 def add_array_with_interpolation(array_large: np.ndarray,
                                  array_small: np.ndarray,
                                  position: Tuple[Union[int, float],
@@ -60,7 +61,7 @@ def crop_center(array: np.ndarray,
                 size: Tuple[int, ...]) -> np.ndarray:
     """
     Crop an n-dimensional array to the given size around its center.
-    
+
     Args:
         array: The numpy array to be cropped.
         size: A tuple containing the size of the cropped array. To not

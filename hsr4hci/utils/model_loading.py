@@ -28,13 +28,13 @@ def get_class_by_name(module_name: str,
     Returns:
         The specified class (which can then be instantiated).
     """
-    
+
     # Load the module based on the given name. This will raise an ImportError
     # if the specified module cannot be loaded.
     _module = importlib.import_module(module_name)
-    
+
     # Get the class based on the given name. This will raise an AttributeError
     # if the specified class cannot be found.
     _class = getattr(_module, class_name)
-    
+
     return _class
