@@ -1,14 +1,23 @@
 """
-Half-Sibling Regression model.
+Provide a half-sibling regression (HSR) model.
 """
 
 # -----------------------------------------------------------------------------
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from copy import deepcopy
+from pathlib import Path
+from typing import Optional, Tuple
+
+import os
+
+from scipy.ndimage import rotate
+from sklearn.decomposition import PCA
+from tqdm import tqdm
+
 import joblib
 import numpy as np
-import os
 
 from hsr4hci.models.prototypes import ModelPrototype
 from hsr4hci.utils.adi_tools import derotate_frames
@@ -19,13 +28,6 @@ from hsr4hci.utils.model_loading import get_class_by_name
 from hsr4hci.utils.predictor_selection import get_predictor_mask
 from hsr4hci.utils.roi_selection import get_roi_mask
 
-from copy import deepcopy
-from pathlib import Path
-from scipy.ndimage import rotate
-from sklearn.decomposition import PCA
-from tqdm import tqdm
-from typing import Optional, Tuple
-
 
 # -----------------------------------------------------------------------------
 # CLASS DEFINITIONS
@@ -34,11 +36,11 @@ from typing import Optional, Tuple
 class HalfSiblingRegression(ModelPrototype):
     """
     Wrapper class for a half-sibling regression model.
-    
+
     This class essentially encapsulates the "outer loop", that is,
     looping over every pixel in the (spatial) region of interest and
     learning a model (or a collection of models) for it.
-    
+
     Args:
         config: A dictionary containing the experiment configuration.
     """
@@ -246,16 +248,6 @@ class HalfSiblingRegression(ModelPrototype):
 
         return detection_map
 
-    def get_detection_stack(self) -> np.ndarray:
-        detection_frames = []
-        for position, collection in self.m__collections.items():
-            tmp_detection_frame = \
-                collection.get_detection_frame(self.m__frame_size)
-            tmp_detection_frame[position] = 0.0
-            detection_frames.append(tmp_detection_frame)
-
-        return np.array(detection_frames)
-
     def precompute_pca(self, stack: np.ndarray):
         """
         Pre-compute the PCA of the predictor pixels for every position.
@@ -302,7 +294,7 @@ class HalfSiblingRegression(ModelPrototype):
 
             # Depending on the pca_mode, we either use the PCs directly...
             if pca_mode == 'fit':
-    
+
                 # Fit the PCA to the data
                 # Note: We take the transpose of the sources, such that the
                 # principal components found by the PCA are also time series.
@@ -395,6 +387,28 @@ class HalfSiblingRegression(ModelPrototype):
                        stack: np.ndarray,
                        parang: np.ndarray,
                        psf_cropped: np.ndarray):
+        """
+        Train the models for a given `position`.
+
+        Essentially, this function sets up a PixelPredictorCollection
+        and trains it. The motivation for separating this into its own
+        function was to simplify parallelization of the training on a
+        batch queue based cluster (where every position could be
+        trained independently in a separate job).
+
+        Args:
+            position: A tuple (x, y) containing the position for which
+                to train a collection. Note: This corresponds to the
+                position where the planet in the forward model will be
+                placed at t=0, that is, in the first frame.
+            stack: A 3D numpy array of shape (n_frames, width, height)
+                containing the training data.
+            parang: A 1D numpy array of shape (n_frames,) containing the
+                corresponding parallactic angles for the stack.
+            psf_cropped: A 2D numpy containing the cropped and masked
+                PSF template that will be used to compute the forward
+                model.
+        """
 
         # Create a PixelPredictorCollection for this position
         use_forward_model = self.m__use_forward_model
@@ -413,6 +427,9 @@ class HalfSiblingRegression(ModelPrototype):
         self.m__collections[position] = collection
 
     def load(self):
+        """
+        Load this HSR instance and its associated data from disk.
+        """
 
         # Get positions of pixels in ROI
         roi_pixels = get_positions_from_mask(self.m__roi_mask)
@@ -432,6 +449,9 @@ class HalfSiblingRegression(ModelPrototype):
         self.m__sources = joblib.load(filename=file_path)
 
     def save(self):
+        """
+        Save this HSR instance and its associated data to disk.
+        """
 
         # Save all PixelPredictorCollections
         for _, collection in tqdm(self.m__collections.items(), ncols=80):
@@ -445,9 +465,30 @@ class HalfSiblingRegression(ModelPrototype):
 # -----------------------------------------------------------------------------
 
 
-class PixelPredictorCollection(object):
+class PixelPredictorCollection:
     """
-    Wrapper class ...
+    Wrapper class around a collection of PixelPredictors.
+
+    A collection consists of a collection region, which is given by the
+    "sausage"-shaped trace of a planet in a forward model (or a single
+    position, in case we are not using forward modeling), and a separate
+    PixelPredictor instance for every position within this region.
+
+    Quantities such as a detection map are then obtained by averaging
+    the planet coefficient over all models in the the collection region.
+    This is, in essence, a method to test if a suspected signal is
+    consistent with the expected apparent motion that a real planet
+    signal would exhibit in the data.
+
+    Args:
+        position: A tuple (x, y) containing the position for which
+                to train a collection. Note: This corresponds to the
+                position where the planet in the forward model will be
+                placed at t=0, that is, in the first frame.
+        config_model: A dictionary containing the configuration for the
+            model that is wrapped by the PixelPredictor, for example,
+            a sklearn.linear_model.LinearRegression.
+        use_forward_model: Whether or not we are using forward modeling.
     """
 
     def __init__(self,
@@ -464,32 +505,67 @@ class PixelPredictorCollection(object):
         self.m__collection_name = \
             f'collection_{self.m__position[0]}_{self.m__position[1]}'
 
-    def get_average_signal_coef(self) -> Tuple[float, float]:
+    def get_average_signal_coef(self) -> Tuple[Optional[float],
+                                               Optional[float]]:
+        """
+        Compute the average signal coefficient for this collection.
 
-        # Get signal coefficients and their uncertainties for all pixel
-        # predictors in the collection
-        signal_coefs = list()
-        signal_sigma_coefs = list()
-        for _, pixel_predictor in self.m__predictors.items():
-            w_p, sigma_p = pixel_predictor.get_signal_coef()
-            signal_coefs.append(w_p)
-            signal_sigma_coefs.append(sigma_p)
+        Returns:
+            A tuple (weighted_average, average) containing the weighted
+            average (using the inverse coefficient uncertainties) and
+            the median of the planet signal coefficients in the
+            collection. In case the collection was trained without
+            forward modeling, this method will return (None, None).
+        """
 
-        # 1.) Compute simple average
-        average = np.median(signal_coefs)
+        # We can only compute an average signal coefficient if we have
+        # trained the collection using forward modeling
+        if self.m__use_forward_model:
 
-        # 2.) Compute weighted average
-        # Find pixels with very large uncertainties and exclude them
-        threshold = np.percentile(signal_sigma_coefs, 90)
-        excluded_idx = np.where(signal_sigma_coefs > threshold)[0]
-        signal_coefs = np.array(signal_coefs)[~excluded_idx]
-        signal_sigma_coefs = np.array(signal_sigma_coefs)[~excluded_idx]
-        average_weighted = np.average(a=signal_coefs,
-                                      weights=(1 / signal_sigma_coefs))
+            # Get signal coefficients and their uncertainties for all pixel
+            # predictors in the collection
+            signal_coefs = list()
+            signal_sigma_coefs = list()
+            for _, pixel_predictor in self.m__predictors.items():
+                w_p, sigma_p = pixel_predictor.get_signal_coef()
+                signal_coefs.append(w_p)
+                signal_sigma_coefs.append(sigma_p)
 
-        return float(average_weighted), float(average)
+            # Compute the median of all planet coefficients in the collection
+            average = np.median(signal_coefs)
 
-    def get_detection_frame(self, frame_size) -> np.ndarray:
+            # Compute a weighted average. To make this more robust, we first
+            # identify pixels with very large uncertainties and exclude them.
+            # TODO: This can probably still be improved a lot!
+            threshold = np.percentile(signal_sigma_coefs, 90)
+            excluded_idx = np.where(signal_sigma_coefs > threshold)[0]
+            signal_coefs = np.array(signal_coefs)[~excluded_idx]
+            signal_sigma_coefs = np.array(signal_sigma_coefs)[~excluded_idx]
+            average_weighted = np.average(a=signal_coefs,
+                                          weights=(1 / signal_sigma_coefs))
+
+            return float(average_weighted), float(average)
+
+        # Otherwise, we just return None
+        return None, None
+
+    def get_detection_frame(self, frame_size: Tuple[int, int]) -> np.ndarray:
+        """
+        Construct a frame where every pixel that is contained in the
+        collection contains its respective planet signal coefficient,
+        and all other pixels are set to NaN.
+
+        Args:
+            frame_size: A tuple (width, height) containing the size of
+                the detection frame to be created. This of course needs
+                to match the spatial size of the stack that was used
+                to train the collection.
+
+        Returns:
+            A "detection frame", containing the planet coefficient of
+            every PixelPredictor model in the collection at its
+            respective spatial position.
+        """
 
         detection_frame = np.full(frame_size, np.nan)
         for position, pixel_predictor in self.m__predictors.items():
@@ -503,6 +579,24 @@ class PixelPredictorCollection(object):
                          parang: np.ndarray,
                          sources: dict,
                          psf_cropped: np.ndarray):
+        """
+        Train this collection.
+
+        This function essentially contains a loop over all positions in
+        the collection, for which a PixelPredictor is initialized and
+        trained.
+
+        Args:
+            stack: A 3D numpy array of shape (n_frames, width, height)
+                containing the training data.
+            parang: A 1D numpy array of shape (n_frames,) containing the
+                corresponding parallactic angles for the stack.
+            sources: A 2D numpy array of shape (n_frames, n_features)
+                containing the pre-computed sources for the fit.
+            psf_cropped: A 2D numpy containing the cropped and masked
+                PSF template that will be used to compute the forward
+                model.
+        """
 
         # ---------------------------------------------------------------------
         # Get signal_stack and collection_region based on use_forward_model
@@ -540,8 +634,7 @@ class PixelPredictorCollection(object):
 
             # Create a new pixel predictor
             pixel_predictor = \
-                PixelPredictor(position=position,
-                               config_model=self.m__config_model,
+                PixelPredictor(config_model=self.m__config_model,
                                planet_signal=planet_signal,
                                use_forward_model=self.m__use_forward_model)
 
@@ -552,13 +645,17 @@ class PixelPredictorCollection(object):
             # Add trained PixelPredictor to PixelPredictorCollection
             self.m__predictors[position] = pixel_predictor
 
-        # ---------------------------------------------------------------------
         # Clean up after training is complete (to use less memory)
-        # ---------------------------------------------------------------------
-
         del signal_stack
 
     def save(self, models_root_dir: str):
+        """
+        Save this collection and its associated data to pickle files.
+
+        Args:
+            models_root_dir: Path to the models root directory (which
+                contains a subdirectory for every collection).
+        """
 
         # Create folder for all models in this collection
         collection_dir = os.path.join(models_root_dir, self.m__collection_name)
@@ -573,6 +670,13 @@ class PixelPredictorCollection(object):
         joblib.dump(self.m__predictors, filename=file_path_predictors)
 
     def load(self, models_root_dir: str):
+        """
+        Load this collection and its associated data from pickle files.
+
+        Args:
+            models_root_dir: Path to the models root directory (which
+                contains a subdirectory for every collection).
+        """
 
         # Construct name of directory that contains this collection, and check
         # if it exists
@@ -591,40 +695,51 @@ class PixelPredictorCollection(object):
 # -----------------------------------------------------------------------------
 
 
-class PixelPredictor(object):
+class PixelPredictor:
     """
     Wrapper class for a predictor model of a single pixel.
+
+    Args:
+        config_model: A dictionary containing the configuration for the
+            model that is wrapped by the PixelPredictor, for example,
+            a sklearn.linear_model.LinearRegression.
+        planet_signal: A 1D numpy array containing the planet signal
+            time series (from forward modeling) to be included in the
+            model. May be None if `use_forward_model` is False.
+        use_forward_model: Whether or not we are using forward modeling.
     """
 
     def __init__(self,
-                 position: tuple,
                  config_model: dict,
-                 planet_signal: np.ndarray,
+                 planet_signal: Optional[np.ndarray],
                  use_forward_model: bool):
 
         # Store constructor arguments
-        self.m__position = position
         self.m__config_model = config_model
         self.m__planet_signal = planet_signal
         self.m__use_forward_model = use_forward_model
 
-        # Create predictor name and placeholder for model
-        self.m__name = f'model__{position[0]}_{position[1]}.pkl'
+        # Initialize variables that we need for the train() method
         self.m__model = None
-
         self.sigma_coef_ = None
 
-    def get_signal_coef(self) -> Tuple[float, float]:
-        return float(self.coef_[-1]), self.sigma_coef_[-1]
+    def get_signal_coef(self) -> Tuple[Optional[float], Optional[float]]:
+        """
+        Get the model coefficient corresponding to the planet signal
+        and its respective uncertainty.
 
-    @property
-    def coef_(self) -> Optional[np.ndarray]:
+        Returns:
+            A tuple (coef, sigma_coef) with the coefficient and its
+            uncertainty. If the model was trained without forward
+            modeling, these values will be None.
+        """
 
-        # If the base model has a coef_ attribute (which only exists for
-        # fitted models), we can return it; otherwise return None
-        if hasattr(self.m__model, 'coef_'):
-            return self.m__model.coef_
-        return None
+        # Of course, we can only return a planet coefficient if we have
+        # trained the model using forward modeling
+        if self.m__use_forward_model:
+            return (float(self.m__model.coef_[-1]),
+                    float(self.sigma_coef_[-1]))
+        return None, None
 
     def augment_sources(self, sources) -> np.ndarray:
         """
@@ -640,6 +755,9 @@ class PixelPredictor(object):
             (n_samples, n_features + 1), where the last column is
             given by self.m__planet_signal.
         """
+
+        # We only need to augment the sources if we are using forward
+        # modeling, otherwise we can return them unaltered
         if self.m__use_forward_model:
             planet_signal = self.m__planet_signal.reshape(-1, 1)
             sources = np.column_stack([sources, planet_signal])
@@ -648,6 +766,17 @@ class PixelPredictor(object):
     def train(self,
               sources: np.ndarray,
               targets: np.ndarray):
+        """
+        Train the model wrapper by the PixelPredictor.
+
+        Args:
+            sources: A 2D numpy array of shape (n_samples, n_features),
+                which contains the training data (also known as the
+                "independent variables") for the model.
+            targets: A 1D numpy array of shape (n_samples,) that
+                contains the regression targets (i.e, the "dependent
+                variable") of the fit.
+        """
 
         # Instantiate a new model according to the model_config
         model_class = \
@@ -664,12 +793,31 @@ class PixelPredictor(object):
         self.m__model.fit(X=sources, y=targets)
 
         # Compute uncertainties for coefficients
+        # TODO: This is probably only correct for vanilla linear regression?
         self.sigma_coef_ = np.diag(np.linalg.pinv(np.dot(sources.T, sources)))
 
     def predict(self, sources: np.ndarray) -> np.ndarray:
+        """
+        Use the trained model to make a prediction on the given input.
 
-        # Augment sources based on self.m__use_forward model
-        sources = self.augment_sources(sources)
+        Args:
+            sources: A 2D numpy array of shape (n_samples, n_features),
+                which contains the data for which we want to make a
+                prediction using the model of this PixelPredictor.
 
-        # Make prediction and return it
-        return self.m__model.predict(X=sources)
+        Returns:
+            A 1D numpy array of shape (n_samples,) which contains the
+            predictions of the model for the given `sources`.
+        """
+
+        # We can only make a prediction if we have trained the model already
+        if self.m__model is not None:
+
+            # Augment sources based on self.m__use_forward model
+            sources = self.augment_sources(sources)
+
+            # Make prediction and return it
+            return self.m__model.predict(X=sources)
+
+        raise RuntimeError('You tried to call predict() before actually '
+                           'training the model!')
