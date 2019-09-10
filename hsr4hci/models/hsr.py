@@ -43,8 +43,7 @@ class HalfSiblingRegression(ModelPrototype):
         config: A dictionary containing the experiment configuration.
     """
 
-    def __init__(self,
-                 config: dict):
+    def __init__(self, config: dict):
 
         # Store the experiment configuration
         self.m__config_model = config['experiment']['model']
@@ -54,7 +53,7 @@ class HalfSiblingRegression(ModelPrototype):
         self.m__pixscale = config['dataset']['pixscale']
         self.m__roi_ier = config['experiment']['roi']['inner_exclusion_radius']
         self.m__roi_oer = config['experiment']['roi']['outer_exclusion_radius']
-        self.m__use_forward_model = False
+        self.m__use_forward_model = config['experiment']['use_forward_model']
 
         # Define shortcuts to config elements
         self.m__experiment_dir = config['experiment_dir']
@@ -79,7 +78,7 @@ class HalfSiblingRegression(ModelPrototype):
 
     def get_difference_image(self,
                              stack: np.ndarray,
-                             parang: np.ndarray):
+                             parang: np.ndarray) -> np.ndarray:
         """
         Compute a difference image, which is essentially obtained by
         subtracting the "noise model" from the real data. This image
@@ -100,9 +99,6 @@ class HalfSiblingRegression(ModelPrototype):
             noise model's predictions for any given pixel in the ROI.
         """
 
-        # Define shortcuts
-        n_frames, width, height = stack.shape
-
         # Compute rotation angles: Remove the offset (which usually makes sure
         # that "up == North" in the derotated frames). This is necessary here
         # because the position indices will lose their meaning if we orient
@@ -111,6 +107,11 @@ class HalfSiblingRegression(ModelPrototype):
 
         # Initialize the result
         difference_img = np.zeros(self.m__frame_size)
+
+        # Initialize the residuals, in case are not using a forward model
+        no_fm_residuals = None
+        if not self.m__use_forward_model:
+            no_fm_residuals = deepcopy(stack)
 
         # Loop over all pixels in the ROI
         for position_outer, collection in \
@@ -123,37 +124,70 @@ class HalfSiblingRegression(ModelPrototype):
             # Make predictions for the current collection
             for position_inner, predictor in collection.m__predictors.items():
 
-                # Create the "systematics only" model: Copy the model and set
+                # Create the "systematics only" model: If the PixelPredictor
+                # includes the forward model, we simply copy the model and set
                 # the coefficient that corresponds to the planet model to 0
-                model = deepcopy(predictor.m__model)
-                model.coef_[-1] = 0
+                if predictor.m__use_forward_model:
+                    model = deepcopy(predictor.m__model)
+                    model.coef_[-1] = 0
+                else:
+                    model = predictor.m__model
 
-                # Create the sources for the prediction: We need still need to
+                # Create the sources for the prediction: We may still need to
                 # add a dummy column for the "planet signal" because the model
                 # expects that many input features. We simply set this column
                 # to all zeroes because the corresponding model coefficient is
                 # 0 anyway.
-                sources = np.column_stack([self.m__sources[position_inner],
-                                           np.zeros((n_frames, 1))])
+                if predictor.m__use_forward_model:
+                    tmp_sources = self.m__sources[position_inner]
+                    sources = predictor.augment_sources(tmp_sources)
+                else:
+                    sources = self.m__sources[position_inner]
 
-                # Make predictions for the current position (in the collection)
-                predictions[:, position_inner[0], position_inner[1]] = \
-                    model.predict(X=sources)
+                # Get the predictions of the model for this position
+                model_preds = model.predict(X=sources)
 
-                # Clean up the things we no longer need after this
-                del model
+                # Make predictions for the current position in the collection
+                if not self.m__use_forward_model:
+                    no_fm_residuals[:, position_outer[0],
+                                    position_outer[1]] -= model_preds
+                else:
+                    predictions[:, position_inner[0], position_inner[1]] = \
+                        model_preds
 
-            # Subtract the noise model's predictions from the original data
-            residuals = stack - predictions
+            # If we have used forward model, we need to derotate and average
+            # here already (because we are averaging over the collection)
+            if self.m__use_forward_model:
 
-            # Derotate and average the residuals
-            derotated = derotate_frames(stack=residuals,
+                # Subtract the noise model's predictions from the original data
+                residuals = stack - predictions
+
+                # Subtract the mean of the residuals
+                residuals -= np.mean(residuals, axis=0)
+
+                # If we have used a forward model, we need to derotate and
+                # average the residuals over the collection
+                derotated = derotate_frames(stack=residuals,
+                                            parang=rotation_angles)
+                averaged = np.median(derotated, axis=0)
+
+                # Now, keep only the result for the current position_outer
+                difference_img[position_outer[0], position_outer[1]] = \
+                    averaged[position_outer[0], position_outer[1]]
+
+        # In case we are not using a forward model, we can do the derotation
+        # and averaging after the processing all collections
+        if not self.m__use_forward_model:
+
+            # Subtract the mean of the residuals
+            no_fm_residuals -= np.mean(no_fm_residuals, axis=0)
+
+            # Derotate the residuals
+            derotated = derotate_frames(stack=no_fm_residuals,
                                         parang=rotation_angles)
-            averaged = np.median(derotated, axis=0)
 
-            # Keep only the result for the current position_outer
-            difference_img[position_outer[0], position_outer[1]] = \
-                averaged[position_outer[0], position_outer[1]]
+            # Take the median along the time axis
+            difference_img = np.median(derotated, axis=0)
 
         # After we have assembled the full difference image, we can derotate
         # it by the offset that is necessary to orient the result to the North
@@ -168,19 +202,51 @@ class HalfSiblingRegression(ModelPrototype):
 
         return derotated_difference_image
 
-    def get_detection_map(self,
-                          weighted=False):
+    def get_detection_map(self, weighted=False) -> np.ndarray:
+        """
+        Collect the detection map for the model.
 
+         A detection map contains, at each position (x, y) within the
+         region of interest, the average planet coefficient, where the
+         average is taken over all models that belong to the
+         PixelPredictorCollection for (x, y). If `weighted` is True,
+         then each coefficient is weighted with its inverse uncertainty.
+         In case we trained the model with use_forward_model=False,
+         the detection map is necessarily empty (because the model does
+         not contain a coefficient for the planet signal).
+
+        Args:
+            weighted: Whether or not to return the average of the
+                planet coefficient weighted by its respective inverse
+                uncertainty.
+
+        Returns:
+            A 2D numpy array containing the detection map for the model.
+        """
+
+        # Initialize an empty detection map
         detection_map = np.full(self.m__frame_size, np.nan)
-        for position, collection in self.m__collections.items():
+
+        # If we are not using a forward model, we obviously cannot compute a
+        # detection map, hence we return an empty detection map
+        if not self.m__use_forward_model:
+            print('\nWARNING: You called get_detection_map() with '
+                  'use_forward_model=False! Returned an empty detection map.')
+            return detection_map
+
+        # Otherwise, we can loop over all collections and collect the
+        # coefficients corresponding to the planet part of the model
+        for position, collection in \
+                tqdm(self.m__collections.items(), ncols=80):
+
+            # Get both the weighted and unweighted average and store it at
+            # the correct position within the detection map
             avg_weighted, avg = collection.get_average_signal_coef()
-            if weighted:
-                detection_map[position] = avg_weighted
-            else:
-                detection_map[position] = avg
+            detection_map[position] = avg_weighted if weighted else avg
+
         return detection_map
 
-    def get_detection_stack(self):
+    def get_detection_stack(self) -> np.ndarray:
         detection_frames = []
         for position, collection in self.m__collections.items():
             tmp_detection_frame = \
@@ -190,8 +256,7 @@ class HalfSiblingRegression(ModelPrototype):
 
         return np.array(detection_frames)
 
-    def precompute_pca(self,
-                       stack: np.ndarray):
+    def precompute_pca(self, stack: np.ndarray):
         """
         Pre-compute the PCA of the predictor pixels for every position.
 
@@ -210,7 +275,8 @@ class HalfSiblingRegression(ModelPrototype):
 
         # Define some shortcuts
         region_size = self.m__config_sources['predictor_region_radius']
-        n_components = self.m__config_sources['n_pca_components']
+        n_components = self.m__config_sources['pca_components']
+        pca_mode = self.m__config_sources['pca_mode']
 
         # Compute the region for which we need to pre-compute the PCA
         psf_radius_pixel = np.ceil(self.m__config_psf_template['psf_radius'] *
@@ -223,33 +289,47 @@ class HalfSiblingRegression(ModelPrototype):
 
         # Loop over all pixels for which we need to select the predictor
         # pixels and run PCA on them
-        for position in tqdm(pca_region_positions,
-                             total=len(pca_region_positions), ncols=80):
+        for position in tqdm(pca_region_positions, ncols=80):
 
-            # Get predictor pixels
-            predictor_mask = \
-                get_predictor_mask(mask_size=tuple(stack.shape[1:]),
-                                   position=position,
-                                   region_size=region_size)
+            # Get predictor pixels ("sources", as opposed to "targets")
+            predictor_mask = get_predictor_mask(mask_size=self.m__frame_size,
+                                                position=position,
+                                                region_size=region_size)
             sources = stack[:, predictor_mask]
 
-            # Set up a PCA and fit it to the predictor pixels
-            # Note: We take the transpose of the sources, such that the
-            # principal components found by the PCA are also time series
-            # which we then use as the basis for fitting the noise.
+            # Set up the principal component analysis (PCA)
             pca = PCA(n_components=n_components)
-            pca.fit(X=sources.T)
 
-            # Get the principal components and the mean (which is
-            # automatically removed by the PCA) and stack them together
-            pca_comp = pca.components_
-            pca_mean = pca.mean_
-            tmp_sources = np.row_stack([pca_comp,
-                                        pca_mean.reshape((1, -1))])
-            tmp_sources /= np.max(tmp_sources, axis=0)
+            # Depending on the pca_mode, we either use the PCs directly...
+            if pca_mode == 'fit':
+    
+                # Fit the PCA to the data
+                # Note: We take the transpose of the sources, such that the
+                # principal components found by the PCA are also time series.
+                pca.fit(X=sources.T)
 
-            # Transpose back the result and and store it
-            self.m__sources[position] = tmp_sources.T
+                # Get the principal components and the mean (which is
+                # automatically removed by the PCA) and stack them together
+                tmp_sources = np.row_stack([pca.components_,
+                                            pca.mean_.reshape((1, -1))])
+
+                # Normalize such that the maximum value of every time series
+                # is 1, and undo the transpose again
+                # TODO: Is this a good way of "normalizing" the sources?
+                tmp_sources /= np.max(tmp_sources, axis=0)
+                tmp_sources = tmp_sources.T
+
+            # ...or the original data projected onto the PCs
+            elif pca_mode == 'fit_transform':
+
+                # Fit the transform and project the data onto the PCs
+                tmp_sources = pca.fit_transform(X=sources)
+
+            else:
+                raise ValueError('pca_mode must be one of the following: '
+                                 '"fit" or "fit_transform"!')
+
+            self.m__sources[position] = tmp_sources
 
     def train(self,
               stack: np.ndarray,
@@ -282,9 +362,6 @@ class HalfSiblingRegression(ModelPrototype):
             print('\nself.m__sources was empty! Running PCA pre-computation:')
             self.precompute_pca(stack)
             print()
-
-        # If we have received a PSF template, we know we use forward modeling
-        self.m__use_forward_model = psf_template is not None
 
         # ---------------------------------------------------------------------
         # Crop the PSF template to the size specified in the config
@@ -387,7 +464,7 @@ class PixelPredictorCollection(object):
         self.m__collection_name = \
             f'collection_{self.m__position[0]}_{self.m__position[1]}'
 
-    def get_average_signal_coef(self):
+    def get_average_signal_coef(self) -> Tuple[float, float]:
 
         # Get signal coefficients and their uncertainties for all pixel
         # predictors in the collection
@@ -410,10 +487,9 @@ class PixelPredictorCollection(object):
         average_weighted = np.average(a=signal_coefs,
                                       weights=(1 / signal_sigma_coefs))
 
-        return average_weighted, average
+        return float(average_weighted), float(average)
 
-    def get_detection_frame(self,
-                            frame_size):
+    def get_detection_frame(self, frame_size) -> np.ndarray:
 
         detection_frame = np.full(frame_size, np.nan)
         for position, pixel_predictor in self.m__predictors.items():
@@ -453,19 +529,21 @@ class PixelPredictorCollection(object):
             # Get regression target
             targets = stack[:, position[0], position[1]]
 
-            # Get planet signal
-            planet_signal = signal_stack[:, position[0], position[1]]
+            # Get planet signal (only if we are using a forward model)
+            if self.m__use_forward_model:
+                planet_signal = signal_stack[:, position[0], position[1]]
+            else:
+                planet_signal = None
 
             # Get predictor pixels
             tmp_sources = sources[position]
 
-            # Add planet signal from forward modeling to sources
-            tmp_sources = np.column_stack([tmp_sources,
-                                           planet_signal.reshape(-1, 1)])
-
             # Create a new pixel predictor
-            pixel_predictor = PixelPredictor(position=position,
-                                             config_model=self.m__config_model)
+            pixel_predictor = \
+                PixelPredictor(position=position,
+                               config_model=self.m__config_model,
+                               planet_signal=planet_signal,
+                               use_forward_model=self.m__use_forward_model)
 
             # Train pixel predictor
             pixel_predictor.train(sources=tmp_sources,
@@ -480,8 +558,7 @@ class PixelPredictorCollection(object):
 
         del signal_stack
 
-    def save(self,
-             models_root_dir: str):
+    def save(self, models_root_dir: str):
 
         # Create folder for all models in this collection
         collection_dir = os.path.join(models_root_dir, self.m__collection_name)
@@ -495,8 +572,7 @@ class PixelPredictorCollection(object):
         file_path_predictors = os.path.join(collection_dir, 'predictors.pkl')
         joblib.dump(self.m__predictors, filename=file_path_predictors)
 
-    def load(self,
-             models_root_dir: str):
+    def load(self, models_root_dir: str):
 
         # Construct name of directory that contains this collection, and check
         # if it exists
@@ -522,11 +598,15 @@ class PixelPredictor(object):
 
     def __init__(self,
                  position: tuple,
-                 config_model: dict):
+                 config_model: dict,
+                 planet_signal: np.ndarray,
+                 use_forward_model: bool):
 
         # Store constructor arguments
         self.m__position = position
         self.m__config_model = config_model
+        self.m__planet_signal = planet_signal
+        self.m__use_forward_model = use_forward_model
 
         # Create predictor name and placeholder for model
         self.m__name = f'model__{position[0]}_{position[1]}.pkl'
@@ -546,6 +626,25 @@ class PixelPredictor(object):
             return self.m__model.coef_
         return None
 
+    def augment_sources(self, sources) -> np.ndarray:
+        """
+        Augment the given `sources` by self.m__planet_signal by adding
+        it as a column to `sources` and return the result.
+
+        Args:
+            sources: A 2D numpy array of shape (n_samples, n_features),
+                containing the "independent variables" for the fit.
+
+        Returns:
+            The augmented sources, that is, a 2D numpy array of shape
+            (n_samples, n_features + 1), where the last column is
+            given by self.m__planet_signal.
+        """
+        if self.m__use_forward_model:
+            planet_signal = self.m__planet_signal.reshape(-1, 1)
+            sources = np.column_stack([sources, planet_signal])
+        return sources
+
     def train(self,
               sources: np.ndarray,
               targets: np.ndarray):
@@ -556,13 +655,21 @@ class PixelPredictor(object):
                               class_name=self.m__config_model['class'])
         self.m__model = model_class(**self.m__config_model['parameters'])
 
+        # Augment the sources: If we are using a forward model, we need to
+        # add the planet signal as a new column to the sources here; if not,
+        # we leave the sources unchanged
+        sources = self.augment_sources(sources)
+
         # Fit model to the training data
         self.m__model.fit(X=sources, y=targets)
 
         # Compute uncertainties for coefficients
         self.sigma_coef_ = np.diag(np.linalg.pinv(np.dot(sources.T, sources)))
 
-    def predict(self,
-                sources: np.ndarray) -> np.ndarray:
+    def predict(self, sources: np.ndarray) -> np.ndarray:
 
+        # Augment sources based on self.m__use_forward model
+        sources = self.augment_sources(sources)
+
+        # Make prediction and return it
         return self.m__model.predict(X=sources)
