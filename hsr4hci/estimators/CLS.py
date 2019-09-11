@@ -116,7 +116,8 @@ class ConstrainedLeastSquares(LinearModel, RegressorMixin):
 
         # Use scipy.optimize.lsq_linear to fit the constrained linear model
         # and get the coefficients (this does all the hard work!)
-        coefficients = lsq_linear(X, y, bounds=bounds, **kwargs).x
+        with np.errstate(all='ignore'):
+            coefficients = lsq_linear(X, y, bounds=bounds, **kwargs).x
 
         # Separate the intercept and the coefficients and store the results
         if self.fit_intercept:
