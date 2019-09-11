@@ -184,7 +184,7 @@ def load_data(dataset_config: dict) -> Tuple[np.ndarray, np.ndarray,
 
         # If applicable, also select the PSF template
         if psf_template_key is not None:
-            psf_template = np.array(hdf_file[psf_template_key])
+            psf_template = np.array(hdf_file[psf_template_key]).squeeze()
         else:
             psf_template = None
 
