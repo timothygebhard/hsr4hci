@@ -78,6 +78,64 @@ class HalfSiblingRegression(ModelPrototype):
         # Initialize a dict that will hold the PCA results for all positions
         self.m__sources = dict()
 
+    def get_best_fit_planet_model(self,
+                                  detection_map: np.ndarray,
+                                  stack_shape: Tuple[int, int, int],
+                                  parang: np.ndarray,
+                                  psf_template: np.ndarray) -> np.ndarray:
+        """
+        Get the best fit planet model (BFPM).
+
+        TODO: Is this even the "right" way to compute the BFPM?
+
+        Args:
+            detection_map: A 2D numpy array containing the detection map
+                obtained with get_detection_map().
+            stack_shape: A tuple containing the shape of the stack on
+                which we trained the model, which will also be the shape
+                of the array containing the best fit planet model.
+            parang: A 1D numpy array containing the parallactic angles.
+            psf_template: A 2D numpy array containing the unsaturated
+                PSF template (raw, i.e., not cropped or masked).
+
+        Returns:
+            A 3D numpy array with the same shape as `stack` that
+            contains our best fit planet model.
+        """
+
+        # Crop the PSF template to the size specified in the config
+        crop_psf_template_arguments = \
+            {'psf_template': psf_template,
+             'psf_radius': self.m__config_psf_template['psf_radius'],
+             'rescale_psf': self.m__config_psf_template['rescale_psf'],
+             'pixscale': self.m__pixscale,
+             'lambda_over_d': self.m__lambda_over_d}
+        psf_cropped = crop_psf_template(**crop_psf_template_arguments)
+
+        # Initialize the best fit planet model
+        best_fit_planet_model = np.zeros(stack_shape)
+
+        # Loop over all pixels in the ROI
+        roi_pixels = get_positions_from_mask(self.m__roi_mask)
+        for position in tqdm(roi_pixels, total=len(roi_pixels), ncols=80):
+
+            # Compute the forward model for this position
+            signal_stack = get_signal_stack(position=position,
+                                            frame_size=self.m__frame_size,
+                                            parang=parang,
+                                            psf_cropped=psf_cropped)
+
+            # Compute the weight according to the detection map
+            factor = detection_map[position[0], position[1]]
+
+            # Add the forward model for this position to the best fit model
+            best_fit_planet_model += factor * signal_stack
+
+        # Normalize the result
+        best_fit_planet_model /= np.nansum(detection_map)
+
+        return best_fit_planet_model
+
     def get_difference_image(self,
                              stack: np.ndarray,
                              parang: np.ndarray) -> np.ndarray:
