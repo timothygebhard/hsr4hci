@@ -90,7 +90,7 @@ def get_data_dir() -> str:
     # Markus's computers
     # -------------------------------------------------------------------------
 
-    if hostname == 'bluesky':
+    if hostname == 'bluesky' and username == 'mbonse':
         return '/net/ipa-gate.phys.ethz.ch/export/ipa/meyer/hsr'
 
     if hostname in ('Markuss-MacBook-Pro.local', 'Markuss-MBP'):
@@ -107,6 +107,10 @@ def get_data_dir() -> str:
     # If connected to the ETH wifi (which changes the hostname)
     if bool(re.match(r'^\S+.ethz.ch$', hostname)) and username == 'timothy':
         return os.path.expanduser('~/Documents/PhD/datasets/exoplanets')
+
+    # If on BlueSky
+    if hostname == 'bluesky' and username == 'gebharti':
+        return '/home/gebharti/datasets/exoplanets'
 
     # -------------------------------------------------------------------------
     # Default: Raise ValueError
