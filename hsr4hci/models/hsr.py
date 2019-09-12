@@ -78,6 +78,34 @@ class HalfSiblingRegression(ModelPrototype):
         # Initialize a dict that will hold the PCA results for all positions
         self.m__sources = dict()
 
+    def get_predictions(self, stack_shape: Tuple[int, int, int]) -> np.ndarray:
+        """
+        Get the predictions of the models we have learned.
+
+        Args:
+            stack_shape: A tuple containing the shape of the stack on
+                which we trained the model.
+
+        Returns:
+            A 3D numpy array with the same shape as `stack_shape` that
+            contains at each position (x, y) in the region of interest
+            the prediction of the model for (x, y) -- taken from the
+            collection at the same position -- on the data that it was
+            trained on (i.e., NOT on the given `stack`).
+            For positions for which no model was trained, the prediction
+            default to NaN (i.e., you might want to use np.nan_to_num()
+            before subtracting the predictions from your data to get the
+            residuals of the model).
+        """
+
+        predictions = np.full(stack_shape, np.nan)
+        for position, collection in \
+                tqdm(self.m__collections.items(), ncols=80):
+            predictor = collection.m__predictors[position]
+            predictions[:, position[0], position[1]] = \
+                predictor.predict(self.m__sources[position])
+        return predictions
+
     def get_best_fit_planet_model(self,
                                   detection_map: np.ndarray,
                                   stack_shape: Tuple[int, int, int],
