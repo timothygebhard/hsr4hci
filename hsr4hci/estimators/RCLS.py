@@ -102,7 +102,7 @@ class RCLS(LinearModel, RegressorMixin):
         return coef_bounds, intercept_bounds
 
     def _loss_fn(self, X, y):
-        return cp.pnorm((cp.matmul(X, self.coef_) + self.intercept_) - y) ** 2
+        return cp.sum_squares(X * self.coef_ - y + self.intercept_)
 
     def _regularization_term(self):
 
@@ -199,7 +199,13 @@ class RCLS(LinearModel, RegressorMixin):
         problem = cp.Problem(objective=objective, constraints=constraints)
         problem.solve(solver='SCS')
 
-        # TODO: Add check if the optimization actually terminated successfully!
+        # TODO: This solution is still unsatisfying!
+        # If the solver failed, we can try again without the constraints?
+        if self.intercept_.value is None:
+            print('WARNING: Optimization failed, trying again without '
+                  'constraints!')
+            problem = cp.Problem(objective=objective)
+            problem.solve(solver='SCS')
 
         # Cast the results to a numpy array / a float
         self.coef_ = np.array(self.coef_.value)
@@ -241,6 +247,9 @@ class ExoplanetRCLS(RCLS):
 # -----------------------------------------------------------------------------
 
 if __name__ == '__main__':
+
+    # Fix random seed
+    np.random.seed(42)
 
     # Make sure the estimator complies with the sklearn API for estimators
     check_estimator(RCLS)
