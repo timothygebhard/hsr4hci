@@ -308,7 +308,7 @@ class HalfSiblingRegression(ModelPrototype):
                 # Normalize such that the maximum value of every time series
                 # is 1, and undo the transpose again
                 # TODO: Is this a good way of "normalizing" the sources?
-                tmp_sources /= np.max(tmp_sources, axis=0)
+                # tmp_sources /= np.max(tmp_sources, axis=0)
                 tmp_sources = tmp_sources.T
 
             # ...or the original data projected onto the PCs
