@@ -24,9 +24,14 @@
             "rescale_psf": true
         },
         "sources": {
-            "predictor_region_radius": 5,
+            "mask": {
+                "type": "default",
+                "parameters": {
+                    "region_size": 5
+                }
+            },
             "pca_mode": "fit_transform",
-            "pca_components": 16
+            "pca_components": 32
         },
         "model": {
             "module": "sklearn.linear_model",
