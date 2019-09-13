@@ -352,9 +352,10 @@ class HalfSiblingRegression(ModelPrototype):
         """
 
         # Define some shortcuts
-        region_size = self.m__config_sources['predictor_region_radius']
         n_components = self.m__config_sources['pca_components']
         pca_mode = self.m__config_sources['pca_mode']
+        mask_type = self.m__config_sources['mask']['type']
+        mask_params = self.m__config_sources['mask']['parameters']
 
         # Compute the region for which we need to pre-compute the PCA
         psf_radius_pixel = np.ceil(self.m__config_psf_template['psf_radius'] *
@@ -369,10 +370,16 @@ class HalfSiblingRegression(ModelPrototype):
         # pixels and run PCA on them
         for position in tqdm(pca_region_positions, ncols=80):
 
+            # Collect options for mask creation
+            mask_args = dict(mask_size=self.m__frame_size,
+                             position=position,
+                             mask_params=mask_params,
+                             lambda_over_d=self.m__lambda_over_d,
+                             pixscale=self.m__pixscale)
+
             # Get predictor pixels ("sources", as opposed to "targets")
-            predictor_mask = get_predictor_mask(mask_size=self.m__frame_size,
-                                                position=position,
-                                                region_size=region_size)
+            predictor_mask = get_predictor_mask(mask_type=mask_type,
+                                                mask_args=mask_args)
             sources = stack[:, predictor_mask]
 
             # Set up the principal component analysis (PCA)
