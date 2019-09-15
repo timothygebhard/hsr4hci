@@ -101,14 +101,14 @@ def get_data_dir() -> str:
     # -------------------------------------------------------------------------
 
     # If connected to "normal" networks
-    if hostname == 'Timothys-MacBook-Pro.local':
+    if hostname in ('Timothys-MacBook-Pro.local', 'Timothys-MBP'):
         return os.path.expanduser('~/Documents/PhD/datasets/exoplanets')
 
     # If connected to the ETH wifi (which changes the hostname)
     if bool(re.match(r'^\S+.ethz.ch$', hostname)) and username == 'timothy':
         return os.path.expanduser('~/Documents/PhD/datasets/exoplanets')
 
-    # If on BlueSky
+    # If running on BlueSky
     if hostname == 'bluesky' and username == 'gebharti':
         return '/home/gebharti/datasets/exoplanets'
 
