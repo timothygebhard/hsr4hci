@@ -78,6 +78,74 @@ class HalfSiblingRegression(ModelPrototype):
         # Initialize a dict that will hold the PCA results for all positions
         self.m__sources = dict()
 
+    def get_coefficients_and_uncertainties(self) -> Tuple[np.ndarray,
+                                                          np.ndarray]:
+        """
+        Get the planet coefficients and uncertainties for all positions.
+
+        Returns:
+            Two numpy arrays, `coefficients` and `uncertainties`. Each
+            has shape (max_size, width, height), where width and height
+            refer to the spatial size of the stack on which the model
+            was trained, and max_size is the number of pixels / models
+            in the largest collection region.
+            At each spatial position (x, y), the arrays hold all planet
+            signal coefficients and their respective uncertainties. For
+            all positions where the respective collection contains less
+            pixels than max_size, the remaining array entries are filled
+            with NaN; the same holds for all positions for which no
+            collection was trained in the first place.
+            These two arrays are useful to experiment with the way the
+            detection map is computed. For example, a straightforward
+            and simple way to obtain a detection map is to take the
+            nanmedian along the first axis of the `coefficients` array.
+        """
+
+        # Initialize dictionaries to temporary hold the coefficients and
+        # uncertainties that we will collect
+        tmp_coefficients = dict()
+        tmp_uncertainties = dict()
+
+        # Keep track of the largest number of coefficients in a collection
+        # (the size of a collection depends on its position)
+        max_size = 0
+
+        # Loop over all collections
+        for position, collection in self.m__collections.items():
+
+            # Collect the coefficients and uncertainties for this collection
+            collection_coefficients = list()
+            collection_uncertainties = list()
+            for _, predictor in collection.m__predictors.items():
+                coefficient, uncertainty = predictor.get_signal_coef()
+                collection_coefficients.append(coefficient)
+                collection_uncertainties.append(uncertainty)
+
+            # Store them and update the maximum number of coefficients
+            tmp_coefficients[position] = collection_coefficients
+            tmp_uncertainties[position] = collection_uncertainties
+            max_size = max(max_size, len(collection_coefficients))
+
+        # Define the shape of the output arrays, and initialize them as numpy
+        # arrays full of NaNs
+        output_shape = (max_size, ) + tuple(self.m__frame_size)
+        coefficients = np.full(output_shape, np.nan)
+        uncertainties = np.full(output_shape, np.nan)
+
+        # Convert the dictionary of coefficients into an array
+        for position, position_coefficients in tmp_coefficients.items():
+            n_entries = len(position_coefficients)
+            coefficients[:n_entries, position[0], position[1]] = \
+                position_coefficients
+
+        # Convert the dictionary of uncertainties into an array
+        for position, position_uncertainties in tmp_uncertainties.items():
+            n_entries = len(position_uncertainties)
+            uncertainties[:n_entries, position[0], position[1]] = \
+                position_uncertainties
+
+        return coefficients, uncertainties
+
     def get_predictions(self, stack_shape: Tuple[int, int, int]) -> np.ndarray:
         """
         Get the predictions of the models we have learned.
