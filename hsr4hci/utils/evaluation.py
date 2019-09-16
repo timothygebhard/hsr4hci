@@ -20,7 +20,7 @@ import numpy as np
 
 def compute_figures_of_merit(frame: np.ndarray,
                              position: Tuple[int, int],
-                             aperture_size: int,
+                             aperture_size: float,
                              ignore_neighbors: bool,
                              optimize: Optional[str]) -> dict:
     """
