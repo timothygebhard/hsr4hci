@@ -129,8 +129,8 @@ class HalfSiblingRegression(ModelPrototype):
         # Define the shape of the output arrays, and initialize them as numpy
         # arrays full of NaNs
         output_shape = (max_size, ) + tuple(self.m__frame_size)
-        coefficients = np.full(output_shape, np.nan)
-        uncertainties = np.full(output_shape, np.nan)
+        coefficients = np.full(output_shape, np.nan).astype(np.float32)
+        uncertainties = np.full(output_shape, np.nan).astype(np.float32)
 
         # Convert the dictionary of coefficients into an array
         for position, position_coefficients in tmp_coefficients.items():
@@ -166,7 +166,7 @@ class HalfSiblingRegression(ModelPrototype):
             residuals of the model).
         """
 
-        predictions = np.full(stack_shape, np.nan)
+        predictions = np.full(stack_shape, np.nan).astype(np.float32)
         for position, collection in \
                 tqdm(self.m__collections.items(), ncols=80):
             predictor = collection.m__predictors[position]
@@ -209,7 +209,7 @@ class HalfSiblingRegression(ModelPrototype):
         psf_cropped = crop_psf_template(**crop_psf_template_arguments)
 
         # Initialize the best fit planet model
-        best_fit_planet_model = np.zeros(stack_shape)
+        best_fit_planet_model = np.zeros(stack_shape).astype(np.float32)
 
         # Loop over all pixels in the ROI
         roi_pixels = get_positions_from_mask(self.m__roi_mask)
@@ -262,7 +262,7 @@ class HalfSiblingRegression(ModelPrototype):
         rotation_angles = parang - parang[0]
 
         # Initialize the result
-        difference_img = np.zeros(self.m__frame_size)
+        difference_img = np.zeros(self.m__frame_size).astype(np.float32)
 
         # Initialize the residuals, in case are not using a forward model
         no_fm_residuals = None
@@ -275,7 +275,7 @@ class HalfSiblingRegression(ModelPrototype):
 
             # Create an empty array that has the same size as the train stack
             # which will hold our predictions for every pixel and time step
-            predictions = np.zeros(stack.shape)
+            predictions = np.zeros(stack.shape).astype(np.float32)
 
             # Make predictions for the current collection
             for position_inner, predictor in collection.m__predictors.items():
@@ -381,7 +381,7 @@ class HalfSiblingRegression(ModelPrototype):
         """
 
         # Initialize an empty detection map
-        detection_map = np.full(self.m__frame_size, np.nan)
+        detection_map = np.full(self.m__frame_size, np.nan).astype(np.float32)
 
         # If we are not using a forward model, we obviously cannot compute a
         # detection map, hence we return an empty detection map
@@ -448,7 +448,7 @@ class HalfSiblingRegression(ModelPrototype):
             # Get predictor pixels ("sources", as opposed to "targets")
             predictor_mask = get_predictor_mask(mask_type=mask_type,
                                                 mask_args=mask_args)
-            sources = stack[:, predictor_mask]
+            sources = stack[:, predictor_mask].astype(np.float32)
 
             # Set up the principal component analysis (PCA)
             pca = PCA(n_components=n_components)
@@ -482,7 +482,7 @@ class HalfSiblingRegression(ModelPrototype):
                 raise ValueError('pca_mode must be one of the following: '
                                  '"fit" or "fit_transform"!')
 
-            self.m__sources[position] = tmp_sources
+            self.m__sources[position] = tmp_sources.astype(np.float32)
 
     def train(self,
               stack: np.ndarray,
@@ -728,7 +728,7 @@ class PixelPredictorCollection:
             respective spatial position.
         """
 
-        detection_frame = np.full(frame_size, np.nan)
+        detection_frame = np.full(frame_size, np.nan).astype(np.float32)
         for position, pixel_predictor in self.m__predictors.items():
             w_p, _ = pixel_predictor.get_signal_coef()
             detection_frame[position] = w_p

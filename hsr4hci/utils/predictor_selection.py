@@ -81,7 +81,7 @@ def get_default_mask(mask_size: tuple,
     """
 
     # Initialize an empty mask and compute its center
-    mask = np.zeros(mask_size)
+    mask = np.zeros(mask_size).astype(np.bool)
     center = (mask_size[0] / 2, mask_size[1] / 2)
 
     # Compute polar representation of the position
@@ -99,7 +99,7 @@ def get_default_mask(mask_size: tuple,
                         int(np.real(new_complex_position) + center[1]))
 
         if region_size is None:
-            mask[new_position] = 1
+            mask[new_position] = True
         else:
             disk = get_circle_mask(mask_size=mask_size,
                                    radius=region_size,
@@ -129,13 +129,13 @@ def get_default_grid_mask(mask_size: tuple,
     # Additionally, add a grid to the mask
     xx, yy = np.meshgrid(np.arange(0, mask_size[0], 2 * int(lod_pixels))[1:-1],
                          np.arange(0, mask_size[1], 2 * int(lod_pixels))[1:-1])
-    mask[xx, yy] = 1
+    mask[xx, yy] = True
 
     # Exclude everything in a given region around the position
     exclusion_mask = get_circle_mask(mask_size=mask_size,
                                      radius=(exclusion_radius * lod_pixels),
                                      center=position)
-    mask[exclusion_mask] = 0
+    mask[exclusion_mask] = False
     
     return mask
 
@@ -147,10 +147,10 @@ def get_santa_mask(mask_size: tuple,
 
     # Compute lambda / D in units of pixels
     lod_pixels = lambda_over_d / pixscale
-    
-    mask = np.zeros(mask_size)
+
+    mask = np.zeros(mask_size).astype(np.bool)
     center = (mask_size[0] / 2, mask_size[1] / 2)
-    
+
     # Compute polar representation of the position
     radius, phi = polar(complex(position[1] - center[1],
                                 position[0] - center[0]))
@@ -169,7 +169,7 @@ def get_santa_mask(mask_size: tuple,
                 axes=tuple(map(int, (5 * lod_pixels, 4 * lod_pixels))),
                 **ellipse_options)
     ellipse = ellipse.astype(bool)
-    mask[ellipse] = 1
+    mask[ellipse] = True
 
     # Add disk mask at mirror position
     new_complex_position = radius * np.exp(1j * (phi + np.pi))
@@ -181,7 +181,7 @@ def get_santa_mask(mask_size: tuple,
                 axes=tuple(map(int, (4.5 * lod_pixels, 3 * lod_pixels))),
                 **ellipse_options)
     ellipse = ellipse.astype(bool)
-    mask[ellipse] = 1
+    mask[ellipse] = True
 
     # Add annulus around frame center
     annulus = get_annulus_mask(mask_size=mask_size,
@@ -196,6 +196,6 @@ def get_santa_mask(mask_size: tuple,
                 axes=tuple(map(int, (5 * lod_pixels, 2.5 * lod_pixels))),
                 **ellipse_options)
     exclusion_mask = exclusion_mask.astype(bool)
-    mask[exclusion_mask] = 0
+    mask[exclusion_mask] = False
 
     return mask
