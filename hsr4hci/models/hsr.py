@@ -460,17 +460,7 @@ class HalfSiblingRegression(ModelPrototype):
                 # Note: We take the transpose of the sources, such that the
                 # principal components found by the PCA are also time series.
                 pca.fit(X=sources.T)
-
-                # Get the principal components and the mean (which is
-                # automatically removed by the PCA) and stack them together
-                tmp_sources = np.row_stack([pca.components_,
-                                            pca.mean_.reshape((1, -1))])
-
-                # Normalize such that the maximum value of every time series
-                # is 1, and undo the transpose again
-                # TODO: Is this a good way of "normalizing" the sources?
-                # tmp_sources /= np.max(tmp_sources, axis=0)
-                tmp_sources = tmp_sources.T
+                tmp_sources = np.sqrt(pca.singular_values_) * pca.components_.T
 
             # ...or the original data projected onto the PCs
             elif pca_mode == 'fit_transform':
