@@ -419,13 +419,10 @@ class HalfSiblingRegression(ModelPrototype):
                 containing the stack of frames to train on.
         """
 
-        # Define some shortcuts
-        n_components = self.m__config_sources['pca_components']
-        pca_mode = self.m__config_sources['pca_mode']
-        mask_type = self.m__config_sources['mask']['type']
-        mask_params = self.m__config_sources['mask']['parameters']
-
-        # Compute the region for which we need to pre-compute the PCA
+        # Compute the region for which we need to pre-compute the PCA. This
+        # is essentially the region of interest (ROI), but slightly expanded
+        # to take into account the pixels in the collection region of a
+        # position on the edge of the ROI.
         psf_radius_pixel = np.ceil(self.m__config_psf_template['psf_radius'] *
                                    self.m__lambda_over_d / self.m__pixscale)
         roi_radius_pixel = np.ceil(self.m__roi_oer / self.m__pixscale)
@@ -438,41 +435,78 @@ class HalfSiblingRegression(ModelPrototype):
         # pixels and run PCA on them
         for position in tqdm(pca_region_positions, ncols=80):
 
-            # Collect options for mask creation
-            mask_args = dict(mask_size=self.m__frame_size,
-                             position=position,
-                             mask_params=mask_params,
-                             lambda_over_d=self.m__lambda_over_d,
-                             pixscale=self.m__pixscale)
+            # Compute the PCA for a given pixel and store the result
+            tmp_sources = self.precompute_pca_position(stack=stack,
+                                                       position=position)
+            self.m__sources[position] = tmp_sources
 
-            # Get predictor pixels ("sources", as opposed to "targets")
-            predictor_mask = get_predictor_mask(mask_type=mask_type,
-                                                mask_args=mask_args)
-            sources = stack[:, predictor_mask].astype(np.float32)
+    def precompute_pca_position(self,
+                                stack: np.ndarray,
+                                position: Tuple[int, int]) -> np.ndarray:
+        """
+        Precompute the PCA for a given position (i.e., a single pixel).
 
-            # Set up the principal component analysis (PCA)
-            pca = PCA(n_components=n_components)
+        Args:
+            stack: A 3D numpy array of shape (n_frames, width, height)
+                containing the stack of frames to train on.
+            position: A tuple (x, y) containing the position for which
+                to pre-compute the PCA.
 
-            # Depending on the pca_mode, we either use the PCs directly...
-            if pca_mode == 'fit':
+        Returns:
+            The `sources` for the given position.
+        """
 
-                # Fit the PCA to the data
-                # Note: We take the transpose of the sources, such that the
-                # principal components found by the PCA are also time series.
-                pca.fit(X=sources.T)
-                tmp_sources = np.sqrt(pca.singular_values_) * pca.components_.T
+        # Define some shortcuts
+        n_components = self.m__config_sources['pca_components']
+        pca_mode = self.m__config_sources['pca_mode']
+        sv_power = self.m__config_sources['sv_power']
+        mask_type = self.m__config_sources['mask']['type']
+        mask_params = self.m__config_sources['mask']['parameters']
 
-            # ...or the original data projected onto the PCs
-            elif pca_mode == 'fit_transform':
+        # Collect options for mask creation
+        mask_args = dict(mask_size=self.m__frame_size,
+                         position=position,
+                         mask_params=mask_params,
+                         lambda_over_d=self.m__lambda_over_d,
+                         pixscale=self.m__pixscale)
 
-                # Fit the transform and project the data onto the PCs
-                tmp_sources = pca.fit_transform(X=sources)
+        # Get predictor pixels ("sources", as opposed to "targets")
+        predictor_mask = get_predictor_mask(mask_type=mask_type,
+                                            mask_args=mask_args)
+        sources = stack[:, predictor_mask].astype(np.float32)
 
-            else:
-                raise ValueError('pca_mode must be one of the following: '
-                                 '"fit" or "fit_transform"!')
+        # Set up the principal component analysis (PCA)
+        pca = PCA(n_components=n_components)
 
-            self.m__sources[position] = tmp_sources.astype(np.float32)
+        # Depending on the pca_mode, we either use the PCs directly...
+        if pca_mode == 'fit':
+
+            # Fit the PCA to the data. We take the transpose of the sources
+            # such that the  principal components found by the PCA are also
+            # time series.
+            pca.fit(X=sources.T)
+
+            # Select the principal components, undo the transposition, and
+            # multiply the them with the desired power of the  singular values
+            tmp_sources = pca.components_.T
+            tmp_sources *= np.power(pca.singular_values_, sv_power)
+
+        # ...or the original data projected onto the PCs
+        elif pca_mode == 'fit_transform':
+
+            # Fit the PCA, transform the data into the rotated coordinate
+            # system, and then multiply with the desired power of the singular
+            # values. This is equivalent to first multiplying the PCs with the
+            # SVs and then projecting; however, fit_transform() is generally
+            # more efficient.
+            tmp_sources = pca.fit_transform(X=sources)
+            tmp_sources *= np.power(pca.singular_values_, sv_power)
+
+        else:
+            raise ValueError('pca_mode must be one of the following: '
+                             '"fit" or "fit_transform"!')
+
+        return tmp_sources.astype(np.float32)
 
     def train(self,
               stack: np.ndarray,
@@ -566,7 +600,8 @@ class HalfSiblingRegression(ModelPrototype):
         collection = \
             PixelPredictorCollection(position=position,
                                      config_model=self.m__config_model,
-                                     use_forward_model=use_forward_model)
+                                     use_forward_model=use_forward_model,
+                                     hsr_instance=self)
 
         # Train and save the collection for this position
         collection.train_collection(stack=stack,
@@ -591,7 +626,8 @@ class HalfSiblingRegression(ModelPrototype):
             collection = \
                 PixelPredictorCollection(position=position,
                                          config_model=self.m__config_model,
-                                         use_forward_model=use_forward_model)
+                                         use_forward_model=use_forward_model,
+                                         hsr_instance=self)
             collection.load(models_root_dir=self.m__models_root_dir)
             self.m__collections[position] = collection
 
@@ -645,13 +681,19 @@ class PixelPredictorCollection:
     def __init__(self,
                  position: Tuple[int, int],
                  config_model: dict,
-                 use_forward_model: bool):
+                 use_forward_model: bool,
+                 hsr_instance: HalfSiblingRegression):
 
         self.m__collection_region = None
         self.m__config_model = config_model
         self.m__position = position
         self.m__predictors = dict()
         self.m__use_forward_model = use_forward_model
+
+        # This is to maintain a connection to the superordinate HSR instance,
+        # whose data and methods we need to access in some special cases.
+        # TODO: This feels hacky and we might want to find a better way!
+        self.hsr_instance = hsr_instance
 
         self.m__collection_name = \
             f'collection_{self.m__position[0]}_{self.m__position[1]}'
@@ -764,6 +806,24 @@ class PixelPredictorCollection:
         else:
             signal_stack = None
             self.m__collection_region = [self.m__position]
+
+        # ---------------------------------------------------------------------
+        # If needed, pre-compute the sources
+        # ---------------------------------------------------------------------
+
+        # In some cases (e.g., when we want to train the models for each pixel
+        # in the ROI in parallel on a cluster), we do not want to pre-compute
+        # the sources for all pixels. In this case, we need to compute the PCA
+        # here (only for the pixels in the collection region).
+        if not sources:
+
+            sources = dict()
+
+            # Pre-compute PCA for very pixel in the collection region
+            for position in tqdm(self.m__collection_region, ncols=80):
+                args = dict(stack=stack, position=position)
+                tmp_sources = self.hsr_instance.precompute_pca_position(**args)
+                sources[position] = tmp_sources
 
         # ---------------------------------------------------------------------
         # Loop over all positions in the collection region
