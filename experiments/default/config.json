@@ -1,16 +1,13 @@
 {
     "experiment_dir": null,
     "dataset": {
-        "file_path": "DATA_DIR/Beta_Pic/betapic_naco_lp_full.hdf5",
+        "file_path": "DATA_DIR/Beta_Pictoris/Lp/2013-02-01/processed/stacked_50.hdf",
         "stack_key": "/stack",
-        "parang_key": "/header_stack/PARANG",
-        "psf_template_key": "/flux",
+        "parang_key": "/parang",
+        "psf_template_key": "/psf_template",
         "pixscale": 0.0271,
         "lambda_over_d": 0.1,
-        "frame_size": [
-            81,
-            81
-        ],
+        "frame_size": [81, 81],
         "subsample": 1
     },
     "experiment": {
@@ -25,17 +22,18 @@
         },
         "sources": {
             "mask": {
-                "type": "default",
+                "type": "default_grid",
                 "parameters": {
                     "region_size": 5
                 }
             },
             "pca_mode": "fit_transform",
-            "pca_components": 32
+            "pca_components": 32,
+            "sv_power": 1
         },
         "model": {
             "module": "sklearn.linear_model",
-            "class": "LinearRegression",
+            "class": "RidgeCV",
             "parameters": {
                 "fit_intercept": true
             }
