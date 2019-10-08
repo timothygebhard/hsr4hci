@@ -63,14 +63,14 @@ def derotate_frames(stack: np.ndarray,
 
 
 def classical_adi(stack: np.ndarray,
-                  para_angles: np.ndarray,
+                  parang: np.ndarray,
                   mean: bool = False) -> np.ndarray:
     """
     Perform classical ADI on the given input stack.
 
     Args:
         stack: ADI stack of frames.
-        para_angles: Array of parallactic angles.
+        parang: Array of parallactic angles.
         mean: If True, use the mean along the time axis as the estimate
             for the PSF which is subtracted from all frames. Otherwise,
             use the median.
@@ -82,16 +82,16 @@ def classical_adi(stack: np.ndarray,
     # Create the PSF estimate (either as the mean or median along the
     # time axis of the frames before de-rotating)
     if mean:
-        psf_frame = np.mean(stack, axis=0)
+        psf_frame = np.nanmean(stack, axis=0)
     else:
-        psf_frame = np.median(stack, axis=0)
+        psf_frame = np.nanmedian(stack, axis=0)
 
     # Subtract the PSF estimate from every frame
     subtracted = stack - psf_frame
 
     # De-rotate all frames by their respective parallactic angles
-    residual_frames = derotate_frames(subtracted, para_angles)
+    residual_frames = derotate_frames(subtracted, parang)
 
     # TODO: Should we be able to choose between mean and median here?
     # Combine the residual frames by averaging along the time axis
-    return np.mean(residual_frames, axis=0)
+    return np.nanmean(residual_frames, axis=0)
