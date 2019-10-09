@@ -62,29 +62,39 @@ def derotate_frames(stack: np.ndarray,
     return derotated
 
 
-def classical_adi(stack: np.ndarray,
-                  parang: np.ndarray,
-                  mean: bool = False) -> np.ndarray:
+def derotate_combine(stack: np.ndarray,
+                     parang: np.ndarray,
+                     subtract: Optional[str] = 'median',
+                     combine: str = 'median') -> np.ndarray:
     """
-    Perform classical ADI on the given input stack.
+    Take a stack (of residuals), derotate the frames and combine them.
 
     Args:
-        stack: ADI stack of frames.
-        parang: Array of parallactic angles.
-        mean: If True, use the mean along the time axis as the estimate
-            for the PSF which is subtracted from all frames. Otherwise,
-            use the median.
+        stack: A 3D numpy array of shape (n_frames, width, height)
+            containing the stack of (residual) frames.
+        parang: A 1D numpy array of shape (n_frames, ) containing the
+            respective parallactic angle for each frame.
+        subtract: A string specifying what to subtract from the stack
+            before derotating the frames. Options are "mean", "median"
+            or None.
+        combine: A string specifying how to combine the frames after
+            derotating them. Options are "mean" or "median".
 
     Returns:
-        The classical ADI post-processing result of the input stack.
+        A 2D numpy array of shape (width, height) containing the
+        derotated and combined stack.
     """
 
-    # Create the PSF estimate (either as the mean or median along the
-    # time axis of the frames before de-rotating)
-    if mean:
+    # Create the classical ADI estimate of the PSF (either as the mean or
+    # median along the time axis of the frames before de-rotating)
+    if subtract == 'mean':
         psf_frame = np.nanmean(stack, axis=0)
-    else:
+    elif subtract == 'median':
         psf_frame = np.nanmedian(stack, axis=0)
+    elif subtract is None:
+        psf_frame = np.zeros(stack.shape[1:])
+    else:
+        raise ValueError('Illegal option for parameter "subtract"!')
 
     # Subtract the PSF estimate from every frame
     subtracted = stack - psf_frame
@@ -92,6 +102,9 @@ def classical_adi(stack: np.ndarray,
     # De-rotate all frames by their respective parallactic angles
     residual_frames = derotate_frames(subtracted, parang)
 
-    # TODO: Should we be able to choose between mean and median here?
     # Combine the residual frames by averaging along the time axis
-    return np.nanmean(residual_frames, axis=0)
+    if combine == 'mean':
+        return np.nanmean(residual_frames, axis=0)
+    if combine == 'median':
+        return np.nanmedian(residual_frames, axis=0)
+    raise ValueError('Illegal option for parameter "combine"!')
