@@ -6,11 +6,8 @@ Utilities for reading in config files.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-import getpass
 import json
 import os
-import re
-import socket
 
 
 # -----------------------------------------------------------------------------
@@ -62,59 +59,19 @@ def load_config(config_file_path: str) -> dict:
 
 def get_data_dir() -> str:
     """
-    Get the path to the data directory (based on the current host name).
+    Get the path to the data directory from an environment variable.
 
     Returns:
         Path to the data directory.
     """
 
-    # TODO: Getting the data directory based on the current hostname (and
-    #       possibly the username) seems increasingly messy (see below).
-    #       Can we maybe find a better solution here?
+    # Check if the HSR4HCI_DATA_DIR environment variable is set
+    if 'HSR4HCI_DATA_DIR' in os.environ.keys():
+        data_dir = os.environ['HSR4HCI_DATA_DIR']
+    else:
+        raise RuntimeError('Environment variable HSR4HCI_DATA_DIR not set!')
 
-    # Get current hostname and username
-    hostname = str(socket.gethostname())
-    username = str(getpass.getuser())
-
-    # -------------------------------------------------------------------------
-    # Cluster at the MPI-IS
-    # -------------------------------------------------------------------------
-
-    # On the MPI cluster, there are two types of nodes:
-    #   1. login nodes (names "login1" and "login2)
-    #   2. worker nodes (naming scheme: [e|g|o|t] + 3 digits; e.g. "g002")
-    if bool(re.match(r'^login1$|^login2$|^[egot]\d{3}$', hostname)):
-        return '/is/cluster/tgebhard/datasets/exoplanets/'
-
-    # -------------------------------------------------------------------------
-    # Markus's computers
-    # -------------------------------------------------------------------------
-
-    if hostname == 'bluesky' and username == 'mbonse':
-        return '/net/ipa-gate.phys.ethz.ch/export/ipa/meyer/hsr'
-
-    if hostname in ('Markuss-MacBook-Pro.local', 'Markuss-MBP'):
-        return '/Users/markusbonse/Desktop/'
-
-    # -------------------------------------------------------------------------
-    # Timothy's computers
-    # -------------------------------------------------------------------------
-
-    # If connected to "normal" networks
-    if hostname in ('Timothys-MacBook-Pro.local', 'Timothys-MBP'):
-        return os.path.expanduser('~/Documents/PhD/datasets/exoplanets')
-
-    # If connected to the ETH wifi (which changes the hostname)
-    if bool(re.match(r'^\S+.ethz.ch$', hostname)) and username == 'timothy':
-        return os.path.expanduser('~/Documents/PhD/datasets/exoplanets')
-
-    # If running on BlueSky
-    if hostname == 'bluesky' and username == 'gebharti':
-        return '/home/gebharti/datasets/exoplanets'
-
-    # -------------------------------------------------------------------------
-    # Default: Raise ValueError
-    # -------------------------------------------------------------------------
-
-    # If none of the if-statements above matched, the hostname is unknown!
-    raise ValueError(f'Hostname "{hostname}" not known!')
+    # Check if the value it contains is a valid directory
+    if os.path.isdir(data_dir):
+        return data_dir
+    raise RuntimeError('Value of HSR4HCI_DATA_DIR is not a directory!')
