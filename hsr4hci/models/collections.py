@@ -8,6 +8,8 @@ Provide a half-sibling regression (HSR) model.
 
 from typing import Optional, Tuple
 
+from sklearn.decomposition import PCA
+
 import numpy as np
 
 from hsr4hci.models.hsr import HalfSiblingRegression
@@ -15,6 +17,7 @@ from hsr4hci.models.predictors import PixelPredictor
 from hsr4hci.utils.forward_modeling import get_signal_stack, \
     get_collection_region_mask
 from hsr4hci.utils.masking import get_positions_from_mask
+from hsr4hci.utils.predictor_selection import get_predictor_mask
 
 
 # -----------------------------------------------------------------------------
@@ -60,6 +63,7 @@ class PixelPredictorCollection:
         # Get variables which can be inherited from parent
         self.m__use_forward_model = hsr_instance.m__use_forward_model
         self.m__config_model = hsr_instance.m__config_model
+        self.m__config_sources = hsr_instance.m__config_sources
 
     def get_average_signal_coef(self) -> Optional[float]:
         """
@@ -173,3 +177,158 @@ class PixelPredictorCollection:
 
             # Add trained PixelPredictor to PixelPredictorCollection
             self.m__predictors[position] = pixel_predictor
+
+
+class PlanetSafePixelPredictorCollection(PixelPredictorCollection):
+
+    def __init__(self,
+                 position: Tuple[int, int],
+                 hsr_instance: HalfSiblingRegression):
+
+        super().__init__(position=position,
+                         hsr_instance=hsr_instance)
+
+        # Add additional class variables
+        self.m__sources = dict()
+
+    def train_collection(self,
+                         stack: np.ndarray,
+                         parang: np.ndarray,
+                         psf_cropped: np.ndarray):
+
+        # ---------------------------------------------------------------------
+        # Construct signal stack
+        # ---------------------------------------------------------------------
+
+        signal_stack = get_signal_stack(position=self.m__position,
+                                        frame_size=stack.shape[1:],
+                                        parang=parang,
+                                        psf_cropped=psf_cropped)
+
+        collection_region_mask = get_collection_region_mask(signal_stack)
+        self.m__collection_region = \
+            get_positions_from_mask(collection_region_mask)
+
+        # ---------------------------------------------------------------------
+        # Loop over all positions in the collection region
+        # ---------------------------------------------------------------------
+
+        for position in self.m__collection_region:
+
+            # -----------------------------------------------------------------
+            # Collect targets, planet signal and sources for fit
+            # -----------------------------------------------------------------
+
+            # Get targets for regression
+            targets = stack[:, position[0], position[1]]
+
+            # Get planet signal for this position
+            planet_signal = signal_stack[:, position[0], position[1]]
+
+            # Compute sources for this position (and store them)
+            sources = \
+                self.compute_orthogonal_pca(stack=stack,
+                                            planet_signal=planet_signal,
+                                            position=position)
+            self.m__sources[position] = sources
+
+            # -----------------------------------------------------------------
+            # Create a new PixelPredictor, train it, and store it
+            # -----------------------------------------------------------------
+
+            # Create a new PixelPredictor instance for this position
+            pixel_predictor = PixelPredictor(collection_instance=self)
+
+            # Train pixel predictor for the selected sources and targets. The
+            # augmentation of the sources with the planet_signal (in case it
+            # is not None) happens automatically inside the PixelPredictor.
+            pixel_predictor.train(sources=sources,
+                                  targets=targets,
+                                  planet_signal=planet_signal)
+
+            # Add trained PixelPredictor to PixelPredictorCollection
+            self.m__predictors[position] = pixel_predictor
+
+    def compute_orthogonal_pca(self,
+                               stack: np.ndarray,
+                               planet_signal: np.ndarray,
+                               position: Tuple[int, int]) -> np.ndarray:
+
+        # Define some shortcuts
+        n_components = self.m__config_sources['pca_components']
+        pca_mode = self.m__config_sources['pca_mode']
+        sv_power = self.m__config_sources['sv_power']
+        mask_type = self.m__config_sources['mask']['type']
+        mask_params = self.m__config_sources['mask']['parameters']
+
+        # Collect options for mask creation
+        mask_args = dict(mask_size=self.m__hsr_instance.m__frame_size,
+                         position=position,
+                         mask_params=mask_params,
+                         lambda_over_d=self.m__hsr_instance.m__lambda_over_d,
+                         pixscale=self.m__hsr_instance.m__pixscale)
+
+        # ---------------------------------------------------------------------
+        # Get sources and orthogonalize them w.r.t. the planet signal
+        # ---------------------------------------------------------------------
+
+        # Get predictor pixels ("sources", as opposed to "targets")
+        predictor_mask = get_predictor_mask(mask_type=mask_type,
+                                            mask_args=mask_args)
+        sources = stack[:, predictor_mask].astype(np.float32)
+
+        # Normalize planet_signal
+        normalized_planet_signal = \
+            planet_signal / np.linalg.norm(planet_signal)
+
+        # Orthogonalize sources with respect to planet_signal
+        sources_projected = \
+            sources - np.outer(np.matmul(sources, normalized_planet_signal),
+                               normalized_planet_signal)
+
+        # Make sure sources_projected is actually orthogonal to planet signal
+        projection = np.matmul(sources_projected, planet_signal)
+        assert np.allclose(projection, np.zeros_like(projection)), \
+            'Orthogonalization failed!'
+
+        # ---------------------------------------------------------------------
+        # Compute PCA on orthogonalized sources
+        # ---------------------------------------------------------------------
+
+        # Set up the principal component analysis (PCA)
+        pca = PCA(n_components=n_components)
+
+        # Depending on the pca_mode, we either use the PCs directly...
+        if pca_mode == 'fit':
+
+            # Fit the PCA to the data. We take the transpose of the sources
+            # such that the  principal components found by the PCA are also
+            # time series.
+            pca.fit(X=sources_projected.T)
+
+            # Select the principal components and undo the transposition
+            tmp_sources = pca.components_.T
+
+            # Sanity check for orthogonalization
+            assert np.allclose(tmp_sources[:, -1], planet_signal), \
+                'Orthogonalization failed!'
+
+            # Multiply with a power of the singular values
+            tmp_sources *= np.power(pca.singular_values_, sv_power)
+
+        # ...or the original data projected onto the PCs
+        elif pca_mode == 'fit_transform':
+
+            # Fit the PCA, transform the data into the rotated coordinate
+            # system, and then multiply with the desired power of the singular
+            # values. This is equivalent to first multiplying the PCs with the
+            # SVs and then projecting; however, fit_transform() is generally
+            # more efficient.
+            tmp_sources = pca.fit_transform(X=sources)
+            tmp_sources *= np.power(pca.singular_values_, sv_power)
+
+        else:
+            raise ValueError('pca_mode must be one of the following: '
+                             '"fit" or "fit_transform"!')
+
+        return tmp_sources.astype(np.float32)
