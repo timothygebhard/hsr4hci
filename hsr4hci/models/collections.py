@@ -6,6 +6,7 @@ Provide a half-sibling regression (HSR) model.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from copy import deepcopy
 from typing import Optional, Tuple
 
 from sklearn.decomposition import PCA
@@ -14,9 +15,11 @@ import numpy as np
 
 from hsr4hci.models.hsr import HalfSiblingRegression
 from hsr4hci.models.predictors import PixelPredictor
+
+from hsr4hci.utils.adi_tools import derotate_frames
 from hsr4hci.utils.forward_modeling import get_signal_stack, \
     get_collection_region_mask
-from hsr4hci.utils.masking import get_positions_from_mask
+from hsr4hci.utils.masking import get_positions_from_mask, get_circle_mask
 from hsr4hci.utils.predictor_selection import get_predictor_mask
 
 
@@ -296,7 +299,7 @@ class PlanetSafePixelPredictorCollection(PixelPredictorCollection):
         # ---------------------------------------------------------------------
 
         # Set up the principal component analysis (PCA)
-        pca = PCA(n_components=n_components)
+        pca = PCA()
 
         # Depending on the pca_mode, we either use the PCs directly...
         if pca_mode == 'fit':
@@ -312,6 +315,9 @@ class PlanetSafePixelPredictorCollection(PixelPredictorCollection):
             # Sanity check for orthogonalization
             assert np.allclose(tmp_sources[:, -1], planet_signal), \
                 'Orthogonalization failed!'
+
+            # TODO: Remove after we verified this works!
+            tmp_sources = tmp_sources[:, :n_components]
 
             # Multiply with a power of the singular values
             tmp_sources *= np.power(pca.singular_values_, sv_power)
@@ -332,3 +338,45 @@ class PlanetSafePixelPredictorCollection(PixelPredictorCollection):
                              '"fit" or "fit_transform"!')
 
         return tmp_sources.astype(np.float32)
+
+    def get_collection_residuals(self,
+                                 stack: np.ndarray,
+                                 parang: np.ndarray) -> np.ndarray:
+
+        residuals = np.zeros_like(stack)
+
+        # Loop over all predictors in collection
+        for position, predictor in self.m__predictors.items():
+
+            # Get sources for this position
+            tmp_sources = self.m__sources[position]
+
+            # Get model from predictor and remove signal component such that
+            # the resulting model represents only the "noise part"
+            noise_model = deepcopy(predictor.m__model)
+            noise_model.coef_ = noise_model.coef_[:-1]
+
+            # Use noise model to get noise prediction
+            noise_prediction = noise_model.predict(tmp_sources)
+
+            # Compute residuals for this position
+            residuals[:, position[0], position[1]] = \
+                stack[:, position[0], position[1]] - noise_prediction
+
+        # Derotate residual stack (onto first frame)
+        derotated_residuals = derotate_frames(stack=residuals,
+                                              parang=(parang-parang[0]))
+
+        # Select "cylinder"
+        frame_size = self.m__hsr_instance.m__frame_size
+        psf_radius = self.m__hsr_instance.m__config_psf_template['psf_radius']
+        lambda_over_d = self.m__hsr_instance.m__lambda_over_d
+        pixscale = self.m__hsr_instance.m__pixscale
+        psf_radius_pixel = int(psf_radius * (lambda_over_d / pixscale))
+        selection_mask = get_circle_mask(mask_size=frame_size,
+                                         radius=psf_radius_pixel,
+                                         center=self.m__position)
+        cylinder = derotated_residuals[:, ~selection_mask] = np.nan
+
+        # Return result
+        return np.nansum(cylinder, axis=(1, 2))
