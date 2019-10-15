@@ -7,7 +7,7 @@ Provide a half-sibling regression (HSR) model.
 # -----------------------------------------------------------------------------
 
 from copy import deepcopy
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 from sklearn.decomposition import PCA
 from tqdm import tqdm
@@ -142,24 +142,41 @@ class HalfSiblingRegression:
         return coefficients
 
     def get_noise_predictions(self,
-                              stack_shape: Tuple[int, int, int]) -> np.ndarray:
+                              stack_or_shape: Union[np.ndarray, tuple]
+                              ) -> np.ndarray:
         """
         Get the predictions of the noise part of the models we learned.
 
         Args:
-            stack_shape: A tuple containing the shape of the stack on
-                which we trained the model.
+            stack_or_shape: Either a 3D numpy array of shape (n_frames,
+                width, height) containing a stack of frames on which
+                the trained models should be evaluated, or just a tuple
+                (n_frames, width, height) containing the shape of the
+                original stack on which the data was trained. In the
+                first case, we will compute the PCA on the new stack
+                and apply the trained models on them to obtain a stack
+                of predictions. In the second case, we only return the
+                predictions of the models on the data that they were
+                trained on (in which case we do not need to compute the
+                PCA for the model inputs again).
 
         Returns:
-            A 3D numpy array with the same shape as `stack_shape` that
-            contains at each position (x, y) in the region of interest
-            the prediction of the model for (x, y) -- taken from the
-            collection at the same position -- on the data that it was
-            trained on. For positions for which no model was trained,
+            A 3D numpy array with the same shape as `stack_or_shape`
+            that contains, at each position (x, y) in the region of
+            interest, the prediction of the model for (x, y). The model
+            to make the prediction is taken from the collection at the
+            same position. For positions for which no model was trained,
             the prediction default to NaN (i.e., you might want to use
             np.nan_to_num() before subtracting the predictions from
             your data to get the residuals of the model).
         """
+
+        # Define stack shape based on whether we have received a stack or
+        # only the shape of the stack
+        if isinstance(stack_or_shape, tuple):
+            stack_shape = stack_or_shape
+        else:
+            stack_shape = stack_or_shape.shape
 
         # Initialize an array that will hold our predictions
         predictions = np.full(stack_shape, np.nan).astype(np.float32)
@@ -176,9 +193,16 @@ class HalfSiblingRegression:
             if self.m__use_forward_model:
                 predictor.coef_ = predictor.coef_[:-1]
 
+            # If necessary, pre-compute PCA on stack to build sources
+            if isinstance(stack_or_shape, tuple):
+                sources = self.m__sources[position]
+            else:
+                sources = self.precompute_pca(stack=stack_or_shape,
+                                              position=position)
+
             # Make prediction for position and store in predictions array
             predictions[:, position[0], position[1]] = \
-                predictor.predict(X=self.m__sources[position])
+                predictor.predict(X=sources)
 
         return predictions
 
