@@ -83,7 +83,7 @@ class PixelPredictorCollection:
         if self.m__use_forward_model:
 
             # Collect signal coefficients for all predictors in the collection
-            signal_coefs = [predictor.get_signal_coef() for _, predictor
+            signal_coefs = [predictor.m__signal_coef for _, predictor
                             in self.m__predictors.items()]
 
             # Return the median of all signal coefficients in the collection
@@ -91,6 +91,85 @@ class PixelPredictorCollection:
 
         # Otherwise, we just return None
         return None
+
+    def preprocess_sources(self,
+                           sources: np.ndarray,
+                           planet_signal: Optional[np.ndarray]) -> np.ndarray:
+        return sources
+
+    def precompute_pca(self,
+                       stack: np.ndarray,
+                       position: Tuple[int, int],
+                       planet_signal: Optional[np.ndarray] = None
+                       ) -> np.ndarray:
+        """
+        Precompute the PCA for a given position (i.e., a single pixel).
+
+        Args:
+            stack: A 3D numpy array of shape (n_frames, width, height)
+                containing the stack of frames to train on.
+            position: A tuple (x, y) containing the position for which
+                to pre-compute the PCA.
+            planet_signal:
+
+        Returns:
+            The `sources` for the given position.
+        """
+
+        # Define some shortcuts
+        n_components = self.m__config_sources['pca_components']
+        pca_mode = self.m__config_sources['pca_mode']
+        sv_power = self.m__config_sources['sv_power']
+        mask_type = self.m__config_sources['mask']['type']
+        mask_params = self.m__config_sources['mask']['parameters']
+
+        # Collect options for mask creation
+        mask_args = dict(mask_size=self.m__hsr_instance.m__frame_size,
+                         position=position,
+                         mask_params=mask_params,
+                         lambda_over_d=self.m__hsr_instance.m__lambda_over_d,
+                         pixscale=self.m__hsr_instance.m__pixscale)
+
+        # Get predictor pixels ("sources", as opposed to "targets")
+        predictor_mask = get_predictor_mask(mask_type=mask_type,
+                                            mask_args=mask_args)
+        sources = stack[:, predictor_mask].astype(np.float32)
+
+        sources = self.preprocess_sources(sources=sources,
+                                          planet_signal=planet_signal)
+
+        # Set up the principal component analysis (PCA)
+        pca = PCA(n_components=n_components)
+
+        # Depending on the pca_mode, we either use the PCs directly...
+        if pca_mode == 'temporal':
+
+            # Fit the PCA to the data. We take the transpose of the sources
+            # such that the  principal components found by the PCA are also
+            # time series.
+            pca.fit(X=sources.T)
+
+            # Select the principal components, undo the transposition, and
+            # multiply the them with the desired power of the singular values
+            tmp_sources = pca.components_.T
+            tmp_sources *= np.power(pca.singular_values_, sv_power)
+
+        # ...or the original data projected onto the PCs
+        elif pca_mode == 'spatial':
+
+            # Fit the PCA, transform the data into the rotated coordinate
+            # system, and then multiply with the desired power of the singular
+            # values. This is equivalent to first multiplying the PCs with the
+            # SVs and then projecting; however, fit_transform() is generally
+            # more efficient.
+            tmp_sources = pca.fit_transform(X=sources)
+            tmp_sources *= np.power(pca.singular_values_, sv_power)
+
+        else:
+            raise ValueError('pca_mode must be one of the following: '
+                             '"fit" or "fit_transform"!')
+
+        return tmp_sources.astype(np.float32)
 
     def train_collection(self,
                          stack: np.ndarray,
@@ -143,8 +222,8 @@ class PixelPredictorCollection:
             # the current position, we need to pre-compute the PCA for it
             if position not in self.m__hsr_instance.m__sources.keys():
                 sources = \
-                    self.m__hsr_instance.precompute_pca(stack=stack,
-                                                        position=position)
+                    self.precompute_pca(stack=stack,
+                                        position=position)
                 self.m__hsr_instance.m__sources[position] = sources
 
             # Otherwise we can simply retrieve the sources from this dict
@@ -169,7 +248,7 @@ class PixelPredictorCollection:
             # -----------------------------------------------------------------
 
             # Create a new PixelPredictor instance for this position
-            pixel_predictor = PixelPredictor(collection_instance=self)
+            pixel_predictor = PixelPredictor(config_model=self.m__config_model)
 
             # Train pixel predictor for the selected sources and targets. The
             # augmentation of the sources with the planet_signal (in case it
@@ -230,9 +309,9 @@ class PlanetSafePixelPredictorCollection(PixelPredictorCollection):
 
             # Compute sources for this position (and store them)
             sources = \
-                self.compute_orthogonal_pca(stack=stack,
-                                            planet_signal=planet_signal,
-                                            position=position)
+                self.precompute_pca(stack=stack,
+                                    planet_signal=planet_signal,
+                                    position=position)
             self.m__sources[position] = sources
 
             # -----------------------------------------------------------------
@@ -240,7 +319,7 @@ class PlanetSafePixelPredictorCollection(PixelPredictorCollection):
             # -----------------------------------------------------------------
 
             # Create a new PixelPredictor instance for this position
-            pixel_predictor = PixelPredictor(collection_instance=self)
+            pixel_predictor = PixelPredictor(config_model=self.m__config_model)
 
             # Train pixel predictor for the selected sources and targets. The
             # augmentation of the sources with the planet_signal (in case it
@@ -252,33 +331,13 @@ class PlanetSafePixelPredictorCollection(PixelPredictorCollection):
             # Add trained PixelPredictor to PixelPredictorCollection
             self.m__predictors[position] = pixel_predictor
 
-    def compute_orthogonal_pca(self,
-                               stack: np.ndarray,
-                               planet_signal: np.ndarray,
-                               position: Tuple[int, int]) -> np.ndarray:
-
-        # Define some shortcuts
-        n_components = self.m__config_sources['pca_components']
-        pca_mode = self.m__config_sources['pca_mode']
-        sv_power = self.m__config_sources['sv_power']
-        mask_type = self.m__config_sources['mask']['type']
-        mask_params = self.m__config_sources['mask']['parameters']
-
-        # Collect options for mask creation
-        mask_args = dict(mask_size=self.m__hsr_instance.m__frame_size,
-                         position=position,
-                         mask_params=mask_params,
-                         lambda_over_d=self.m__hsr_instance.m__lambda_over_d,
-                         pixscale=self.m__hsr_instance.m__pixscale)
+    def preprocess_sources(self,
+                           sources: np.ndarray,
+                           planet_signal: Optional[np.ndarray]) -> np.ndarray:
 
         # ---------------------------------------------------------------------
         # Get sources and orthogonalize them w.r.t. the planet signal
         # ---------------------------------------------------------------------
-
-        # Get predictor pixels ("sources", as opposed to "targets")
-        predictor_mask = get_predictor_mask(mask_type=mask_type,
-                                            mask_args=mask_args)
-        sources = stack[:, predictor_mask].astype(np.float32)
 
         # Normalize planet_signal
         normalized_planet_signal = \
@@ -294,50 +353,26 @@ class PlanetSafePixelPredictorCollection(PixelPredictorCollection):
         assert np.allclose(projection, np.zeros_like(projection)), \
             'Orthogonalization failed!'
 
-        # ---------------------------------------------------------------------
-        # Compute PCA on orthogonalized sources
-        # ---------------------------------------------------------------------
+        return sources_projected
 
-        # Set up the principal component analysis (PCA)
-        pca = PCA()
+    def precompute_pca(self,
+                       stack: np.ndarray,
+                       position: Tuple[int, int],
+                       planet_signal: Optional[np.ndarray] = None
+                       ) -> np.ndarray:
 
-        # Depending on the pca_mode, we either use the PCs directly...
-        if pca_mode == 'fit':
+        result_sources = super().precompute_pca(stack=stack,
+                                                position=position,
+                                                planet_signal=planet_signal)
 
-            # Fit the PCA to the data. We take the transpose of the sources
-            # such that the  principal components found by the PCA are also
-            # time series.
-            pca.fit(X=sources_projected.T)
+        # Sanity check for orthogonalization
+        pca_mode = self.m__config_sources['pca_mode']
 
-            # Select the principal components and undo the transposition
-            tmp_sources = pca.components_.T
-
-            # Sanity check for orthogonalization
-            assert np.allclose(tmp_sources[:, -1], planet_signal), \
+        if pca_mode == "temporal":
+            assert np.allclose(result_sources[:, -1], planet_signal), \
                 'Orthogonalization failed!'
 
-            # TODO: Remove after we verified this works!
-            tmp_sources = tmp_sources[:, :n_components]
-
-            # Multiply with a power of the singular values
-            tmp_sources *= np.power(pca.singular_values_, sv_power)
-
-        # ...or the original data projected onto the PCs
-        elif pca_mode == 'fit_transform':
-
-            # Fit the PCA, transform the data into the rotated coordinate
-            # system, and then multiply with the desired power of the singular
-            # values. This is equivalent to first multiplying the PCs with the
-            # SVs and then projecting; however, fit_transform() is generally
-            # more efficient.
-            tmp_sources = pca.fit_transform(X=sources)
-            tmp_sources *= np.power(pca.singular_values_, sv_power)
-
-        else:
-            raise ValueError('pca_mode must be one of the following: '
-                             '"fit" or "fit_transform"!')
-
-        return tmp_sources.astype(np.float32)
+        return result_sources
 
     def get_collection_residuals(self,
                                  stack: np.ndarray,

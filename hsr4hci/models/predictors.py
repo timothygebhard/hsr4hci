@@ -10,7 +10,6 @@ from typing import Optional
 
 import numpy as np
 
-from hsr4hci.models.collections import PixelPredictorCollection
 from hsr4hci.utils.model_loading import get_class_by_name
 
 
@@ -23,33 +22,18 @@ class PixelPredictor:
     Wrapper class for a predictor model of a single pixel.
 
     Args:
-        collection_instance: Reference to the PixelPredictorCollection
-            instance to which this PixelPredictor belongs.
+        config_model:
     """
 
-    def __init__(self, collection_instance: PixelPredictorCollection):
-
-        # Store constructor arguments
-        self.m__collection_instance = collection_instance
+    def __init__(self,
+                 config_model: dict):
 
         # Initialize additional class variables
         self.m__model = None
+        self.m__signal_coef = None
 
         # Get variables which can be inherited from parents
-        self.m__use_forward_model = collection_instance.m__use_forward_model
-        self.m__config_model = collection_instance.m__config_model
-
-    def get_signal_coef(self):
-        """
-        Get the coefficient for the planet signal for this predictor.
-
-        Returns:
-            The coefficient for the planet signal for this predictor.
-        """
-
-        if self.m__use_forward_model and self.m__model is not None:
-            return self.m__model.coef_[-1]
-        return None
+        self.m__config_model = config_model
 
     def train(self,
               sources: np.ndarray,
@@ -79,18 +63,14 @@ class PixelPredictor:
         # Augment the sources: if we are using a forward model, we need to
         # add the planet signal as a new column to the sources here; if not,
         # we leave the sources unchanged
-        if self.m__use_forward_model:
 
-            # Sanity check: Make sure we actually got a planet signal
-            if planet_signal is None:
-                raise RuntimeError('use_forward_model is True, but no planet'
-                                   'signal from forward modeling was provided')
-
+        if planet_signal is not None:
             # Augment the sources by adding the planet signal as a new column
             sources = np.column_stack([sources, planet_signal.reshape(-1, 1)])
 
         # Fit model to the training data
         self.m__model.fit(X=sources, y=targets)
+        self.m__signal_coef = float(self.m__model.coef_[-1])
 
     def predict(self, sources: np.ndarray) -> np.ndarray:
         """
