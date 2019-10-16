@@ -188,9 +188,4 @@ def load_data(dataset_config: dict) -> Tuple[np.ndarray, np.ndarray,
         else:
             psf_template = None
 
-        # Convert everything to float32
-        stack = stack.astype(np.float32)
-        parang = parang.astype(np.float32)
-        psf_template = psf_template.astype(np.float32)
-
     return stack, parang, psf_template

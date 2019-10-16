@@ -56,7 +56,7 @@ def crop_psf_template(psf_template: np.ndarray,
     psf_rescaled = psf_template / scale_factor
 
     # Clip the PSF template to strictly positive values
-    epsilon = np.finfo(np.float32).eps
+    epsilon = np.finfo(np.float64).eps
     psf_clipped = np.clip(a=psf_rescaled, a_min=epsilon, a_max=None)
 
     # Fit the center of the clipped PSF template
@@ -74,9 +74,6 @@ def crop_psf_template(psf_template: np.ndarray,
                          r=psf_radius_pixel)
     circular_mask = circular_aperture.to_mask(method='exact')
     psf_masked = circular_mask.multiply(psf_cropped)
-
-    # Convert the masked PSF to float32
-    psf_masked = psf_masked.astype(np.float32)
 
     return psf_masked
 
@@ -123,9 +120,8 @@ def get_signal_stack(position: Tuple[int, int],
     r, phi = polar(complex(position[1] - frame_center[1],
                            position[0] - frame_center[0]))
 
-    # Initialize empty signal stack (as float32)
+    # Initialize empty signal stack
     signal_stack = np.zeros((n_frames, frame_width, frame_height))
-    signal_stack = signal_stack.astype(np.float32)
 
     # Loop over all frames and add the cropped and masked PSF template at
     # the position that corresponds to the respective parallactic angle

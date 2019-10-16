@@ -131,7 +131,7 @@ class HalfSiblingRegression:
 
         # Define the shape of the output array and initialize it with NaNs
         output_shape = (max_size, ) + tuple(self.m__frame_size)
-        coefficients = np.full(output_shape, np.nan).astype(np.float32)
+        coefficients = np.full(output_shape, np.nan)
 
         # Convert the dictionary of coefficients into an array
         for position, position_coefficients in tmp_coefficients.items():
@@ -179,7 +179,7 @@ class HalfSiblingRegression:
             stack_shape = stack_or_shape.shape
 
         # Initialize an array that will hold our predictions
-        predictions = np.full(stack_shape, np.nan).astype(np.float32)
+        predictions = np.full(stack_shape, np.nan)
 
         # Loop over all positions in the ROI and the respective collections
         for position, collection in \
@@ -233,7 +233,7 @@ class HalfSiblingRegression:
         psf_cropped = self.get_cropped_psf_template(psf_template=psf_template)
 
         # Initialize the best fit planet model
-        best_fit_planet_model = np.zeros(stack_shape).astype(np.float32)
+        best_fit_planet_model = np.zeros(stack_shape)
 
         # Get positions where detection map is positive (we ignore negative
         # entries because they are do not make sense astrophysically)
@@ -279,7 +279,7 @@ class HalfSiblingRegression:
         """
 
         # Initialize an empty detection map
-        detection_map = np.full(self.m__frame_size, np.nan).astype(np.float32)
+        detection_map = np.full(self.m__frame_size, np.nan)
 
         # If we are not using a forward model, we obviously cannot compute a
         # detection map, hence we return an empty detection map
