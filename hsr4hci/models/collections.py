@@ -1,5 +1,5 @@
 """
-Provide a half-sibling regression (HSR) model.
+Provides PixelPredictorCollection classes.
 """
 
 # -----------------------------------------------------------------------------
@@ -13,7 +13,6 @@ from sklearn.decomposition import PCA
 
 import numpy as np
 
-from hsr4hci.models.hsr import HalfSiblingRegression
 from hsr4hci.models.predictors import PixelPredictor
 
 from hsr4hci.utils.adi_tools import derotate_frames
@@ -51,7 +50,7 @@ class PixelPredictorCollection:
 
     def __init__(self,
                  position: Tuple[int, int],
-                 hsr_instance: HalfSiblingRegression):
+                 hsr_instance):
 
         # Store the constructor arguments
         self.m__position = position
@@ -265,7 +264,7 @@ class PlanetSafePixelPredictorCollection(PixelPredictorCollection):
 
     def __init__(self,
                  position: Tuple[int, int],
-                 hsr_instance: HalfSiblingRegression):
+                 hsr_instance):
 
         super().__init__(position=position,
                          hsr_instance=hsr_instance)
