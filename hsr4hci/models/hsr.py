@@ -295,6 +295,21 @@ class HalfSiblingRegression:
 
         return detection_map
 
+    def get_residual_stack(self,
+                           stack: np.ndarray,
+                           parang: np.ndarray):
+
+        # Initialize an empty residual stack
+        residual_stack = np.zeros_like(stack)
+
+        # collect residual lines in time
+        for position, collection in tqdm(self.m__collections.items()):
+            residual_stack[:, position[0], position[1]] = \
+                collection.get_collection_residuals(stack=stack,
+                                                    parang=parang)
+
+        return residual_stack
+
     def train(self,
               stack: np.ndarray,
               parang: Optional[np.ndarray],

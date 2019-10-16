@@ -391,7 +391,8 @@ class PlanetSafePixelPredictorCollection(PixelPredictorCollection):
         selection_mask = get_circle_mask(mask_size=frame_size,
                                          radius=psf_radius_pixel,
                                          center=self.m__position)
-        cylinder = derotated_residuals[:, ~selection_mask] = np.nan
+
+        derotated_residuals[:, ~selection_mask] = np.nan
 
         # Return result
-        return np.nansum(cylinder, axis=(1, 2))
+        return np.nansum(derotated_residuals, axis=(1, 2))
