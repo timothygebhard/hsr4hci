@@ -7,7 +7,7 @@ Provide a half-sibling regression (HSR) model.
 # -----------------------------------------------------------------------------
 
 from copy import deepcopy
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple, Type, Union
 
 from tqdm import tqdm
 
@@ -37,7 +37,7 @@ class HalfSiblingRegression:
 
     def __init__(self,
                  config: dict,
-                 collection_class: PPCollection = PPCollection):
+                 collection_class: Type[PPCollection] = PPCollection):
 
         # Store the constructor arguments
         self.m__collection_class = collection_class
@@ -359,8 +359,8 @@ class HalfSiblingRegression:
         """
 
         # Create a PixelPredictorCollection instance for this position
-        collection = self.m__collection_class.__init__(position=position,
-                                                       hsr_instance=self)
+        collection = self.m__collection_class(position=position,
+                                              hsr_instance=self)
 
         # Train and save the collection for this position
         collection.train_collection(stack=stack,
