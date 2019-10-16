@@ -132,7 +132,7 @@ class PixelPredictorCollection:
         # Get predictor pixels ("sources", as opposed to "targets")
         predictor_mask = get_predictor_mask(mask_type=mask_type,
                                             mask_args=mask_args)
-        sources = stack[:, predictor_mask].astype(np.float32)
+        sources = stack[:, predictor_mask]
 
         sources = self.preprocess_sources(sources=sources,
                                           planet_signal=planet_signal)
@@ -168,7 +168,7 @@ class PixelPredictorCollection:
             raise ValueError('pca_mode must be one of the following: '
                              '"fit" or "fit_transform"!')
 
-        return tmp_sources.astype(np.float32)
+        return tmp_sources
 
     def train_collection(self,
                          stack: np.ndarray,
@@ -344,34 +344,15 @@ class PlanetSafePixelPredictorCollection(PixelPredictorCollection):
 
         # Orthogonalize sources with respect to planet_signal
         sources_projected = \
-            sources - np.outer(np.matmul(sources, normalized_planet_signal),
-                               normalized_planet_signal)
+            sources - np.outer(np.matmul(sources.T, normalized_planet_signal),
+                               normalized_planet_signal).T
 
         # Make sure sources_projected is actually orthogonal to planet signal
-        projection = np.matmul(sources_projected, planet_signal)
+        projection = np.matmul(sources_projected.T, planet_signal)
         assert np.allclose(projection, np.zeros_like(projection)), \
             'Orthogonalization failed!'
 
         return sources_projected
-
-    def precompute_pca(self,
-                       stack: np.ndarray,
-                       position: Tuple[int, int],
-                       planet_signal: Optional[np.ndarray] = None
-                       ) -> np.ndarray:
-
-        result_sources = super().precompute_pca(stack=stack,
-                                                position=position,
-                                                planet_signal=planet_signal)
-
-        # Sanity check for orthogonalization
-        pca_mode = self.m__config_sources['pca_mode']
-
-        if pca_mode == "temporal":
-            assert np.allclose(result_sources[:, -1], planet_signal), \
-                'Orthogonalization failed!'
-
-        return result_sources
 
     def get_collection_residuals(self,
                                  stack: np.ndarray,
