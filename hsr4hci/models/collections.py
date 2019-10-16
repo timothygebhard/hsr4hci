@@ -10,6 +10,7 @@ from copy import deepcopy
 from typing import Optional, Tuple
 
 from sklearn.decomposition import PCA
+from skimage.morphology import binary_dilation
 
 import numpy as np
 
@@ -19,7 +20,8 @@ from hsr4hci.utils.adi_tools import derotate_frames
 from hsr4hci.utils.forward_modeling import get_signal_stack, \
     get_collection_region_mask
 from hsr4hci.utils.masking import get_positions_from_mask, get_circle_mask
-from hsr4hci.utils.predictor_selection import get_predictor_mask
+from hsr4hci.utils.predictor_selection import get_default_grid_mask, \
+    get_default_mask, get_santa_mask
 
 
 # -----------------------------------------------------------------------------
@@ -96,6 +98,54 @@ class PixelPredictorCollection:
                            planet_signal: Optional[np.ndarray]) -> np.ndarray:
         return sources
 
+    def get_predictor_mask(self,
+                           position):
+
+        mask_type = self.m__config_sources['mask']['type']
+
+        # Collect options for mask creation
+        kwargs = {**dict(mask_size=self.m__hsr_instance.m__frame_size,
+                         position=position,
+                         lambda_over_d=self.m__hsr_instance.m__lambda_over_d,
+                         pixscale=self.m__hsr_instance.m__pixscale),
+                  **self.m__config_sources['mask']['parameters']}
+
+        # If we are using the default mask, we are done here
+        if mask_type == 'default':
+            return get_default_mask(**kwargs)
+        elif mask_type == 'default_grid':
+            return get_default_grid_mask(**kwargs)
+        elif mask_type == 'santa':
+            return get_santa_mask(**kwargs)
+        # use all pixel without the pixel covered by the collection
+        elif mask_type == 'all':
+            # estimate pixel covered by the collection
+            collection_region = np.zeros(kwargs["mask_size"])
+            positions = self.m__collection_region
+            collection_region[tuple(zip(*positions))] = 1
+
+            if "dilation_radius" in kwargs:
+                dilation_radius = kwargs["dilation_radius"]
+                # the mask size needs to be an odd number
+                dilation_mask_size = int(np.round(dilation_radius * 2 + 2))
+                dilation_mask_size += (dilation_mask_size-1) % 2
+
+                collection_region = \
+                    binary_dilation(collection_region,
+                                    selem=get_circle_mask(
+                                        (dilation_mask_size,
+                                         dilation_mask_size),
+                                        dilation_radius))
+
+            # get all pixel covered by the HSR model
+            hsr_region = self.m__hsr_instance.m__roi_mask
+
+            return np.logical_and(np.logical_not(collection_region),
+                                  hsr_region)
+        else:
+            # For unknown mask types, raise an error
+            raise ValueError('Invalid choice for mask_type!')
+
     def precompute_pca(self,
                        stack: np.ndarray,
                        position: Tuple[int, int],
@@ -119,19 +169,10 @@ class PixelPredictorCollection:
         n_components = self.m__config_sources['pca_components']
         pca_mode = self.m__config_sources['pca_mode']
         sv_power = self.m__config_sources['sv_power']
-        mask_type = self.m__config_sources['mask']['type']
-        mask_params = self.m__config_sources['mask']['parameters']
-
-        # Collect options for mask creation
-        mask_args = dict(mask_size=self.m__hsr_instance.m__frame_size,
-                         position=position,
-                         mask_params=mask_params,
-                         lambda_over_d=self.m__hsr_instance.m__lambda_over_d,
-                         pixscale=self.m__hsr_instance.m__pixscale)
 
         # Get predictor pixels ("sources", as opposed to "targets")
-        predictor_mask = get_predictor_mask(mask_type=mask_type,
-                                            mask_args=mask_args)
+        predictor_mask = self.get_predictor_mask(position=position)
+
         sources = stack[:, predictor_mask]
 
         sources = self.preprocess_sources(sources=sources,

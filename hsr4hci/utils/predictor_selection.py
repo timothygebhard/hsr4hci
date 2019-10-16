@@ -19,36 +19,11 @@ from hsr4hci.utils.masking import get_annulus_mask, get_circle_mask
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def get_predictor_mask(mask_type: str,
-                       mask_args: dict) -> np.ndarray:
-
-    # Collect keyword arguments for default mask
-    kwargs = {**dict(mask_size=mask_args['mask_size'],
-                     position=mask_args['position']),
-              **mask_args['mask_params']}
-
-    # If we are using the default mask, we are done here
-    if mask_type == 'default':
-        return get_default_mask(**kwargs)
-
-    # For the other mask types, we need to add some more options
-    kwargs['lambda_over_d'] = mask_args['lambda_over_d']
-    kwargs['pixscale'] = mask_args['pixscale']
-
-    # Return either the default_grid mask or the santa mask
-    if mask_type == 'default_grid':
-        return get_default_grid_mask(**kwargs)
-    if mask_type == 'santa':
-        return get_santa_mask(**kwargs)
-
-    # For unknown mask types, raise an error
-    raise ValueError('Invalid choice for mask_type!')
-
-
 def get_default_mask(mask_size: tuple,
                      position: tuple,
                      n_regions: int = 1,
-                     region_size: Optional[int] = None) -> np.ndarray:
+                     region_size: Optional[int] = None,
+                     **kwargs) -> np.ndarray:
     """
     Get a mask to select the predictor pixels for the given `position`.
 
@@ -115,7 +90,8 @@ def get_default_grid_mask(mask_size: tuple,
                           pixscale: float,
                           n_regions: int = 1,
                           region_size: Optional[int] = None,
-                          exclusion_radius: float = 5) -> np.ndarray:
+                          exclusion_radius: float = 5,
+                          **kwargs) -> np.ndarray:
 
     # Compute lambda / D in units of pixels
     lod_pixels = lambda_over_d / pixscale
@@ -143,7 +119,8 @@ def get_default_grid_mask(mask_size: tuple,
 def get_santa_mask(mask_size: tuple,
                    position: tuple,
                    lambda_over_d: float,
-                   pixscale: float) -> np.ndarray:
+                   pixscale: float,
+                   **kwargs) -> np.ndarray:
 
     # Compute lambda / D in units of pixels
     lod_pixels = lambda_over_d / pixscale
