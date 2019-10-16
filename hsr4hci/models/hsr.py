@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 import numpy as np
 
-from hsr4hci.models.collections import PixelPredictorCollection
+from hsr4hci.models.collections import PixelPredictorCollection as PPCollection
 from hsr4hci.utils.forward_modeling import crop_psf_template, get_signal_stack
 from hsr4hci.utils.masking import get_positions_from_mask
 from hsr4hci.utils.roi_selection import get_roi_mask
@@ -35,9 +35,12 @@ class HalfSiblingRegression:
         config: A dictionary containing the experiment configuration.
     """
 
-    def __init__(self, config: dict):
+    def __init__(self,
+                 config: dict,
+                 collection_class: PPCollection = PPCollection):
 
         # Store the constructor arguments
+        self.m__collection_class = collection_class
         self.m__config = config
 
         # Define useful shortcuts
@@ -355,9 +358,9 @@ class HalfSiblingRegression:
                 model.
         """
 
-        # Create a PixelPredictorCollection for this position
-        collection = PixelPredictorCollection(position=position,
-                                              hsr_instance=self)
+        # Create a PixelPredictorCollection instance for this position
+        collection = self.m__collection_class.__init__(position=position,
+                                                       hsr_instance=self)
 
         # Train and save the collection for this position
         collection.train_collection(stack=stack,
