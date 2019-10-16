@@ -1,5 +1,5 @@
 """
-Provide a half-sibling regression (HSR) model.
+Provides PixelPredictor class.
 """
 
 # -----------------------------------------------------------------------------
