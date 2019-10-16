@@ -27,9 +27,9 @@
                     "region_size": 5
                 }
             },
-            "pca_mode": "fit_transform",
+            "pca_mode": "temporal",
             "pca_components": 32,
-            "sv_power": 1
+            "sv_power": 1.0
         },
         "model": {
             "module": "sklearn.linear_model",
