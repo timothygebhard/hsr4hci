@@ -7,7 +7,7 @@ Provides PixelPredictorCollection classes.
 # -----------------------------------------------------------------------------
 
 from copy import deepcopy
-from typing import Optional, Tuple
+from typing import Optional, Tuple, TYPE_CHECKING
 
 from sklearn.decomposition import PCA
 from skimage.morphology import binary_dilation
@@ -22,6 +22,15 @@ from hsr4hci.utils.forward_modeling import get_signal_stack, \
 from hsr4hci.utils.masking import get_positions_from_mask, get_circle_mask
 from hsr4hci.utils.predictor_selection import get_default_grid_mask, \
     get_default_mask, get_santa_mask
+
+# This is a somewhat ugly workaround to avoid circular dependencies when using
+# the HalfSiblingRegression class for type hinting: TYPE_CHECKING is always
+# False at runtime (thus avoiding circular imports), but mypy / PyCharm will
+# be able to make use of the import statement to know what to expect from a
+# variable that has been type-hinted as a HalfSiblingRegression instance.
+# Source: https://stackoverflow.com/a/39757388/4100721
+if TYPE_CHECKING:
+    from hsr4hci.models.hsr import HalfSiblingRegression
 
 
 # -----------------------------------------------------------------------------
@@ -52,17 +61,16 @@ class PixelPredictorCollection:
 
     def __init__(self,
                  position: Tuple[int, int],
-                 hsr_instance):
+                 hsr_instance: 'HalfSiblingRegression'):
 
         # Store the constructor arguments
         self.m__position = position
         self.m__hsr_instance = hsr_instance
 
         # Initialize additional class variables
-        self.m__collection_region = None
+        self.m__collection_region_mask = None
+        self.m__collection_region_positions = None
         self.m__predictors = dict()
-        self.m__collection_name = \
-            f'collection_{self.m__position[0]}_{self.m__position[1]}'
 
         # Get variables which can be inherited from parent
         self.m__use_forward_model = hsr_instance.m__use_forward_model
@@ -93,58 +101,146 @@ class PixelPredictorCollection:
         # Otherwise, we just return None
         return None
 
-    def preprocess_sources(self,
-                           sources: np.ndarray,
+    @staticmethod
+    def preprocess_sources(sources: np.ndarray,
                            planet_signal: Optional[np.ndarray]) -> np.ndarray:
-        return sources
+        """
+        Apply pre-processing to `sources`. In particular: orthogonalize
+        the sources with respect to the `planet_signal`.
+
+        Args:
+            sources: A 2D numpy array of shape (n_frames, n_predictors)
+                that we want to pre-process.
+            planet_signal: A 1D numpy array of shape (n_frames,)
+                containing the planet signal from forward modeling.
+                If this is None, no pre-processing is applied to the
+                `sources`.
+
+        Returns:
+            A 2D numpy array of shape (n_frames, n_predictors) which
+            contains the pre-processed (i.e., orthogonalized) `sources`.
+        """
+
+        # ---------------------------------------------------------------------
+        # If we do not receive a planet_signal, we do not pre-process anything
+        # ---------------------------------------------------------------------
+
+        if planet_signal is None:
+            return sources
+
+        # ---------------------------------------------------------------------
+        # Otherwise, orthogonalize the sources w.r.t. the planet_signal
+        # ---------------------------------------------------------------------
+
+        # Normalize planet_signal
+        normalized_planet_signal = \
+            planet_signal / np.linalg.norm(planet_signal)
+
+        # Orthogonalize sources with respect to planet_signal
+        sources_projected = \
+            sources - np.outer(np.matmul(sources.T, normalized_planet_signal),
+                               normalized_planet_signal).T
+
+        # Make sure sources_projected is actually orthogonal to planet signal
+        projection = np.matmul(sources_projected.T, planet_signal)
+        assert np.allclose(projection, np.zeros_like(projection)), \
+            'Orthogonalization failed!'
+
+        return sources_projected
 
     def get_predictor_mask(self,
-                           position):
+                           position: Tuple[int, int]) -> np.ndarray:
+        """
+        Return the predictor mask for the given `position` within the
+        collection region (using the collection region as the exclusion
+        region for the mask).
 
-        mask_type = self.m__config_sources['mask']['type']
+        Args:
+            position: A tuple (x, y) which specifies the position for
+                which to compute the predictor selection mask.
 
+        Returns:
+            A 2D binary numpy array of shape (width, height) which masks
+            the spatial pixels that should be used to make a prediction
+            for the given `position`.
+        """
+
+        # ---------------------------------------------------------------------
         # Collect options for mask creation
-        kwargs = {**dict(mask_size=self.m__hsr_instance.m__frame_size,
-                         position=position,
-                         lambda_over_d=self.m__hsr_instance.m__lambda_over_d,
-                         pixscale=self.m__hsr_instance.m__pixscale),
-                  **self.m__config_sources['mask']['parameters']}
+        # ---------------------------------------------------------------------
 
-        # If we are using the default mask, we are done here
+        # Define some useful shortcuts
+        mask_type = self.m__config_sources['mask']['type']
+        frame_size = self.m__hsr_instance.m__frame_size
+        lambda_over_d = self.m__hsr_instance.m__lambda_over_d
+        pixscale = self.m__hsr_instance.m__pixscale
+
+        # Collect all arguments in a dict
+        kwargs = dict(mask_size=frame_size,
+                      position=position,
+                      lambda_over_d=lambda_over_d,
+                      pixscale=pixscale,
+                      **self.m__config_sources['mask']['parameters'])
+
+        # ---------------------------------------------------------------------
+        # Create collection-specific exclusion region
+        # ---------------------------------------------------------------------
+
+        # By default, the exclusion region is simply the collection region
+        exclusion_mask = deepcopy(self.m__collection_region_mask)
+
+        # If necessary, the exclusion region is dilated. This is useful in
+        # cases where the radius of the PSF for the forward model is chosen
+        # to be smaller than one lambda over D.
+        if 'dilation_radius' in kwargs:
+
+            # Select the dilation radius. This is the radius of the circular
+            # mask that is used to dilate the exclusion mask, and it given in
+            # units if lambda over D (because the cropping radius of the PSF
+            # template is also specified in units of lambda over D).
+            dilation_radius = kwargs['dilation_radius']
+
+            # Convert dilation_radius from units of lambda over D to pixel
+            dilation_radius_pixel = \
+                int(dilation_radius * (lambda_over_d / pixscale))
+
+            # Compute the size of the circular mask used for dilated the
+            # exclusion region. This needs to be an odd number.
+            dilation_mask_size = 2 * dilation_radius_pixel + 1
+
+            # Create the circular mask for dilating the exclusion region
+            dilation_mask = get_circle_mask(mask_size=(dilation_mask_size,
+                                                       dilation_mask_size),
+                                            radius=dilation_radius_pixel)
+
+            # Dilate the default exclusion mask with the dilation mask
+            exclusion_mask = binary_dilation(image=exclusion_mask,
+                                             selem=dilation_mask)
+
+        # ---------------------------------------------------------------------
+        # Depending on the mask type, get the correct selection mask
+        # ---------------------------------------------------------------------
+
         if mask_type == 'default':
-            return get_default_mask(**kwargs)
+            selection_mask = get_default_mask(**kwargs)
         elif mask_type == 'default_grid':
-            return get_default_grid_mask(**kwargs)
+            selection_mask = get_default_grid_mask(**kwargs)
         elif mask_type == 'santa':
-            return get_santa_mask(**kwargs)
-        # use all pixel without the pixel covered by the collection
+            selection_mask = get_santa_mask(**kwargs)
         elif mask_type == 'all':
-            # estimate pixel covered by the collection
-            collection_region = np.zeros(kwargs["mask_size"])
-            positions = self.m__collection_region
-            collection_region[tuple(zip(*positions))] = 1
-
-            if "dilation_radius" in kwargs:
-                dilation_radius = kwargs["dilation_radius"]
-                # the mask size needs to be an odd number
-                dilation_mask_size = int(np.round(dilation_radius * 2 + 2))
-                dilation_mask_size += (dilation_mask_size-1) % 2
-
-                collection_region = \
-                    binary_dilation(collection_region,
-                                    selem=get_circle_mask(
-                                        (dilation_mask_size,
-                                         dilation_mask_size),
-                                        dilation_radius))
-
-            # get all pixel covered by the HSR model
-            hsr_region = self.m__hsr_instance.m__roi_mask
-
-            return np.logical_and(np.logical_not(collection_region),
-                                  hsr_region)
+            selection_mask = np.full(frame_size, True)
         else:
-            # For unknown mask types, raise an error
             raise ValueError('Invalid choice for mask_type!')
+
+        # ---------------------------------------------------------------------
+        # Remove the exclusion region from the selection mask and return result
+        # ---------------------------------------------------------------------
+
+        # Remove the exclusion_mask from the selection_mask
+        predictor_mask = np.logical_and(selection_mask,
+                                        np.logical_not(exclusion_mask))
+
+        return predictor_mask
 
     def precompute_pca(self,
                        stack: np.ndarray,
@@ -175,6 +271,9 @@ class PixelPredictorCollection:
 
         sources = stack[:, predictor_mask]
 
+        # Apply pre-processing to sources: If planet_signal is not None, we
+        # will project the sources into a subspace that is orthogonal to the
+        # planet signal.
         sources = self.preprocess_sources(sources=sources,
                                           planet_signal=planet_signal)
 
@@ -237,22 +336,43 @@ class PixelPredictorCollection:
         # ---------------------------------------------------------------------
 
         if self.m__use_forward_model:
+
+            # Compute the forward model, that is, the planet signal under the
+            # assumption that the planet at t=0 is at self.m__position
             signal_stack = get_signal_stack(position=self.m__position,
                                             frame_size=stack.shape[1:],
                                             parang=parang,
                                             psf_cropped=psf_cropped)
-            collection_region_mask = get_collection_region_mask(signal_stack)
-            self.m__collection_region = \
-                get_positions_from_mask(collection_region_mask)
+
+            # Compute the collection mask, that is, the mask of all pixels
+            # which, under the above assumption, at some point in time contain
+            # planet signal
+            self.m__collection_region_mask = \
+                get_collection_region_mask(signal_stack)
+
+            # Turn the mask into a list of positions (x, y)
+            self.m__collection_region_positions = \
+                get_positions_from_mask(self.m__collection_region_mask)
+
         else:
+
+            # Without forward modeling, there is no planet signal
             signal_stack = None
-            self.m__collection_region = [self.m__position]
+
+            # The collection region only consists of the current position.
+            # We therefore create a collection region mask that only masks
+            # the defining position of the collection.
+            self.m__collection_region_mask = np.full(stack.shape[1:], False)
+            self.m__collection_region_mask[self.m__position] = True
+
+            # The list of positions in the collection only contains one element
+            self.m__collection_region_positions = [self.m__position]
 
         # ---------------------------------------------------------------------
         # Loop over all positions in the collection region
         # ---------------------------------------------------------------------
 
-        for position in self.m__collection_region:
+        for position in self.m__collection_region_positions:
 
             # -----------------------------------------------------------------
             # If necessary, pre-compute the sources for this position
@@ -302,6 +422,14 @@ class PixelPredictorCollection:
 
 
 class PlanetSafePixelPredictorCollection(PixelPredictorCollection):
+    """
+    A "planet safe" version of the PixelPredictorCollection: The main
+    difference is that in this version, the preprocess_sources() method
+    computes a projection of the sources that is orthogonal to the
+    planet signal. This means this class can only be used with forward
+    modeling enabled. It also implements the get_collection_residuals()
+    method (which does not make sense without forward modeling).
+    """
 
     def __init__(self,
                  position: Tuple[int, int],
@@ -322,20 +450,28 @@ class PlanetSafePixelPredictorCollection(PixelPredictorCollection):
         # Construct signal stack
         # ---------------------------------------------------------------------
 
+        # Compute the forward model, that is, the planet signal under the
+        # assumption that the planet at t=0 is at self.m__position
         signal_stack = get_signal_stack(position=self.m__position,
                                         frame_size=stack.shape[1:],
                                         parang=parang,
                                         psf_cropped=psf_cropped)
 
-        collection_region_mask = get_collection_region_mask(signal_stack)
-        self.m__collection_region = \
-            get_positions_from_mask(collection_region_mask)
+        # Compute the collection mask, that is, the mask of all pixels
+        # which, under the above assumption, at some point in time contain
+        # planet signal
+        self.m__collection_region_mask = \
+            get_collection_region_mask(signal_stack)
+
+        # Turn the mask into a list of positions (x, y)
+        self.m__collection_region_positions = \
+            get_positions_from_mask(self.m__collection_region_mask)
 
         # ---------------------------------------------------------------------
         # Loop over all positions in the collection region
         # ---------------------------------------------------------------------
 
-        for position in self.m__collection_region:
+        for position in self.m__collection_region_positions:
 
             # -----------------------------------------------------------------
             # Collect targets, planet signal and sources for fit
@@ -371,33 +507,36 @@ class PlanetSafePixelPredictorCollection(PixelPredictorCollection):
             # Add trained PixelPredictor to PixelPredictorCollection
             self.m__predictors[position] = pixel_predictor
 
-    def preprocess_sources(self,
-                           sources: np.ndarray,
-                           planet_signal: Optional[np.ndarray]) -> np.ndarray:
-
-        # ---------------------------------------------------------------------
-        # Get sources and orthogonalize them w.r.t. the planet signal
-        # ---------------------------------------------------------------------
-
-        # Normalize planet_signal
-        normalized_planet_signal = \
-            planet_signal / np.linalg.norm(planet_signal)
-
-        # Orthogonalize sources with respect to planet_signal
-        sources_projected = \
-            sources - np.outer(np.matmul(sources.T, normalized_planet_signal),
-                               normalized_planet_signal).T
-
-        # Make sure sources_projected is actually orthogonal to planet signal
-        projection = np.matmul(sources_projected.T, planet_signal)
-        assert np.allclose(projection, np.zeros_like(projection)), \
-            'Orthogonalization failed!'
-
-        return sources_projected
-
     def get_collection_residuals(self,
                                  stack: np.ndarray,
                                  parang: np.ndarray) -> np.ndarray:
+        """
+        Compute residual time series for this collection.
+
+        The idea here is the following: for every pixel in the
+        collection, we get the prediction from the noise part of the
+        learned models and subtract that from the `stack`, giving us
+        a stack of residual time series (for spatial pixels within the
+        collection region). This residual stack is then derotated by
+        the parallactic angles of the frames onto the first frame
+        (which corresponds to t=0). This creates a "cylinder" in the
+        stack where only a circular region with radius `psf_radius`
+        around the defining position of the collection has entries for
+        all frames. We select this cylinder and sum of along the spatial
+        dimensions (i.e., at each time step we integrate the respective
+        residual disk), which results in a single time series that we
+        return.
+
+        Args:
+            stack: A 3D numpy array of shape (n_frames, width, height)
+                containing the stack of frames to train on.
+            parang: A 1D numpy array of shape (n_frames,) containing the
+                corresponding parallactic angles for the stack.
+
+        Returns:
+            A 1D numpy array of shape (n_frames,) containing the
+            residual time series which was computed as described above.
+        """
 
         residuals = np.zeros_like(stack)
 
@@ -433,7 +572,8 @@ class PlanetSafePixelPredictorCollection(PixelPredictorCollection):
                                          radius=psf_radius_pixel,
                                          center=self.m__position)
 
+        # Set everything except the cylinder to NaN
         derotated_residuals[:, ~selection_mask] = np.nan
 
-        # Return result
+        # Return result: sum up cylinder over spatial dimensions
         return np.nansum(derotated_residuals, axis=(1, 2))
