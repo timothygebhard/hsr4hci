@@ -63,13 +63,18 @@ class HalfSiblingRegression:
 
         # Initialize additional class variables
         self.m__collections = dict()
+        self.m__cropped_psf_template = None
         self.m__sources = dict()
 
     def get_cropped_psf_template(self,
                                  psf_template: np.ndarray) -> np.ndarray:
         """
+        Get a cropped version of the `psf_template`.
+
         Crop a given `psf_template` according to the options specified
-        in the experiment configuration.
+        in the experiment configuration, or simply return the cropped
+        PSF template if we have already computed the cropped version
+        before.
 
         Args:
             psf_template: A 2D numpy array containing the raw,
@@ -80,14 +85,24 @@ class HalfSiblingRegression:
             template (according to the experiment config).
         """
 
-        # Crop and return the PSF template
-        crop_psf_template_arguments = \
-            {'psf_template': psf_template,
-             'psf_radius': self.m__config_psf_template['psf_radius'],
-             'rescale_psf': self.m__config_psf_template['rescale_psf'],
-             'pixscale': self.m__pixscale,
-             'lambda_over_d': self.m__lambda_over_d}
-        return crop_psf_template(**crop_psf_template_arguments)
+        # If we have not run this function before, we need to actually crop
+        # the PSF template according to the options from the config file
+        if self.m__cropped_psf_template is None:
+
+            # Collect arguments for cropping
+            crop_psf_template_arguments = \
+                {'psf_template': psf_template,
+                 'psf_radius': self.m__config_psf_template['psf_radius'],
+                 'rescale_psf': self.m__config_psf_template['rescale_psf'],
+                 'pixscale': self.m__pixscale,
+                 'lambda_over_d': self.m__lambda_over_d}
+
+            # Crop the PSF and store the result
+            self.m__cropped_psf_template = \
+                crop_psf_template(**crop_psf_template_arguments)
+
+        # Return the cropped PSF template
+        return self.m__cropped_psf_template
 
     def get_coefficients(self) -> np.ndarray:
         """
@@ -272,12 +287,8 @@ class HalfSiblingRegression:
                 parallactic angle for each frame in the stack.
             psf_template: A 2D numpy array containing the unsaturated
                 PSF template which is used for forward modeling of the
-                planet signal. If None is given instead, no forward
-                modeling is performed.
+                planet signal.
         """
-
-        # Crop the PSF template to the size specified in the config
-        psf_cropped = self.get_cropped_psf_template(psf_template=psf_template)
 
         # Get positions of pixels in ROI
         roi_pixels = get_positions_from_mask(self.m__roi_mask)
@@ -287,13 +298,13 @@ class HalfSiblingRegression:
             self.train_position(position=position,
                                 stack=stack,
                                 parang=parang,
-                                psf_cropped=psf_cropped)
+                                psf_template=psf_template)
 
     def train_position(self,
                        position: Tuple[int, int],
                        stack: np.ndarray,
                        parang: np.ndarray,
-                       psf_cropped: np.ndarray):
+                       psf_template: np.ndarray):
         """
         Train the models for a given `position`.
 
@@ -312,14 +323,17 @@ class HalfSiblingRegression:
                 containing the training data.
             parang: A 1D numpy array of shape (n_frames,) containing
                 the corresponding parallactic angles for the stack.
-            psf_cropped: A 2D numpy containing the cropped and masked
-                PSF template that will be used to compute the forward
-                model.
+            psf_template: A 2D numpy array containing the unsaturated
+                PSF template which is used for forward modeling of the
+                planet signal.
         """
 
         # Create a PixelPredictorCollection instance for this position
         collection = self.m__collection_class(position=position,
                                               hsr_instance=self)
+
+        # Get the cropped PSF template
+        psf_cropped = self.get_cropped_psf_template(psf_template=psf_template)
 
         # Train and save the collection for this position
         collection.train_collection(stack=stack,
