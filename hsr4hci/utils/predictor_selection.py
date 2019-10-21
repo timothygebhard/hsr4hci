@@ -1,5 +1,5 @@
 """
-Utility functions for selecting predictors (and targets).
+Utility functions for selecting predictors.
 """
 
 # -----------------------------------------------------------------------------
@@ -9,7 +9,6 @@ Utility functions for selecting predictors (and targets).
 from cmath import polar
 from typing import Optional
 
-import cv2
 import numpy as np
 
 from hsr4hci.utils.masking import get_annulus_mask, get_circle_mask
@@ -23,7 +22,7 @@ def get_default_mask(mask_size: tuple,
                      position: tuple,
                      n_regions: int = 1,
                      region_size: Optional[int] = None,
-                     **kwargs) -> np.ndarray:
+                     **_) -> np.ndarray:
     """
     Get a mask to select the predictor pixels for the given `position`.
 
@@ -91,7 +90,7 @@ def get_default_grid_mask(mask_size: tuple,
                           n_regions: int = 1,
                           region_size: Optional[int] = None,
                           exclusion_radius: float = 5,
-                          **kwargs) -> np.ndarray:
+                          **_) -> np.ndarray:
 
     # Compute lambda / D in units of pixels
     lod_pixels = lambda_over_d / pixscale
@@ -120,59 +119,35 @@ def get_santa_mask(mask_size: tuple,
                    position: tuple,
                    lambda_over_d: float,
                    pixscale: float,
-                   **kwargs) -> np.ndarray:
+                   **_) -> np.ndarray:
 
     # Compute lambda / D in units of pixels
     lod_pixels = lambda_over_d / pixscale
 
-    mask = np.zeros(mask_size).astype(np.bool)
-    center = (mask_size[0] / 2, mask_size[1] / 2)
+    # Compute mask center and separation of position from the center
+    center = tuple([_ / 2 for _ in mask_size])
+    separation = np.hypot((position[0] - center[0]), (position[1] - center[1]))
 
-    # Compute polar representation of the position
-    radius, phi = polar(complex(position[1] - center[1],
-                                position[0] - center[0]))
+    # Initialize an empty mask of the desired size
+    mask = np.full(mask_size, False)
 
-    # Define default options of ellipses
-    ellipse_options = dict(angle=np.rad2deg(phi) + 90,
-                           startAngle=0,
-                           endAngle=360,
-                           color=(1, 1, 1),
-                           thickness=-1)
+    # Add circular selection mask at position (radius: 2 lambda over D)
+    circular_mask = get_circle_mask(mask_size=mask_size,
+                                    radius=(2 * lod_pixels),
+                                    center=position)
+    mask = np.logical_or(mask, circular_mask)
 
-    # Add mask at position
-    ellipse = np.zeros(mask_size)
-    cv2.ellipse(img=ellipse,
-                center=tuple(map(int, position[::-1])),
-                axes=tuple(map(int, (5 * lod_pixels, 4 * lod_pixels))),
-                **ellipse_options)
-    ellipse = ellipse.astype(bool)
-    mask[ellipse] = True
+    # Add circular selection  mask at mirror position (radius: 2 lambda over D)
+    mirror_position = tuple([2 * center[i] - position[i] for i in range(2)])
+    circular_mask = get_circle_mask(mask_size=mask_size,
+                                    radius=(2 * lod_pixels),
+                                    center=mirror_position)
+    mask = np.logical_or(mask, circular_mask)
 
-    # Add disk mask at mirror position
-    new_complex_position = radius * np.exp(1j * (phi + np.pi))
-    new_position = (int(np.imag(new_complex_position) + center[0]),
-                    int(np.real(new_complex_position) + center[1]))
-    ellipse = np.zeros(mask_size)
-    cv2.ellipse(img=ellipse,
-                center=tuple(map(int, new_position[::-1])),
-                axes=tuple(map(int, (4.5 * lod_pixels, 3 * lod_pixels))),
-                **ellipse_options)
-    ellipse = ellipse.astype(bool)
-    mask[ellipse] = True
-
-    # Add annulus around frame center
+    # Add annulus-shaped selection mask (width: 1 lambda over D)
     annulus = get_annulus_mask(mask_size=mask_size,
-                               inner_radius=(radius - lod_pixels),
-                               outer_radius=(radius + lod_pixels))
+                               inner_radius=(separation - 0.5 * lod_pixels),
+                               outer_radius=(separation + 0.5 * lod_pixels))
     mask = np.logical_or(mask, annulus)
-
-    # Define exclusion region around the position
-    exclusion_mask = np.zeros(mask_size)
-    cv2.ellipse(img=exclusion_mask,
-                center=tuple(map(int, position[::-1])),
-                axes=tuple(map(int, (5 * lod_pixels, 2.5 * lod_pixels))),
-                **ellipse_options)
-    exclusion_mask = exclusion_mask.astype(bool)
-    mask[exclusion_mask] = False
 
     return mask
