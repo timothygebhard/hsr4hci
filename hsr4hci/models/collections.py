@@ -9,14 +9,14 @@ Provides PixelPredictorCollection classes.
 from copy import deepcopy
 from typing import Optional, Tuple, TYPE_CHECKING
 
-from sklearn.decomposition import PCA
+from photutils import CircularAperture, aperture_photometry
 from skimage.morphology import binary_dilation
+from sklearn.decomposition import PCA
 
 import numpy as np
 
 from hsr4hci.models.predictors import PixelPredictor
 
-from hsr4hci.utils.adi_tools import derotate_frames
 from hsr4hci.utils.forward_modeling import get_signal_stack, \
     get_collection_region_mask
 from hsr4hci.utils.masking import get_positions_from_mask, get_circle_mask
@@ -70,6 +70,7 @@ class PixelPredictorCollection:
         # Initialize additional class variables
         self.m__collection_region_mask = None
         self.m__collection_region_positions = None
+        self.m__planet_positions = None
         self.m__predictors = dict()
 
         # Get variables which can be inherited from parent
@@ -339,10 +340,11 @@ class PixelPredictorCollection:
 
             # Compute the forward model, that is, the planet signal under the
             # assumption that the planet at t=0 is at self.m__position
-            signal_stack = get_signal_stack(position=self.m__position,
-                                            frame_size=stack.shape[1:],
-                                            parang=parang,
-                                            psf_cropped=psf_cropped)
+            signal_stack, self.m__planet_positions = \
+                get_signal_stack(position=self.m__position,
+                                 frame_size=stack.shape[1:],
+                                 parang=parang,
+                                 psf_cropped=psf_cropped)
 
             # Compute the collection mask, that is, the mask of all pixels
             # which, under the above assumption, at some point in time contain
@@ -452,10 +454,11 @@ class PlanetSafePixelPredictorCollection(PixelPredictorCollection):
 
         # Compute the forward model, that is, the planet signal under the
         # assumption that the planet at t=0 is at self.m__position
-        signal_stack = get_signal_stack(position=self.m__position,
-                                        frame_size=stack.shape[1:],
-                                        parang=parang,
-                                        psf_cropped=psf_cropped)
+        signal_stack, self.m__planet_positions = \
+            get_signal_stack(position=self.m__position,
+                             frame_size=stack.shape[1:],
+                             parang=parang,
+                             psf_cropped=psf_cropped)
 
         # Compute the collection mask, that is, the mask of all pixels
         # which, under the above assumption, at some point in time contain
@@ -508,8 +511,7 @@ class PlanetSafePixelPredictorCollection(PixelPredictorCollection):
             self.m__predictors[position] = pixel_predictor
 
     def get_collection_residuals(self,
-                                 stack: np.ndarray,
-                                 parang: np.ndarray) -> np.ndarray:
+                                 stack: np.ndarray) -> np.ndarray:
         """
         Compute residual time series for this collection.
 
@@ -517,28 +519,44 @@ class PlanetSafePixelPredictorCollection(PixelPredictorCollection):
         collection, we get the prediction from the noise part of the
         learned models and subtract that from the `stack`, giving us
         a stack of residual time series (for spatial pixels within the
-        collection region). This residual stack is then derotated by
-        the parallactic angles of the frames onto the first frame
-        (which corresponds to t=0). This creates a "cylinder" in the
-        stack where only a circular region with radius `psf_radius`
-        around the defining position of the collection has entries for
-        all frames. We select this cylinder and sum of along the spatial
-        dimensions (i.e., at each time step we integrate the respective
-        residual disk), which results in a single time series that we
-        return.
+        collection region).
+        We then go over every frame in the residual stack and place a
+        circular mask (with a radius that matches the one of the cropped
+        PSF template associated with the collection) at the expected
+        position of the planet (based on the forward model associated
+        with the collection). We sum up the residual flux in this
+        aperture and use it as the residual for the corresponding time
+        step. This means that in the end, we return a time series for
+        the pixel at self.m__position, providing a single residual value
+        for every frame.
 
         Args:
             stack: A 3D numpy array of shape (n_frames, width, height)
                 containing the stack of frames to train on.
-            parang: A 1D numpy array of shape (n_frames,) containing the
-                corresponding parallactic angles for the stack.
 
         Returns:
             A 1D numpy array of shape (n_frames,) containing the
             residual time series which was computed as described above.
         """
 
-        residuals = np.zeros_like(stack)
+        # ---------------------------------------------------------------------
+        # Define some useful shortcuts
+        # ---------------------------------------------------------------------
+
+        psf_radius = self.m__hsr_instance.m__config_psf_template['psf_radius']
+        lambda_over_d = self.m__hsr_instance.m__lambda_over_d
+        pixscale = self.m__hsr_instance.m__pixscale
+        n_frames = stack.shape[0]
+
+        # Convert the radius of the PSF from units of lambda over D to pixel
+        psf_radius_pixel = psf_radius * (lambda_over_d / pixscale)
+
+        # ---------------------------------------------------------------------
+        # Get noise model predictions and compute residuals
+        # ---------------------------------------------------------------------
+
+        # Initialize an array for the residuals we will compute
+        residuals = np.full(stack.shape, np.nan)
 
         # Loop over all predictors in collection
         for position, predictor in self.m__predictors.items():
@@ -554,26 +572,41 @@ class PlanetSafePixelPredictorCollection(PixelPredictorCollection):
             # Use noise model to get noise prediction
             noise_prediction = noise_model.predict(tmp_sources)
 
-            # Compute residuals for this position
-            residuals[:, position[0], position[1]] = \
-                stack[:, position[0], position[1]] - noise_prediction
+            # Compute residuals for this position by subtracting the noise
+            # model prediction from the original stack (and remove the median)
+            residual = stack[:, position[0], position[1]] - noise_prediction
+            residual -= np.median(residual)
 
-        # Derotate residual stack (onto first frame)
-        derotated_residuals = derotate_frames(stack=residuals,
-                                              parang=(parang-parang[0]))
+            # Store the median-removed residuals for this position
+            residuals[:, position[0], position[1]] = residual
 
-        # Select "cylinder"
-        frame_size = self.m__hsr_instance.m__frame_size
-        psf_radius = self.m__hsr_instance.m__config_psf_template['psf_radius']
-        lambda_over_d = self.m__hsr_instance.m__lambda_over_d
-        pixscale = self.m__hsr_instance.m__pixscale
-        psf_radius_pixel = int(psf_radius * (lambda_over_d / pixscale))
-        selection_mask = get_circle_mask(mask_size=frame_size,
-                                         radius=psf_radius_pixel,
-                                         center=self.m__position)
+        # ---------------------------------------------------------------------
+        # Measure and sum up residual flux at expected planet positions
+        # ---------------------------------------------------------------------
 
-        # Set everything except the cylinder to NaN
-        derotated_residuals[:, ~selection_mask] = np.nan
+        # Loop over frames, place a circular aperture mask with radius psf_size
+        # at the expected position of the planet (according to the forward
+        # model of the collection), and sum up the values selected by the mask.
+        # This is similar to derotating the frames, but it should introduce
+        # less interpolation artifacts (and furthermore keep a possible planet
+        # PSF aligned).
+        result = list()
+        for i in range(n_frames):
 
-        # Return result: sum up cylinder over spatial dimensions
-        return np.nansum(derotated_residuals, axis=(1, 2))
+            # Get the expected planet position from the forward model
+            # NOTE: We need to flip the (x, y) coordinates because photutils
+            #       uses a different convention for the coordinate system...
+            expected_planet_position = self.m__planet_positions[i][::-1]
+
+            # Place a circular aperture at the expected planet position (whose
+            # radius matches the radius that the PSF template was cropped to)
+            # on the current residual frame and sum up the values inside of it
+            aperture = CircularAperture(positions=expected_planet_position,
+                                        r=psf_radius_pixel)
+            photometry = aperture_photometry(data=residuals[i],
+                                             apertures=aperture)
+
+            # Store the result (i.e., the aperture sum) for this frame
+            result.append(float(photometry['aperture_sum']))
+
+        return np.array(result)
