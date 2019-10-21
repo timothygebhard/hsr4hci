@@ -9,7 +9,6 @@ Utility methods for forward modeling.
 from cmath import polar
 from typing import Tuple
 
-from astropy.nddata import Cutout2D
 from photutils import centroid_2dg, CircularAperture
 
 import numpy as np
@@ -49,7 +48,7 @@ def crop_psf_template(psf_template: np.ndarray,
     """
 
     # Convert psf_radius from units of lambda over D to pixel
-    psf_radius_pixel = int(psf_radius * (lambda_over_d / pixscale))
+    psf_radius_pixel = psf_radius * (lambda_over_d / pixscale)
 
     # If desired, rescale the PSF template into the value range (0, 1]
     scale_factor = np.max(psf_template) if rescale_psf else 1
@@ -62,18 +61,12 @@ def crop_psf_template(psf_template: np.ndarray,
     # Fit the center of the clipped PSF template
     psf_clipped_center = centroid_2dg(psf_clipped)
 
-    # Crop the PSF template around the center we have computed
-    crop_size = (2 * psf_radius_pixel + 1, 2 * psf_radius_pixel + 1)
-    psf_cropped = Cutout2D(data=psf_clipped,
-                           position=psf_clipped_center,
-                           size=crop_size).data
-
-    # Create a circular mask and multiply it with the cropped PSF
-    circular_aperture = \
-        CircularAperture(positions=(psf_radius_pixel, psf_radius_pixel),
-                         r=psf_radius_pixel)
+    # Create a circular mask and multiply it with the clipped PSF. The
+    # resulting masked PSF is automatically cropped to its bounding box.
+    circular_aperture = CircularAperture(positions=psf_clipped_center,
+                                         r=psf_radius_pixel)
     circular_mask = circular_aperture.to_mask(method='exact')
-    psf_masked = circular_mask.multiply(psf_cropped)
+    psf_masked = circular_mask.multiply(psf_clipped)
 
     return psf_masked
 
