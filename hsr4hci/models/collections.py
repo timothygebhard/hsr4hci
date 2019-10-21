@@ -307,7 +307,7 @@ class PixelPredictorCollection:
 
         else:
             raise ValueError('pca_mode must be one of the following: '
-                             '"fit" or "fit_transform"!')
+                             '"temporal" or "spatial"!')
 
         return tmp_sources
 
