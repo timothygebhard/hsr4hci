@@ -14,7 +14,7 @@ from tqdm import tqdm
 import numpy as np
 
 from hsr4hci.models.collections import PixelPredictorCollection as PPCollection
-from hsr4hci.utils.forward_modeling import crop_psf_template, get_signal_stack
+from hsr4hci.utils.forward_modeling import crop_psf_template
 from hsr4hci.utils.masking import get_positions_from_mask
 from hsr4hci.utils.roi_selection import get_roi_mask
 
@@ -206,61 +206,6 @@ class HalfSiblingRegression:
 
         return predictions
 
-    def get_best_fit_planet_model(self,
-                                  detection_map: np.ndarray,
-                                  stack_shape: Tuple[int, int, int],
-                                  parang: np.ndarray,
-                                  psf_template: np.ndarray) -> np.ndarray:
-        """
-        Get the best fit planet model (BFPM).
-
-        Args:
-            detection_map: A 2D numpy array containing the detection map
-                obtained with get_detection_map().
-            stack_shape: A tuple containing the shape of the stack on
-                which we trained the model, which will also be the shape
-                of the array containing the best fit planet model.
-            parang: A 1D numpy array containing the parallactic angles.
-            psf_template: A 2D numpy array containing the unsaturated
-                PSF template (raw, i.e., not cropped or masked).
-
-        Returns:
-            A 3D numpy array with the same shape as `stack` that
-            contains our best fit planet model.
-        """
-
-        # Crop and mask the PSF template
-        psf_cropped = self.get_cropped_psf_template(psf_template=psf_template)
-
-        # Initialize the best fit planet model
-        best_fit_planet_model = np.zeros(stack_shape)
-
-        # Get positions where detection map is positive (we ignore negative
-        # entries because they are do not make sense astrophysically)
-        positive_pixels = \
-            get_positions_from_mask(np.nan_to_num(detection_map) > 0)
-
-        # Loop over all these positions
-        for position in tqdm(positive_pixels, ncols=80):
-
-            # Compute the weight according to the detection map
-            factor = detection_map[position[0], position[1]]
-
-            # Compute the forward model for this position
-            signal_stack = get_signal_stack(position=position,
-                                            frame_size=self.m__frame_size,
-                                            parang=parang,
-                                            psf_cropped=psf_cropped)
-
-            # Add the forward model for this position to the best fit model
-            best_fit_planet_model += factor * signal_stack
-
-        # "Normalize" the best-fit planet model
-        best_fit_planet_model /= np.max(best_fit_planet_model)
-        best_fit_planet_model *= np.nanmax(detection_map)
-
-        return best_fit_planet_model
-
     def get_detection_map(self) -> np.ndarray:
         """
         Collect the detection map for the model.
@@ -296,18 +241,16 @@ class HalfSiblingRegression:
         return detection_map
 
     def get_residual_stack(self,
-                           stack: np.ndarray,
-                           parang: np.ndarray):
+                           stack: np.ndarray) -> np.ndarray:
 
         # Initialize an empty residual stack
-        residual_stack = np.zeros_like(stack)
+        residual_stack = np.full(stack.shape, np.nan)
 
         # collect residual lines in time
         for position, collection in \
                 tqdm(self.m__collections.items(), ncols=80):
             residual_stack[:, position[0], position[1]] = \
-                collection.get_collection_residuals(stack=stack,
-                                                    parang=parang)
+                collection.get_collection_residuals(stack=stack)
 
         return residual_stack
 
