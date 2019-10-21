@@ -1,4 +1,6 @@
 # Ignore results, models, ... folders in experiment directories
+experiments/local_playground
+experiments/local_playground/*
 experiments/*/*
 !experiments/*/config.json
 !experiments/*/*.py
