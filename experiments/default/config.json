@@ -21,15 +21,24 @@
             "rescale_psf": true
         },
         "sources": {
-            "mask": {
-                "type": "default_grid",
-                "parameters": {
-                    "region_size": 5
-                }
+            "selection_mask": {
+                "type": "santa",
+                "parameters": {}
             },
-            "pca_mode": "temporal",
-            "pca_components": 32,
-            "sv_power": 1.0
+            "preprocessing": [
+                {
+                    "type": "standardize",
+                    "parameters": {}
+                },
+                {
+                    "type": "compute_pca",
+                    "parameters": {
+                        "pca_mode": "temporal",
+                        "pca_components": 32,
+                        "sv_power": 0.0
+                    }
+                }
+            ]
         },
         "model": {
             "module": "sklearn.linear_model",
