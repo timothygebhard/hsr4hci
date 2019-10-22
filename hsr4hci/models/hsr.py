@@ -6,14 +6,13 @@ Provides HalfSiblingRegression class.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from copy import deepcopy
-from typing import Optional, Tuple, Type, Union
+from typing import Optional, Tuple
 
 from tqdm import tqdm
 
 import numpy as np
 
-from hsr4hci.models.collections import PixelPredictorCollection as PPCollection
+from hsr4hci.models.collections import PixelPredictorCollection
 from hsr4hci.utils.forward_modeling import crop_psf_template
 from hsr4hci.utils.masking import get_positions_from_mask
 from hsr4hci.utils.roi_selection import get_roi_mask
@@ -36,11 +35,9 @@ class HalfSiblingRegression:
     """
 
     def __init__(self,
-                 config: dict,
-                 collection_class: Type[PPCollection] = PPCollection):
+                 config: dict):
 
         # Store the constructor arguments
-        self.m__collection_class = collection_class
         self.m__config = config
 
         # Define useful shortcuts
@@ -64,7 +61,6 @@ class HalfSiblingRegression:
         # Initialize additional class variables
         self.m__collections = dict()
         self.m__cropped_psf_template = None
-        self.m__sources = dict()
 
     def get_cropped_psf_template(self,
                                  psf_template: np.ndarray) -> np.ndarray:
@@ -155,71 +151,6 @@ class HalfSiblingRegression:
                 position_coefficients
 
         return coefficients
-
-    def get_noise_predictions(self,
-                              stack_or_shape: Union[np.ndarray, tuple]
-                              ) -> np.ndarray:
-        """
-        Get the predictions of the noise part of the models we learned.
-
-        Args:
-            stack_or_shape: Either a 3D numpy array of shape (n_frames,
-                width, height) containing a stack of frames on which
-                the trained models should be evaluated, or just a tuple
-                (n_frames, width, height) containing the shape of the
-                original stack on which the data was trained. In the
-                first case, we will compute the PCA on the new stack
-                and apply the trained models on them to obtain a stack
-                of predictions. In the second case, we only return the
-                predictions of the models on the data that they were
-                trained on (in which case we do not need to compute the
-                PCA for the model inputs again).
-
-        Returns:
-            A 3D numpy array with the same shape as `stack_or_shape`
-            that contains, at each position (x, y) in the region of
-            interest, the prediction of the model for (x, y). The model
-            to make the prediction is taken from the collection at the
-            same position. For positions for which no model was trained,
-            the prediction default to NaN (i.e., you might want to use
-            np.nan_to_num() before subtracting the predictions from
-            your data to get the residuals of the model).
-        """
-
-        # Define stack shape based on whether we have received a stack or
-        # only the shape of the stack
-        if isinstance(stack_or_shape, tuple):
-            stack_shape = stack_or_shape
-        else:
-            stack_shape = stack_or_shape.shape
-
-        # Initialize an array that will hold our predictions
-        predictions = np.full(stack_shape, np.nan)
-
-        # Loop over all positions in the ROI and the respective collections
-        for position, collection in \
-                tqdm(self.m__collections.items(), ncols=80):
-
-            # Get a copy of the predictor for this position
-            predictor = deepcopy(collection.m__predictors[position].m__model)
-
-            # If we have trained the model with forward modeling, drop the
-            # signal part of the model (we're only predicting the noise here)
-            if self.m__use_forward_model:
-                predictor.coef_ = predictor.coef_[:-1]
-
-            # If necessary, pre-compute PCA on stack to build sources
-            if isinstance(stack_or_shape, tuple):
-                sources = self.m__sources[position]
-            else:
-                sources = collection.precompute_pca(stack=stack_or_shape,
-                                                    position=position)
-
-            # Make prediction for position and store in predictions array
-            predictions[:, position[0], position[1]] = \
-                predictor.predict(X=sources)
-
-        return predictions
 
     def get_detection_map(self) -> np.ndarray:
         """
@@ -329,7 +260,7 @@ class HalfSiblingRegression:
         """
 
         # Create a PixelPredictorCollection instance for this position
-        collection = self.m__collection_class(position=position,
+        collection = PixelPredictorCollection(position=position,
                                               hsr_instance=self)
 
         # Get the cropped PSF template
