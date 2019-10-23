@@ -22,7 +22,9 @@ class PixelPredictor:
     Wrapper class for a predictor model of a single pixel.
 
     Args:
-        config_model:
+        config_model: A dictionary containing the configuration for
+            the model that the predictor is based on (e.g., a RidgeCV
+            regressor from sklearn.linear_model).
     """
 
     def __init__(self,
@@ -54,18 +56,24 @@ class PixelPredictor:
                 model. May be None if `use_forward_model` is False.
         """
 
+        # Define shortcuts
+        module_name = self.m__config_model['module']
+        class_name = self.m__config_model['class']
+        parameters = self.m__config_model['parameters']
+
+        # Augment model parameters
+        if class_name == 'RidgeCV':
+            parameters['alphas'] = np.geomspace(1e-5, 1e5, 101)
+
         # Instantiate a new model according to the model_config
-        model_class = \
-            get_class_by_name(module_name=self.m__config_model['module'],
-                              class_name=self.m__config_model['class'])
-        self.m__model = model_class(**self.m__config_model['parameters'])
+        model_class = get_class_by_name(module_name=module_name,
+                                        class_name=class_name)
+        self.m__model = model_class(**parameters)
 
         # Augment the sources: if we are using a forward model, we need to
         # add the planet signal as a new column to the sources here; if not,
         # we leave the sources unchanged
-
         if planet_signal is not None:
-            # Augment the sources by adding the planet signal as a new column
             sources = np.column_stack([sources, planet_signal.reshape(-1, 1)])
 
         # Fit model to the training data
