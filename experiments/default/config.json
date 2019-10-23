@@ -23,7 +23,9 @@
         "sources": {
             "selection_mask": {
                 "type": "santa",
-                "parameters": {}
+                "parameters": {
+                    "dilation_radius": 0.5
+                }
             },
             "preprocessing": [
                 {
@@ -31,10 +33,10 @@
                     "parameters": {}
                 },
                 {
-                    "type": "compute_pca",
+                    "type": "pca",
                     "parameters": {
                         "pca_mode": "temporal",
-                        "pca_components": 32,
+                        "n_components": 32,
                         "sv_power": 0.0
                     }
                 }
