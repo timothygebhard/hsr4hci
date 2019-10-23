@@ -13,6 +13,8 @@ from photutils import CircularAperture, aperture_photometry
 from skimage.morphology import binary_dilation
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
+from sklearn.random_projection import SparseRandomProjection, \
+    GaussianRandomProjection
 
 import numpy as np
 
@@ -135,14 +137,14 @@ class PixelPredictorCollection:
 
             # Define shortcuts to preprocessing type and parameters
             preprocessing_type = preprocessing_step['type']
-            preprocessing_params = preprocessing_step['parameters']
+            parameters = preprocessing_step['parameters']
 
             # Standardize the features (columns) of the sources by subtracting
             # their mean and dividing by their standard deviation
             if preprocessing_type == 'standardize':
                 sources = \
                     self.standardize_sources(sources=sources,
-                                             parameters=preprocessing_params)
+                                             parameters=parameters)
 
             # Orthogonalize the features (columns) of the sources w.r.t. a
             # particular vector (e.g., the planet signal) by removing the
@@ -151,14 +153,21 @@ class PixelPredictorCollection:
                 sources = \
                     self.orthogonalize_sources(sources=sources,
                                                planet_signal=planet_signal,
-                                               parameters=preprocessing_params)
+                                               parameters=parameters)
 
             # Compute a PCA on the sources and then replace the sources by
             # either the PCs, or a projection of the data onto the PCs
-            elif preprocessing_type == 'compute_pca':
+            elif preprocessing_type == 'pca':
                 sources = \
                     self.compute_pca_sources(sources=sources,
-                                             parameters=preprocessing_params)
+                                             parameters=parameters)
+
+            # Reduce the dimensionality of the sources by using a random
+            # projection (either Gaussian or sparse)
+            elif preprocessing_type == 'random_projection':
+                sources = \
+                    self.randomly_project_sources(sources=sources,
+                                                  parameters=parameters)
 
             # Raise an error if we do know the requested preprocessing type
             else:
@@ -397,7 +406,7 @@ class PixelPredictorCollection:
         """
 
         # Define some shortcuts to the PCA parameters
-        n_components = parameters['pca_components']
+        n_components = parameters['n_components']
         pca_mode = parameters['pca_mode']
         sv_power = parameters['sv_power']
 
@@ -434,6 +443,47 @@ class PixelPredictorCollection:
                              '"temporal" or "spatial"!')
 
         return pca_sources
+
+    @staticmethod
+    def randomly_project_sources(sources: np.ndarray,
+                                 parameters: dict) -> np.ndarray:
+        """
+        Reduce the dimensionality of the sources by applying a random
+        projection on the features.
+
+        Essentially, this replaces all columns in sources by a fixed
+        number of linear combinations of the columns. The coefficients
+        of the linear combinations are chosen randomly.
+
+        Args:
+            sources: A 2D numpy array of shape (n_frames, n_predictors)
+                on which to run the random projection.
+            parameters: A dictionary containing options for the random
+                projection, such as the "method" to use ("gaussian" or
+                "sparse").
+
+        Returns:
+            A 2D numpy array containing the `sources` after applying a
+            random projection to its features (columns).
+        """
+
+        # Define some shortcuts to the random projection parameters
+        method = parameters['method']
+        params = {k: v for k, v in parameters.items() if k != 'method'}
+
+        # Set up a projector based on the method and its parameters
+        if method == 'gaussian':
+            projector = GaussianRandomProjection(**params)
+        elif method == 'sparse':
+            projector = SparseRandomProjection(**params)
+        else:
+            raise ValueError(f'Invalid method for random projection '
+                             f'encountered: {method}')
+
+        # Project the sources using the projector
+        sources_projected = projector.fit_transform(X=sources)
+
+        return sources_projected
 
     def get_collection_residuals(self,
                                  stack: np.ndarray) -> np.ndarray:
