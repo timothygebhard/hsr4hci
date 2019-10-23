@@ -487,7 +487,7 @@ class PixelPredictorCollection:
         for position, predictor in self.m__predictors.items():
 
             # Get sources for this position
-            tmp_sources = self.m__sources[position]
+            sources = self.m__sources[position]
 
             # Get model from predictor and remove signal component such that
             # the resulting model represents only the "noise part"
@@ -496,7 +496,7 @@ class PixelPredictorCollection:
                 noise_model.coef_ = noise_model.coef_[:-1]
 
             # Use noise model to get noise prediction
-            noise_prediction = noise_model.predict(tmp_sources)
+            noise_prediction = noise_model.predict(sources)
 
             # Compute residuals for this position by subtracting the noise
             # model prediction from the original stack (and remove the median)
@@ -536,6 +536,37 @@ class PixelPredictorCollection:
             result.append(float(photometry['aperture_sum']))
 
         return np.array(result)
+
+    @staticmethod
+    def get_planet_signal(signal_stack: np.ndarray,
+                          position: Tuple[int, int]) -> Optional[np.ndarray]:
+        """
+        Take the `signal_stack` at the given `position` and standardize
+        (i.e., z-transform) the result before returning it. If the given
+        `signal_stack` is None, return None.
+
+        Args:
+            signal_stack: A 3D numpy array of shape (n_frames, width,
+                height) containing the forward model.
+            position: A tuple (x, y) containing the spatial position for
+                which to get the signal time series.
+
+        Returns:
+            The standardized signal_stack time series at the `position`.
+        """
+
+        # If the signal stack is None, we also return None
+        if signal_stack is None:
+            return None
+
+        # Select planet signal
+        planet_signal = signal_stack[:, position[0], position[1]]
+
+        # Apply a z-transform to the planet signal
+        planet_signal -= np.mean(planet_signal)
+        planet_signal /= np.std(planet_signal, ddof=1)
+
+        return planet_signal
 
     def train_collection(self,
                          stack: np.ndarray,
@@ -610,10 +641,8 @@ class PixelPredictorCollection:
             targets = stack[:, position[0], position[1]]
 
             # Get planet signal (only if we are using a forward model)
-            if self.m__use_forward_model:
-                planet_signal = signal_stack[:, position[0], position[1]]
-            else:
-                planet_signal = None
+            planet_signal = self.get_planet_signal(signal_stack=signal_stack,
+                                                   position=position)
 
             # Get the pre-processed sources
             sources = \
