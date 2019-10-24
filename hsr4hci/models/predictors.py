@@ -32,10 +32,15 @@ class PixelPredictor:
 
         # Initialize additional class variables
         self.m__model = None
-        self.m__signal_coef = None
 
         # Get variables which can be inherited from parents
         self.m__config_model = config_model
+
+    @property
+    def m__signal_coef(self) -> Optional[float]:
+        if hasattr(self.m__model, 'coef_'):
+            return float(self.m__model.coef_[-1])
+        return None
 
     def train(self,
               sources: np.ndarray,
@@ -78,22 +83,38 @@ class PixelPredictor:
 
         # Fit model to the training data
         self.m__model.fit(X=sources, y=targets)
-        self.m__signal_coef = float(self.m__model.coef_[-1])
 
-    def predict(self, sources: np.ndarray) -> np.ndarray:
+    def get_noise_prediction(self,
+                             sources: np.ndarray,
+                             add_dummy_column: bool = True) -> np.ndarray:
         """
-        Make predictions for given sources.
+        Get predictions of the "noise" part of the model.
 
         Args:
             sources: A 2D numpy array of shape (n_samples, n_features),
                 which contains the data for which we want to make a
                 prediction using the trained model.
+            add_dummy_column: Whether or not to add a column of zeros
+                to the sources. This is necessary if the model was
+                trained using forward modeling (where the last column
+                is the planet signal from the forward model, which we
+                do not need to make a prediction about the noise).
 
         Returns:
             A 1D numpy array of shape (n_samples, ) containing the
-            model predictions for the given inputs (sources).
+            noise model predictions for the given inputs (sources).
         """
 
+        # Only trained models can be used to make predictions
         if self.m__model is not None:
+
+            # If requested, add a dummy column to the sources
+            if add_dummy_column:
+                dummy_column = np.zeros((sources.shape[0], 1))
+                sources = np.column_stack([sources, dummy_column])
+            
+            # Return the noise model prediction
             return self.m__model.predict(X=sources)
-        raise RuntimeError('You called predict() on an untrained model!')
+
+        raise RuntimeError('You called get_noise_predictions() on an '
+                           'untrained model!')

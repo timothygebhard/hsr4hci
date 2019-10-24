@@ -349,14 +349,11 @@ class PixelPredictorCollection:
             # Get sources for this position
             sources = self.m__sources[position]
 
-            # Get model from predictor and remove signal component such that
-            # the resulting model represents only the "noise part"
-            noise_model = deepcopy(predictor.m__model)
-            if self.m__use_forward_model:
-                noise_model.coef_ = noise_model.coef_[:-1]
-
-            # Use noise model to get noise prediction
-            noise_prediction = noise_model.predict(sources)
+            # Get noise prediction from prediction
+            dummy = self.m__use_forward_model
+            noise_prediction = \
+                predictor.get_noise_prediction(sources=sources,
+                                               add_dummy_column=dummy)
 
             # Compute residuals for this position by subtracting the noise
             # model prediction from the original stack (and remove the median)
