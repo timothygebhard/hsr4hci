@@ -9,7 +9,7 @@ Provide functions for pre-processing the predictor pixels.
 from typing import Optional
 
 from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import RobustScaler
 from sklearn.random_projection import SparseRandomProjection, \
     GaussianRandomProjection
 
@@ -23,10 +23,13 @@ import numpy as np
 def standardize_sources(sources: np.ndarray,
                         parameters: dict) -> np.ndarray:
     """
-    Standardize sources array by applying a z-transform.
+    Standardize sources array by applying modified a z-transform.
 
-    For each column in sources, we subtract the mean of that column and
-    divide by its standard deviation.
+    For each column in sources, we subtract the median of that column
+    and scales the data according to the quantile range. This is more
+    robust to outliers and should help to prevent some self-subtraction
+    effects, because the median (unlike the mean) should not be affected
+    by the presence of a planet signal in the data.
 
     Args:
         sources: A 2D numpy array of shape (n_frames, n_predictors)
@@ -39,11 +42,11 @@ def standardize_sources(sources: np.ndarray,
         been standardized in the way described above.
     """
 
-    # Set up StandardScaler using the given parameters
-    standard_scaler = StandardScaler(**parameters)
+    # Set up RobustScaler using the given parameters
+    robust_scaler = RobustScaler(**parameters)
 
-    # Standardize the given sources using the StandardScaler
-    sources_standardized = standard_scaler.fit_transform(X=sources)
+    # Standardize the given sources using the RobustScaler
+    sources_standardized = robust_scaler.fit_transform(X=sources)
 
     # Return the standardized sources
     return sources_standardized
