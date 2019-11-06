@@ -99,11 +99,11 @@ if __name__ == '__main__':
         # ---------------------------------------------------------------------
 
         # Create the name for this experiment
-        experiment_name = (f'fit_intercept={int(fit_intercept)}__'
-                           f'presubtract_median={int(subtract_median)}__'
-                           f'compute_pca={int(pca)}__'
-                           f'orthogonalize={int(orthogonalize)}__'
-                           f'add_planet_column={int(add_planet_col)}')
+        experiment_name = (f'fit_intercept-{int(fit_intercept)}__'
+                           f'presubtract_median-{int(subtract_median)}__'
+                           f'compute_pca-{int(pca)}__'
+                           f'orthogonalize-{int(orthogonalize)}__'
+                           f'add_planet_column-{int(add_planet_col)}')
 
         # Create a folder with that name
         experiment_dir = os.path.join(experiments_dir, experiment_name)
@@ -131,7 +131,8 @@ if __name__ == '__main__':
 
     file_path = os.path.join(experiments_dir, 'list_of_experiments.txt')
     with open(file_path, 'w') as text_file:
-        text_file.write('\n'.join(list_of_experiments))
+        text_file.write('\n'.join(sorted(list_of_experiments)))
+        text_file.write('\n')
 
     # -------------------------------------------------------------------------
     # Postliminaries
