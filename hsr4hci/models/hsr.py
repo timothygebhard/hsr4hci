@@ -41,6 +41,7 @@ class HalfSiblingRegression:
         self.m__config = config
 
         # Define useful shortcuts
+        self.m__add_planet_column = config['experiment']['add_planet_column']
         self.m__config_model = config['experiment']['model']
         self.m__config_psf_template = config['experiment']['psf_template']
         self.m__config_sources = config['experiment']['sources']

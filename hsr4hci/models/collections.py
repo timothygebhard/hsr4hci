@@ -75,10 +75,11 @@ class PixelPredictorCollection:
         self.m__predictors = dict()
 
         # Get variables which can be inherited from parent
-        self.m__use_forward_model = hsr_instance.m__use_forward_model
+        self.m__add_planet_column = hsr_instance.m__add_planet_column
         self.m__config_model = hsr_instance.m__config_model
         self.m__config_sources = hsr_instance.m__config_sources
         self.m__sources = dict()
+        self.m__use_forward_model = hsr_instance.m__use_forward_model
 
     def get_preprocessed_sources(self,
                                  stack: np.ndarray,
@@ -350,7 +351,7 @@ class PixelPredictorCollection:
             sources = self.m__sources[position]
 
             # Get noise prediction from prediction
-            dummy = self.m__use_forward_model
+            dummy = bool(self.m__use_forward_model * self.m__add_planet_column)
             noise_prediction = \
                 predictor.get_noise_prediction(sources=sources,
                                                add_dummy_column=dummy)
@@ -506,6 +507,11 @@ class PixelPredictorCollection:
                 self.get_preprocessed_sources(stack=stack,
                                               planet_signal=planet_signal,
                                               position=position)
+
+            # If we are making the prediction without the planet signal, we
+            # drop it here before passing it to the PixelPredictor
+            if not self.m__add_planet_column:
+                planet_signal = None
 
             # -----------------------------------------------------------------
             # Create a new PixelPredictor, train it, and store it
