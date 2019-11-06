@@ -170,6 +170,7 @@ def load_data(dataset_config: dict) -> Tuple[np.ndarray, np.ndarray,
     psf_template_key = dataset_config['psf_template_key']
     frame_size = dataset_config['frame_size']
     subsample = dataset_config['subsample']
+    presubtract = dataset_config['presubtract']
 
     # Read in the dataset from the HDf file
     with h5py.File(file_path, 'r') as hdf_file:
@@ -181,6 +182,12 @@ def load_data(dataset_config: dict) -> Tuple[np.ndarray, np.ndarray,
         # Spatially crop the stack to the desired frame size without
         # changing the number of frames in it
         stack = crop_center(stack, (-1, frame_size[0], frame_size[1]))
+
+        # Pre-subtract mean or median from stack (if desired)
+        if presubtract == 'median':
+            stack -= np.nanmedian(stack, axis=0)
+        elif presubtract == 'mean':
+            stack -= np.nanmean(stack, axis=0)
 
         # If applicable, also select the PSF template
         if psf_template_key is not None:
