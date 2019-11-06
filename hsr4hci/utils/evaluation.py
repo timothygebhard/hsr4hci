@@ -84,13 +84,13 @@ def compute_figures_of_merit(frame: np.ndarray,
             except ValueError:
                 signal, noise_level, snr, fpf = 0, np.inf, 0, np.inf
 
-            # Depending on the quantity, we either need to minimize x or 1/x
+            # Depending on the quantity, we either need to minimize x or -x
             if optimize == 'signal':
-                return 1 / (signal + np.finfo(float).eps)
+                return -1 * signal
             if optimize == 'noise_level':
                 return noise_level
             if optimize == 'snr':
-                return 1 / (snr + np.finfo(float).eps)
+                return -1 * snr
             if optimize == 'fpf':
                 return fpf
 
