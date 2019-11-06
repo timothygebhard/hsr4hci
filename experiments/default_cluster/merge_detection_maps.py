@@ -34,7 +34,9 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Get results directory with detection maps
-    detection_maps_dir = os.path.abspath('./results/positions/detection_maps')
+    experiment_dir = os.path.dirname(os.path.realpath(__file__))
+    detection_maps_dir = os.path.join(experiment_dir, 'results', 'positions',
+                                      'detection_maps')
 
     # Get all FITS files in the results directory
     print('Collecting FITS files in results directory...', end=' ', flush=True)
@@ -61,7 +63,8 @@ if __name__ == '__main__':
     print('Done!', flush=True)
 
     print('Saving combined detection map...', end=' ', flush=True)
-    save_fits(detection_map, './results/detection_map.fits')
+    file_path = os.path.join(experiment_dir, 'results', 'detection_map.fits')
+    save_fits(detection_map, file_path)
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------

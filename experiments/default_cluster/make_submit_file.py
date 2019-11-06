@@ -43,14 +43,14 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Load experiment config from JSON
-    config = load_config('./config.json')
+    experiment_dir = os.path.dirname(os.path.realpath(__file__))
+    config = load_config(os.path.join(experiment_dir, 'config.json'))
 
     # Define shortcuts
     frame_size = config['dataset']['frame_size']
     pixscale = config['dataset']['pixscale']
     roi_ier = config['experiment']['roi']['inner_exclusion_radius']
     roi_oer = config['experiment']['roi']['outer_exclusion_radius']
-    experiment_dir = os.path.abspath(config['experiment_dir'])
     train_script_path = \
         os.path.abspath(os.path.join(experiment_dir, 'train_position.py'))
 
@@ -58,8 +58,7 @@ if __name__ == '__main__':
     # Create directory for clusterlogs
     # -------------------------------------------------------------------------
 
-    clusterlogs_dir = \
-        os.path.abspath(os.path.join(experiment_dir, 'clusterlogs'))
+    clusterlogs_dir = os.path.join(experiment_dir, 'clusterlogs')
     Path(clusterlogs_dir).mkdir(exist_ok=True)
 
     # -------------------------------------------------------------------------
@@ -114,7 +113,8 @@ if __name__ == '__main__':
     # Create the submit file
     # -------------------------------------------------------------------------
 
-    with open('submit.sub', 'w') as submit_file:
+    file_path = os.path.join(experiment_dir, 'submit.sub')
+    with open(file_path, 'w') as submit_file:
         submit_file.write('\n'.join(submit_file_lines))
 
     # -------------------------------------------------------------------------

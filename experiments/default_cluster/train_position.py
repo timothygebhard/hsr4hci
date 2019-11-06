@@ -72,7 +72,8 @@ if __name__ == '__main__':
     position = (int(args.x), int(args.y))
 
     # Load experiment config from JSON
-    config = load_config('./config.json')
+    experiment_dir = os.path.dirname(os.path.realpath(__file__))
+    config = load_config(os.path.join(experiment_dir, 'config.json'))
 
     # Load frames and parallactic angles from HDF file
     stack, parang, psf_template = load_data(dataset_config=config['dataset'])
@@ -100,7 +101,7 @@ if __name__ == '__main__':
     # Ensure the results dir exists
     # -------------------------------------------------------------------------
 
-    results_dir = os.path.join(config['experiment_dir'], 'results')
+    results_dir = os.path.join(experiment_dir, 'results')
     Path(results_dir).mkdir(exist_ok=True)
 
     positions_dir = os.path.join(results_dir, 'positions')

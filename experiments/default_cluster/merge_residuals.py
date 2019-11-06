@@ -31,7 +31,8 @@ if __name__ == '__main__':
     print('\nMERGE RESIDUALS\n', flush=True)
 
     # Get expected size of the residual stack
-    config = load_config('./config.json')
+    experiment_dir = os.path.dirname(os.path.realpath(__file__))
+    config = load_config(os.path.join(experiment_dir, 'config.json'))
     frame_size = tuple(config['dataset']['frame_size'])
 
     # -------------------------------------------------------------------------
@@ -39,7 +40,8 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Define the directory containing all the residuals
-    residuals_dir = os.path.abspath('./results/positions/residuals/')
+    residuals_dir = os.path.join(experiment_dir, 'results', 'positions',
+                                 'residuals')
 
     # Get all numpy files in the residuals directory
     print('Collecting files in residuals directory...', end=' ', flush=True)
@@ -77,8 +79,11 @@ if __name__ == '__main__':
     # Merge detection maps and save results
     # -------------------------------------------------------------------------
 
+    results_dir = os.path.join(experiment_dir, 'results')
+
     print('Saving residual stack...', end=' ', flush=True)
-    save_fits(residual_stack, './results/residual_stack.fits')
+    file_path = os.path.join(results_dir, 'residual_stack.fits')
+    save_fits(residual_stack, file_path)
     print('Done!', flush=True)
 
     print('Averaging residual stack...', end=' ', flush=True)
@@ -86,7 +91,8 @@ if __name__ == '__main__':
     print('Done!', flush=True)
 
     print('Saving average residuals...', end=' ', flush=True)
-    save_fits(average_residuals, './results/average_residuals.fits')
+    file_path = os.path.join(results_dir, 'average_residuals.fits')
+    save_fits(average_residuals, file_path)
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
