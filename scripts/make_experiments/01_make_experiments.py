@@ -111,7 +111,7 @@ if __name__ == '__main__':
         list_of_experiments.append(experiment_dir)
 
         # Copy Python scripts from default_cluster experiments
-        default_cluster_dir = '../../experiments/cluster_default'
+        default_cluster_dir = '../../experiments/default_cluster'
         python_scripts = [_ for _ in os.listdir(default_cluster_dir)
                           if _.endswith('.py')]
         for python_script in python_scripts:
