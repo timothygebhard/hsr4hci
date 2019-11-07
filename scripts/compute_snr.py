@@ -40,28 +40,32 @@ def get_arguments() -> argparse.Namespace:
                           type=str,
                           help='Path to the FITS file containing the data',
                           required=True)
-    required.add_argument('--position',
+    required.add_argument('--x',
                           metavar='X',
-                          nargs=2,
-                          type=int,
-                          help='Position for which to compute the SNR',
+                          type=float,
+                          help='x-position for which to compute the SNR',
+                          required=True)
+    required.add_argument('--y',
+                          metavar='Y',
+                          type=float,
+                          help='y-position for which to compute the SNR',
                           required=True)
 
     # Add optional arguments
     optional.add_argument('--aperture-size',
                           type=float,
                           metavar='X',
-                          default=2.0,
-                          help='Aperture radius in pixels (default: 2.0)')
+                          default=1.77,
+                          help='Aperture radius in pixels (default: 1.77)')
     optional.add_argument('--optimize',
                           type=str,
-                          default='fpf',
+                          default='snr',
                           metavar='STR',
                           choices=['none', 'signal', 'noise_level', 'snr',
                                    'fpf'],
                           help='Quantity to optimize, must be in ["none", '
                                '"signal", "noise_level", "snr", "fpf"] '
-                               '(default: "fpf")')
+                               '(default: "snr")')
 
     # Add mutually exclusive flags --ignore-neighbors / --include-neighbors
     ignore_neighbors_parser = \
@@ -99,7 +103,7 @@ if __name__ == '__main__':
 
     # Define shortcuts to arguments (and typecast)
     file_path = args.file
-    position = tuple(args.position)
+    position = (float(args.x), float(args.y))
     aperture_size = float(args.aperture_size)
     ignore_neighbors = args.ignore_neighbors
     optimize = args.optimize if args.optimize != 'none' else None
