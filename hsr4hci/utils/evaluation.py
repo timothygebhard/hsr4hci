@@ -19,7 +19,7 @@ import numpy as np
 # -----------------------------------------------------------------------------
 
 def compute_figures_of_merit(frame: np.ndarray,
-                             position: Tuple[int, int],
+                             position: Tuple[float, float],
                              aperture_size: float,
                              ignore_neighbors: bool,
                              optimize: Optional[str]) -> dict:
