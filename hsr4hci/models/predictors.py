@@ -65,6 +65,7 @@ class PixelPredictor:
         module_name = self.m__config_model['module']
         class_name = self.m__config_model['class']
         parameters = self.m__config_model['parameters']
+        weight_mode = self.m__config_model['weight_mode']
 
         # Augment model parameters
         if class_name == 'RidgeCV':
@@ -81,8 +82,34 @@ class PixelPredictor:
         if planet_signal is not None:
             sources = np.column_stack([sources, planet_signal.reshape(-1, 1)])
 
-        # Fit model to the training data
-        self.m__model.fit(X=sources, y=targets)
+        # ---------------------------------------------------------------------
+        # Construct sample weights based on weight mode and fit model
+        # ---------------------------------------------------------------------
+
+        planet_signal_standardized = planet_signal - np.min(planet_signal)
+        planet_signal_standardized /= np.max(planet_signal_standardized)
+
+        if weight_mode == 'default':
+            self.m__model.fit(X=sources, y=targets)
+
+        elif weight_mode == 'weighted':
+
+            sample_weight = 1 - planet_signal_standardized
+            self.m__model.fit(X=sources,
+                              y=targets,
+                              sample_weight=sample_weight)
+
+        elif weight_mode == 'train_test':
+
+            # Construct training sources and targets
+            train_idx = np.where(planet_signal_standardized == 0)[0]
+            train_sources = sources[train_idx, ...]
+            train_targets = targets[train_idx]
+
+            self.m__model.fit(X=train_sources, y=train_targets)
+
+        else:
+            raise ValueError(f'Illegal value for weight_mode: {weight_mode}')
 
     def get_noise_prediction(self,
                              sources: np.ndarray,
