@@ -9,7 +9,7 @@
         "lambda_over_d": 0.1,
         "frame_size": [81, 81],
         "subsample": 1,
-        "presubtract": null
+        "presubtract": "median"
     },
     "experiment": {
         "use_forward_model": true,
@@ -33,22 +33,15 @@
                 {
                     "type": "standardize",
                     "parameters": {}
-                },
-                {
-                    "type": "pca",
-                    "parameters": {
-                        "pca_mode": "temporal",
-                        "n_components": 32,
-                        "sv_power": 0.0
-                    }
                 }
             ]
         },
         "model": {
             "module": "sklearn.linear_model",
             "class": "RidgeCV",
+            "weight_mode": "weighted",
             "parameters": {
-                "fit_intercept": true
+                "fit_intercept": false
             }
         }
     }
