@@ -54,6 +54,14 @@ def load_config(config_file_path: str) -> dict:
     config['dataset']['file_path'] = \
         config['dataset']['file_path'].replace('DATA_DIR', data_dir)
 
+    # -------------------------------------------------------------------------
+    # Run additional sanity checks on options
+    # -------------------------------------------------------------------------
+
+    if (config['experiment']['model']['weight_mode'] == 'weighted' and
+            not config['experiment']['psf_template']['rescale_psf']):
+        raise ValueError('weight_mode="weighted" requires rescale_psf=True')
+
     return config
 
 
