@@ -1,7 +1,10 @@
 # Ignore results, models, ... folders in experiment directories
 experiments/local_playground
 experiments/local_playground/*
-experiments/*/*
+experiments/*/results
+experiments/*/clusterlogs
+experiments/*/*/clusterlogs
+experiments/*/*/results
 !experiments/*/config.json
 !experiments/*/*.py
 !experiments/notebooks/*
