@@ -39,7 +39,7 @@
         "model": {
             "module": "sklearn.linear_model",
             "class": "RidgeCV",
-            "weight_mode": "weighted",
+            "weight_mode": "default",
             "parameters": {
                 "fit_intercept": false
             }
