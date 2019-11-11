@@ -114,21 +114,6 @@ if __name__ == '__main__':
     Path(residuals_dir).mkdir(exist_ok=True)
 
     # -------------------------------------------------------------------------
-    # Get the detection map and save it
-    # -------------------------------------------------------------------------
-
-    # Get the detection map (which should only contain one pixel now)
-    print(f'\nComputing detection map:', flush=True)
-    detection_map = hsr.get_detection_map().astype(np.float32)
-
-    # Store the detection map to a FITS file
-    print(f'Saving detection map to FITS...', end=' ', flush=True)
-    fits_file_path = os.path.join(positions_dir, 'detection_maps',
-                                  f'detection_map__{args.x}_{args.y}.fits')
-    save_fits(array=detection_map, file_path=fits_file_path)
-    print('Done!', flush=True)
-
-    # -------------------------------------------------------------------------
     # Get the residual stack and save it
     # -------------------------------------------------------------------------
 

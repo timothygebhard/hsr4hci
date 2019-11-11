@@ -76,7 +76,7 @@ if __name__ == '__main__':
     print('')
 
     # -------------------------------------------------------------------------
-    # Merge detection maps and save results
+    # Merge residuals and save results
     # -------------------------------------------------------------------------
 
     results_dir = os.path.join(experiment_dir, 'results')
