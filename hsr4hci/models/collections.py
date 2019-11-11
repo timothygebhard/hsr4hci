@@ -351,10 +351,8 @@ class PixelPredictorCollection:
             sources = self.m__sources[position]
 
             # Get noise prediction from prediction
-            dummy = bool(self.m__use_forward_model * self.m__add_planet_column)
             noise_prediction = \
-                predictor.get_noise_prediction(sources=sources,
-                                               add_dummy_column=dummy)
+                predictor.get_noise_prediction(sources=sources)
 
             # Compute residuals for this position by subtracting the noise
             # model prediction from the original stack (and remove the median)
