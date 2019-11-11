@@ -58,9 +58,13 @@ def load_config(config_file_path: str) -> dict:
     # Run additional sanity checks on options
     # -------------------------------------------------------------------------
 
-    if (config['experiment']['model']['weight_mode'] == 'weighted' and
-            not config['experiment']['psf_template']['rescale_psf']):
-        raise ValueError('weight_mode="weighted" requires rescale_psf=True')
+    # Frame-weighting based on the planet signal from the forward model only
+    # works if we are also using a forward model
+    if (config['experiment']['model']['weight_mode'] != 'default' and
+            not config['experiment']['use_forward_model']):
+        raise ValueError('Using weight_mode="weighted" or '
+                         'weight_mode="train_test" requires '
+                         'use_forward_model=True')
 
     return config
 
