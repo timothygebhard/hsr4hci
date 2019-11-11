@@ -508,11 +508,6 @@ class PixelPredictorCollection:
                                               planet_signal=planet_signal,
                                               position=position)
 
-            # If we are making the prediction without the planet signal, we
-            # drop it here before passing it to the PixelPredictor
-            if not self.m__add_planet_column:
-                planet_signal = None
-
             # -----------------------------------------------------------------
             # Create a new PixelPredictor, train it, and store it
             # -----------------------------------------------------------------
@@ -522,9 +517,11 @@ class PixelPredictorCollection:
 
             # Train pixel predictor for the selected sources and targets. The
             # augmentation of the sources with the planet_signal (in case it
-            # is not None) happens automatically inside the PixelPredictor.
+            # is not None) happens automatically inside the PixelPredictor,
+            # based on the value of the add_planet_column parameter.
             pixel_predictor.train(sources=sources,
                                   targets=targets,
+                                  add_planet_column=self.m__add_planet_column,
                                   planet_signal=planet_signal)
 
             # Add trained PixelPredictor to PixelPredictorCollection
