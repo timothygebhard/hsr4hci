@@ -5,6 +5,11 @@ experiments/**/clusterlogs
 experiments/**/*.sub
 experiments/*/99_archive
 
+# Ignore FITS and HDF files (these should never go into the repository)
+*.fits
+*.hdf
+*.hdf5
+
 # PyCharm project folder
 .idea
 
