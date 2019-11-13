@@ -1,6 +1,5 @@
 # Ignore results, models, ... folders in experiment directories
-experiments/local_playground
-experiments/local_playground/*
+experiments/playground
 experiments/*/results
 experiments/*/clusterlogs
 experiments/*/*/clusterlogs
