@@ -1,15 +1,15 @@
 {
   "experiment_dir": null,
   "dataset": {
-    "file_path": "DATA_DIR/Beta_Pictoris/Lp/2013-02-01/processed/stacked_25.hdf",
+    "file_path": "DATA_DIR/HR_8799/Lp/2012-08-25/processed/stacked_50.hdf",
     "stack_key": "/stack",
     "parang_key": "/parang",
     "psf_template_key": "/psf_template",
     "pixscale": 0.0271,
     "lambda_over_d": 0.1,
     "frame_size": [
-      81,
-      81
+      149,
+      149
     ],
     "subsample": 1,
     "presubtract": "median"
@@ -19,7 +19,7 @@
     "add_planet_column": true,
     "roi": {
       "inner_exclusion_radius": 0.15,
-      "outer_exclusion_radius": 0.7
+      "outer_exclusion_radius": 1.12
     },
     "psf_template": {
       "psf_radius": 0.5,
