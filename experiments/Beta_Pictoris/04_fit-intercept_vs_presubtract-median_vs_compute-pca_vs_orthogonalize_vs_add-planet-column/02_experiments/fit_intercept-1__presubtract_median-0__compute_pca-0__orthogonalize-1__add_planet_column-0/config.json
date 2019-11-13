@@ -1,0 +1,56 @@
+{
+  "experiment_dir": null,
+  "dataset": {
+    "file_path": "DATA_DIR/Beta_Pictoris/Lp/2013-02-01/processed/stacked_50.hdf",
+    "stack_key": "/stack",
+    "parang_key": "/parang",
+    "psf_template_key": "/psf_template",
+    "pixscale": 0.0271,
+    "lambda_over_d": 0.1,
+    "frame_size": [
+      81,
+      81
+    ],
+    "subsample": 1,
+    "presubtract": null
+  },
+  "experiment": {
+    "use_forward_model": true,
+    "add_planet_column": false,
+    "roi": {
+      "inner_exclusion_radius": 0.15,
+      "outer_exclusion_radius": 0.7
+    },
+    "psf_template": {
+      "psf_radius": 0.5,
+      "rescale_psf": true
+    },
+    "sources": {
+      "selection_mask": {
+        "type": "santa",
+        "parameters": {
+          "dilation_radius": 0.5
+        }
+      },
+      "preprocessing": [
+        {
+          "type": "standardize",
+          "parameters": {}
+        },
+        {
+          "type": "orthogonalize",
+          "parameters": {
+            "target": "planet_signal"
+          }
+        }
+      ]
+    },
+    "model": {
+      "module": "sklearn.linear_model",
+      "class": "RidgeCV",
+      "parameters": {
+        "fit_intercept": true
+      }
+    }
+  }
+}
