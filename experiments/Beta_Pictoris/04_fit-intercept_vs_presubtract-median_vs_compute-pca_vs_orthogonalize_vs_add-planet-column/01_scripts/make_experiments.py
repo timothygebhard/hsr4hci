@@ -33,14 +33,14 @@ if __name__ == '__main__':
     # Load base configuration
     # -------------------------------------------------------------------------
 
-    with open('./01_base_config.json', 'r') as json_file:
+    with open('base_config.json', 'r') as json_file:
         base_config = json.load(json_file)
 
     # -------------------------------------------------------------------------
     # Create a folder in the experiments directory for experiments we generate
     # -------------------------------------------------------------------------
 
-    experiments_dir = os.path.abspath('../../experiments/01_make_experiments')
+    experiments_dir = os.path.abspath('../02_experiments')
     Path(experiments_dir).mkdir(exist_ok=True)
 
     # -------------------------------------------------------------------------
@@ -111,7 +111,7 @@ if __name__ == '__main__':
         list_of_experiments.append(experiment_dir)
 
         # Copy Python scripts from default_cluster experiments
-        default_cluster_dir = '../../experiments/default_cluster'
+        default_cluster_dir = '../../../default/cluster'
         python_scripts = [_ for _ in os.listdir(default_cluster_dir)
                           if _.endswith('.py')]
         for python_script in python_scripts:
@@ -121,7 +121,7 @@ if __name__ == '__main__':
         # Save the generated experiment configuration to a JSON file
         file_path = os.path.join(experiment_dir, 'config.json')
         with open(file_path, 'w') as json_file:
-            json.dump(config, json_file)
+            json.dump(config, json_file, indent=2)
 
         print(f'Created experiment: {experiment_name}')
 
