@@ -77,7 +77,7 @@ if __name__ == '__main__':
 
         # Save the results as a CSV file in the results folder
         file_path = os.path.join('..', '03_results', f'{planet_name}__fom.csv')
-        results.to_csv()
+        results.to_csv(file_path)
 
         print('')
 
