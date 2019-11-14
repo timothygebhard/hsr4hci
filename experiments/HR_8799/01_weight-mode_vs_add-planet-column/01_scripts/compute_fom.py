@@ -32,8 +32,11 @@ if __name__ == '__main__':
     # Collect FITS files and run SNR computation for all of them
     # -------------------------------------------------------------------------
 
+    # Define path to directory that contains the collected results
+    collected_results_dir = '../03_results/collected_results'
+
     # Get a list of all FITS files we want to process
-    fits_files = [_ for _ in os.listdir('../03_results')
+    fits_files = [_ for _ in os.listdir(collected_results_dir)
                   if _.endswith('.fits')]
 
     # Run for all three inner planets
@@ -52,7 +55,7 @@ if __name__ == '__main__':
             print(f'Processing: {fits_file}', end=' ... ', flush=True)
 
             # Construct path and read in FITS file
-            file_path = os.path.join('../03_results', fits_file)
+            file_path = os.path.join(collected_results_dir, fits_file)
             frame = read_fits(file_path=file_path)
 
             # Compute figures of merit for this frame
