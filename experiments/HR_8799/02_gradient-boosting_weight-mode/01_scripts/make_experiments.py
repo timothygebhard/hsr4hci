@@ -7,7 +7,6 @@ Generate experiments to study the influence of certain parameters.
 # -----------------------------------------------------------------------------
 
 from copy import deepcopy
-from itertools import product
 from pathlib import Path
 
 import json
@@ -49,8 +48,7 @@ if __name__ == '__main__':
 
     list_of_experiments = list()
 
-    for weight_mode, add_planet_col in \
-            product(['default', 'weighted', 'train_test'], [True, False]):
+    for weight_mode in ['default', 'weighted', 'train_test']:
 
         # ---------------------------------------------------------------------
         # Create experiment config as a dictionary
@@ -62,16 +60,12 @@ if __name__ == '__main__':
         # Set weight_mode parameter
         config['experiment']['model']['weight_mode'] = weight_mode
 
-        # Set add_planet_column parameter
-        config['experiment']['add_planet_column'] = add_planet_col
-
         # ---------------------------------------------------------------------
         # Set up an experiment folder with this configuration
         # ---------------------------------------------------------------------
 
         # Create the name for this experiment
-        experiment_name = (f'weight-mode_{weight_mode}__'
-                           f'add-planet-column_{str(add_planet_col).lower()}')
+        experiment_name = f'weight-mode_{weight_mode}'
 
         # Create a folder with that name
         experiment_dir = os.path.join(experiments_dir, experiment_name)

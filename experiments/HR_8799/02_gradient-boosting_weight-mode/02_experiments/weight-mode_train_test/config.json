@@ -42,9 +42,9 @@
     "model": {
       "module": "sklearn.ensemble",
       "class": "GradientBoostingRegressor",
-      "weight_mode": "weighted",
+      "weight_mode": "train_test",
       "parameters": {
-        "n_estimators": 50,
+        "n_estimators": 20,
         "subsample": 0.8
       }
     }

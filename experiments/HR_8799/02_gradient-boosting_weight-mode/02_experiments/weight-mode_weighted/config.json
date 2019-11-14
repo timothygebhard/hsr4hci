@@ -16,7 +16,7 @@
   },
   "experiment": {
     "use_forward_model": true,
-    "add_planet_column": true,
+    "add_planet_column": false,
     "roi": {
       "inner_exclusion_radius": 0.15,
       "outer_exclusion_radius": 1.12
@@ -42,9 +42,9 @@
     "model": {
       "module": "sklearn.ensemble",
       "class": "GradientBoostingRegressor",
-      "weight_mode": "train_test",
+      "weight_mode": "weighted",
       "parameters": {
-        "n_estimators": 50,
+        "n_estimators": 20,
         "subsample": 0.8
       }
     }
