@@ -1,0 +1,52 @@
+{
+  "experiment_dir": null,
+  "dataset": {
+    "file_path": "DATA_DIR/HR_8799/Lp/2012-08-25/processed/stacked_50.hdf",
+    "stack_key": "/stack",
+    "parang_key": "/parang",
+    "psf_template_key": "/psf_template",
+    "pixscale": 0.0271,
+    "lambda_over_d": 0.1,
+    "frame_size": [
+      149,
+      149
+    ],
+    "subsample": 1,
+    "presubtract": "median"
+  },
+  "experiment": {
+    "use_forward_model": true,
+    "add_planet_column": false,
+    "roi": {
+      "inner_exclusion_radius": 0.15,
+      "outer_exclusion_radius": 1.12
+    },
+    "psf_template": {
+      "psf_radius": 0.5,
+      "rescale_psf": true
+    },
+    "sources": {
+      "selection_mask": {
+        "type": "santa",
+        "parameters": {
+          "dilation_radius": 0.5
+        }
+      },
+      "preprocessing": [
+        {
+          "type": "standardize",
+          "parameters": {}
+        }
+      ]
+    },
+    "model": {
+      "module": "sklearn.ensemble",
+      "class": "GradientBoostingRegressor",
+      "weight_mode": "weighted",
+      "parameters": {
+        "n_estimators": 50,
+        "subsample": 0.8
+      }
+    }
+  }
+}
