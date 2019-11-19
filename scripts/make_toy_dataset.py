@@ -72,8 +72,8 @@ if __name__ == '__main__':
     signal = np.zeros(base_stack.shape)
 
     # Loop over positions and amplitudes and compute forward models
-    for position, amplitude in [((42, 23), 10),
-                                ((32, 41), 20)]:
+    for position, amplitude in [((42, 23), 60),
+                                ((25, 55), 30)]:
 
         # Generate the forward model (i.e., the fake planet signal)
         tmp_signal, planet_positions = \
