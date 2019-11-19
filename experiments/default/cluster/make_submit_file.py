@@ -79,7 +79,7 @@ if __name__ == '__main__':
     roi_ier = config['experiment']['roi']['inner_exclusion_radius']
     roi_oer = config['experiment']['roi']['outer_exclusion_radius']
     train_script_path = \
-        os.path.abspath(os.path.join(experiment_dir, 'train_position.py'))
+        os.path.abspath(os.path.join(experiment_dir, 'train_region.py'))
 
     # -------------------------------------------------------------------------
     # Create directory for clusterlogs
