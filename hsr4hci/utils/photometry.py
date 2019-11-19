@@ -6,7 +6,7 @@ Provide a few custom extensions to the photometry functions of photutils
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Callable
+from typing import Callable, Tuple
 
 from scipy.optimize import curve_fit
 from photutils import CircularAperture
@@ -28,7 +28,7 @@ class CustomCircularAperture(CircularAperture):
                       data: np.ndarray,
                       statistic_function: Callable = np.nansum,
                       method: str = 'exact',
-                      subpixels: int = 5):
+                      subpixels: int = 5) -> float:
         """
         Compute a particular summary statistic (such as the pixel sum
         or the maximum) for the aperture.
@@ -70,7 +70,7 @@ class CustomCircularAperture(CircularAperture):
     def fit_2d_gaussian(self,
                         data: np.ndarray,
                         method: str = 'exact',
-                        subpixels: int = 5):
+                        subpixels: int = 5) -> Tuple[float, float]:
         """
         Fit a simple, symmetric 2D Gauss with only two parameters (i.e.,
         the amplitude and standard deviation) to the center of the
@@ -128,4 +128,7 @@ class CustomCircularAperture(CircularAperture):
                                   p0=p0,
                                   xtol=0.001,
                                   ftol=0.001)
-        return parameters
+
+        # Unpack the parameters and return them as a tuple
+        amplitude, sigma = parameters
+        return amplitude, sigma
