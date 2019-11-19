@@ -7,7 +7,7 @@ General purpose utilities, e.g., cropping arrays.
 # -----------------------------------------------------------------------------
 
 from math import modf
-from typing import Tuple, Union
+from typing import List, Sequence, Tuple, Union
 
 from astropy.nddata.utils import add_array
 from scipy import ndimage
@@ -79,3 +79,35 @@ def crop_center(array: np.ndarray,
     slices = tuple(map(slice, start, end))
 
     return array[slices]
+
+
+def split_into_n_chunks(sequence: Sequence,
+                        n_chunks: int) -> List[Sequence]:
+    """
+    Split a given `sequence` (list, numpy array, ...) into `n_chunks`
+    "chunks" (sub-sequences) of approximately equal length, which are
+    returned as a list.
+
+    Source: https://stackoverflow.com/a/2135920/4100721
+
+    Args:
+        sequence: The sequence which should be split into chunks.
+        n_chunks: The number of chunks into which `sequence` is split.
+
+    Returns:
+        A list containing the original sequence split into chunks.
+    """
+
+    # Basic sanity checks
+    if len(sequence) < n_chunks:
+        raise ValueError(f"n_chunks is greater than len(sequence): "
+                         f"{n_chunks} > {len(sequence)}")
+    if n_chunks <= 0:
+        raise ValueError("n must be a positive integer!")
+
+    # Compute number of chunks (k) and number of chunks with extra elements (m)
+    k, m = divmod(len(sequence), n_chunks)
+
+    # Split the sequence into n chunks of (approximately) size k
+    return [sequence[i * k + min(i, m):(i + 1) * k + min(i + 1, m)]
+            for i in range(n_chunks)]
