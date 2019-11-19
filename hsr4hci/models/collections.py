@@ -9,7 +9,6 @@ Provides PixelPredictorCollection classes.
 from copy import deepcopy
 from typing import Optional, Tuple, TYPE_CHECKING
 
-from photutils import CircularAperture, aperture_photometry
 from skimage.morphology import binary_dilation
 
 import numpy as np
@@ -19,6 +18,7 @@ from hsr4hci.models.predictors import PixelPredictor
 from hsr4hci.utils.forward_modeling import get_signal_stack, \
     get_collection_region_mask
 from hsr4hci.utils.masking import get_positions_from_mask, get_circle_mask
+from hsr4hci.utils.photometry import CustomCircularAperture
 from hsr4hci.utils.predictor_selection import get_default_grid_mask, \
     get_default_mask, get_santa_mask
 from hsr4hci.utils.preprocess_sources import standardize_sources, \
@@ -378,18 +378,17 @@ class PixelPredictorCollection:
             # Get the expected planet position from the forward model
             # NOTE: We need to flip the (x, y) coordinates because photutils
             #       uses a different convention for the coordinate system...
-            expected_planet_position = self.m__planet_positions[i][::-1]
+            planet_position = self.m__planet_positions[i][::-1]
 
             # Place a circular aperture at the expected planet position (whose
             # radius matches the radius that the PSF template was cropped to)
-            # on the current residual frame and sum up the values inside of it
-            aperture = CircularAperture(positions=expected_planet_position,
-                                        r=psf_radius_pixel)
-            photometry = aperture_photometry(data=residuals[i],
-                                             apertures=aperture)
+            # on the current residual frame
+            aperture = CustomCircularAperture(positions=planet_position,
+                                              r=psf_radius_pixel)
 
-            # Store the result (i.e., the aperture sum) for this frame
-            result.append(float(photometry['aperture_sum']))
+            # Fit a 2D Gaussian to that aperture and store the result
+            amplitude, _ = aperture.fit_2d_gaussian(data=residuals[i])
+            result.append(amplitude)
 
         return np.array(result)
 
