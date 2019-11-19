@@ -44,7 +44,8 @@ if __name__ == '__main__':
          "pixscale": 0.0271,
          "lambda_over_d": 0.1,
          "frame_size": (81, 81),
-         "subsample": 1}
+         "subsample": 1,
+         "presubtract": None}
 
     # Load frames, parallactic angles and PSF template. The base_stack will
     # serve as the background "noise" into which we add some generated fake
@@ -54,7 +55,7 @@ if __name__ == '__main__':
     # Crop the PSF template to desired size
     psf_cropped = \
         crop_psf_template(psf_template=psf_template,
-                          psf_radius=2.5,
+                          psf_radius=5,
                           rescale_psf=True,
                           pixscale=dataset_config['pixscale'],
                           lambda_over_d=dataset_config['lambda_over_d'])
@@ -71,16 +72,18 @@ if __name__ == '__main__':
     signal = np.zeros(base_stack.shape)
 
     # Loop over positions and amplitudes and compute forward models
-    for position, amplitude in [((40, 30), 300),
-                                ((40, 22), 150)]:
+    for position, amplitude in [((42, 23), 10),
+                                ((32, 41), 20)]:
 
         # Generate the forward model (i.e., the fake planet signal)
-        tmp_signal = get_signal_stack(position=position,
-                                      frame_size=dataset_config['frame_size'],
-                                      parang=parang,
-                                      psf_cropped=psf_cropped)
+        tmp_signal, planet_positions = \
+            get_signal_stack(position=position,
+                             frame_size=dataset_config['frame_size'],
+                             parang=parang,
+                             psf_cropped=psf_cropped)
 
         # Scale to desired amplitude
+        tmp_signal /= np.max(tmp_signal)
         tmp_signal *= amplitude
 
         # Add planet to the signal stack
@@ -101,8 +104,8 @@ if __name__ == '__main__':
     print('Saving toy dataset...', end=' ', flush=True)
 
     # Prepare output directory
-    toy_datasets_dir = os.path.join(data_dir, 'toy_datasets')
-    Path(toy_datasets_dir).mkdir(exist_ok=True)
+    toy_datasets_dir = os.path.join(data_dir, 'toy_datasets', 'Beta_Pictoris')
+    Path(toy_datasets_dir).mkdir(exist_ok=True, parents=True)
 
     # Save results as a HDF file
     file_path = os.path.join(data_dir, toy_datasets_dir, 'default.hdf')
