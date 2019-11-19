@@ -14,6 +14,7 @@ import numpy as np
 
 from hsr4hci.models.collections import PixelPredictorCollection
 from hsr4hci.utils.forward_modeling import crop_psf_template
+from hsr4hci.utils.general import split_into_n_chunks
 from hsr4hci.utils.masking import get_positions_from_mask
 from hsr4hci.utils.roi_selection import get_roi_mask
 
@@ -274,3 +275,50 @@ class HalfSiblingRegression:
 
         # Add to dictionary of trained collections
         self.m__collections[position] = collection
+
+    def train_region(self,
+                     region_idx: int,
+                     n_regions: int,
+                     stack: np.ndarray,
+                     parang: np.ndarray,
+                     psf_template: np.ndarray):
+        """
+        Train the models for a given region, defined by the region index
+        and the total number of regions.
+
+        This functions obtains the list of pixels in the region of
+        interest, splits it into `n_regions` chunks, and then runs the
+        training for all collections that correspond to pixels in the
+        `region_idx`-th chunk.
+        This allows to parallelize the training on the cluster using a
+        fixed number of parallel jobs (namely `n_regions`), regardless
+        of the number of pixels in the region of interest.
+
+        Args:
+            region_idx: The index of the region (i.e., chunk of the list
+                of positions in the ROI) for which to run the training.
+            n_regions: The total number of regions into which the ROI is
+                split for training.
+            stack: A 3D numpy array of shape (n_frames, width, height)
+                containing the training data.
+            parang: A 1D numpy array of shape (n_frames,) containing
+                the corresponding parallactic angles for the stack.
+            psf_template: A 2D numpy array containing the unsaturated
+                PSF template which is used for forward modeling of the
+                planet signal.
+        """
+
+        # Get positions of pixels in ROI as a list
+        roi_pixels = get_positions_from_mask(self.m__roi_mask)
+
+        # Split the list of ROI pixels into n_regions equal chunks, and select
+        # the region for which to run this function
+        all_regions = split_into_n_chunks(roi_pixels, n_regions)
+        region = all_regions[region_idx]
+
+        # Run training by looping over the region and calling train_position()
+        for position in tqdm(region, total=len(region), ncols=80):
+            self.train_position(position=position,
+                                stack=stack,
+                                parang=parang,
+                                psf_template=psf_template)
