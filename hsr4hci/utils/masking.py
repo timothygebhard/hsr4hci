@@ -6,6 +6,8 @@ Masking utilities.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from typing import List, Tuple
+
 import numpy as np
 
 
@@ -13,7 +15,7 @@ import numpy as np
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def get_positions_from_mask(mask: np.ndarray) -> list:
+def get_positions_from_mask(mask: np.ndarray) -> List[Tuple[int, int]]:
     """
     Convert a numpy mask into a list of positions selected by that mask.
 
@@ -29,7 +31,7 @@ def get_positions_from_mask(mask: np.ndarray) -> list:
 
 def get_circle_mask(mask_size: tuple,
                     radius: float,
-                    center: tuple = None):
+                    center: tuple = None) -> np.ndarray:
     """
     Create a circle mask of a given size.
 
