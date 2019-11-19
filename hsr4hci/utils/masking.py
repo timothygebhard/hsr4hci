@@ -24,9 +24,9 @@ def get_positions_from_mask(mask: np.ndarray) -> List[Tuple[int, int]]:
             that can be interpreted as such).
 
     Returns:
-        A list of all positions (x, y) with mask[x, y] == True.
+        A sorted list of all positions (x, y) with mask[x, y] == True.
     """
-    return list(zip(*np.where(mask)))
+    return sorted(list((x, y) for x, y in zip(*np.where(mask))))
 
 
 def get_circle_mask(mask_size: tuple,
