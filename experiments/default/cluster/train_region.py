@@ -12,6 +12,8 @@ import argparse
 import os
 import time
 
+from tqdm import tqdm
+
 import numpy as np
 
 from hsr4hci.utils.config import load_config
@@ -35,18 +37,24 @@ def get_arguments() -> argparse.Namespace:
     # Set up a parser
     parser = argparse.ArgumentParser()
 
-    # Add optional arguments
-    parser.add_argument('--x',
+    # Add arguments
+    parser.add_argument('--n-regions',
                         type=int,
-                        metavar='X',
-                        help='x-coordinate')
-    parser.add_argument('--y',
+                        metavar='N',
+                        help='Number of regions in total')
+    parser.add_argument('--region-idx',
                         type=int,
-                        metavar='Y',
-                        help='y-coordinate')
+                        metavar='N',
+                        help='Index of the region for which to run')
 
-    # Parse the command line arguments and return the result
-    return parser.parse_args()
+    # Parse and store the command line arguments
+    args = parser.parse_args()
+
+    # Run sanity checks on arguments
+    if not 0 <= args.region_idx < args.n_regions:
+        raise ValueError('region_idx must be between 0 and n_regions-1!')
+
+    return args
 
 
 # -----------------------------------------------------------------------------
@@ -60,7 +68,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     script_start = time.time()
-    print('\nTRAIN HALF-SIBLING REGRESSION MODEL FOR A POSITION\n', flush=True)
+    print('\nTRAIN HALF-SIBLING REGRESSION MODEL FOR A REGION\n', flush=True)
 
     # -------------------------------------------------------------------------
     # Load config and data
@@ -68,7 +76,8 @@ if __name__ == '__main__':
 
     # Get command line options
     args = get_arguments()
-    position = (int(args.x), int(args.y))
+    n_regions = int(args.n_regions)
+    region_idx = int(args.region_idx)
 
     # Load experiment config from JSON
     experiment_dir = os.path.dirname(os.path.realpath(__file__))
@@ -89,12 +98,13 @@ if __name__ == '__main__':
     # Instantiate model
     hsr = HalfSiblingRegression(config=config)
 
-    # Train the model for all pixels in the ROI
-    print(f'\nTraining models for position {position}:', flush=True)
-    hsr.train_position(position=position,
-                       stack=stack,
-                       parang=parang,
-                       psf_template=psf_template)
+    # Train the model for all pixels in the region specified in the args
+    print(f'\nTraining models for region {region_idx + 1} of {n_regions}:')
+    hsr.train_region(region_idx=region_idx,
+                     n_regions=n_regions,
+                     stack=stack,
+                     parang=parang,
+                     psf_template=psf_template)
 
     # -------------------------------------------------------------------------
     # Ensure the results dir exists
@@ -118,15 +128,21 @@ if __name__ == '__main__':
 
     # Get residual stack
     print(f'\nComputing residual stack:', flush=True)
-    residual_stack = hsr.get_residual_stack(stack=stack)
-    residuals = residual_stack[:, position[0], position[1]].astype(np.float32)
+    residual_stack = hsr.get_residual_stack(stack=stack).astype(np.float32)
 
-    # Save the residuals as a numpy array
-    print(f'\nSaving residuals to numpy format...', end=' ', flush=True)
-    file_path = os.path.join(residuals_dir,
-                             f'residuals__{args.x}_{args.y}.npy')
-    np.save(file=file_path, arr=residuals)
-    print('Done!', flush=True)
+    # Loop over all positions for which we computed residuals and store them
+    # separately as numpy arrays (to minimize the amount of wasted memory)
+    print(f'\nSaving residuals to numpy format:', flush=True)
+    for position, _ in tqdm(hsr.m__collections.items(), ncols=80):
+
+        # Select the residuals for the current position
+        residuals = residual_stack[:, position[0], position[1]]
+
+        # Save the residuals as a numpy array
+        
+        file_path = os.path.join(residuals_dir,
+                                 f'residuals__{position[0]}_{position[1]}.npy')
+        np.save(file=file_path, arr=residuals)
 
     # -------------------------------------------------------------------------
     # Postliminaries
