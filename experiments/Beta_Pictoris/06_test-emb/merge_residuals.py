@@ -140,9 +140,12 @@ if __name__ == '__main__':
         # expected for pixels outside of the region of interest
         np.warnings.filterwarnings('ignore', r'All-NaN \w* encountered')
 
-        # Compute the delta residual and center it (ensure mean=0)
-        delta_residual = np.nanmedian(residual_stack, axis=0)
-        delta_residual -= np.nanmean(delta_residual)
+        # Compute the delta residual
+        delta_residual = np.nanmean(residual_stack, axis=0)
+
+        # Center the delta residual (ensure mean=0)
+        if emb_round > 0:
+            delta_residual -= np.nanmean(delta_residual)
 
     print('Done!', flush=True)
 
