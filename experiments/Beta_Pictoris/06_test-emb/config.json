@@ -13,7 +13,7 @@
     },
     "experiment": {
         "use_forward_model": true,
-        "add_planet_column": true,
+        "add_planet_column": false,
         "roi": {
             "inner_exclusion_radius": 0.15,
             "outer_exclusion_radius": 0.70
