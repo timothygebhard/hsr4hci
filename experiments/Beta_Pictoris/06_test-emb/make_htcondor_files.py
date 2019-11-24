@@ -66,7 +66,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     script_start = time.time()
-    print('\nMAKE SUBMIT FILE\n', flush=True)
+    print('\nMAKE HTCONDOR FILES\n', flush=True)
 
     # -------------------------------------------------------------------------
     # Load config and define shortcuts
@@ -76,6 +76,11 @@ if __name__ == '__main__':
     args = get_arguments()
     n_jobs = int(args.n_jobs)
     n_rounds = int(args.n_rounds)
+
+    print('Arguments:', flush=True)
+    print('Number of concurrent jobs (n_jobs):', n_jobs)
+    print('Number of EM iterations (n_rounds):', n_rounds)
+    print()
 
     # Load experiment config from JSON
     experiment_dir = os.path.dirname(os.path.realpath(__file__))
@@ -92,16 +97,25 @@ if __name__ == '__main__':
     # old log files). Then, create a fresh version of it
     htcondor_dir = os.path.join(experiment_dir, 'htcondor')
     if os.path.isdir(htcondor_dir):
+        print('Deleting existing htcondor directory...', end=' ', flush=True)
         shutil.rmtree(htcondor_dir, ignore_errors=True)
+        print('Done!', flush=True)
+    
+    print('Creating htcondor directory...', end=' ', flush=True)
     Path(htcondor_dir).mkdir(exist_ok=True)
+    print('Done!', flush=True)
 
     # Create dir for clusterlogs
+    print('Creating clusterlogs directory...', end=' ', flush=True)
     clusterlogs_dir = os.path.join(htcondor_dir, 'clusterlogs')
     Path(clusterlogs_dir).mkdir(exist_ok=True)
+    print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
     # Create train.sub file
     # -------------------------------------------------------------------------
+
+    print('Creating train.sub file...', end=' ', flush=True)
 
     # Path to script that will run the training
     train_script_path = \
@@ -158,9 +172,13 @@ if __name__ == '__main__':
     with open(file_path, 'w') as submit_file:
         submit_file.write('\n'.join(submit_file_lines))
 
+    print('Done!', flush=True)
+
     # -------------------------------------------------------------------------
     # Create merge.sub file
     # -------------------------------------------------------------------------
+
+    print('Creating merge.sub file...', end=' ', flush=True)
 
     # Path to script that will merge the residuals
     merge_script_path = \
@@ -206,9 +224,13 @@ if __name__ == '__main__':
     with open(file_path, 'w') as submit_file:
         submit_file.write('\n'.join(submit_file_lines))
 
+    print('Done!', flush=True)
+
     # -------------------------------------------------------------------------
     # Create run.dag file
     # -------------------------------------------------------------------------
+
+    print('Creating run.dag file...', end=' ', flush=True)
 
     # Add all jobs to DAG file
     dag_file_lines = list()
@@ -233,6 +255,8 @@ if __name__ == '__main__':
     file_path = os.path.join(htcondor_dir, 'run.dag')
     with open(file_path, 'w') as dag_file:
         dag_file.write('\n'.join(dag_file_lines))
+
+    print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
     # Postliminaries
