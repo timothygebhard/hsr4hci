@@ -3,6 +3,7 @@ experiments/playground
 experiments/**/results
 experiments/**/clusterlogs
 experiments/**/*.sub
+experiments/**/*.dag
 experiments/**/*.csv
 experiments/*/99_archive
 
