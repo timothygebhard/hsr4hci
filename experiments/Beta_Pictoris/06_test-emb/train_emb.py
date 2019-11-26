@@ -97,9 +97,6 @@ if __name__ == '__main__':
     # Load frames and parallactic angles from HDF file
     stack, parang, psf_template = load_data(dataset_config=config['dataset'])
 
-    # TODO: Double-check if this is correct!
-    parang -= parang[0]
-
     # Print some basic training information
     print(f'Stack size:\t {stack.shape}', flush=True)
     print(f'Model type:\t {config["experiment"]["model"]["module"]}.'
@@ -130,7 +127,7 @@ if __name__ == '__main__':
     last_signal_estimate_stack = np.array(signal_estimate_stack)
     last_signal_estimate_stack = \
         derotate_frames(stack=last_signal_estimate_stack,
-                        parang=-parang)
+                        parang=(parang[0]-parang))
 
     # Get the input stack on which we will train the model
     input_stack = stack - last_signal_estimate_stack
