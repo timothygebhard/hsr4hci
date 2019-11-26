@@ -19,7 +19,7 @@ import numpy as np
 from hsr4hci.utils.adi_tools import derotate_frames
 from hsr4hci.utils.config import load_config
 from hsr4hci.utils.data import load_data
-from hsr4hci.utils.fits import read_fits
+from hsr4hci.utils.fits import read_fits, save_fits
 from hsr4hci.models.hsr import HalfSiblingRegression
 
 
@@ -103,6 +103,19 @@ if __name__ == '__main__':
           f'{config["experiment"]["model"]["class"]}', flush=True)
 
     # -------------------------------------------------------------------------
+    # Ensure the results dir exists
+    # -------------------------------------------------------------------------
+
+    results_dir = os.path.join(experiment_dir, 'results')
+    Path(results_dir).mkdir(exist_ok=True)
+
+    round_dir = os.path.join(results_dir, f'round_{emb_round:03}')
+    Path(round_dir).mkdir(exist_ok=True)
+
+    positions_dir = os.path.join(round_dir, 'positions')
+    Path(positions_dir).mkdir(exist_ok=True)
+
+    # -------------------------------------------------------------------------
     # Get the last planet signal estimate and construct stack from it
     # -------------------------------------------------------------------------
 
@@ -132,6 +145,15 @@ if __name__ == '__main__':
     # Get the input stack on which we will train the model
     input_stack = stack - last_signal_estimate_stack
 
+    # Save some stuff for debugging purposes
+    if region_idx == 0:
+
+        file_path = os.path.join(round_dir, 'last_signal_estimate_stack.fits')
+        save_fits(array=last_signal_estimate_stack, file_path=file_path)
+
+        file_path = os.path.join(round_dir, 'input_stack.fits')
+        save_fits(array=input_stack, file_path=file_path)
+
     # -------------------------------------------------------------------------
     # Set up and train model
     # -------------------------------------------------------------------------
@@ -146,19 +168,6 @@ if __name__ == '__main__':
                      stack=input_stack,
                      parang=parang,
                      psf_template=psf_template)
-
-    # -------------------------------------------------------------------------
-    # Ensure the results dir exists
-    # -------------------------------------------------------------------------
-
-    results_dir = os.path.join(experiment_dir, 'results')
-    Path(results_dir).mkdir(exist_ok=True)
-
-    round_dir = os.path.join(results_dir, f'round_{emb_round:03}')
-    Path(round_dir).mkdir(exist_ok=True)
-
-    positions_dir = os.path.join(round_dir, 'positions')
-    Path(positions_dir).mkdir(exist_ok=True)
 
     # -------------------------------------------------------------------------
     # Get the residual stack and save it
