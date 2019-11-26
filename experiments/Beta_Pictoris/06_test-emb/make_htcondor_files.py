@@ -38,12 +38,25 @@ def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
     # Add arguments
+    parser.add_argument('--max-runtime',
+                        type=int,
+                        metavar='T',
+                        default=3600,
+                        help='Maximum runtime of a single job, in seconds. '
+                             'Default: 3600.')
     parser.add_argument('--n-jobs',
                         type=int,
                         metavar='N',
                         default=256,
                         help='Number of concurrent cluster jobs into which to '
                              'split the training. Default: 256.')
+    parser.add_argument('--n-retries',
+                        type=int,
+                        metavar='N',
+                        default=3,
+                        help='Number of retries in case a job is killed '
+                             'because it exceeds the maximum runtime. '
+                             'Default: 3.')
     parser.add_argument('--n-rounds',
                         type=int,
                         metavar='N',
@@ -74,7 +87,9 @@ if __name__ == '__main__':
 
     # Get the command line arguments
     args = get_arguments()
+    max_runtime = int(args.max_runtime)
     n_jobs = int(args.n_jobs)
+    n_retries = int(args.n_retries)
     n_rounds = int(args.n_rounds)
 
     print('Arguments:', flush=True)
@@ -133,39 +148,58 @@ if __name__ == '__main__':
          'request_memory = 16384',
          'request_cpus = 1',
          '\n',
+         ''
+         '#' + 78 * '-',
+         '# RUNTIME LIMITATION AND AUTOMATIC RETRIES',
+         '#' + 78 * '-',
+         '',
+         f'MaxRuntime = {max_runtime}',
+         f'NumRetries = {n_retries}',
+         '',
+         'job_machine_attrs = Machine',
+         'job_machine_attrs_history_length = 4',
+         'requirements      = (target.machine =!= MachineAttrMachine1) && \\ ',
+         '                    (target.machine =!= MachineAttrMachine2) && \\ ',
+         '                    (target.machine =!= MachineAttrMachine3)',
+         '',
+         'periodic_hold         = (JobStatus == 2) && \\ ',
+         '                        ((CurrentTime - EnteredCurrentStatus) >= '
+         '$(MaxRuntime))',
+         'periodic_hold_subcode = 1',
+         'periodic_release      = (HoldReasonCode == 3) && \\ ',
+         '                        (HoldReasonSubCode == 1) && \\ ',
+         '                        (JobRunCount < $(NumRetries))',
+         'periodic_hold_reason  = ifthenelse(JobRunCount < $(NumRetries), \\',
+         '                                   "Maximum runtime exceeded!", \\ ',
+         '                                   "No more retries left!")',
+         '\n',
          '#' + 78 * '-',
          '# JOBS',
-         '#' + 78 * '-']
+         '#' + 78 * '-',
+         '']
 
-    # Loop over all regions and add a job for each of them
-    for region_idx in range(n_jobs):
+    # Define paths for output, error and log file
+    out_path = abs_join(clusterlogs_dir, f"train_$(emb_round)_$(Process).out")
+    err_path = abs_join(clusterlogs_dir, f"train_$(emb_round)_$(Process).err")
+    log_path = abs_join(clusterlogs_dir, f"train_$(emb_round)_$(Process).log")
 
-        # Define paths for output, error and log file
-        out_path = \
-            abs_join(clusterlogs_dir, f"train_$(emb_round)_{region_idx}.out")
-        err_path = \
-            abs_join(clusterlogs_dir, f"train_$(emb_round)_{region_idx}.err")
-        log_path = \
-            abs_join(clusterlogs_dir, f"train_$(emb_round)_{region_idx}.log")
+    # Gather arguments: script + command line arguments
+    arguments = [train_script_path,
+                 f'--n-regions {n_jobs}',
+                 f'--region-idx $(Process)',
+                 f'--emb-round $(emb_round)']
 
-        # Gather arguments: script + command line arguments
-        arguments = [train_script_path,
-                     f'--n-regions {n_jobs}',
-                     f'--region-idx {region_idx}',
-                     f'--emb-round $(emb_round)']
+    # Collect lines for the current region
+    job_lines = \
+        [f'output = {out_path}',
+         f'error  = {err_path}',
+         f'log    = {log_path}',
+         f'arguments = {" ".join(arguments)}',
+         'priority  = -950',
+         f'queue {n_jobs}']
 
-        # Collect lines for the current region
-        job_lines = \
-            [f'\n# REGION {region_idx + 1} / {n_jobs}',
-             f'output = {out_path}',
-             f'error = {err_path}',
-             f'log = {log_path}',
-             f'arguments = {" ".join(arguments)}',
-             'priority = -950',
-             'queue']
-
-        # Add lines to the submit file lines
-        submit_file_lines += job_lines
+    # Add lines to the submit file lines
+    submit_file_lines += job_lines
 
     # Create and save the train.sub file
     file_path = os.path.join(htcondor_dir, 'train.sub')
@@ -199,7 +233,7 @@ if __name__ == '__main__':
          '#' + 78 * '-',
          '# JOB',
          '#' + 78 * '-',
-         '\n']
+         '']
 
     # Define paths for output, error and log file
     out_path = abs_join(clusterlogs_dir, f"merge_$(emb_round).out")
