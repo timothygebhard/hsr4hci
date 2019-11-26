@@ -169,7 +169,8 @@ if __name__ == '__main__':
 
     # Get residual stack
     print(f'\nComputing residual stack:', flush=True)
-    residual_stack = hsr.get_residual_stack(stack=stack).astype(np.float32)
+    residual_stack = hsr.get_residual_stack(stack=input_stack)
+    residual_stack = residual_stack.astype(np.float32)
 
     # Loop over all positions for which we computed residuals and store them
     # separately as numpy arrays (to minimize the amount of wasted memory)
