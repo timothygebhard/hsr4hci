@@ -14,7 +14,7 @@ import numpy as np
 
 from hsr4hci.models.collections import PixelPredictorCollection
 from hsr4hci.utils.forward_modeling import crop_psf_template
-from hsr4hci.utils.general import split_into_n_chunks
+from hsr4hci.utils.general import split_positions_into_chunks
 from hsr4hci.utils.masking import get_positions_from_mask
 from hsr4hci.utils.roi_selection import get_roi_mask
 
@@ -311,10 +311,34 @@ class HalfSiblingRegression:
         # Get positions of pixels in ROI as a list
         roi_pixels = get_positions_from_mask(self.m__roi_mask)
 
-        # Split the list of ROI pixels into n_regions equal chunks, and select
-        # the region for which to run this function
-        all_regions = split_into_n_chunks(roi_pixels, n_regions)
-        region = all_regions[region_idx]
+        # Define two useful shortcuts
+        frame_center = tuple(map(lambda x: x / 2, self.m__frame_size))
+        psf_radius_pix = (self.m__config_psf_template['psf_radius'] *
+                          self.m__lambda_over_d / self.m__pixscale)
+
+        # Define a helper function that returns a weight for each pixel in the
+        # ROI. This weight will proportional to the number of models we need
+        # to train for the position (and hence its computation cost).
+        def weight_function(position: Tuple[int, int],
+                            frame_center: Tuple[int, int] = frame_center,
+                            psf_radius_pix: float = psf_radius_pix):
+
+            # Get the distance of the position from the frame_center
+            radius_pix = np.sqrt((position[0] - frame_center[0])**2 +
+                                 (position[1] - frame_center[1])**2)
+
+            # Compute the approximate area of the collection region, ignoring
+            # constant factors that are the same for all positions
+            weight = (4 * radius_pix * psf_radius_pix) + (psf_radius_pix**2)
+
+            return weight
+
+        # Split the list of ROI pixels into `n_regions` such that the
+        # computational cost for each region is approximately the same
+        regions = split_positions_into_chunks(list_of_positions=roi_pixels,
+                                              weight_function=weight_function,
+                                              n_chunks=n_regions)
+        region = regions[region_idx]
 
         # Run training by looping over the region and calling train_position()
         for position in tqdm(region, total=len(region), ncols=80):
