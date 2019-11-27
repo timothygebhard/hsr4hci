@@ -6,8 +6,11 @@ General purpose utilities, e.g., cropping arrays.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from bisect import bisect
+from copy import deepcopy
 from math import modf
-from typing import List, Sequence, Tuple, Union
+from types import SimpleNamespace
+from typing import Callable, List, Sequence, Tuple, Union
 
 from astropy.nddata.utils import add_array
 from scipy import ndimage
@@ -111,3 +114,178 @@ def split_into_n_chunks(sequence: Sequence,
     # Split the sequence into n chunks of (approximately) size k
     return [sequence[i * k + min(i, m):(i + 1) * k + min(i + 1, m)]
             for i in range(n_chunks)]
+
+
+def split_positions_into_chunks(list_of_positions: List[Tuple[int, int]],
+                                weight_function: Callable,
+                                n_chunks: int) -> List[List[Tuple[int, int]]]:
+    """
+    Takes a `list_of_positions` and a function that assigns an single
+    position a weight, and then splits the `list_of_positions` into
+    `n_chunks` sub-lists (chunks), such the sum of the weights of the
+    positions in each chunk is approximately the same.
+
+    This is, in principle, an equal sum partitioning problem, and
+    finding its optimal solution is an NP-hard problem. This function,
+    therefore, only implements a greedy heuristic which gives a simple
+    approximation that should, however, be sufficient for the purpose
+    of this function (i.e., helping us to balance the load of parallel
+    jobs on a cluster).
+
+    Args:
+        list_of_positions: A list of tuples (x, y) containing the
+            positions which we want distribute to multiple chunks.
+        weight_function: A function which takes a single position (i.e.,
+            a tuple (x, y)) as an input and returns a number that can
+            be used as a weight for this position. In practice, this
+            function will usually return the area of a collection region
+            associated with a given position.
+        n_chunks: The number of chunks into which we want to split the
+            `list_of_positions`.
+
+    Returns:
+        A list containing `n_chunks` lists ("chunks"), which each
+        contain a (variable) number of positions. The union of all these
+        chunks is the original `list_of_positions`.
+    """
+
+    # -------------------------------------------------------------------------
+    # Calculate the weight for every given position
+    # -------------------------------------------------------------------------
+
+    # Compute the weight for every position and create a list of Namespace
+    # objects to conveniently keep together a position and its weight
+    weighted_positions = list()
+    for position in list_of_positions:
+        weighted_position = SimpleNamespace(position=position,
+                                            weight=weight_function(position))
+        weighted_positions.append(weighted_position)
+
+    # Sort the weighted positions descendingly by their weight
+    weighted_positions = \
+        sorted(weighted_positions, key=lambda x: x.weight, reverse=True)
+
+    # -------------------------------------------------------------------------
+    # Initialize the partitioning and compute the target_sum
+    # -------------------------------------------------------------------------
+
+    # Initialize the empty partitioning with target number of chunks
+    partitioning = \
+        [SimpleNamespace(weight_sum=0, elements=[]) for _ in range(n_chunks)]
+
+    # Compute the target sum. Ideally, the weights of all elements in a chunk
+    # should always add up to this value.
+    target_sum = sum(_.weight for _ in weighted_positions) / n_chunks
+
+    # -------------------------------------------------------------------------
+    # Greedily distribute the positions to the chunks (initialization step)
+    # -------------------------------------------------------------------------
+
+    # Create a copy of the weighted_positions from which we can remove elements
+    # so we can easily keep track of which positions we have used already
+    unused = deepcopy(weighted_positions)
+
+    # While there are still unused positions that need to be added to a chunk,
+    # we keep distributing its elements to the chunks in the partitioning
+    while unused:
+
+        # Loop over all chunks. Per round, each chunk only gets one position.
+        # This helps to ensure that in the end, there are not some chunks with
+        # only few positions (with high weights), and some chunks with many
+        # positions (with low weights), but that every chunk contains a mix.
+        for chunk in partitioning:
+
+            # Compute the difference between the target_sum and the weight_sum
+            # of the chunk that we are looking at
+            difference = target_sum - chunk.weight_sum
+
+            # If the current chunk already has a weight_sum greater than the
+            # target_sum, we skip it (i.e., don't add more positions to it)
+            if difference < 0:
+                continue
+
+            # Find the unused element that, if we add it to the current chunk,
+            # gets the chunk's weight_sum the closest to the target_sum
+            idx = bisect([_.weight for _ in unused], difference)
+            element = unused[min(len(unused) - 1, idx)]
+
+            # Add the element to the current chunk
+            chunk.elements.append(element)
+            chunk.weight_sum += element.weight
+
+            # Remove the element from the unused list. In case the unused list
+            # is now empty, we can stop the loop..
+            unused.remove(element)
+            if not unused:
+                break
+
+    # Sort the partitioning we have obtained by the weight_sum of the chunks
+    partitioning = sorted(partitioning, key=lambda x: x.weight_sum)
+
+    # -------------------------------------------------------------------------
+    # Move positions between chunks to improve distribution (optimization step)
+    # -------------------------------------------------------------------------
+
+    # We keep going as long as we can decrease the distribution error
+    while True:
+
+        # Create a backup of the current partitioning, in case the swaps we
+        # do reduce how well the positions are distributed over the chunks
+        old_partitioning = deepcopy(partitioning)
+
+        # Compute distribution error: This quantity sums up how far the
+        # weight_sum of each chunk is from the ideal value (target_sum)
+        old_error = sum(abs(_.weight_sum - target_sum) for _ in partitioning)
+
+        # Loop over the potential source chunks, that is, chunks from which we
+        # want to remove an element in order to add it to another chunk
+        for source_chunk in partitioning:
+
+            # Compute how far the current chunk is from the ideal value
+            difference = target_sum - source_chunk.weight_sum
+
+            # We skip all chunks that have less weight than they should
+            if difference > 0:
+                continue
+
+            # Find that element of the source chunk that we need to remove to
+            # get us as close as possible to the target_sum
+            idx = int(np.argmin([abs(_.weight - difference)
+                                 for _ in source_chunk.elements]))
+            element = source_chunk.elements[idx]
+
+            # Find the subset with the lowest weight_sum. This is where we will
+            # move the element that we remove from the source_chunk.
+            idx = int(np.argmin([_.weight_sum for _ in partitioning]))
+            target_chunk = partitioning[idx]
+
+            # Move the element from the source to the target subset
+            target_chunk.elements.append(element)
+            target_chunk.weight_sum += element.weight
+            source_chunk.elements.remove(element)
+            source_chunk.weight_sum -= element.weight
+
+        # Compute the new distribution error after the latest round of swaps
+        new_error = sum(abs(_.weight_sum - target_sum) for _ in partitioning)
+
+        # If we did not improve the distribution error by the latest round of
+        # swaps, we restore the backup of the last partitioning and stop
+        if new_error >= old_error:
+            partitioning = old_partitioning
+            break
+
+    # Again, sort of the (final) partitioning by the weight_sum of the chunks
+    partitioning = sorted(partitioning, key=lambda x: x.weight_sum)
+
+    # -------------------------------------------------------------------------
+    # Drop redundant information and return result
+    # -------------------------------------------------------------------------
+
+    # For the output, we can drop all weights and weight_sums again
+    result = [[__.position for __ in _.elements] for _ in partitioning]
+
+    # Final sanity check: Make sure that we have not lost any positions
+    if not sorted(sum(result, [])) == sorted(list_of_positions):
+        raise RuntimeError('Something went wrong with the partitioning!')
+
+    return result
