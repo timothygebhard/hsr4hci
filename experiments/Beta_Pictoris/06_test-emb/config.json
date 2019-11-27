@@ -9,7 +9,7 @@
         "lambda_over_d": 0.1,
         "frame_size": [81, 81],
         "subsample": 1,
-        "presubtract": "median"
+        "presubtract": null
     },
     "experiment": {
         "use_forward_model": true,
@@ -41,7 +41,7 @@
             "class": "RidgeCV",
             "weight_mode": "train_test",
             "parameters": {
-                "fit_intercept": false
+                "fit_intercept": true
             }
         }
     }
