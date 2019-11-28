@@ -95,10 +95,11 @@ if __name__ == '__main__':
     config = load_config(os.path.join(experiment_dir, 'config.json'))
 
     # Load frames and parallactic angles from HDF file
-    stack, parang, psf_template = load_data(dataset_config=config['dataset'])
+    raw_stack, parang, psf_template = \
+        load_data(dataset_config=config['dataset'])
 
     # Print some basic training information
-    print(f'Stack size:\t {stack.shape}', flush=True)
+    print(f'Stack size:\t {raw_stack.shape}', flush=True)
     print(f'Model type:\t {config["experiment"]["model"]["module"]}.'
           f'{config["experiment"]["model"]["class"]}', flush=True)
 
@@ -116,41 +117,52 @@ if __name__ == '__main__':
     Path(positions_dir).mkdir(exist_ok=True)
 
     # -------------------------------------------------------------------------
-    # Get the last planet signal estimate and construct stack from it
+    # Get the last planet signal and noise estimates
     # -------------------------------------------------------------------------
 
     # In the first round, we do not have a (planet) signal estimate yet; thus,
     # we initialize it as zeros
     if emb_round == 0:
-        last_signal_estimate = np.zeros(stack.shape[1:])
+        last_signal_estimate = np.zeros(raw_stack.shape[1:])
+        last_noise_estimate_stack = np.zeros_like(raw_stack)
 
     # Otherwise, we load the signal estimate from the last round
     else:
+
+        # Define directory to last round
         last_round_dir = os.path.join(experiment_dir, 'results',
                                       f'round_{(emb_round - 1):03}')
+
+        # Load last signal estimate
         file_path = os.path.join(last_round_dir, 'signal_estimate.fits')
         last_signal_estimate = read_fits(file_path=file_path)
+
+        # Load last noise estimate
+        file_path = os.path.join(last_round_dir, 'noise_estimate_stack.fits')
+        last_noise_estimate_stack = read_fits(file_path=file_path)
 
     # Pass the signal estimate through a ReLU function
     last_signal_estimate = relu(last_signal_estimate)
 
     # Construct a signal stack from it and rotate it into the coordinate system
     # of the original stack from which we are going to subtract it
-    signal_estimate_stack = [last_signal_estimate for _ in range(len(stack))]
+    signal_estimate_stack = \
+        [last_signal_estimate for _ in range(len(raw_stack))]
     last_signal_estimate_stack = np.array(signal_estimate_stack)
     last_signal_estimate_stack = \
         derotate_frames(stack=last_signal_estimate_stack,
                         parang=(parang[0]-parang))
 
     # Get the input stack on which we will train the model
-    input_stack = stack - last_signal_estimate_stack
+    # A_i = Y - ReLU( P_{i-1} )
+    stack_without_planet = raw_stack - last_signal_estimate_stack
 
-    # Save some stuff for debugging purposes
+    # B_i = A_i - N_{i-1}
+    input_stack = stack_without_planet - last_noise_estimate_stack
+
+    # Save the input_stack (B_i) so that we have it available in the
+    # merge_residuals.py
     if region_idx == 0:
-
-        file_path = os.path.join(round_dir, 'last_signal_estimate_stack.fits')
-        save_fits(array=last_signal_estimate_stack, file_path=file_path)
-
         file_path = os.path.join(round_dir, 'input_stack.fits')
         save_fits(array=input_stack, file_path=file_path)
 
@@ -174,6 +186,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Get residual stack
+    # Q_i = HSR(B_i)
     print(f'\nComputing residual stack:', flush=True)
     residual_stack = hsr.get_residual_stack(stack=input_stack)
     residual_stack = residual_stack.astype(np.float32)

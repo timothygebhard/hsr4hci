@@ -14,7 +14,9 @@ from tqdm import tqdm
 
 import numpy as np
 
+from hsr4hci.utils.adi_tools import derotate_frames
 from hsr4hci.utils.config import load_config
+from hsr4hci.utils.data import load_data
 from hsr4hci.utils.fits import read_fits, save_fits
 
 
@@ -74,6 +76,10 @@ if __name__ == '__main__':
     # Load experiment config from JSON
     experiment_dir = os.path.dirname(os.path.realpath(__file__))
     config = load_config(os.path.join(experiment_dir, 'config.json'))
+
+    # Load frames and parallactic angles from HDF file
+    raw_stack, parang, psf_template = \
+        load_data(dataset_config=config['dataset'])
 
     # Get the spatial size of the residual stack that we are assembling
     frame_size = tuple(config['dataset']['frame_size'])
@@ -180,6 +186,43 @@ if __name__ == '__main__':
     print('Saving new signal estimate...', end=' ', flush=True)
     file_path = os.path.join(round_dir, f'signal_estimate.fits')
     save_fits(signal_estimate, file_path)
+    print('Done!', flush=True)
+
+    # -------------------------------------------------------------------------
+    # Compute current noise estimate and save it
+    # -------------------------------------------------------------------------
+
+    print('Computing noise estimate...', end=' ', flush=True)
+
+    # Load input_stack (B_i) from this round
+    file_path = os.path.join(round_dir, 'input_stack.fits')
+    input_stack = read_fits(file_path=file_path)
+
+    # Load noise_estimate_stack from last round
+    if emb_round == 0:
+        last_noise_estimate_stack = np.zeros_like(raw_stack)
+    else:
+        last_round_dir = os.path.join(experiment_dir, 'results',
+                                      f'round_{(emb_round - 1):03}')
+        file_path = os.path.join(last_round_dir, 'noise_estimate_stack.fits')
+        last_noise_estimate_stack = read_fits(file_path=file_path)
+
+    # Compute new noise estimate
+    # N_i = N_{i-1} + B_i - Derotate(residual_stack_{i})
+    residual_stack_derotated = derotate_frames(stack=residual_stack,
+                                               parang=(parang[0]-parang))
+
+    # Boost (i.e., update the noise estimate) every third EMB round
+    if (emb_round % 3) == 2:
+        noise_estimate_stack = \
+            last_noise_estimate_stack + input_stack - residual_stack_derotated
+    else:
+        noise_estimate_stack = last_noise_estimate_stack
+
+    # Save the noise_estimate_stack
+    file_path = os.path.join(round_dir, 'noise_estimate_stack.fits')
+    save_fits(array=noise_estimate_stack, file_path=file_path)
+
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
