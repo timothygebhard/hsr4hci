@@ -99,7 +99,7 @@ class CustomCircularAperture(CircularAperture):
         cropped_data = mask.cutout(data, copy=True)
 
         # Compute center of the cropped data
-        center = list(_ / 2 - 0.5 for _ in cropped_data.shape)
+        center = tuple([_ / 2 for _ in cropped_data.shape])
 
         # Get the indices of positions inside the aperture
         idx = mask.data.astype(bool).reshape(-1,)
