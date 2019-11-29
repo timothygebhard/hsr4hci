@@ -357,7 +357,6 @@ class PixelPredictorCollection:
             # Compute residuals for this position by subtracting the noise
             # model prediction from the original stack (and remove the median)
             residual = stack[:, position[0], position[1]] - noise_prediction
-            residual -= np.median(residual)
 
             # Store the median-removed residuals for this position
             residuals[:, position[0], position[1]] = residual
