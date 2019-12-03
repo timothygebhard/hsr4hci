@@ -99,7 +99,13 @@ class CustomCircularAperture(CircularAperture):
         cropped_data = mask.cutout(data, copy=True)
 
         # Compute center of the cropped data
-        center = tuple([_ / 2 for _ in cropped_data.shape])
+        # Note: The -0.5 is necessary, because of the following reason: The
+        # size of the bounding box of the aperture is always odd, say 11 by 11
+        # pixels. The center of this now would be (5.5, 5.5). However, the grid
+        # of positions that we create by np.indices() below starts at 0, which
+        # means the x and y positions are [0, 1, ..., 10]. The correct center
+        # for this grid is actually (5, 5) -- hence the correction by -0.5.
+        center = tuple([_ / 2 - 0.5 for _ in cropped_data.shape])
 
         # Get the indices of positions inside the aperture
         idx = mask.data.astype(bool).reshape(-1,)
