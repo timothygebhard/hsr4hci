@@ -7,7 +7,7 @@ Utility functions for selecting predictors.
 # -----------------------------------------------------------------------------
 
 from cmath import polar
-from typing import Optional
+from typing import Optional, Tuple
 
 import numpy as np
 
@@ -18,8 +18,8 @@ from hsr4hci.utils.masking import get_annulus_mask, get_circle_mask
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def get_default_mask(mask_size: tuple,
-                     position: tuple,
+def get_default_mask(mask_size: Tuple[int, int],
+                     position: Tuple[int, int],
                      n_regions: int = 1,
                      region_size: Optional[int] = None,
                      **_) -> np.ndarray:
@@ -111,15 +111,48 @@ def get_default_grid_mask(mask_size: tuple,
                                      radius=(exclusion_radius * lod_pixels),
                                      center=position)
     mask[exclusion_mask] = False
-    
+
     return mask
 
 
-def get_santa_mask(mask_size: tuple,
-                   position: tuple,
+def get_santa_mask(mask_size: Tuple[int, int],
+                   position: Tuple[int, int],
                    lambda_over_d: float,
                    pixscale: float,
+                   annulus_width: float = 1.0,
+                   circular_radius: float = 2.0,
                    **_) -> np.ndarray:
+    """
+    Create the infamous "Santa Claus" mask: For a given position (x, y),
+    select all pixels in a circular region with radius `circular_radius`
+    around the position, all pixels on an annulus at the same separation
+    as (x, y) of width `annulus_width`, and finally yet another circular
+    region with radius `circular_radius` centered on (-x, -y), where the
+    center of the frame is taken as the origin of the coordinate system.
+
+    Args:
+        mask_size: A tuple (width, height) that specifies the size of
+            the mask to be created in pixels.
+        position: A tuple (x, y) specifying the position for which this
+            mask is created, i.e., the mask selects the pixels that are
+            used as predictors for (x, y).
+        lambda_over_d: lambda over D, an instrument constant, depending
+            on the wavelength lambda and the size of the mirror D. For
+            L' band data at VLT/NACO, this value is given by:
+                lambda / D = 3.80 micrometer / 8.2 meter = 0.096 arcsec
+        pixscale: The pixel scale: another instrument constant which
+            gives the resolution of the sensor in arcseconds per pixel.
+            For VLT/NACO, this value is given by 0.0271 arcsec / pix.
+        annulus_width: The width (in units of lambda_over_d) of the
+            annulus used to select predictor pixels.
+        circular_radius: The radius (in units of lambda_over_d) of the
+            circular region around the `position` (and the mirrored
+            position) thatis used to select predictor pixels.
+        **_:
+
+    Returns:
+
+    """
 
     # Compute lambda / D in units of pixels
     lod_pixels = lambda_over_d / pixscale
@@ -131,23 +164,24 @@ def get_santa_mask(mask_size: tuple,
     # Initialize an empty mask of the desired size
     mask = np.full(mask_size, False)
 
-    # Add circular selection mask at position (radius: 2 lambda over D)
+    # Add circular selection mask at position
     circular_mask = get_circle_mask(mask_size=mask_size,
-                                    radius=(2 * lod_pixels),
+                                    radius=(circular_radius * lod_pixels),
                                     center=position)
     mask = np.logical_or(mask, circular_mask)
 
-    # Add circular selection  mask at mirror position (radius: 2 lambda over D)
+    # Add circular selection mask at mirror position
     mirror_position = tuple([2 * center[i] - position[i] for i in range(2)])
     circular_mask = get_circle_mask(mask_size=mask_size,
-                                    radius=(2 * lod_pixels),
+                                    radius=(circular_radius * lod_pixels),
                                     center=mirror_position)
     mask = np.logical_or(mask, circular_mask)
 
-    # Add annulus-shaped selection mask (width: 1 lambda over D)
+    # Add annulus-shaped selection mask
+    factor = annulus_width / 2
     annulus = get_annulus_mask(mask_size=mask_size,
-                               inner_radius=(separation - 0.5 * lod_pixels),
-                               outer_radius=(separation + 0.5 * lod_pixels))
+                               inner_radius=(separation - factor * lod_pixels),
+                               outer_radius=(separation + factor * lod_pixels))
     mask = np.logical_or(mask, annulus)
 
     return mask
