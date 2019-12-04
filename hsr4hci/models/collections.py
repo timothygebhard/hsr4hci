@@ -363,12 +363,17 @@ class PixelPredictorCollection:
         # Measure and sum up residual flux at expected planet positions
         # ---------------------------------------------------------------------
 
-        # Loop over frames, place a circular aperture mask with radius psf_size
-        # at the expected position of the planet (according to the forward
-        # model of the collection), and sum up the values selected by the mask.
-        # This is similar to derotating the frames, but it should introduce
-        # less interpolation artifacts (and furthermore keep a possible planet
-        # PSF aligned).
+        # If we do not use forward modeling, we are already done and simply
+        # return the residual that we have just computed
+        if not self.m__use_forward_model:
+            return residuals[:, self.m__position[0], self.m__position[1]]
+
+        # Otherwise, loop over frames, place a circular aperture mask with
+        # radius psf_size at the expected position of the planet (according to
+        # the forward model of the collection), and sum up the values selected
+        # by the mask. This is similar to derotating the frames, but it should
+        # introduce less interpolation artifacts (and furthermore keep a
+        # possible planet PSF aligned).
         result = list()
         for i in range(n_frames):
 
