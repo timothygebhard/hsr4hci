@@ -126,6 +126,16 @@ if __name__ == '__main__':
     print('')
 
     # -------------------------------------------------------------------------
+    # If we are not using a forward model: de-rotate the stack
+    # -------------------------------------------------------------------------
+
+    # If we do not use forward modeling, the residual stack we combine needs
+    # to be de-rotated first such that we can compute the signal_estimate etc.
+    if not config['experiment']['use_forward_model']:
+        residual_stack = derotate_frames(stack=residual_stack,
+                                         parang=(parang-parang[0]))
+
+    # -------------------------------------------------------------------------
     # Save the full residual stack
     # -------------------------------------------------------------------------
 
