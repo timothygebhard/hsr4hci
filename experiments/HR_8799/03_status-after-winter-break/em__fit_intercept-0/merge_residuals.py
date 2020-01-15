@@ -222,8 +222,9 @@ if __name__ == '__main__':
     residual_stack_derotated = derotate_frames(stack=residual_stack,
                                                parang=(parang[0]-parang))
 
-    # Boost every 4 rounds
-    if emb_round % 4 == 3:
+    # Disable boosting
+    # noinspection PyUnreachableCode
+    if False:
         noise_estimate_stack = \
             last_noise_estimate_stack + input_stack - residual_stack_derotated
     else:
