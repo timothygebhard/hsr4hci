@@ -84,6 +84,7 @@ def get_data_dir() -> str:
         raise RuntimeError('Environment variable HSR4HCI_DATA_DIR not set!')
 
     # Check if the value it contains is a valid directory
-    if os.path.isdir(data_dir):
-        return data_dir
-    raise RuntimeError('Value of HSR4HCI_DATA_DIR is not a directory!')
+    if not os.path.isdir(data_dir):
+        raise RuntimeError('Value of HSR4HCI_DATA_DIR is not a directory!')
+
+    return data_dir
