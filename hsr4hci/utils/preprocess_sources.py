@@ -21,7 +21,7 @@ import numpy as np
 # -----------------------------------------------------------------------------
 
 def standardize_sources(sources: np.ndarray,
-                        parameters: dict) -> np.ndarray:
+                        parameters: Optional[dict] = None) -> np.ndarray:
     """
     Standardize sources array by applying modified a z-transform.
 
@@ -35,12 +35,16 @@ def standardize_sources(sources: np.ndarray,
         sources: A 2D numpy array of shape (n_frames, n_predictors)
             that we want to standardize.
         parameters: A dictionary containing the parameters of the
-            standardization transform. Usually, this will empty.
+            standardization transform. Usually, this will be None.
 
     Returns:
         A 2D numpy array of shape (n_frames, n_predictors) that has
         been standardized in the way described above.
     """
+
+    # Set default parameters
+    if parameters is None:
+        parameters = dict()
 
     # Set up RobustScaler using the given parameters
     robust_scaler = RobustScaler(**parameters)
