@@ -1,5 +1,5 @@
 """
-Masking utilities.
+Utility function for creating and working with (binary) masks.
 """
 
 # -----------------------------------------------------------------------------
@@ -13,22 +13,8 @@ import numpy as np
 
 
 # -----------------------------------------------------------------------------
-# FUNCTION DEFINITIONS
+# BASE MASKS (INPUT PARAMETERS IN PIXELS)
 # -----------------------------------------------------------------------------
-
-def get_positions_from_mask(mask: np.ndarray) -> List[Tuple[int, int]]:
-    """
-    Convert a numpy mask into a list of positions selected by that mask.
-
-    Args:
-        mask: A numpy array containing only boolean values (or values
-            that can be interpreted as such).
-
-    Returns:
-        A sorted list of all positions (x, y) with mask[x, y] == True.
-    """
-    return sorted(list((x, y) for x, y in zip(*np.where(mask))))
-
 
 def get_circle_mask(mask_size: tuple,
                     radius: float,
@@ -43,6 +29,7 @@ def get_circle_mask(mask_size: tuple,
         radius: Radius of the disk in pixels.
         center: Center of the circle. If None is given, the disk
             will be centered within the array. This is the default.
+
     Returns:
         A numpy array of the specified size which is zero everywhere,
         except in a circular region of given radius around the
