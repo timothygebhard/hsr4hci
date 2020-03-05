@@ -40,7 +40,8 @@ if __name__ == '__main__':
     # Load experiment config from JSON
     # NOTE: This also activates the instrument-specific unit conversions
     # based on the values for the pixel scale and lambda_over_d.
-    config = load_config('config.json')
+    experiment_dir = os.path.dirname(os.path.realpath(__file__))
+    config = load_config(os.path.join(experiment_dir, 'config.json'))
 
     # Load frames and parallactic angles from HDF file
     stack, parang, _ = load_data(**config['dataset'])
