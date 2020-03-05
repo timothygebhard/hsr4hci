@@ -6,8 +6,15 @@ Utilities for reading in config files.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from typing import Tuple
+
 import json
 import os
+
+from astropy import units
+
+from hsr4hci.utils.general import get_from_nested_dict, set_in_nested_dict
+from hsr4hci.utils.units import set_units_for_instrument
 
 
 # -----------------------------------------------------------------------------
@@ -43,11 +50,7 @@ def load_config(config_file_path: str) -> dict:
     # -------------------------------------------------------------------------
 
     # Add the path to the experiments folder to the config dict
-    config['experiment_dir'] = os.path.dirname(config_file_path)
-
-    # Add implicitly defined variables
-    config['dataset']['frame_center'] = \
-        tuple(map(lambda x: x / 2, config['dataset']['frame_size']))
+    config['experiment_dir'] = os.path.dirname(config_file_path) or '.'
 
     # Replace dummy data directory with machine-specific data directory
     data_dir = get_data_dir()
@@ -55,16 +58,43 @@ def load_config(config_file_path: str) -> dict:
         config['dataset']['file_path'].replace('DATA_DIR', data_dir)
 
     # -------------------------------------------------------------------------
-    # Run additional sanity checks on options
+    # Convert values into astropy.units.Quantity objects
     # -------------------------------------------------------------------------
 
-    # Frame-weighting based on the planet signal from the forward model only
-    # works if we are also using a forward model
-    if (config['experiment']['model']['weight_mode'] != 'default' and
-            not config['experiment']['use_forward_model']):
-        raise ValueError('Using weight_mode="weighted" or '
-                         'weight_mode="train_test" requires '
-                         'use_forward_model=True')
+    def convert_to_quantity(config_: dict, key_tuple: Tuple[str, ...]) -> dict:
+        """
+        Small helper function to convert a value in the configuration
+        to an astropy.units.Quantity object.
+        """
+
+        # Get raw value from nested dictionary with the configuration
+        value = get_from_nested_dict(nested_dict=config_,
+                                     location=key_tuple)
+
+        # Write the converted value back to the configuration dictionary
+        set_in_nested_dict(nested_dict=config_,
+                           location=key_tuple,
+                           value=units.Quantity(*value))
+
+        return config_
+
+    # First, convert pixscale and lambda_over_d to astropy.units.Quantity
+    config = convert_to_quantity(config, ('dataset', 'pixscale'))
+    config = convert_to_quantity(config, ('dataset', 'lambda_over_d'))
+
+    # Use this to set up the instrument-specific conversion factors. We need
+    # this here to that we can parse "lambda_over_d" as a unit in the config.
+    set_units_for_instrument(pixscale=config['dataset']['pixscale'],
+                             lambda_over_d=config['dataset']['lambda_over_d'])
+
+    # Convert the remaining entries of the config to astropy.units.Quantity
+    for key_tuple in [('roi_mask', 'inner_radius'),
+                      ('roi_mask', 'outer_radius'),
+                      ('selection_mask', 'annulus_width'),
+                      ('selection_mask', 'radius_position'),
+                      ('selection_mask', 'radius_mirror_position'),
+                      ('selection_mask', 'minimum_distance')]:
+        config = convert_to_quantity(config, key_tuple)
 
     return config
 
