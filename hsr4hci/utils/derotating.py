@@ -1,6 +1,5 @@
 """
-Tools for classical angular differential imaging (ADI), such as frame
-(de)-rotation and residual creation.
+Utility functions for (de)-rotating stacks and computing residuals.
 """
 
 # -----------------------------------------------------------------------------
@@ -59,7 +58,7 @@ def derotate_combine(stack: np.ndarray,
                      subtract: Optional[str] = None,
                      combine: str = 'mean') -> np.ndarray:
     """
-    Take a stack (of residuals), derotate the frames and combine them.
+    Derotate all frames in the stack and combine (= average) them.
 
     Args:
         stack: A 3D numpy array of shape (n_frames, width, height)
