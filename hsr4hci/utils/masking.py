@@ -9,6 +9,8 @@ Utility function for creating and working with (binary) masks.
 from cmath import polar
 from typing import List, Tuple
 
+from astropy import units
+
 import numpy as np
 
 
@@ -213,3 +215,179 @@ def get_checkerboard_mask(mask_size):
         A n-dimensional numpy array containing a checkerboard mask.
     """
     return np.indices(mask_size).sum(axis=0) % 2
+
+
+# -----------------------------------------------------------------------------
+# DERIVED MASKS (INPUT PARAMETERS IN PHYSICAL UNITS)
+# -----------------------------------------------------------------------------
+
+def get_roi_mask(mask_size: Tuple[int, int],
+                 inner_radius: units.Quantity,
+                 outer_radius: units.Quantity) -> np.ndarray:
+    """
+    Get a numpy array masking the pixels within the region of interest.
+
+    Args:
+        mask_size: A tuple (width, height) containing the spatial size
+            of the input stack.
+        inner_radius: Inner radius of the region of interest (as an
+            astropy.units.Quantity that can be converted to pixels).
+        outer_radius: Outer radius of the region of interest (as an
+            astropy.units.Quantity that can be converted to pixels).
+
+    Returns:
+        A 2D numpy array of size `mask_size` which masks the pixels
+        within the specified region of interest.
+    """
+
+    return get_annulus_mask(mask_size=mask_size,
+                            inner_radius=inner_radius.to('pixel').value,
+                            outer_radius=outer_radius.to('pixel').value)
+
+
+def get_predictor_mask(mask_size: Tuple[int, int],
+                       position: Tuple[int, int],
+                       annulus_width: units.Quantity,
+                       radius_position: units.Quantity,
+                       radius_mirror_position: units.Quantity) -> np.ndarray:
+    """
+    Create a mask that selects the potential predictors for a position.
+
+    For a given position (x, y), this mask selects all pixels in a
+    circular region with radius `circular_radius` around the position,
+    all pixels on an annulus at the same separation as (x, y) of width
+    `annulus_width`, and finally yet another circular region with radius
+    `circular_radius` centered on (-x, -y), where the center of the
+    frame is taken as the origin of the coordinate system.
+
+    If we remove an exclusion region from this region, we get the
+    selection mask, that is, the mask that actually selects the pixels
+    to be used as predictors for a given position.
+
+    Args:
+        mask_size: A tuple (width, height) that specifies the size of
+            the mask to be created in pixels.
+        position: A tuple (x, y) specifying the position for which this
+            mask is created, i.e., the mask selects the pixels that are
+            used as predictors for (x, y).
+        annulus_width: The width (as an astropy.units.Quantity that can
+            be converted to pixels) of the annulus used to select
+            potential predictor pixels.
+        radius_position: The radius (as an astropy.units.Quantity that
+            can be converted to pixels) of the circular region around
+            the `position` that is used to select potential predictors.
+        radius_mirror_position: The radius (as an astropy.units.Quantity
+            that can be converted to pixels) of the circular region
+            around the mirrored `position` that is used to select
+            potential predictors.
+
+    Returns:
+        A 2D numpy array containing a mask that contains all potential
+        predictors for the pixel at the given `position`, that is,
+        including the pixels that we must not use because they are
+        not causally disconnected
+    """
+
+    # Compute mask center and separation of `position` from the center
+    center = tuple([_ / 2 for _ in mask_size])
+    separation = np.hypot((position[0] - center[0]), (position[1] - center[1]))
+
+    # Initialize an empty mask of the desired size
+    mask = np.full(mask_size, False)
+
+    # Add circular selection mask at position (x, y)
+    circular_mask = get_circle_mask(mask_size=mask_size,
+                                    radius=radius_position.to('pixel').value,
+                                    center=position)
+    mask = np.logical_or(mask, circular_mask)
+
+    # Add circular selection mask at mirror position (-x, -y)
+    mirror_position = tuple([2 * center[i] - position[i] for i in range(2)])
+    circular_mask = \
+        get_circle_mask(mask_size=mask_size,
+                        radius=radius_mirror_position.to('pixel').value,
+                        center=mirror_position)
+    mask = np.logical_or(mask, circular_mask)
+
+    # Add annulus-shaped selection mask of given width at the given separation
+    half_width = annulus_width.to('pixel').value / 2
+    annulus = get_annulus_mask(mask_size=mask_size,
+                               inner_radius=(separation - half_width),
+                               outer_radius=(separation + half_width))
+    mask = np.logical_or(mask, annulus)
+
+    return mask
+
+
+def get_selection_mask(mask_size: Tuple[int, int],
+                       position: Tuple[int, int],
+                       field_rotation: units.Quantity,
+                       annulus_width: units.Quantity,
+                       radius_position: units.Quantity,
+                       radius_mirror_position: units.Quantity,
+                       minimum_distance: units.Quantity,
+                       subsample_predictors: bool = False) -> np.ndarray:
+    """
+    Get the mask that selects the predictor pixels for a given position.
+
+    Args:
+        mask_size: A tuple (width, height) that specifies the size of
+            the mask to be created in pixels.
+        position: A tuple (x, y) specifying the position for which this
+            mask is created, i.e., the mask selects the pixels that are
+            used as predictors for (x, y).
+        field_rotation: The field rotation (as an astropy.units.Quantity
+            that can be converted to degree) of the data set.
+            This is needed to determine the size of the exclusion mask.
+        annulus_width: The width (as an astropy.units.Quantity that can
+            be converted to pixels) of the annulus used in the
+            get_predictor_mask() function.
+        radius_position: The radius (as an astropy.units.Quantity that
+            can be converted to pixels) of the circular region around
+            the `position` (and the mirrored position) that is used in
+            the get_predictor_mask() function.
+        radius_mirror_position: The radius (as an astropy.units.Quantity
+            that can be converted to pixels) of the circular region
+            around the mirrored `position`.
+        minimum_distance: The radius used for the exclusion region (as
+            an astropy.units.Quantity that can be converted to pixels),
+            that is, the minimum distance that a pixel must have to the
+            given `position` to be admissible as a predictor pixel.
+        subsample_predictors: A boolean indicating whether or not to
+            subsample the predictor mask, i.e. only select every other
+            predictor. Assuming that neighboring pixels are strongly
+            correlated, this may be a simple way to reduce the number
+            of predictors (and improve the training speed).
+
+    Returns:
+        A 2D numpy array containing a mask that selects the pixels to
+        be used as predictors for the pixel at the given `position`.
+    """
+
+    # Get the mask that selects all potential predictor pixels
+    predictor_mask = \
+        get_predictor_mask(mask_size=mask_size,
+                           position=position,
+                           annulus_width=annulus_width,
+                           radius_position=radius_position,
+                           radius_mirror_position=radius_mirror_position)
+
+    # If desired, subsample the predictor mask
+    if subsample_predictors:
+        subsampling_mask = get_checkerboard_mask(mask_size=mask_size)
+        predictor_mask = np.logical_and(predictor_mask, subsampling_mask)
+
+    # Get exclusion mask (i.e., pixels we must not use as predictors)
+    exclusion_radius = minimum_distance.to('pixel').value
+    opening_angle = 2 * field_rotation.to('degree').value
+    exclusion_mask = get_sausage_mask(mask_size=mask_size,
+                                      position=position,
+                                      radius=exclusion_radius,
+                                      opening_angle=opening_angle)
+
+    # Create the actual selection mask by removing the exclusion mask
+    # from the predictor mask
+    selection_mask = np.logical_and(np.logical_not(exclusion_mask),
+                                    predictor_mask)
+
+    return selection_mask
