@@ -75,7 +75,7 @@ if __name__ == '__main__':
 
     # Path to script that will run the training
     train_script_path = \
-        os.path.abspath(os.path.join(experiment_dir, 'train_emb.py'))
+        os.path.abspath(os.path.join(experiment_dir, 'train.py'))
 
     # Add file header with requirements
     submit_file_lines = \
