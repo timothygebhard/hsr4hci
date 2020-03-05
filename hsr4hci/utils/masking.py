@@ -326,7 +326,8 @@ def get_selection_mask(mask_size: Tuple[int, int],
                        radius_position: units.Quantity,
                        radius_mirror_position: units.Quantity,
                        minimum_distance: units.Quantity,
-                       subsample_predictors: bool = False) -> np.ndarray:
+                       subsample_predictors: bool = False,
+                       use_field_rotation: bool = True) -> np.ndarray:
     """
     Get the mask that selects the predictor pixels for a given position.
 
@@ -358,6 +359,8 @@ def get_selection_mask(mask_size: Tuple[int, int],
             predictor. Assuming that neighboring pixels are strongly
             correlated, this may be a simple way to reduce the number
             of predictors (and improve the training speed).
+        use_field_rotation: A boolean indicating whether or not to use
+            the field rotation when determining the exclusion region.
 
     Returns:
         A 2D numpy array containing a mask that selects the pixels to
@@ -379,7 +382,8 @@ def get_selection_mask(mask_size: Tuple[int, int],
 
     # Get exclusion mask (i.e., pixels we must not use as predictors)
     exclusion_radius = minimum_distance.to('pixel').value
-    opening_angle = 2 * field_rotation.to('degree').value
+    opening_angle = \
+        2 * field_rotation.to('degree').value if use_field_rotation else 0
     exclusion_mask = get_sausage_mask(mask_size=mask_size,
                                       position=position,
                                       radius=exclusion_radius,
