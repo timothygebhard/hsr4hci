@@ -209,3 +209,20 @@ def get_sausage_mask(mask_size: Tuple[int, int],
     # mask and then adding the "end cap" masks.
     return np.logical_or(np.logical_and(annulus_mask, wedge_mask),
                          np.logical_or(end_cap_mask_1, end_cap_mask_2))
+
+
+def get_checkerboard_mask(mask_size):
+    """
+    Create a checkerboard mask, i.e. a mask where every other pixel
+    is selected (in a checkerboard pattern).
+    
+    Source: https://stackoverflow.com/a/51715491/4100721
+
+    Args:
+        mask_size: A tuple containing the size of the mask to be
+            created. This works in arbitrarily many dimensions.
+
+    Returns:
+        A n-dimensional numpy array containing a checkerboard mask.
+    """
+    return np.indices(mask_size).sum(axis=0) % 2
