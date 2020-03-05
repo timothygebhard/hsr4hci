@@ -9,6 +9,7 @@ Utility functions for forward modeling (necessary for toy data sets!).
 from cmath import polar
 from typing import Tuple
 
+from astropy import units
 from photutils import centroid_2dg, CircularAperture
 
 import numpy as np
@@ -21,10 +22,8 @@ from hsr4hci.utils.general import add_array_with_interpolation
 # -----------------------------------------------------------------------------
 
 def crop_psf_template(psf_template: np.ndarray,
-                      psf_radius: float,
-                      rescale_psf: bool = True,
-                      pixscale: float = 0.0271,
-                      lambda_over_d: float = 0.1) -> np.ndarray:
+                      psf_radius: units.Quantity,
+                      rescale_psf: bool = True) -> np.ndarray:
     """
     Take a raw unsaturated PSF template, and crop it to a circle of
     radius `psf_radius` around it's center, which is determined by
@@ -33,22 +32,15 @@ def crop_psf_template(psf_template: np.ndarray,
     Args:
         psf_template: A numpy array containing the unsaturated PSF
             template which we use to create the planet signal.
-        psf_radius: The radius (in units of lambda over D) of the
-            aperture to which the PSF template is cropped and masked.
+        psf_radius: The radius (as an astropy.units.Quantity that
+            can be converted to pixels) of the aperture to which the
+            PSF template is cropped and masked.
         rescale_psf: Whether or not to rescale the PSF template to the
             value range (0, 1].
-        pixscale: The resolution of the data, that is, the conversion
-            factor between pixels and arcseconds. For VLT/NACO data,
-            this value is usually 0.0271 arcseconds / pixel.
-        lambda_over_d: lambda / D in arcseconds. For VLT/NACO (D=8.2m)
-            data in the L band (lambda=3800nm), this value is ~0.1".
 
     Returns:
         The cropped and circularly masked PSF template as a numpy array.
     """
-
-    # Convert psf_radius from units of lambda over D to pixel
-    psf_radius_pixel = psf_radius * (lambda_over_d / pixscale)
 
     # If desired, rescale the PSF template into the value range (0, 1]
     scale_factor = np.max(psf_template) if rescale_psf else 1
@@ -64,7 +56,7 @@ def crop_psf_template(psf_template: np.ndarray,
     # Create a circular mask and multiply it with the clipped PSF. The
     # resulting masked PSF is automatically cropped to its bounding box.
     circular_aperture = CircularAperture(positions=psf_clipped_center,
-                                         r=psf_radius_pixel)
+                                         r=psf_radius.to('pixel').value)
     circular_mask = circular_aperture.to_mask(method='exact')
     psf_masked = circular_mask.multiply(psf_clipped)
 
