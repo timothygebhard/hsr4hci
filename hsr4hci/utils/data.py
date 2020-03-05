@@ -18,14 +18,42 @@ from hsr4hci.utils.general import crop_center
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def load_data(dataset_config: dict) -> Tuple[np.ndarray, np.ndarray,
-                                             Optional[np.ndarray]]:
+def load_data(file_path: str,
+              stack_key: str = '/stack',
+              parang_key: str = '/parang',
+              psf_template_key: Optional[str] = None,
+              frame_size: Optional[Tuple[int, int]] = None,
+              presubtract: Optional[str] = None,
+              subsample: int = 1,
+              **_) -> Tuple[np.ndarray, np.ndarray, Optional[np.ndarray]]:
     """
-    Load the dataset specified in the dataset_config.
+    Load a dataset from the HDF5 file at the given `file_path`.
 
     Args:
-        dataset_config: A dictionary containing the part of an
-            experiment config file which specifies the dataset.
+        file_path: A string containing the path to the HDF5 file
+            containing the data set to be loading (consisting of the
+            stack of images, an array of parallactic angles, and
+            optionally an unsaturated PSF template).
+        stack_key: The key of the dataset in the HDF file that contains
+            the stack, which is expected to be a 3D array with the
+            following shape: (n_frames, width, height).
+        parang_key: The key of the dataset in the HDF file that contains
+            the parallactic angles, which is expected to be an 1D array
+            with the following shape: (n_frames, )
+        psf_template_key: Optionally, the key key of the dataset in the
+            HDF file that contains the unsaturated PSF template, which
+            is expected to be a 2D array of shape (width, height). The
+            size does not have to match the spatial size of the stack.
+        frame_size: A tuple (width, height) of integers specifying the
+            spatial size (in pixels) to which the stack will be cropped
+            around the center. Dimensions should be odd numbers.
+        presubtract: If this parameter is set to "mean" or "median",
+            we subtract the mean (or median) along the time axis from
+            the stack before returning it.
+        subsample: An integer specifying the subsampling factor for the
+            stack. If set to n, we only keep every n-th frame. By
+            default, all frames are kept (i.e., subsample=1).
+        **_: Additional keywords (which will be ignored).
 
     Returns:
         A tuple (stack, parang, psf_template), containing numpy array
@@ -33,36 +61,25 @@ def load_data(dataset_config: dict) -> Tuple[np.ndarray, np.ndarray,
         PSF template.
     """
 
-    # Define some shortcuts
-    file_path = dataset_config['file_path']
-    stack_key = dataset_config['stack_key']
-    parang_key = dataset_config['parang_key']
-    psf_template_key = dataset_config['psf_template_key']
-    frame_size = dataset_config['frame_size']
-    subsample = dataset_config['subsample']
-    presubtract = dataset_config['presubtract']
-
     # Read in the dataset from the HDf file
     with h5py.File(file_path, 'r') as hdf_file:
 
-        # Select stack and parallactic angles
+        # Select stack and parallactic angles and subsample as desired
         stack = np.array(hdf_file[stack_key][::subsample, ...])
         parang = np.array(hdf_file[parang_key][::subsample, ...])
 
-        # Spatially crop the stack to the desired frame size without
-        # changing the number of frames in it
-        stack = crop_center(stack, (-1, frame_size[0], frame_size[1]))
-
-        # Pre-subtract mean or median from stack (if desired)
-        if presubtract == 'median':
-            stack -= np.nanmedian(stack, axis=0)
-        elif presubtract == 'mean':
-            stack -= np.nanmean(stack, axis=0)
-
         # If applicable, also select the PSF template
+        psf_template = None
         if psf_template_key is not None:
             psf_template = np.array(hdf_file[psf_template_key]).squeeze()
-        else:
-            psf_template = None
+
+    # Spatially crop the stack around the center to the desired frame size
+    stack = crop_center(stack, (-1, frame_size[0], frame_size[1]))
+
+    # If desired, pre-subtract mean or median from the stack
+    if presubtract == 'median':
+        stack -= np.nanmedian(stack, axis=0)
+    elif presubtract == 'mean':
+        stack -= np.nanmean(stack, axis=0)
 
     return stack, parang, psf_template
