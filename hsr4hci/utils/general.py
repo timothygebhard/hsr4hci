@@ -8,9 +8,12 @@ General purpose utilities, e.g., cropping arrays.
 
 from bisect import bisect
 from copy import deepcopy
+from functools import reduce
 from math import modf
 from types import SimpleNamespace
-from typing import Callable, List, Sequence, Tuple, Union
+from typing import Any, Callable, List, Sequence, Tuple, Union
+
+import operator
 
 from astropy.nddata.utils import add_array
 from scipy import ndimage
@@ -289,3 +292,51 @@ def split_positions_into_chunks(list_of_positions: List[Tuple[int, int]],
         raise RuntimeError('Something went wrong with the partitioning!')
 
     return result
+
+
+def get_from_nested_dict(nested_dict: dict,
+                         location: Sequence) -> Any:
+    """
+    Get a value from a nested dictionary at a given location, described
+    by a sequence of keys.
+
+    Examples:
+        >>> dictionary = {'a': {'b': 42}}
+        >>> get_from_nested_dict(dictionary, ['a', 'b'])
+        42
+
+    Args:
+        nested_dict: A nested dictionary.
+        location: The location within the nested dictionary, described
+            by a sequence (i.e., a list or tuple) of keys used to access
+            the target value.
+
+    Returns:
+        The value of the `nested_dict` at the specified location.
+    """
+
+    return reduce(operator.getitem, location, nested_dict)
+
+
+def set_in_nested_dict(nested_dict: dict,
+                       location: Sequence,
+                       value: Any):
+    """
+    Set a value at a given location (described by a sequence of keys)
+    in a nested dictionary.
+
+    Examples:
+        >>> dictionary = {'a': {'b': 42}}
+        >>> set_in_nested_dict(dictionary, ['a', 'b'], 23)
+        >>> dictionary
+        {'a': {'b': 23}}
+
+    Args:
+        nested_dict: A nested dictionary.
+        location: The target location within the nested dictionary,
+            described by a sequence (i.e., a list or tuple) of keys
+            used to access the target value.
+        value: The value to be written to the target location.
+    """
+
+    get_from_nested_dict(nested_dict, location[:-1])[location[-1]] = value
