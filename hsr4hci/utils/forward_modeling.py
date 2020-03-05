@@ -1,5 +1,5 @@
 """
-Utility methods for forward modeling.
+Utility functions for forward modeling (necessary for toy data sets!).
 """
 
 # -----------------------------------------------------------------------------
@@ -144,24 +144,3 @@ def get_signal_stack(position: Tuple[int, int],
                                          position=injection_position)
 
     return signal_stack, planet_positions
-
-
-def get_collection_region_mask(signal_stack: np.ndarray) -> np.ndarray:
-    """
-    Get the spatial mask of pixels which, at some point in time,
-    contain planet signal.
-
-    # TODO: Should this function rather go into masking.py?
-
-    Args:
-        signal_stack: A 3D numpy array of shape (n_frames, frame_width,
-            frame_height), containing the signal stack computed by the
-            forward model.
-
-    Returns:
-        A 2D numpy array of shape (frame_width, frame_height) which is
-        1 for all (spatial) pixels which at some point in time (i.e.,
-        along the first axis) contain planet signal (i.e., the pixel
-        is non-zero for at least one frame), and 0 everywhere else.
-    """
-    return np.sum(signal_stack, axis=0) > 0
