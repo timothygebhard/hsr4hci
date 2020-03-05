@@ -10,6 +10,8 @@ from pathlib import Path
 
 import os
 
+from astropy import units
+
 import h5py
 import numpy as np
 
@@ -17,6 +19,7 @@ from hsr4hci.utils.config import get_data_dir
 from hsr4hci.utils.data import load_data
 from hsr4hci.utils.fits import save_fits
 from hsr4hci.utils.forward_modeling import crop_psf_template, get_signal_stack
+from hsr4hci.utils.units import set_units_for_instrument
 
 
 # -----------------------------------------------------------------------------
@@ -41,24 +44,26 @@ if __name__ == '__main__':
          "stack_key": "/stack",
          "parang_key": "/parang",
          "psf_template_key": "/psf_template",
-         "pixscale": 0.0271,
-         "lambda_over_d": 0.1,
+         "pixscale": units.Quantity(0.0271, "arcsec / pixel"),
+         "lambda_over_d": units.Quantity(0.096, "arcsec"),
          "frame_size": (81, 81),
          "subsample": 1,
          "presubtract": None}
 
+    # Enable instrument-specific unit conversions
+    set_units_for_instrument(pixscale=dataset_config['pixscale'],
+                             lambda_over_d=dataset_config['lambda_over_d'])
+
     # Load frames, parallactic angles and PSF template. The base_stack will
     # serve as the background "noise" into which we add some generated fake
     # planets.
-    base_stack, parang, psf_template = load_data(dataset_config=dataset_config)
+    base_stack, parang, psf_template = load_data(**dataset_config)
 
     # Crop the PSF template to desired size
-    psf_cropped = \
-        crop_psf_template(psf_template=psf_template,
-                          psf_radius=5,
-                          rescale_psf=True,
-                          pixscale=dataset_config['pixscale'],
-                          lambda_over_d=dataset_config['lambda_over_d'])
+    lambda_over_d = dataset_config['lambda_over_d']
+    psf_cropped = crop_psf_template(psf_template=psf_template,
+                                    psf_radius=5 * lambda_over_d,
+                                    rescale_psf=True)
 
     print('Done!', flush=True)
 
@@ -72,8 +77,8 @@ if __name__ == '__main__':
     signal = np.zeros(base_stack.shape)
 
     # Loop over positions and amplitudes and compute forward models
-    for position, amplitude in [((42, 23), 60),
-                                ((25, 55), 30)]:
+    for position, amplitude in [((42, 23), 6000),
+                                ((25, 55), 0)]:
 
         # Generate the forward model (i.e., the fake planet signal)
         tmp_signal, planet_positions = \
