@@ -10,7 +10,6 @@ Tools for classical angular differential imaging (ADI), such as frame
 from typing import Optional
 
 from scipy.ndimage import rotate
-from tqdm import tqdm
 
 import numpy as np
 
@@ -21,8 +20,7 @@ import numpy as np
 
 def derotate_frames(stack: np.ndarray,
                     parang: np.ndarray,
-                    mask: Optional[np.ndarray] = None,
-                    verbose: bool = False) -> np.ndarray:
+                    mask: Optional[np.ndarray] = None) -> np.ndarray:
     """
     Derotate all frames in the stack by their parallactic angle.
 
@@ -30,11 +28,10 @@ def derotate_frames(stack: np.ndarray,
         stack: Stack of frames to be de-rotated.
         parang: Array of parallactic angles (one for each frame).
         mask: Mask to apply after derotating. Usually, pixels for which
-            there exists no prediction are set to NaN. However, for
+            there exist no real values are set to NaN. However, for
             derotating, these have to be casted to zeros (otherwise the
             interpolation turns everything into a NaN). This mask here
             allows to restore these NaN values again.
-        verbose: Whether or not to print a progress bar.
 
     Returns:
         The stack with every frame derotated by its parallactic angle.
@@ -43,20 +40,14 @@ def derotate_frames(stack: np.ndarray,
     # Initialize array that will hold the de-rotated frames
     derotated = np.zeros_like(stack)
 
-    # If desired, use a tqdm decorator to show the progress
-    if verbose:
-        indices = tqdm(iterable=range(stack.shape[0]), ncols=80)
-    else:
-        indices = range(stack.shape[0])
-
     # Loop over all frames and derotate them by their parallactic angle
-    for i in indices:
+    for i in range(stack.shape[0]):
         derotated[i, :, :] = rotate(input=np.nan_to_num(stack[i, :, :]),
                                     angle=-parang[i],
                                     reshape=False)
 
     # Check if there is a mask that we need to apply after derotating
-    if mask is not None and mask.shape[1:] == stack.shape[1:]:
+    if mask is not None:
         derotated[:, mask] = np.nan
 
     return derotated
@@ -64,8 +55,9 @@ def derotate_frames(stack: np.ndarray,
 
 def derotate_combine(stack: np.ndarray,
                      parang: np.ndarray,
-                     subtract: Optional[str] = 'median',
-                     combine: str = 'median') -> np.ndarray:
+                     mask: Optional[np.ndarray] = None,
+                     subtract: Optional[str] = None,
+                     combine: str = 'mean') -> np.ndarray:
     """
     Take a stack (of residuals), derotate the frames and combine them.
 
@@ -74,6 +66,11 @@ def derotate_combine(stack: np.ndarray,
             containing the stack of (residual) frames.
         parang: A 1D numpy array of shape (n_frames, ) containing the
             respective parallactic angle for each frame.
+        mask: Mask to apply after derotating. Usually, pixels for which
+            there exist no real values are set to NaN. However, for
+            derotating, these have to be casted to zeros (otherwise the
+            interpolation turns everything into a NaN). This mask here
+            allows to restore these NaN values again.
         subtract: A string specifying what to subtract from the stack
             before derotating the frames. Options are "mean", "median"
             or None.
@@ -100,11 +97,27 @@ def derotate_combine(stack: np.ndarray,
     subtracted = stack - psf_frame
 
     # De-rotate all frames by their respective parallactic angles
-    residual_frames = derotate_frames(subtracted, parang)
+    residual_frames = derotate_frames(stack=subtracted,
+                                      parang=parang)
 
     # Combine the residual frames by averaging along the time axis
-    if combine == 'mean':
-        return np.nanmean(residual_frames, axis=0)
-    if combine == 'median':
-        return np.nanmedian(residual_frames, axis=0)
-    raise ValueError('Illegal option for parameter "combine"!')
+    with np.warnings.catch_warnings():
+
+        # Suppress "All-NaN slice / axis encountered" warning, which is
+        # expected for pixels outside of the region of interest
+        np.warnings.filterwarnings('ignore', r'All-NaN \w* encountered')
+        np.warnings.filterwarnings('ignore', r'Mean of empty slice')
+
+        # Combine derotated frames either by taking the mean or median
+        if combine == 'mean':
+            result = np.nanmean(residual_frames, axis=0)
+        elif combine == 'median':
+            result = np.nanmedian(residual_frames, axis=0)
+        else:
+            raise ValueError('Illegal option for parameter "combine"!')
+
+    # Apply mask to result before returning it
+    if mask is not None:
+        result[mask] = np.nan
+
+    return result
