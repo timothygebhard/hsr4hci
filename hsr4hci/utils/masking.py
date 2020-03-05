@@ -391,3 +391,22 @@ def get_selection_mask(mask_size: Tuple[int, int],
                                     predictor_mask)
 
     return selection_mask
+
+
+# -----------------------------------------------------------------------------
+# OTHER FUNCTIONS
+# -----------------------------------------------------------------------------
+
+def get_positions_from_mask(mask: np.ndarray) -> List[Tuple[int, int]]:
+    """
+    Convert a numpy mask into a list of positions selected by that mask.
+
+    Args:
+        mask: A numpy array containing only boolean values (or values
+            that can be interpreted as such).
+
+    Returns:
+        A sorted list of all positions (x, y) with mask[x, y] == True.
+    """
+
+    return sorted(list((x, y) for x, y in zip(*np.where(mask))))
