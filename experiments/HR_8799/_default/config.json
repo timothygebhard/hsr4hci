@@ -1,0 +1,48 @@
+{
+  "experiment_dir": null,
+  "dataset": {
+    "file_path":     "DATA_DIR/HR_8799/Lp/2012-08-25/processed/stacked_50.hdf",
+    "stack_key":     "/stack",
+    "parang_key":    "/parang",
+    "pixscale":      [0.0271, "arcsec / pixel"],
+    "lambda_over_d": [0.096, "arcsec"],
+    "frame_size":    [101, 101],
+    "subsample":     1,
+    "presubtract":   null
+  },
+  "multiprocessing": {
+    "enable":      true,
+    "n_processes": 4
+  },
+  "debugging": {
+    "store_coefficients": false,
+    "store_predictions": true,
+    "store_r_squared": true
+  },
+  "roi_mask": {
+    "inner_radius": [0.00, "arcsec"],
+    "outer_radius": [1.15, "arcsec"]
+  },
+  "selection_mask": {
+    "annulus_width":           [1.00, "lambda_over_d"],
+    "radius_position":         [4.00, "lambda_over_d"],
+    "radius_mirror_position":  [2.00, "lambda_over_d"],
+    "minimum_distance":        [1.50, "lambda_over_d"],
+    "subsample_predictors":    false,
+    "use_field_rotation":      true
+  },
+  "train_test_splitter": {
+    "split_type": "even_odd",
+    "n_splits":   5
+  },
+  "base_model": {
+    "module": "sklearn.linear_model",
+    "class":  "RidgeCV",
+    "parameters": {
+      "fit_intercept": false
+    }
+  },
+  "em": {
+    "n_iterations": 16
+  }
+}
