@@ -69,7 +69,7 @@ class HalfSiblingRegression:
         # Compute the train mask (which is either the ROI itself, or a subset)
         self.train_mask = self.roi_mask
         if train_mask is not None:
-            self.train_mask *= train_mask * self.roi_mask
+            self.train_mask *= train_mask
 
         # Initialize additional *required* class variables
         self.field_rotation = None
