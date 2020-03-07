@@ -67,7 +67,7 @@ class HalfSiblingRegression:
                          outer_radius=config['roi_mask']['outer_radius'])
 
         # Compute the train mask (which is either the ROI itself, or a subset)
-        self.train_mask = self.roi_mask
+        self.train_mask = np.copy(self.roi_mask)
         if train_mask is not None:
             self.train_mask *= train_mask
 
