@@ -6,7 +6,7 @@
     "parang_key":    "/parang",
     "pixscale":      [0.0271, "arcsec / pixel"],
     "lambda_over_d": [0.096, "arcsec"],
-    "frame_size":    [101, 101],
+    "frame_size":    [81, 81],
     "subsample":     1,
     "presubtract":   null
   },
@@ -21,7 +21,7 @@
   },
   "roi_mask": {
     "inner_radius": [0.00, "arcsec"],
-    "outer_radius": [1.15, "arcsec"]
+    "outer_radius": [1.00, "arcsec"]
   },
   "selection_mask": {
     "annulus_width":           [1.00, "lambda_over_d"],
