@@ -59,6 +59,9 @@ if __name__ == '__main__':
     # planets.
     base_stack, parang, psf_template = load_data(**dataset_config)
 
+    # Remove offset from parallactic angles
+    parang -= parang[0]
+
     # Crop the PSF template to desired size
     lambda_over_d = dataset_config['lambda_over_d']
     psf_cropped = crop_psf_template(psf_template=psf_template,
