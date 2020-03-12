@@ -1,0 +1,64 @@
+"""
+Utility functions for plotting.
+"""
+
+# -----------------------------------------------------------------------------
+# IMPORTS
+# -----------------------------------------------------------------------------
+
+from typing import Union
+
+from matplotlib.axes import SubplotBase
+from matplotlib.cm import get_cmap as original_get_cmap
+from matplotlib.colors import LinearSegmentedColormap, ListedColormap
+from matplotlib.figure import Figure
+from matplotlib.image import AxesImage
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+
+# -----------------------------------------------------------------------------
+# FUNCTION DEFINITIONS
+# -----------------------------------------------------------------------------
+
+def get_cmap(cmap: str = 'RdBu_r',
+             bad_color: str = '#212121') -> Union[LinearSegmentedColormap,
+                                                  ListedColormap]:
+    """
+    Convenience wrapper around matplotlib.cm.get_cmap() which allows to
+    also set the `bad_color` (i.e., the color for NaN value)
+
+    Args:
+        cmap: The name of a matplotlib color map, for example 'RdBu_r'.
+        bad_color: A string specifying a color in HTML format: (e.g.,
+            '#FF0000') which will be used as the 'bad color' of the
+            color map; that is, the color used, for example, for NaN
+            values in plt.imshow plots.
+
+    Returns:
+        A matplotlib colormap with the desired `bad_color`.
+    """
+
+    # Get desired color map and set the desired bad_color
+    cmap = original_get_cmap(cmap)
+    cmap.set_bad(color=bad_color)
+
+    return cmap
+
+
+def add_colorbar_to_ax(img: AxesImage,
+                       fig: Figure,
+                       ax: SubplotBase):
+    """
+    Add a "nice" colorbar to an imshow plot.
+
+    Source: https://stackoverflow.com/a/18195921/4100721
+
+    Args:
+        img: The return of the respective imshow() command.
+        fig: The figure that the plot is part of (e.g., `plt.gcf()`).
+        ax: The that of the plot is contained in (e.g., `plt.gca()`).
+    """
+
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(img, cax=cax, orientation='vertical')
