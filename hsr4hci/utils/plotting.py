@@ -47,7 +47,8 @@ def get_cmap(cmap: str = 'RdBu_r',
 
 def add_colorbar_to_ax(img: AxesImage,
                        fig: Figure,
-                       ax: SubplotBase):
+                       ax: SubplotBase,
+                       where: str = 'right'):
     """
     Add a "nice" colorbar to an imshow plot.
 
@@ -57,8 +58,17 @@ def add_colorbar_to_ax(img: AxesImage,
         img: The return of the respective imshow() command.
         fig: The figure that the plot is part of (e.g., `plt.gcf()`).
         ax: The that of the plot is contained in (e.g., `plt.gca()`).
+        where: Where to place the colorbar (left, right, top or bottom).
     """
 
+    if where in ('left', 'right'):
+        orientation = 'vertical'
+    elif where in ('top', 'bottom'):
+        orientation = 'horizontal'
+    else:
+        raise ValueError(f'Illegal value for `where`: "{where}". Must be one '
+                         'of ["left", "right", "top", "bottom"].')
+
     divider = make_axes_locatable(ax)
-    cax = divider.append_axes('right', size='5%', pad=0.05)
-    fig.colorbar(img, cax=cax, orientation='vertical')
+    cax = divider.append_axes(where, size='5%', pad=0.05)
+    fig.colorbar(img, cax=cax, orientation=orientation)
