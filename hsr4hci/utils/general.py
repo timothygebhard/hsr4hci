@@ -11,7 +11,7 @@ from copy import deepcopy
 from functools import reduce
 from math import modf
 from types import SimpleNamespace
-from typing import Any, Callable, List, Sequence, Tuple, Union
+from typing import Any, Callable, List, Sequence, Tuple
 
 import operator
 
@@ -27,9 +27,7 @@ import numpy as np
 
 def add_array_with_interpolation(array_large: np.ndarray,
                                  array_small: np.ndarray,
-                                 position: Tuple[Union[int, float],
-                                                 Union[int, float]]
-                                 ) -> np.ndarray:
+                                 position: Tuple[float, float]) -> np.ndarray:
     """
     An extension of astropy.nddata.utils.add_array to add a smaller
     array at a given position in a larger array. In this version, the
