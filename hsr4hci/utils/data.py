@@ -46,7 +46,8 @@ def load_data(file_path: str,
             size does not have to match the spatial size of the stack.
         frame_size: A tuple (width, height) of integers specifying the
             spatial size (in pixels) to which the stack will be cropped
-            around the center. Dimensions should be odd numbers.
+            around the center. Dimensions should be odd numbers. If None
+            is given, the frames are not cropped.
         presubtract: If this parameter is set to "mean" or "median",
             we subtract the mean (or median) along the time axis from
             the stack before returning it.
@@ -74,7 +75,8 @@ def load_data(file_path: str,
             psf_template = np.array(hdf_file[psf_template_key]).squeeze()
 
     # Spatially crop the stack around the center to the desired frame size
-    stack = crop_center(stack, (-1, frame_size[0], frame_size[1]))
+    if frame_size is not None:
+        stack = crop_center(stack, (-1, frame_size[0], frame_size[1]))
 
     # If desired, pre-subtract mean or median from the stack
     if presubtract == 'median':
