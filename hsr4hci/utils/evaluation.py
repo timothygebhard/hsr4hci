@@ -125,7 +125,7 @@ def compute_figures_of_merit(frame: np.ndarray,
         # variable: If we have selected an optimization target, but no
         # optimizer, we revert to the default and raise a warning.
         if target is not None and method is None:
-            method = 'Nelder-Mean'
+            method = 'Nelder-Mead'
             warn('Conflicting options for optimize and method: '
                  f'optimize = {target}, but method = {method}. '
                  'Defaulted to use method = "Nelder-Mead" instead.')
