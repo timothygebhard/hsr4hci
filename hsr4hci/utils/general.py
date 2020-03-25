@@ -292,6 +292,51 @@ def split_positions_into_chunks(list_of_positions: List[Tuple[int, int]],
     return result
 
 
+def prestack_array(array: np.ndarray,
+                   stacking_factor: int,
+                   stacking_function: Callable = np.median,
+                   axis: int = 0) -> np.ndarray:
+    """
+    Perform "pre-stacking" on a given `array`: The array is split into
+    blocks (each of size `stacking_factor`) along the given axis, and
+    the given `stacking_function` is applied to each block (again along
+    the specified axis). The results for each block are combined and
+    returned, resulting in a numpy array that has the same shape as the
+    input array, except that the specified axis has been reduced by the
+    given stacking factor.
+
+    Example use case: Replace each block of 50 raw frames by their
+        median to reduce the size of the ADI stack.
+
+    Args:
+        array: A numpy array containing the input array.
+        stacking_factor: An integer defining how many elements of the
+            input go into one block and are combined for the output.
+        stacking_function: The function to be used for combining the
+            blocks. Usually, this will be `np.mean` or `np.median`.
+        axis: Axis along which the stacking operation is performed. By
+            default, we stack along the time axis, which by convention
+            is the first axis (0).
+
+    Returns:
+        A version of the input `stack` where blocks of the specified
+        size have been merged using the givens `stacking_function`.
+    """
+
+    # If stacking factor is 1, we do not need to stack anything
+    if stacking_factor == 1:
+        return array
+
+    # Otherwise, we compute the number of splits and splitting indices
+    n_splits = np.ceil(array.shape[0] / stacking_factor).astype(int)
+    split_indices = [i * stacking_factor for i in range(1, n_splits)]
+
+    # Now, split the input array into that many splits, merge each split
+    # according to the given stacking_function, and return the result
+    return np.stack([stacking_function(block, axis=axis) for block in
+                     np.split(array, split_indices, axis=axis)], axis=axis)
+
+
 def get_from_nested_dict(nested_dict: dict,
                          location: Sequence) -> Any:
     """
