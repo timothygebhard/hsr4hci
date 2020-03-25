@@ -12,7 +12,7 @@ from warnings import warn
 from contexttimer.timeout import timeout
 from pynpoint.util.analysis import false_alarm
 from scipy.spatial.distance import euclidean
-from scipy.optimize import minimize
+from scipy.optimize import minimize, brute
 
 import numpy as np
 
@@ -139,6 +139,10 @@ def compute_figures_of_merit(frame: np.ndarray,
 
         # Otherwise, we first need to find the "optimal" position
         elif target in ('signal', 'noise_level', 'snr', 'fpf'):
+    
+            # -----------------------------------------------------------------
+            # Define dummy function for optimizer
+            # -----------------------------------------------------------------
 
             # Define another dummy function to get the FOM which we want to
             # optimize by adjusting the position. This is essentially just a
@@ -182,13 +186,42 @@ def compute_figures_of_merit(frame: np.ndarray,
                 if target == 'fpf':
                     return fpf
 
-            # Actually run the optimization to find the optimal position
-            optimum = minimize(fun=_get_fom,
-                               x0=np.array(position),
-                               method=method)
-            x, y = np.round(optimum.x, 2)
-            message = optimum.message
-            success = optimum.success
+            # -----------------------------------------------------------------
+            # Run optimizer on this dummy function
+            # -----------------------------------------------------------------
+
+            # Depending on the chosen optimization method, we need to use
+            # different functions with different signatures, which is why
+            # we need the following case analysis:
+
+            # Option 1: Brute-force optimization over a grid
+            if method == 'brute':
+
+                # Run the optimizer
+                optimum = brute(func=_get_fom,
+                                ranges=((position[0] - max_distance,
+                                         position[0] + max_distance),
+                                        (position[1] - max_distance,
+                                         position[1] + max_distance)),
+                                Ns=16)
+
+                # Get the result and set up the message and status
+                x, y = tuple(np.round(optimum, 2))
+                message = 'Brute-force optimization finished.'
+                success = True
+
+            # Option 2: "Regular" optimization
+            else:
+
+                # Run the optimizer
+                optimum = minimize(fun=_get_fom,
+                                   x0=np.array(position),
+                                   method=method)
+
+                # Get the result and set up the message and status
+                x, y = tuple(np.round(optimum.x, 2))
+                message = optimum.message
+                success = optimum.success
 
         # Raise an error if we receive an invalid value for optimize
         else:
