@@ -41,7 +41,7 @@ def timeout_handler(*_, **__):
 
 def compute_figures_of_merit(frame: np.ndarray,
                              position: Tuple[float, float],
-                             aperture_size: float,
+                             aperture_radius: float,
                              ignore_neighbors: bool = True,
                              target: Optional[str] = None,
                              method: Optional[str] = 'Nelder-Mead',
@@ -64,8 +64,8 @@ def compute_figures_of_merit(frame: np.ndarray,
         position: Position for which to compute the figures of merit.
             If `optimize` is not `None`, this position is only the
             starting point for the optimization.
-        aperture_size: Size (radius in pixels) of the apertures used for
-            computing the noise estimate.
+        aperture_radius: Radius (in pixels) of the apertures used for
+            computing the signal and the noise estimate.
         ignore_neighbors: Whether or not the ignore the two closest
             apertures to the `position` (which, at least in the case of
             PCA-based PSF subtraction, often contain the characteristic
@@ -108,7 +108,7 @@ def compute_figures_of_merit(frame: np.ndarray,
     @timeout(limit=int(time_limit), handler=timeout_handler)
     def _compute_figures_of_merit(frame: np.ndarray,
                                   position: Tuple[float, float],
-                                  aperture_size: float,
+                                  aperture_radius: float,
                                   ignore_neighbors: bool = True,
                                   target: Optional[str] = None,
                                   method: Optional[str] = 'Nelder-Mead',
@@ -162,7 +162,7 @@ def compute_figures_of_merit(frame: np.ndarray,
                             false_alarm(image=frame,
                                         x_pos=pos[0],
                                         y_pos=pos[1],
-                                        size=aperture_size,
+                                        size=aperture_radius,
                                         ignore=ignore_neighbors)
 
                     # In case of an error, set some defaults which indicate the
@@ -201,7 +201,7 @@ def compute_figures_of_merit(frame: np.ndarray,
         signal, noise_level, snr, fpf = false_alarm(image=frame,
                                                     x_pos=x,
                                                     y_pos=y,
-                                                    size=aperture_size,
+                                                    size=aperture_radius,
                                                     ignore=ignore_neighbors)
 
         # Return everything, including the (potentially optimized) position
@@ -224,7 +224,7 @@ def compute_figures_of_merit(frame: np.ndarray,
 
         return _compute_figures_of_merit(frame=frame,
                                          position=position,
-                                         aperture_size=aperture_size,
+                                         aperture_radius=aperture_radius,
                                          ignore_neighbors=ignore_neighbors,
                                          target=target,
                                          method=method,
