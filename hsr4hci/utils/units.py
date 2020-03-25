@@ -6,12 +6,47 @@ Utility functions related to using units and quantities (astropy.units)
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from typing import Tuple
+
 from astropy import units
+
+from hsr4hci.utils.general import get_from_nested_dict, set_in_nested_dict
 
 
 # -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
+
+def convert_to_quantity(config: dict,
+                        key_tuple: Tuple[str, ...]) -> dict:
+    """
+    Auxiliary function to convert a entry in a given configuration
+    dictionary to an `astropy.units.Quantity` object.
+
+    Args:
+        config: The (possibly nested) dictionary containing the raw
+            configuration.
+        key_tuple: The path (within the nested dictionary) to the entry
+            that we want to convert to a astro.units.Quantity. This
+            entry is assumed to be a Sequence of the for (value, unit),
+            where value is an integer or a float, and unit is a string
+            specifying the unit. Example: (0.5, "arcsec").
+
+    Returns:
+        The original `config` dictionary, with the entry specified by
+        the `key_tuple` converted to an `astropy.units.Quantity` object.
+    """
+
+    # Get raw value from nested dictionary with the configuration
+    value = get_from_nested_dict(nested_dict=config, location=key_tuple)
+
+    # Write the converted value back to the configuration dictionary
+    set_in_nested_dict(nested_dict=config,
+                       location=key_tuple,
+                       value=units.Quantity(*value))
+
+    return config
+
 
 @units.quantity_input(pixscale=units.Unit('arcsec / pixel'),
                       lambda_over_d=units.Unit('arcsec'))
