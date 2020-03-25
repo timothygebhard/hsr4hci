@@ -151,7 +151,8 @@ def compute_figures_of_merit(frame: np.ndarray,
                 # indicate the the current position not an admissible result.
                 distance = euclidean(position, pos)
                 if (max_distance is not None) and (distance > max_distance):
-                    signal, noise_level, snr, fpf = 0, np.inf, 0, np.inf
+                    signal, noise_level, snr, fpf = \
+                        -np.inf, np.inf, -np.inf, np.inf
 
                 # Otherwise, we can compute the real figures of merit at `pos`
                 else:
@@ -168,7 +169,8 @@ def compute_figures_of_merit(frame: np.ndarray,
                     # In case of an error, set some defaults which indicate the
                     # current position is not the optimum
                     except ValueError:
-                        signal, noise_level, snr, fpf = 0, np.inf, 0, np.inf
+                        signal, noise_level, snr, fpf = \
+                            -np.inf, np.inf, -np.inf, np.inf
 
                 # Depending on the quantity, we either need to minimize x or -x
                 if target == 'signal':
