@@ -44,7 +44,7 @@ def compute_figures_of_merit(frame: np.ndarray,
                              aperture_radius: float,
                              ignore_neighbors: bool = True,
                              target: Optional[str] = None,
-                             method: Optional[str] = 'Nelder-Mead',
+                             method: Optional[str] = 'brute',
                              max_distance: Optional[float] = 1.0,
                              time_limit: int = 30) -> Dict[str, Any]:
     """
