@@ -6,7 +6,7 @@ Utility functions for plotting.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Union
+from typing import Tuple, Union
 
 from matplotlib.axes import SubplotBase
 from matplotlib.cm import get_cmap as original_get_cmap
@@ -14,6 +14,9 @@ from matplotlib.colors import LinearSegmentedColormap, ListedColormap
 from matplotlib.figure import Figure
 from matplotlib.image import AxesImage
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+import matplotlib.colors as mc
+import colorsys
 
 
 # -----------------------------------------------------------------------------
@@ -72,3 +75,44 @@ def add_colorbar_to_ax(img: AxesImage,
     divider = make_axes_locatable(ax)
     cax = divider.append_axes(where, size='5%', pad=0.05)
     fig.colorbar(img, cax=cax, orientation=orientation)
+
+
+def adjust_luminosity(color: Union[str, Tuple[float, float, float]],
+                      amount: float = 1.4) -> Tuple[float, float, float]:
+    """
+    Adjusts the luminosity of the input `color` by the given `amount`.
+
+    Original source:
+        https://stackoverflow.com/a/49601444/4100721
+
+    Args:
+        color: The input color. Can either be a hex string (e.g.,
+            "#FF0000"), matplotlib color string (e.g., "C1" or "green"),
+            or an RGB tuple in float format (e.g., (1.0, 0.0, 0.0)).
+        amount: The amount by how much the input color should be
+            lightened. For amount > 1, the color gets brighter; for
+            amount < 1, the color is darkened. By default, colors are
+            lightened by 40%.
+
+    Returns:
+        An RGB tuple describing the luminosity-adjusted input color.
+    """
+
+    # In case `color` is a proper color name, we can try to resolve it into
+    # an RGB tuple using the lookup table (of HEX strings) in mc.cnames.
+    if isinstance(color, str) and (color in mc.cnames.keys()):
+        rgb = mc.to_rgb(mc.cnames[color])
+
+    # Otherwise we try to convert the color to RGB; this will raise a value
+    # error for invalid color formats.
+    else:
+        rgb = mc.to_rgb(color)
+
+    # Convert color from RBG to HLS representation
+    hue, luminosity, saturation = colorsys.rgb_to_hls(*rgb)
+
+    # Multiply `1 - luminosity` by given `amount` and convert back to RGB
+    luminosity = max(0, min(1, amount * luminosity))
+    rgb = colorsys.hls_to_rgb(hue, luminosity, saturation)
+
+    return rgb
