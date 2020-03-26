@@ -6,15 +6,10 @@ Utilities for reading in config files.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Tuple
-
 import json
 import os
 
-from astropy import units
-
-from hsr4hci.utils.general import get_from_nested_dict, set_in_nested_dict
-from hsr4hci.utils.units import set_units_for_instrument
+from hsr4hci.utils.units import convert_to_quantity, set_units_for_instrument
 
 
 # -----------------------------------------------------------------------------
@@ -60,23 +55,6 @@ def load_config(config_file_path: str) -> dict:
     # -------------------------------------------------------------------------
     # Convert values into astropy.units.Quantity objects
     # -------------------------------------------------------------------------
-
-    def convert_to_quantity(config_: dict, key_tuple: Tuple[str, ...]) -> dict:
-        """
-        Small helper function to convert a value in the configuration
-        to an astropy.units.Quantity object.
-        """
-
-        # Get raw value from nested dictionary with the configuration
-        value = get_from_nested_dict(nested_dict=config_,
-                                     location=key_tuple)
-
-        # Write the converted value back to the configuration dictionary
-        set_in_nested_dict(nested_dict=config_,
-                           location=key_tuple,
-                           value=units.Quantity(*value))
-
-        return config_
 
     # First, convert pixscale and lambda_over_d to astropy.units.Quantity
     config = convert_to_quantity(config, ('dataset', 'pixscale'))
