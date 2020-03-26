@@ -37,7 +37,7 @@ def read_fits(file_path: str) -> np.ndarray:
 def save_fits(array: np.ndarray,
               file_path: str,
               header: Optional[dict] = None,
-              overwrite: bool = True):
+              overwrite: bool = True) -> None:
     """
     Save a numpy array as a FITS file (e.g., to inspect it with DS9).
 

@@ -10,7 +10,7 @@ from typing import Tuple, Union
 
 from matplotlib.axes import SubplotBase
 from matplotlib.cm import get_cmap as original_get_cmap
-from matplotlib.colors import LinearSegmentedColormap, ListedColormap
+from matplotlib.colors import Colormap, LinearSegmentedColormap, ListedColormap
 from matplotlib.figure import Figure
 from matplotlib.image import AxesImage
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -24,7 +24,8 @@ import colorsys
 # -----------------------------------------------------------------------------
 
 def get_cmap(cmap: str = 'RdBu_r',
-             bad_color: str = '#212121') -> Union[LinearSegmentedColormap,
+             bad_color: str = '#212121') -> Union[Colormap,
+                                                  LinearSegmentedColormap,
                                                   ListedColormap]:
     """
     Convenience wrapper around matplotlib.cm.get_cmap() which allows to
@@ -51,7 +52,7 @@ def get_cmap(cmap: str = 'RdBu_r',
 def add_colorbar_to_ax(img: AxesImage,
                        fig: Figure,
                        ax: SubplotBase,
-                       where: str = 'right'):
+                       where: str = 'right') -> None:
     """
     Add a "nice" colorbar to an imshow plot.
 

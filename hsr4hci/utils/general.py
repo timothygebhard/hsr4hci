@@ -363,7 +363,7 @@ def get_from_nested_dict(nested_dict: dict,
 
 def set_in_nested_dict(nested_dict: dict,
                        location: Sequence,
-                       value: Any):
+                       value: Any) -> None:
     """
     Set a value at a given location (described by a sequence of keys)
     in a nested dictionary.
