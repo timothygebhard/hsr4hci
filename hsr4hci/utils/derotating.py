@@ -19,7 +19,8 @@ import numpy as np
 
 def derotate_frames(stack: np.ndarray,
                     parang: np.ndarray,
-                    mask: Optional[np.ndarray] = None) -> np.ndarray:
+                    mask: Optional[np.ndarray] = None,
+                    order: int = 3) -> np.ndarray:
     """
     Derotate all frames in the stack by their parallactic angle.
 
@@ -31,6 +32,8 @@ def derotate_frames(stack: np.ndarray,
             derotating, these have to be casted to zeros (otherwise the
             interpolation turns everything into a NaN). This mask here
             allows to restore these NaN values again.
+        order: The order of the spline interpolation for the rotation.
+            Has to be in the range [0, 5]; default is 3.
 
     Returns:
         The stack with every frame derotated by its parallactic angle.
@@ -43,7 +46,8 @@ def derotate_frames(stack: np.ndarray,
     for i in range(stack.shape[0]):
         derotated[i, :, :] = rotate(input=np.nan_to_num(stack[i, :, :]),
                                     angle=-parang[i],
-                                    reshape=False)
+                                    reshape=False,
+                                    order=order)
 
     # Check if there is a mask that we need to apply after derotating
     if mask is not None:
@@ -55,6 +59,7 @@ def derotate_frames(stack: np.ndarray,
 def derotate_combine(stack: np.ndarray,
                      parang: np.ndarray,
                      mask: Optional[np.ndarray] = None,
+                     order: int = 3,
                      subtract: Optional[str] = None,
                      combine: str = 'mean') -> np.ndarray:
     """
@@ -70,6 +75,8 @@ def derotate_combine(stack: np.ndarray,
             derotating, these have to be casted to zeros (otherwise the
             interpolation turns everything into a NaN). This mask here
             allows to restore these NaN values again.
+        order: The order of the spline interpolation for the rotation.
+            Has to be in the range [0, 5]; default is 3.
         subtract: A string specifying what to subtract from the stack
             before derotating the frames. Options are "mean", "median"
             or None.
@@ -97,7 +104,8 @@ def derotate_combine(stack: np.ndarray,
 
     # De-rotate all frames by their respective parallactic angles
     residual_frames = derotate_frames(stack=subtracted,
-                                      parang=parang)
+                                      parang=parang,
+                                      order=order)
 
     # Combine the residual frames by averaging along the time axis
     with np.warnings.catch_warnings():
