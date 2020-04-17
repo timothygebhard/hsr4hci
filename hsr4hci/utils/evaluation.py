@@ -72,7 +72,7 @@ def get_reference_positions(frame_size: Tuple[int, int],
     # that also gives a good approximation is given in the original paper by
     # Mawet et al. (2014): n_apertures = int(np.pi * radius / aperture_radius).
     n_apertures = \
-        np.floor(np.pi / np.arccos(1 - aperture_radius**2 / (2 * radius**2)))
+        int(np.pi / np.arccos(1 - aperture_radius**2 / (2 * radius**2)))
 
     # Define a little helper function to convert angles into positions
     def _angles_to_positions(angles: np.ndarray) -> List[Tuple[float, float]]:
