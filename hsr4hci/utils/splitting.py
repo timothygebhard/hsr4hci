@@ -139,26 +139,3 @@ class TrainTestSplitter:
 
         else:
             raise ValueError()
-
-
-# -----------------------------------------------------------------------------
-# TEST AREA
-# -----------------------------------------------------------------------------
-
-if __name__ == '__main__':
-
-    # Test case 1:
-    splitter = TrainTestSplitter(n_splits=2, split_type='k_fold')
-    print(list(splitter.split(n_samples=6)))
-
-    # Test case 2:
-    splitter = TrainTestSplitter(n_splits=2, split_type='even_odd')
-    print(list(splitter.split(n_samples=6)))
-
-    # Test case 3:
-    splitter = TrainTestSplitter(n_splits=3, split_type='even_odd')
-    print(list(splitter.split(n_samples=6)))
-
-    # Test case 4:
-    splitter = TrainTestSplitter(n_splits=1, split_type='even_odd')
-    print(list(splitter.split(n_samples=6)))
