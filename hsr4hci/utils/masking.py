@@ -168,7 +168,7 @@ def get_sausage_mask(mask_size: Tuple[int, int],
     r, phi = polar(complex(position[1] - center[1],
                            position[0] - center[0]))
 
-    # Get star and end position in cartesian coordinates
+    # Get start and end position in cartesian coordinates
     start_position = r * np.exp(1j * (phi - np.deg2rad(opening_angle / 2)))
     start_position = (np.imag(start_position) + center[0],
                       np.real(start_position) + center[1])
