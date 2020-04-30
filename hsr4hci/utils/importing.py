@@ -6,7 +6,7 @@ Utility functions for importing things from modules based on their name.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Callable
+from typing import Any
 
 import importlib
 
@@ -16,10 +16,10 @@ import importlib
 # -----------------------------------------------------------------------------
 
 def get_member_by_name(module_name: str,
-                       member_name: str) -> Callable:
+                       member_name: str) -> Any:
     """
     Take the name of a module (e.g., 'sklearn.linear_model') and the
-    name of a member (i.e., a class or a function from that module;
+    name of a member (e.g., a class or a function from that module;
     e.g., 'Ridge') as the inputs, and try to import said member from
     the given module.
     If no such member exists in the module, an AttributeError is raised.
@@ -29,8 +29,8 @@ def get_member_by_name(module_name: str,
         member_name: Name of the member to import.
 
     Returns:
-        The specified member, which is a callable that can either be
-         used directly (functions) or be instantiated (classes).
+        The specified module member, which can be virtually anything,
+        that is, a variable, a function, a class, ...
     """
 
     # Load the module based on the given name. This will raise an
