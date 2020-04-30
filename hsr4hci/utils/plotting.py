@@ -64,6 +64,25 @@ def get_cmap(cmap: str = 'RdBu_r',
     return cmap
 
 
+def get_transparent_cmap(color: MatplotlibColor = 'red') -> ListedColormap:
+    """
+    Return a colormap that goes from transparent to the target color.
+
+    Color maps of this type can be useful, for example, when plotting
+    or overlaying masks, where only the selected pixels should receive
+    a color, while everything else stays
+
+    Args:
+        color: A valid matplotlib color.
+
+    Returns:
+        A ListedColormap, which gradually goes from transparent to the
+        given target color.´
+    """
+
+    return ListedColormap([(0, 0, 0, 0), color])
+
+
 def add_colorbar_to_ax(img: AxesImage,
                        fig: Figure,
                        ax: SubplotBase,
