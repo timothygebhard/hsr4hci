@@ -20,6 +20,21 @@ import colorsys
 
 
 # -----------------------------------------------------------------------------
+# TYPE DEFINITIONS
+# -----------------------------------------------------------------------------
+
+# A valid matplotlib color can be one of the following three options:
+# - A string specifying either the name of the color, or defining the color
+#   as a HEX string. Examples: "red", "C3", "#FF0000".
+# - An RGB tuple specifying the color. Example: (1, 0, 0) for red.
+# - An RGBA tuple, specifying the color and the alpha channel (i.e., the
+#   transparency). Example: (1, 0, 0, 0.5) for a semitransparent red.
+MatplotlibColor = Union[str,
+                        Tuple[float, float, float],
+                        Tuple[float, float, float, float]]
+
+
+# -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
@@ -78,7 +93,7 @@ def add_colorbar_to_ax(img: AxesImage,
     fig.colorbar(img, cax=cax, orientation=orientation)
 
 
-def adjust_luminosity(color: Union[str, Tuple[float, float, float]],
+def adjust_luminosity(color: MatplotlibColor,
                       amount: float = 1.4) -> Tuple[float, float, float]:
     """
     Adjusts the luminosity of the input `color` by the given `amount`.
