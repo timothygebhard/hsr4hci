@@ -17,12 +17,15 @@ import numpy as np
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def read_fits(file_path: str) -> np.ndarray:
+def read_fits(file_path: str,
+              return_header: bool = False) -> Union[np.ndarray,
+                                                    Tuple[np.ndarray, dict]]:
     """
     Open a FITS file and return its contents as a numpy array.
 
     Args:
         file_path: Path of the FITS file to be read in.
+        return_header: Whether or not to return the FITS header.
 
     Returns:
         A numpy array containing the contents of the given FITS file.
@@ -30,8 +33,12 @@ def read_fits(file_path: str) -> np.ndarray:
 
     with fits.open(file_path) as hdulist:
         array = np.array(hdulist[0].data)
+        header = dict(hdulist[0].header)
 
-    return array
+    if return_header:
+        return array, header
+    else:
+        return array
 
 
 def save_fits(array: np.ndarray,
