@@ -15,7 +15,7 @@ from hsr4hci.utils.splitting import TrainTestSplitter
 # TEST CASES
 # -----------------------------------------------------------------------------
 
-def test__split():
+def test__split() -> None:
 
     # Test case 1:
     splitter = TrainTestSplitter(n_splits=2, split_type='k_fold')
