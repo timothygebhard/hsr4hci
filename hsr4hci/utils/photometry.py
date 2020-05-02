@@ -65,7 +65,7 @@ class CustomCircularAperture(CircularAperture):
         cropped_data[mask._mask] = np.nan
 
         # Return the statistic_function for the cropped, masked data
-        return statistic_function(cropped_data)
+        return float(statistic_function(cropped_data))
 
     def fit_2d_gaussian(self,
                         data: np.ndarray,
@@ -115,10 +115,12 @@ class CustomCircularAperture(CircularAperture):
         ydata = cropped_data.reshape(-1,)[idx]
 
         # Define a 2D Gauss function using the value for center computed above
-        def gauss2d(x, amplitude, sigma):
+        def gauss2d(x: Tuple[float, float],
+                    amplitude: float,
+                    sigma: float) -> float:
             inner = ((x[0] - center[0]) ** 2 / (2 * sigma) ** 2 +
                      (x[1] - center[1]) ** 2 / (2 * sigma) ** 2)
-            return amplitude * np.exp(-inner)
+            return amplitude * float(np.exp(-inner))
 
         # Define the bounds and the initial values for the fit
         abs_max = np.nanmax(np.abs(cropped_data))
