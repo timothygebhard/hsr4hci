@@ -6,6 +6,8 @@ Utilities for reading in config files.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from typing import Any, Dict
+
 import json
 import os
 
@@ -16,7 +18,7 @@ from hsr4hci.utils.units import convert_to_quantity, set_units_for_instrument
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def load_config(config_file_path: str) -> dict:
+def load_config(config_file_path: str) -> Dict[str, Any]:
     """
     Load and augment an experiment configuration.
 
@@ -38,7 +40,7 @@ def load_config(config_file_path: str) -> dict:
 
     # Load the config file into a dict
     with open(config_file_path, 'r') as json_file:
-        config = json.load(json_file)
+        config: Dict[str, Any] = json.load(json_file)
 
     # -------------------------------------------------------------------------
     # Augment configuration (i.e., add implicitly defined variables)
