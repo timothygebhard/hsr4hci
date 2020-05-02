@@ -6,7 +6,7 @@ Utility functions for fitting (e.g., PSFs with analytical models).
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Callable, Sequence, Tuple
+from typing import Any, Callable, Sequence, Tuple
 
 from scipy.optimize import curve_fit
 
@@ -112,7 +112,7 @@ def fit_2d_function(frame: np.ndarray,
     meshgrid = np.meshgrid(x_grid, y_grid)
 
     # Define dummy function to ravel the output of the target function
-    def target_function(*args, **kwargs):
+    def target_function(*args: Any, **kwargs: Any) -> np.ndarray:
         return function(*args, **kwargs).ravel()
 
     # Fit the frame using the target function and the initial parameter guess
