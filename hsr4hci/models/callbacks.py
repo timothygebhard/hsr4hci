@@ -7,37 +7,69 @@ for debugging or to retrieve additional model-specific information.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Any, Tuple, Union
+from typing import Any, Tuple
+
+import sys
+
+if sys.version_info < (3, 8):
+    from typing_extensions import Protocol
+else:
+    from typing import Protocol
 
 from sklearn.metrics import r2_score
 
 import numpy as np
+
+from hsr4hci.utils.typehinting import BaseLinearModel, BaseLinearModelCV
+
+
+# -----------------------------------------------------------------------------
+# TYPE DEFINITIONS
+# -----------------------------------------------------------------------------
+
+class BaseCollector(Protocol):
+    """
+    This defines the basic structure that all Collector callbacks should
+    follow to ensure they can be used in combination with the HSR class.
+    """
+
+    name: str
+
+    def __init__(self, **kwargs: Any): ...
+
+    @classmethod
+    def shape(cls,
+              frame_size: Tuple[int, int],
+              n_splits: int) -> Tuple[int, ...]: ...
+
+    def collect(self,
+                split_idx: int,
+                **kwargs: Any) -> None: ...
+
+    def get_results(self) -> np.ndarray: ...
 
 
 # -----------------------------------------------------------------------------
 # CLASS DEFINITIONS
 # -----------------------------------------------------------------------------
 
-class AlphaCollector:
+class AlphaCollector(BaseCollector):
     """
     A class that can be used to collect the .alpha_ attribute (i.e.,
     the regularization parameter value) of a model.
     """
 
-    # Define name that will be used for returning the result.
-    # Defining this on the class level means we can access it without having
-    # to instantiate the class first.
-    result_name = 'alphas'
+    name = 'alphas'
 
-    def __init__(self,
-                 n_splits: int,
-                 **_):
+    def __init__(self, **kwargs: Any):
+
+        super().__init__()
 
         # Store constructor arguments
-        self.n_splits = n_splits
+        self.n_splits = int(kwargs['n_splits'])
 
         # Initialize the variable in which we keep track of all the alphas
-        self.alphas = np.full(n_splits, np.nan)
+        self.alphas = np.full(self.n_splits, np.nan)
 
     @classmethod
     def shape(cls,
@@ -46,43 +78,41 @@ class AlphaCollector:
         return (n_splits,) + frame_size
 
     def collect(self,
-                model: Any,
                 split_idx: int,
-                **_) -> None:
+                **kwargs: Any) -> None:
 
-        # If the model we have gotten has an alpha parameter, and we have
-        # received a valid split index, we can store the alpha value of the
-        # current model at the respective position
-        if hasattr(model, 'alpha_') and (0 <= split_idx < self.n_splits):
+        # Unpack keyword arguments
+        model: BaseLinearModelCV = kwargs['model']
+
+        # Make sure the model has an alpha_ attribute
+        if hasattr(model, 'alpha_'):
             self.alphas[split_idx] = model.alpha_
+        else:
+            raise AttributeError('Model has no parameter "alpha_"!')
 
-    @property
-    def result(self) -> np.ndarray:
+    def get_results(self) -> np.ndarray:
         return self.alphas
 
 
-class CoefficientCollector:
+class CoefficientCollector(BaseCollector):
     """
     A class that can be used to collect the .coef_ attributes (i.e.,
     the weights of a linear model) of a model.
     """
 
-    # Define name that will be used for returning the result.
-    # Defining this on the class level means we can access it without having
-    # to instantiate the class first.
-    result_name = 'coefs'
+    name = 'coefs'
 
-    def __init__(self,
-                 n_splits: int,
-                 selection_mask: np.array,
-                 **_):
+    def __init__(self, **kwargs: Any):
+
+        super().__init__()
 
         # Store constructor arguments
-        self.n_splits = n_splits
-        self.selection_mask = selection_mask
+        self.n_splits = int(kwargs['n_splits'])
+        self.selection_mask = np.array(kwargs['selection_mask'])
 
         # Initialize the variable in which we keep track of the coefficients
-        self.coefs = np.full((n_splits,) + selection_mask.shape, np.nan)
+        coefs_shape = (self.n_splits, ) + self.selection_mask.shape
+        self.coefs = np.full(coefs_shape, np.nan)
 
     @classmethod
     def shape(cls,
@@ -91,14 +121,14 @@ class CoefficientCollector:
         return (n_splits,) + frame_size + frame_size
 
     def collect(self,
-                model,
                 split_idx: int,
-                **_) -> None:
+                **kwargs: Any) -> None:
 
-        # If the model we have gotten has an alpha parameter, and we have
-        # received a valid split index, we can store the alpha value of the
-        # current model at the respective position
-        if hasattr(model, 'coef_') and (0 <= split_idx < self.n_splits):
+        # Unpack keyword arguments
+        model: BaseLinearModel = kwargs['model']
+
+        # Make sure the model has a coef_ attribute
+        if hasattr(model, 'coef_'):
 
             # In case we have augmented the predictors beyond the pure pixels,
             # we want to drop these other predictors here
@@ -108,55 +138,44 @@ class CoefficientCollector:
             # Save the coefficients for this split index
             self.coefs[split_idx][self.selection_mask] = coefficients
 
-    @property
-    def result(self) -> np.ndarray:
+        else:
+            raise AttributeError('Model has no attribute coef_!')
+
+    def get_result(self) -> np.ndarray:
         return self.coefs
 
 
-class RSquaredCollector:
+class RSquaredCollector(BaseCollector):
 
-    # Define name that will be used for returning the result.
-    # Defining this on the class level means we can access it without having
-    # to instantiate the class first.
-    result_name = 'r_squared'
+    name = 'r_squared'
 
-    def __init__(self,
-                 n_splits: int,
-                 **_):
+    def __init__(self, **kwargs: Any):
+
+        super().__init__()
 
         # Store constructor arguments
-        self.n_splits = n_splits
+        self.n_splits = int(kwargs['n_splits'])
 
         # Initialize the variable in which we keep track of the R^2 values
-        self.r_squared = np.full(n_splits, np.nan)
+        self.r_squared = np.full(self.n_splits, np.nan)
 
     @classmethod
     def shape(cls,
               frame_size: Tuple[int, int],
               n_splits: int) -> Tuple[int, int, int]:
-        return (n_splits,) + frame_size
+        return (n_splits, ) + frame_size
 
     def collect(self,
                 split_idx: int,
-                y_true: np.ndarray,
-                y_pred: np.ndarray,
-                **_) -> None:
+                **kwargs: Any) -> None:
 
-        # If we have received a valid split index, we can compute and store
-        # the R^2 value of the current split at the respective position
-        if 0 <= split_idx < self.n_splits:
-            self.r_squared[split_idx] = r2_score(y_true=y_true,
-                                                 y_pred=y_pred)
+        # Unpack keyword arguments
+        y_true: np.ndarray = np.array(kwargs['y_true'])
+        y_pred: np.ndarray = np.array(kwargs['y_pred'])
 
-    @property
-    def result(self) -> np.ndarray:
+        # Compute and store the R^2 value of the current split
+        self.r_squared[split_idx] = r2_score(y_true=y_true,
+                                             y_pred=y_pred)
+
+    def get_results(self) -> np.ndarray:
         return self.r_squared
-
-
-# -----------------------------------------------------------------------------
-# TYPE DEFINITIONS
-# -----------------------------------------------------------------------------
-
-DebuggingCollector = Union[AlphaCollector,
-                           CoefficientCollector,
-                           RSquaredCollector]
