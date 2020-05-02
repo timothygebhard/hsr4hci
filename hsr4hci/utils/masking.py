@@ -7,7 +7,7 @@ Utility functions for creating and working with (binary) masks.
 # -----------------------------------------------------------------------------
 
 from cmath import polar
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from astropy import units
 
@@ -18,9 +18,10 @@ import numpy as np
 # BASE MASKS (INPUT PARAMETERS IN PIXELS)
 # -----------------------------------------------------------------------------
 
-def get_circle_mask(mask_size: tuple,
+def get_circle_mask(mask_size: Tuple[int, int],
                     radius: float,
-                    center: tuple = None) -> np.ndarray:
+                    center: Optional[Tuple[float, float]] = None) \
+        -> np.ndarray:
     """
     Create a circle mask of a given size.
 
@@ -50,7 +51,7 @@ def get_circle_mask(mask_size: tuple,
     return circle_mask
 
 
-def get_annulus_mask(mask_size: tuple,
+def get_annulus_mask(mask_size: Tuple[int, int],
                      inner_radius: float,
                      outer_radius: float) -> np.ndarray:
     """
@@ -200,7 +201,7 @@ def get_sausage_mask(mask_size: Tuple[int, int],
                          np.logical_or(end_cap_mask_1, end_cap_mask_2))
 
 
-def get_checkerboard_mask(mask_size):
+def get_checkerboard_mask(mask_size: Tuple[int, ...]) -> np.ndarray:
     """
     Create a checkerboard mask, i.e. a mask where every other pixel
     is selected (in a checkerboard pattern).
@@ -302,7 +303,8 @@ def get_predictor_mask(mask_size: Tuple[int, int],
     mask = np.logical_or(mask, circular_mask)
 
     # Add circular selection mask at mirror position (-x, -y)
-    mirror_position = tuple([2 * center[i] - position[i] for i in range(2)])
+    mirror_position = (2 * center[0] - position[0],
+                       2 * center[1] - position[1])
     circular_mask = \
         get_circle_mask(mask_size=mask_size,
                         radius=radius_mirror_position.to('pixel').value,
