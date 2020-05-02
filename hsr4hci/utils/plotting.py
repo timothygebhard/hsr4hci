@@ -38,7 +38,7 @@ MatplotlibColor = Union[str,
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def get_cmap(cmap: str = 'RdBu_r',
+def get_cmap(cmap_name: str = 'RdBu_r',
              bad_color: str = '#212121') -> Union[Colormap,
                                                   LinearSegmentedColormap,
                                                   ListedColormap]:
@@ -47,7 +47,7 @@ def get_cmap(cmap: str = 'RdBu_r',
     also set the `bad_color` (i.e., the color for NaN value)
 
     Args:
-        cmap: The name of a matplotlib color map, for example 'RdBu_r'.
+        cmap_name: The name of a matplotlib color map, for example 'RdBu_r'.
         bad_color: A string specifying a color in HTML format: (e.g.,
             '#FF0000') which will be used as the 'bad color' of the
             color map; that is, the color used, for example, for NaN
@@ -58,7 +58,7 @@ def get_cmap(cmap: str = 'RdBu_r',
     """
 
     # Get desired color map and set the desired bad_color
-    cmap = original_get_cmap(cmap)
+    cmap = original_get_cmap(cmap_name)
     cmap.set_bad(color=bad_color)
 
     return cmap
@@ -136,7 +136,7 @@ def adjust_luminosity(color: MatplotlibColor,
     # In case `color` is a proper color name, we can try to resolve it into
     # an RGB tuple using the lookup table (of HEX strings) in mc.cnames.
     if isinstance(color, str) and (color in mc.cnames.keys()):
-        rgb = mc.to_rgb(mc.cnames[color])
+        rgb: Tuple[float, float, float] = mc.to_rgb(mc.cnames[color])
 
     # Otherwise we try to convert the color to RGB; this will raise a value
     # error for invalid color formats.
