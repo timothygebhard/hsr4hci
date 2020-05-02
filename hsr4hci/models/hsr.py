@@ -17,7 +17,7 @@ from tqdm import tqdm
 
 import numpy as np
 
-from hsr4hci.models.callbacks import DebuggingCollector
+from hsr4hci.models.callbacks import BaseCollector
 
 from hsr4hci.utils.derotating import derotate_combine
 from hsr4hci.utils.fits import save_fits
@@ -26,6 +26,7 @@ from hsr4hci.utils.masking import get_roi_mask, get_positions_from_mask, \
     get_selection_mask
 from hsr4hci.utils.splitting import TrainTestSplitter
 from hsr4hci.utils.tqdm import tqdm_joblib
+from hsr4hci.utils.typehinting import RegressorModel
 
 
 # -----------------------------------------------------------------------------
@@ -43,83 +44,49 @@ class HalfSiblingRegression:
 
     def __init__(self,
                  config: dict,
-                 results_dir: str):
+                 results_dir: str,
+                 stack: np.ndarray,
+                 parang: np.ndarray):
 
         # Store the constructor arguments
         self.config = config
         self.results_dir = results_dir
+        self.stack = stack
+        self.parang = parang
 
-        # Define a few useful shortcuts to the configuration
-        self.config_model = config['base_model']
-        self.experiment_dir = config['experiment_dir']
-        self.frame_size = tuple(config['dataset']['frame_size'])
-
-        # Compute implicitly defined class variables (i.e., the ROI mask)
+        # Define additional derived variables
+        self.n_frames: int = self.stack.shape[0]
+        self.frame_size: Tuple[int, int] = self.stack.shape[1:3]
+        self.field_rotation: units.Quantity = \
+            units.Quantity(np.abs(self.parang[-1] - self.parang[0]), 'degree')
         self.roi_mask: np.ndarray = \
             get_roi_mask(mask_size=self.frame_size,
-                         inner_radius=config['roi_mask']['inner_radius'],
-                         outer_radius=config['roi_mask']['outer_radius'])
+                         inner_radius=self.config['roi_mask']['inner_radius'],
+                         outer_radius=self.config['roi_mask']['outer_radius'])
+        self.train_test_splitter: TrainTestSplitter = \
+            TrainTestSplitter(**self.config['train_test_splitter'])
+        self.n_splits = self.train_test_splitter.n_splits
 
-        # Initialize debugging callbacks and their results storage
-        self.debugging_callbacks = \
-            self._initialize_debugging_callbacks(config['debugging_callbacks'])
-        self.debugging_results: Dict[str, np.ndarray] = dict()
+        # Initialize callbacks and variables for their results
+        self.callbacks: List[Type[BaseCollector]] = \
+            [get_member_by_name('hsr4hci.models.callbacks', callback_name)
+             for callback_name in self.config['callbacks']]
+        self.callback_results: Dict[str, np.ndarray] = \
+            {_.name: np.full(_.shape(self.frame_size, self.n_splits), np.nan)
+             for _ in self.callbacks}
 
-        # Initialize additional class variables
-        self.field_rotation: Optional[float] = None
-        self.predictions: Optional[np.ndarray] = None
-        self.residuals: Optional[np.ndarray] = None
-        self.train_test_splitter: Optional[TrainTestSplitter] = None
+        # Initialize variables for main training results
+        self.predictions: np.ndarray = np.full(self.stack.shape, np.nan)
+        self.residuals: np.ndarray = np.full(self.stack.shape, np.nan)
 
-    @property
-    def splitter(self) -> TrainTestSplitter:
-
-        # Create a function to split the stack into training and test
-        if self.train_test_splitter is None:
-            self.train_test_splitter = \
-                TrainTestSplitter(**self.config['train_test_splitter'])
-        return self.train_test_splitter
-
-    @staticmethod
-    def _initialize_debugging_callbacks(list_of_callback_names: List[str]) \
-            -> List[Type[DebuggingCollector]]:
-        """
-        Turn a list of callback class names (e.g., 'AlphaCollector')
-        into a list of actual classes that can be instantiated.
-
-        Args:
-            list_of_callback_names: A list of strings specifying the
-                names of the callbacks from the debugging module that
-                we want to use during the training; for example:
-                "AlphaCollector" for a callback that collects the
-                .alpha_ parameter of the trained models.
-
-        Returns:
-            A list of classes that can be used as callbacks during the
-            training of the models (must be from the debugging module).
-        """
-
-        # Initialize result list
-        debugging_callbacks = list()
-
-        # Loop over the list of callback names and import the corresponding
-        # classes from the debugging module
-        for callback_name in list_of_callback_names:
-            debugging_callback: Type[DebuggingCollector] = \
-                get_member_by_name(module_name='hsr4hci.models.debugging',
-                                   member_name=callback_name)
-            debugging_callbacks.append(debugging_callback)
-
-        return debugging_callbacks
-
-    def _ensure_results_dir(self):
+    def _ensure_results_dir(self) -> None:
         """
         Make sure that the results directory for this instance exists.
         """
 
         Path(self.results_dir).mkdir(exist_ok=True, parents=True)
 
-    def _get_base_model_instance(self):
+    def _get_base_model_instance(self) -> RegressorModel:
         """
         Get a new instance of the base model defined in the config.
 
@@ -143,40 +110,21 @@ class HalfSiblingRegression:
             model_parameters['alphas'] = np.geomspace(1e0, 1e6, 19)
 
         # Instantiate a new model of the given class with the desired params
-        model = model_class(**model_parameters)
+        model: RegressorModel = model_class(**model_parameters)
 
         return model
 
-    def _get_field_rotation(self,
-                            parang: np.ndarray) -> units.Quantity:
-
-        # If we have not computed the field rotation of the data set we are
-        # using for training, do it now and store the result
-        if self.field_rotation is None:
-            self.field_rotation = np.abs(parang[-1] - parang[0])
-            self.field_rotation = units.Quantity(self.field_rotation, 'degree')
-        return self.field_rotation
-
-    def train(self,
-              stack: np.ndarray,
-              parang: np.ndarray) -> None:
+    def train(self) -> None:
         """
         Train models for all positions (pixels) in the ROI.
 
         This function is essentially a loop over .train_position();
         either "manually", or by means of joblib.Parallel.
-
-        Args:
-            stack: A numpy array of shape (n_frames, width, height)
-                containing the stack of images to be processed.
-            parang: A numpy array of shape (n_frames, ) containing the
-                respective parallactic angles for each image.
         """
 
         # Define shortcuts for accessing the config
         use_multiprocessing = self.config['multiprocessing']['enable']
         n_processes = self.config['multiprocessing']['n_processes']
-        n_splits = self.config['train_test_splitter']['n_splits']
 
         # ---------------------------------------------------------------------
         # Train models for all positions
@@ -184,11 +132,6 @@ class HalfSiblingRegression:
 
         # Get positions in ROI as a list
         roi_positions = get_positions_from_mask(self.roi_mask)
-
-        # Define a partial application for self.train_position() that
-        # fixes the stack and the parallactic angles
-        def train_position(position):
-            return self.train_position(position, stack, parang)
 
         # Now, process train models for all positions in the ROI.
         # We can either use joblib.Parallel-based parallelization...
@@ -199,7 +142,7 @@ class HalfSiblingRegression:
             # of the main process (e.g., stack, astropy.units registry, ...).
             with tqdm_joblib(tqdm(total=len(roi_positions), ncols=80)) as _:
                 with Parallel(n_jobs=n_processes, require='sharedmem') as run:
-                    results = run(delayed(train_position)(position)
+                    results = run(delayed(self.train_position)(position)
                                   for position in roi_positions)
 
         # ...or "manually" loop over all positions in the ROI.
@@ -208,18 +151,11 @@ class HalfSiblingRegression:
             # Sequentially loop over all positions in the ROI and train models
             results = []
             for position in tqdm(roi_positions, ncols=80):
-                results.append(train_position(position=position))
+                results.append(self.train_position(position=position))
 
         # ---------------------------------------------------------------------
         # Collect and combine results from individual positions
         # ---------------------------------------------------------------------
-
-        # Initialize result variables
-        self.predictions = np.full(stack.shape, np.nan)
-        self.debugging_results = \
-            {_.result_name: np.full(_.shape(n_splits=n_splits,
-                                            frame_size=self.frame_size),
-                                    np.nan) for _ in self.debugging_callbacks}
 
         # Once all positions in the ROI have been processed (either in
         # parallel or sequentially), combine all these individual pixel
@@ -235,93 +171,77 @@ class HalfSiblingRegression:
 
             # Store predictions and results of debugging callbacks
             self.predictions[position_idx] = predictions
-            for key in self.debugging_results.keys():
-                self.debugging_results[key][position_idx] = result[key]
+            for key in self.callback_results.keys():
+                self.callback_results[key][position_idx] = result[key]
 
         # Finally, compute the residuals from predictions
-        self.residuals = stack - self.predictions
+        self.residuals = self.stack - self.predictions
 
     def train_position(self,
-                       position: Tuple[int, int],
-                       stack: np.ndarray,
-                       parang: np.ndarray) -> Dict[str, Union[Tuple[int, int],
-                                                              np.ndarray]]:
+                       position: Tuple[int, int]) \
+            -> Dict[str, Union[Tuple[int, int], np.ndarray]]:
         """
         Train models for a single given position (pixel).
 
         Args:
             position: A tuple (x, y) indicating the position of the
                 pixel for which to train the corresponding models.
-            stack: A numpy array of shape (n_frames, width, height)
-                containing the stack of images to be processed.
-            parang: A numpy array of shape (n_frames, ) containing the
-                respective parallactic angles for each image.
         """
-
-        # Define shortcuts for number of frames
-        n_frames = stack.shape[0]
-        field_rotation = self._get_field_rotation(parang=parang)
 
         # Get the selection_mask for this position, that is, the mask that
         # selects the (spatial) pixels to be used as predictors
         selection_mask = get_selection_mask(mask_size=self.frame_size,
                                             position=position,
-                                            field_rotation=field_rotation,
+                                            field_rotation=self.field_rotation,
                                             **self.config['selection_mask'])
 
-        # Initialize result variables and set up debugging callbacks
-        predictions = np.full(n_frames, np.nan)
-        debugging_callbacks = [callback(n_splits=self.splitter.n_splits,
-                                        selection_mask=selection_mask)
-                               for callback in self.debugging_callbacks]
+        # Initialize result variables and set up callbacks
+        predictions = np.full(self.n_frames, np.nan)
+        callbacks = [callback(n_splits=self.n_splits,
+                              selection_mask=selection_mask)
+                     for callback in self.callbacks]
 
         # Loop over all train/apply splits, train models and make predictions
         for split_idx, (train_idx, apply_idx) in \
-                enumerate(self.splitter.split(n_frames)):
+                enumerate(self.train_test_splitter.split(self.n_frames)):
 
             # Select predictors and targets for both training and application
-            train_predictors = stack[train_idx][:, selection_mask]
-            apply_predictors = stack[apply_idx][:, selection_mask]
-            train_targets = stack[train_idx, position[0], position[1]].reshape(-1, 1)
-            apply_targets = stack[apply_idx, position[0], position[1]].reshape(-1, 1)
+            train_predictors = self.stack[train_idx][:, selection_mask]
+            apply_predictors = self.stack[apply_idx][:, selection_mask]
+            train_targets = self.stack[train_idx, position[0], position[1]]
+            apply_targets = self.stack[apply_idx, position[0], position[1]]
 
             # Instantiate a new model and fit it to the training data
             model = self._get_base_model_instance()
             model.fit(X=train_predictors, y=train_targets.ravel())
 
-            # Apply the learned model to the data that was held out
-            tmp_predictions = model.predict(X=apply_predictors)
+            # Apply the learned model to the data that was held out and
+            # store the predictions
+            predictions[apply_idx] = model.predict(X=apply_predictors)
 
-            # Store the predictions
-            predictions[apply_idx] = tmp_predictions
-
-            # Run debugging callbacks to collect their data
-            for debugging_callback in debugging_callbacks:
-                debugging_callback.collect(model=model,
-                                           split_idx=split_idx,
-                                           y_true=apply_targets,
-                                           y_pred=tmp_predictions)
+            # Run callbacks to collect their data
+            for callback in callbacks:
+                callback.collect(model=model,
+                                 split_idx=split_idx,
+                                 y_true=apply_targets,
+                                 y_pred=predictions[apply_idx])
 
         # Initialize results with the indispensables (position and predictions)
-        results = dict(position=position,
-                       predictions=predictions)
+        results = {'position': position, 'predictions': predictions}
 
-        # Loop over debugging callbacks and add their data to the results
-        for debugging_callback in debugging_callbacks:
-            results[debugging_callback.result_name] = debugging_callback.result
+        # Loop over callbacks and add their data to the results
+        for callback in callbacks:
+            results[callback.name] = callback.get_results()
 
         return results
 
     def get_signal_estimate(self,
-                            parang: np.ndarray,
                             subtract: Optional[str] = None,
-                            combine: str = 'mean') -> Optional[np.ndarray]:
+                            combine: str = 'mean') -> np.ndarray:
         """
         Compute the estimate for the planet signal from the residuals.
 
         Args:
-            parang: A numpy array of shape (n_frames, ) containing the
-                respective parallactic angles for each image.
             subtract: What to subtract from the residuals before
                 derotating them (i.e., "mean" or "median").
             combine: How to combine (average) the derotated residual
@@ -332,13 +252,9 @@ class HalfSiblingRegression:
             signal as computed from the residuals.
         """
 
-        # Without residuals, there is no signal estimate
-        if self.residuals is None:
-            return None
-
         # Derotate and merge residuals to compute signal estimate
         signal_estimate = derotate_combine(stack=self.residuals,
-                                           parang=parang,
+                                           parang=self.parang,
                                            mask=(~self.roi_mask),
                                            subtract=subtract,
                                            combine=combine)
@@ -373,7 +289,7 @@ class HalfSiblingRegression:
         """
 
         # Loop over all debugging results and save them as FITS files
-        for key, value in self.debugging_results.items():
+        for key, value in self.callback_results.items():
 
             print(f'Saving {key} to FITS...', end=' ', flush=True)
             self._ensure_results_dir()
