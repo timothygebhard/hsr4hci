@@ -15,7 +15,7 @@ from hsr4hci.utils.evaluation import TimeoutException, timeout_handler
 # TEST CASES
 # -----------------------------------------------------------------------------
 
-def test__timeout_handler():
+def test__timeout_handler() -> None:
 
     with pytest.raises(TimeoutException) as error:
         timeout_handler()
