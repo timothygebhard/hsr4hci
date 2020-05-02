@@ -6,7 +6,7 @@ Utility functions for performance evaluation (e.g., computing the SNR).
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Any, Dict, List, NoReturn, Optional, Tuple
+from typing import Any, Dict, List, NoReturn, Optional, Tuple, Union
 
 from contexttimer.timeout import timeout
 from photutils import aperture_photometry, CircularAperture
@@ -203,7 +203,7 @@ def compute_snr(frame: np.ndarray,
     return signal_flux, noise, snr, fpf
 
 
-def timeout_handler(*_, **__) -> NoReturn:
+def timeout_handler(*_: Any, **__: Any) -> NoReturn:
     """
     This function only serves as a callback for the @timeout decorator
     to raise a TimeoutException when the optimization takes too long.
@@ -216,9 +216,9 @@ def compute_optimized_snr(frame: np.ndarray,
                           aperture_radius: float,
                           ignore_neighbors: int = 0,
                           target: Optional[str] = 'snr',
+                          max_distance: Optional[float] = 1.0,
                           method: str = 'brute',
                           grid_size: int = 16,
-                          max_distance: Optional[float] = 1.0,
                           time_limit: int = 30) -> Dict[str, Any]:
     """
     Compute the *optimized* signal-to-noise ratio (SNR) and associated
@@ -250,6 +250,13 @@ def compute_optimized_snr(frame: np.ndarray,
             position. Choices are: "signal", "noise", "snr" and "fpf".
             If None is given, no optimization is performed and the SNR
             is simply computed at the given position. Default is "snr".
+        max_distance: When using an optimizer, this parameter controls
+            the maximum (Euclidean) distance of the optimal position
+            from the initial position (in pixels).
+            This is particularly useful for faint sources, where we do
+            not want the optimizer to just "wander off" too far from the
+            initial position. If set to None, there is no such maximum
+            distance. Default is 1 pixel.
         method: A string containing the optimization method to be used.
             This must either be "brute" for brute-force optimization
             via a grid search, or an optimization method supported by
@@ -258,13 +265,6 @@ def compute_optimized_snr(frame: np.ndarray,
         grid_size: A positive integer specifying the size of the grid
             used for brute-force optimization. All other optimization
             methods ignore this parameter. Default is 16.
-        max_distance: When using an optimizer, this parameter controls
-            the maximum (Euclidean) distance of the optimal position
-            from the initial position (in pixels).
-            This is particularly useful for faint sources, where we do
-            not want the optimizer to just "wander off" too far from the
-            initial position. If set to None, there is no such maximum
-            distance. Default is 1 pixel.
         time_limit: An integer specifying the maximum runtime of the
             function in seconds. This is particularly useful when using
             an optimizer which may get stuck. Default is 30 seconds.
@@ -298,9 +298,12 @@ def compute_optimized_snr(frame: np.ndarray,
     assert aperture_radius > 0, 'aperture_radius must be positive!'
     assert ignore_neighbors >= 0, 'ignore_neighbors must be non-negative!'
     assert grid_size > 0, 'grid_size must be positive!'
-    assert (max_distance > 0) or (max_distance is None), \
-        'max_distance must be positive or None!'
     assert time_limit > 0, 'time_limit must be positive!'
+
+    if max_distance is None:
+        max_distance = np.inf
+    else:
+        assert max_distance > 0, 'max_distance must be positive or None!'
 
     # -------------------------------------------------------------------------
     # Define dummy function and wrap it with a @timeout decorator
@@ -318,9 +321,9 @@ def compute_optimized_snr(frame: np.ndarray,
                                aperture_radius: float,
                                ignore_neighbors: int = 1,
                                target: Optional[str] = None,
+                               max_distance: Union[float, np.inf] = 1.0,
                                method: str = 'brute',
-                               grid_size: int = 16,
-                               max_distance: Optional[float] = 1.0) -> dict:
+                               grid_size: int = 16) -> Dict[str, Any]:
         """
         This is a dummy function which is needed to limit the runtime.
         """
@@ -343,12 +346,13 @@ def compute_optimized_snr(frame: np.ndarray,
             # Define an objective function for the optimizer
             # -----------------------------------------------------------------
 
-            def objective_func(pos):
+            def objective_func(candidate_position: Tuple[float, float]) \
+                    -> Union[float, np.inf]:
 
                 # If the current position (`pos`) is too far from the initial
                 # position (`position`), we return default values which
                 # indicate the the current position not an admissible result.
-                distance = euclidean(position, pos)
+                distance = euclidean(position, candidate_position)
                 if (max_distance is not None) and (distance > max_distance):
                     signal, noise, snr, fpf = \
                         -np.inf, np.inf, -np.inf, np.inf
@@ -362,7 +366,7 @@ def compute_optimized_snr(frame: np.ndarray,
                     try:
                         signal, noise, snr, fpf = \
                             compute_snr(frame=frame,
-                                        position=pos,
+                                        position=candidate_position,
                                         aperture_radius=aperture_radius,
                                         ignore_neighbors=ignore_neighbors)
                     except ValueError:
@@ -380,6 +384,8 @@ def compute_optimized_snr(frame: np.ndarray,
                     return -1 * snr
                 if target == 'fpf':
                     return -1 / fpf
+                else:
+                    raise ValueError('Invalid value for "target"!')
 
             # -----------------------------------------------------------------
             # Run optimizer to minimize the objective function
@@ -457,23 +463,26 @@ def compute_optimized_snr(frame: np.ndarray,
     # this function. It it finished successfully, we simply return its output:
     try:
 
-        return _compute_optimized_snr(frame=frame,
-                                      position=position,
-                                      aperture_radius=aperture_radius,
-                                      ignore_neighbors=ignore_neighbors,
-                                      target=target,
-                                      method=method,
-                                      grid_size=grid_size,
-                                      max_distance=max_distance)
+        result: Dict[str, Any] = \
+            _compute_optimized_snr(frame=frame,
+                                   position=position,
+                                   aperture_radius=aperture_radius,
+                                   ignore_neighbors=ignore_neighbors,
+                                   target=target,
+                                   method=method,
+                                   grid_size=grid_size,
+                                   max_distance=max_distance)
 
     # If the computation fails with a timeout, we return default values:
     except TimeoutException:
 
-        return dict(signal=None,
-                    noise=None,
-                    snr=None,
-                    fpf=None,
-                    old_position=position,
-                    new_position=None,
-                    message='Optimization timed out!',
-                    success=False)
+        result = dict(signal=None,
+                      noise=None,
+                      snr=None,
+                      fpf=None,
+                      old_position=position,
+                      new_position=None,
+                      message='Optimization timed out!',
+                      success=False)
+
+    return result
