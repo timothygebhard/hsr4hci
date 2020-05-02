@@ -6,7 +6,7 @@ Utility functions and classes for performing train / test splits.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Tuple
+from typing import Iterator, Tuple
 
 import numpy as np
 
@@ -55,7 +55,8 @@ class TrainTestSplitter:
         self.shuffle = shuffle
         self.random_seed = random_seed
 
-    def split(self, n_samples: int) -> Tuple[np.ndarray, np.ndarray]:
+    def split(self,
+              n_samples: int) -> Iterator[Tuple[np.ndarray, np.ndarray]]:
         """
         Take the number of samples and return the indices for the split.
 
