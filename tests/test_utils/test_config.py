@@ -8,6 +8,8 @@ Tests for config.py
 
 import os
 
+from _pytest.monkeypatch import MonkeyPatch
+
 import pytest
 
 from hsr4hci.utils.config import get_data_dir
@@ -17,7 +19,7 @@ from hsr4hci.utils.config import get_data_dir
 # TEST CASES
 # -----------------------------------------------------------------------------
 
-def test__get_data_dir(monkeypatch):
+def test__get_data_dir(monkeypatch: MonkeyPatch) -> None:
 
     # NOTE: We use the `monkeypatch` fixture of pytest [1] here to safely
     # modify and delete the value of environmental variables --- meaning that
