@@ -6,7 +6,9 @@ Functions for reading and writing FITS files.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Optional
+from typing import Optional, Tuple, Union
+
+import json
 
 from astropy.io import fits
 
@@ -62,14 +64,21 @@ def save_fits(array: np.ndarray,
     if header is not None:
         for key, value in header.items():
 
-            # Take special care of NaN, because FITS can't deal with them
-            if isinstance(value, (list, tuple, np.ndarray)):
-                value = tuple(['NaN' if np.isnan(_) else _ for _ in value])
-            else:
-                value = 'NaN' if np.isnan(value) else value
+            # FITS does not support list-type values in the header, which is
+            # why these values need to be serialized to strings
+            if isinstance(value, (list, tuple)):
+                value = json.dumps(value)
+            if isinstance(value, np.ndarray):
+                value = json.dumps(value.tolist())
 
-            # Save value to HDU header
-            hdu.header[key] = value
+            # Take special care of NaN, because FITS can't deal with them
+            if not isinstance(value, str) and np.isnan(value):
+                value = 'NaN'
+
+            # Save value to HDU header. We cast the key to all-caps because
+            # that is the default for FITS; that is, header fields that are
+            # automatically, such as NAXIS, are always all-caps.
+            hdu.header[key.upper()] = value
 
     # Save the HDU to the specified FITS file
     fits.HDUList([hdu]).writeto(file_path, overwrite=overwrite)
