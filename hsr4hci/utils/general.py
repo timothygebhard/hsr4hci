@@ -77,12 +77,22 @@ def crop_center(array: np.ndarray,
         The input array, cropped to the desired size around its center.
     """
 
-    start = tuple(map(lambda x, dx: None if dx == -1 else x//2 - dx//2,
-                      array.shape, size))
-    end = tuple(map(lambda x, dx: None if dx == -1 else x + dx, start, size))
-    slices = tuple(map(slice, start, end))
+    # Ensure that the the array shape and the size variable match
+    assert array.ndim == len(size), \
+        'Length of size must match number of dimensions of array!'
 
-    return array[slices]
+    # Loop over the the axes of the array to create slices
+    slices = list()
+    for old_len, new_len in zip(array.shape, size):
+
+        # Compute start and end position for axis
+        start = old_len // 2 - new_len // 2 if new_len != -1 else None
+        end = start + new_len if start is not None else None
+
+        # Create a slice object for axis
+        slices.append(slice(start, end))
+
+    return array[tuple(slices)]
 
 
 def split_into_n_chunks(sequence: Sequence,
