@@ -15,7 +15,7 @@ from hsr4hci.utils.units import set_units_for_instrument
 # TEST CASES
 # -----------------------------------------------------------------------------
 
-def test__set_units_for_instrument():
+def test__set_units_for_instrument() -> None:
 
     # Define pixscale and lambda over D, and set up units for instrument
     pixscale = units.Quantity(0.0271, 'arcsec / pixel')
