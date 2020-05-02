@@ -6,7 +6,7 @@ Utility functions for loading data.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import h5py
 import numpy as np
@@ -25,7 +25,7 @@ def load_data(file_path: str,
               frame_size: Optional[Tuple[int, int]] = None,
               presubtract: Optional[str] = None,
               subsample: int = 1,
-              **_) -> Tuple[np.ndarray, np.ndarray, Optional[np.ndarray]]:
+              **_: Any) -> Tuple[np.ndarray, np.ndarray, Optional[np.ndarray]]:
     """
     Load a dataset from the HDF5 file at the given `file_path`.
 
