@@ -205,7 +205,7 @@ def get_checkerboard_mask(mask_size: Tuple[int, ...]) -> np.ndarray:
     """
     Create a checkerboard mask, i.e. a mask where every other pixel
     is selected (in a checkerboard pattern).
-    
+
     Source: https://stackoverflow.com/a/51715491/4100721
 
     Args:

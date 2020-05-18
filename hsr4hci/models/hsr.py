@@ -266,7 +266,7 @@ class HalfSiblingRegression:
         Save predictions as a FITS file to the results directory.
         """
 
-        print(f'Saving predictions to FITS...', end=' ', flush=True)
+        print('Saving predictions to FITS...', end=' ', flush=True)
         self._ensure_results_dir()
         file_path = os.path.join(self.results_dir, 'predictions.fits')
         save_fits(array=self.predictions, file_path=file_path)
@@ -277,7 +277,7 @@ class HalfSiblingRegression:
         Save residuals as a FITS file to the results directory.
         """
 
-        print(f'Saving residuals to FITS...', end=' ', flush=True)
+        print('Saving residuals to FITS...', end=' ', flush=True)
         self._ensure_results_dir()
         file_path = os.path.join(self.results_dir, 'residuals.fits')
         save_fits(array=self.residuals, file_path=file_path)
