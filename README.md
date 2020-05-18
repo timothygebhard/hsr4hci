@@ -1,6 +1,5 @@
-# Half-Sibling Regression for High-Contrast Imaging
+# hsr4hci: Half-Sibling Regression for High-Contrast Imaging
 
-## Idea sketch board
-
-- [x] PCA der Modell-Parameter auf RGB von den linearen Modellen, angucken ob es spatial dependencies gibt
-- [ ] Modell im Fourier-Raum statt im Orts-Raum trainieren (erst exclusion region ausschneiden, dann fouriertransformieren)
+![Python 3.6](https://img.shields.io/badge/python-v3.6-blue)
+![Checked with MyPy](https://img.shields.io/badge/mypy-checked-blue)
+![Tests](https://github.com/timothygebhard/hsr4hci/workflows/Tests/badge.svg?branch=master)
