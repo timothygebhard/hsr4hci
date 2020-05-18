@@ -39,7 +39,7 @@ jobs:
         pip install -e .
     - name: Run mypy (package)
       run: |
-        mypy -p hswfs
+        mypy -p hsr4hci
     - name: Run mypy (tests)
       run: |
         mypy tests/
