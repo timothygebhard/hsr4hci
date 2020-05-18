@@ -33,7 +33,7 @@ jobs:
         pip install -r requirements.txt
     - name: Run flake8
       run: |
-        flake8 . --count --show-source --statistics
+        flake8 . --count --show-source --statistics --exclude experiments,scripts
     - name: Install package
       run: |
         pip install -e .
