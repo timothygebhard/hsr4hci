@@ -94,10 +94,10 @@ def get_reference_positions(frame_size: Tuple[int, int],
                                          all_angles[-ignore_neighbors:]))
 
         return {'reference': _angles_to_positions(reference_angles),
-                'ignored':   _angles_to_positions(ignored_angles)}
+                'ignored': _angles_to_positions(ignored_angles)}
 
     return {'reference': _angles_to_positions(all_angles),
-            'ignored':   []}
+            'ignored': []}
 
 
 def compute_snr(frame: np.ndarray,
