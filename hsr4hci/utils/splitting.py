@@ -125,7 +125,7 @@ class TrainTestSplitter:
         # Generate indices for even / odd splitting scheme
         # ---------------------------------------------------------------------
 
-        elif self.split_type == 'even_odd':
+        else:
 
             for i in range(self.n_splits):
 
@@ -133,10 +133,3 @@ class TrainTestSplitter:
                 train_idx = np.setdiff1d(indices, test_idx, assume_unique=True)
 
                 yield train_idx, test_idx
-
-        # ---------------------------------------------------------------------
-        # Otherwise, raise a ValueError
-        # ---------------------------------------------------------------------
-
-        else:
-            raise ValueError()
