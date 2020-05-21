@@ -7,6 +7,7 @@ Tests for splitting.py
 # -----------------------------------------------------------------------------
 
 import numpy as np
+import pytest
 
 from hsr4hci.utils.splitting import TrainTestSplitter
 
@@ -14,6 +15,17 @@ from hsr4hci.utils.splitting import TrainTestSplitter
 # -----------------------------------------------------------------------------
 # TEST CASES
 # -----------------------------------------------------------------------------
+
+def test__errors() -> None:
+
+    with pytest.raises(ValueError) as error:
+        _ = TrainTestSplitter(n_splits=0)
+    assert 'n_splits must be greater or equal than 1!' in str(error)
+
+    with pytest.raises(ValueError) as error:
+        _ = TrainTestSplitter(n_splits=1, split_type='invalid')
+    assert 'split_type must be either ' in str(error)
+
 
 def test__split() -> None:
 

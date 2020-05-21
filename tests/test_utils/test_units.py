@@ -8,7 +8,7 @@ Tests for units.py
 
 from astropy import units
 
-from hsr4hci.utils.units import set_units_for_instrument
+from hsr4hci.utils.units import convert_to_quantity, set_units_for_instrument
 
 
 # -----------------------------------------------------------------------------
@@ -36,3 +36,12 @@ def test__set_units_for_instrument() -> None:
     quantity = units.Quantity(1.0, 'lambda_over_d')
     assert quantity.to('arcsec').value == 0.096
     assert quantity.to('pixel').value == 3.5424354243542435
+
+
+def test__convert_to_quantity() -> None:
+
+    original_nested_dict = dict(a=dict(b=[42, 'meter']))
+    converted_nested_dict = convert_to_quantity(config=original_nested_dict,
+                                                key_tuple=('a', 'b'))
+
+    assert converted_nested_dict['a']['b'] == units.Quantity(42, 'meter')
