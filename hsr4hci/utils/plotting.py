@@ -6,7 +6,9 @@ Utility functions for plotting.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Tuple, Union
+from typing import Any, Tuple, Union
+
+import colorsys
 
 from matplotlib.axes import SubplotBase
 from matplotlib.cm import get_cmap as original_get_cmap
@@ -16,7 +18,6 @@ from matplotlib.image import AxesImage
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import matplotlib.colors as mc
-import colorsys
 
 
 # -----------------------------------------------------------------------------
@@ -151,3 +152,19 @@ def adjust_luminosity(color: MatplotlibColor,
     rgb = colorsys.hls_to_rgb(hue, luminosity, saturation)
 
     return rgb
+
+
+def disable_ticks(
+    ax: Any,
+) -> None:
+    """
+    Disable the ticks and labels on the given matplotlib `ax`. This is
+    similar to calling `ax.axis('off')`, except that the frame around
+    the plot is preserved.
+
+    Args:
+        ax: A matplotlib axis.
+    """
+
+    ax.tick_params(axis='both', which='both', top=False, bottom=False,
+                   left=False, right=False, labelbottom=False, labelleft=False)
