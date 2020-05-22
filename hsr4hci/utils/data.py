@@ -6,11 +6,13 @@ Utility functions for loading data.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from pathlib import Path
 from typing import Any, Optional, Tuple
 
 import h5py
 import numpy as np
 
+from hsr4hci.utils.config import get_data_dir
 from hsr4hci.utils.general import crop_center
 
 
@@ -85,3 +87,54 @@ def load_data(file_path: str,
         stack -= np.nanmean(stack, axis=0)
 
     return stack, parang, psf_template
+
+
+def load_default_data(
+    planet: str,
+    stacking_factor: int = 50,
+    data_dir: Optional[str] = None
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    This function is a convenience wrapper around ``load_data``, which
+    allows to load our most common data sets with default settings.
+
+    Args:
+        planet: The name of the planet. Must be either "Beta_Pictoris",
+            "HIP_65426", or "HR_8799".
+        stacking_factor: The pre-stacking factor of the data set. In
+            general, this must be in (1, 5, 10, 25, 50, 100).
+        data_dir: The path to be base of the data directory, in case
+            you do not want to use the system default defined in the
+            environmental variable HSR4HCI_DATA_DIR.
+
+    Returns:
+        numpy arrays containing both the stack and the parallactic
+        angles of the the requested data set.
+    """
+
+    # Define the data directory: either we are explicitly passed one, or
+    # we use the default from the environmental variable HSR4HCI_DATA_DIR
+    data_dir = data_dir if data_dir is not None else get_data_dir()
+
+    # Hard-code some information about our most common data sets
+    if planet == 'Beta_Pictoris':
+        planet_part = ('Beta_Pictoris', 'Lp', '2013-02-01')
+        frame_size = (81, 81)
+    elif planet == 'HIP_65426':
+        planet_part = ('HIP_65426', 'Lp', '2017-05-19')
+        frame_size = (81, 81)
+    elif planet == 'HR_8799':
+        planet_part = ('HR_8799', 'Lp', '2012-08-25')
+        frame_size = (101, 101)
+    else:
+        raise ValueError(f'{planet} is not a valid planet name!')
+
+    # Construct the full path to a data set
+    file_name = f'stacked_{stacking_factor}.hdf'
+    file_path = Path(data_dir, *planet_part, 'processed', file_name)
+
+    # Load the data
+    stack, parang, _ = load_data(file_path=file_path.as_posix(),
+                                 frame_size=frame_size)
+
+    return stack, parang
