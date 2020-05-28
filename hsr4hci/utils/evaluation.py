@@ -321,7 +321,7 @@ def compute_optimized_snr(frame: np.ndarray,
                                aperture_radius: float,
                                ignore_neighbors: int = 1,
                                target: Optional[str] = None,
-                               max_distance: Union[float, np.inf] = 1.0,
+                               max_distance: float = 1.0,
                                method: str = 'brute',
                                grid_size: int = 16) -> Dict[str, Any]:
         """
@@ -346,8 +346,9 @@ def compute_optimized_snr(frame: np.ndarray,
             # Define an objective function for the optimizer
             # -----------------------------------------------------------------
 
-            def objective_func(candidate_position: Tuple[float, float]) \
-                    -> Union[float, np.inf]:
+            def objective_func(
+                candidate_position: Tuple[float, float],
+            ) -> float:
 
                 # If the current position (`pos`) is too far from the initial
                 # position (`position`), we return default values which
@@ -377,13 +378,13 @@ def compute_optimized_snr(frame: np.ndarray,
                 # For the FPF, we optimize the *negative inverse*, as the FPF
                 # can get very small, which is a problem for some optimizers.
                 if target == 'signal':
-                    return -1 * signal
+                    return float(-1 * signal)
                 if target == 'noise':
-                    return noise
+                    return float(noise)
                 if target == 'snr':
-                    return -1 * snr
+                    return float(-1 * snr)
                 if target == 'fpf':
-                    return -1 / fpf
+                    return float(-1 / fpf)
                 else:
                     raise ValueError('Invalid value for "target"!')
 
