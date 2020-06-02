@@ -12,7 +12,6 @@ files from it that contain the data at different levels of pre-stacking
 from hashlib import md5
 from pathlib import Path
 
-import argparse
 import json
 import os
 import time
@@ -22,6 +21,7 @@ import bottleneck as bn
 import h5py
 import numpy as np
 
+from hsr4hci.utils.argparsing import get_base_directory
 from hsr4hci.utils.data import load_data
 from hsr4hci.utils.general import prestack_array
 
@@ -29,24 +29,6 @@ from hsr4hci.utils.general import prestack_array
 # -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
-
-def get_arguments() -> argparse.Namespace:
-    """
-    Parse and return command line arguments.
-    """
-
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument('--base-directory',
-                        type=str,
-                        metavar='PATH',
-                        required=True,
-                        help='Path to the base directory containing the '
-                             'config.json which specifies the data set and '
-                             'how it should be pre-processed.')
-
-    return parser.parse_args()
-
 
 def get_md5_checksum(
     file_path: str,
@@ -93,9 +75,8 @@ if __name__ == '__main__':
     # Parse command line arguments and load config.json
     # -------------------------------------------------------------------------
 
-    # Get command line arguments and define shortcuts
-    args = get_arguments()
-    base_dir = os.path.abspath(args.base_directory)
+    # Get base_directory from command line arguments
+    base_dir = get_base_directory()
 
     # Construct expected path to config.json
     file_path = os.path.join(base_dir, 'config.json')

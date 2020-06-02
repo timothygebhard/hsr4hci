@@ -11,7 +11,6 @@ estimates (on which we can then compute the baseline SNR).
 from copy import deepcopy
 from pathlib import Path
 
-import argparse
 import json
 import os
 import time
@@ -20,33 +19,12 @@ from astropy import units
 
 import numpy as np
 
+from hsr4hci.utils.argparsing import get_base_directory
 from hsr4hci.utils.data import load_data
 from hsr4hci.utils.fits import save_fits
 from hsr4hci.utils.masking import get_roi_mask
 from hsr4hci.utils.pca import get_pca_signal_estimates
 from hsr4hci.utils.units import convert_to_quantity, set_units_for_instrument
-
-
-# -----------------------------------------------------------------------------
-# FUNCTION DEFINITIONS
-# -----------------------------------------------------------------------------
-
-def get_arguments() -> argparse.Namespace:
-    """
-    Parse and return command line arguments.
-    """
-
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument('--base-directory',
-                        type=str,
-                        metavar='PATH',
-                        required=True,
-                        help='Path to the base directory containing the '
-                             'config.json which specifies the data set and '
-                             'how it should be pre-processed.')
-
-    return parser.parse_args()
 
 
 # -----------------------------------------------------------------------------
@@ -66,9 +44,8 @@ if __name__ == '__main__':
     # Parse command line arguments and load config.json
     # -------------------------------------------------------------------------
 
-    # Get command line arguments and define shortcuts
-    args = get_arguments()
-    base_dir = os.path.abspath(args.base_directory)
+    # Get base_directory from command line arguments
+    base_dir = get_base_directory()
 
     # Construct (expected) path to config.json
     file_path = os.path.join(base_dir, 'config.json')
