@@ -6,7 +6,8 @@ Utility functions for performing principal component analysis (PCA).
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Any, Iterable
+from copy import deepcopy
+from typing import Any, Iterable, Tuple, Union
 
 from sklearn.decomposition import PCA
 from tqdm import tqdm
@@ -72,9 +73,10 @@ def get_pca_signal_estimates(
     stack: np.ndarray,
     parang: np.ndarray,
     pca_numbers: Iterable[int],
+    return_components: bool = True,
     verbose: bool = False,
     **kwargs: Any,
-) -> np.ndarray:
+) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
     """
     Get the signal estimate (i.e., the derotated and combined stack that
     has been denoised) using PCA-based PSF subtraction for different
@@ -92,6 +94,8 @@ def get_pca_signal_estimates(
             derotating the stack).
         pca_numbers: An iterable of integers, containing the values for
             the numbers of principal components for which to run PCA.
+        return_components: Whether or not to return the principal
+            components of the PCA.
         verbose: Whether or not to print debugging information.
         kwargs: Additional keyword arguments that will directly be
             passed to the ``derotate_combine`` function that is used
@@ -125,6 +129,14 @@ def get_pca_signal_estimates(
     pca = PCA(n_components=max_pca_number)
     pca.fit(reshaped_stack)
     vprint('Done!')
+
+    # If desired, create an array with the principal components reshaped to
+    # proper eigenimages / frames
+    if return_components:
+        components = deepcopy(pca.components_)
+        components = components.reshape(-1, stack.shape[1], stack.shape[2])
+    else:
+        components = None
 
     # Initiate a list to keep track of the signal estimates
     signal_estimates = list()
@@ -160,4 +172,7 @@ def get_pca_signal_estimates(
     signal_estimates = signal_estimates[::-1]
     signal_estimates = np.array(signal_estimates)
 
+    # Return the signal estimates and optionally also the principal components
+    if return_components:
+        return signal_estimates, components
     return signal_estimates
