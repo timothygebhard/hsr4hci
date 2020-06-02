@@ -10,6 +10,7 @@ which released the code under a CC license (https://unlicense.org/).
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from multiprocessing.queues import Queue as BaseQueue
 from typing import Any
 
 import multiprocessing
@@ -57,7 +58,7 @@ class ThreadSafeCounter:
             return int(self.count.value)
 
 
-class Queue(multiprocessing.queues.Queue):
+class Queue(BaseQueue):
     """
     A thin wrapper around the `multiprocessing.Queue` class, which is
     mean to solve the problem that some methods (e.g., `Queue.qsize()`)
