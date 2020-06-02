@@ -6,7 +6,7 @@ Utility functions for performance evaluation (e.g., computing the SNR).
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Any, Dict, List, NoReturn, Optional, Tuple, Union
+from typing import Any, Dict, List, NoReturn, Optional, Tuple
 
 from contexttimer.timeout import timeout
 from photutils import aperture_photometry, CircularAperture
