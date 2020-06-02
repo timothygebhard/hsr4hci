@@ -29,7 +29,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
     # Preliminaries
     # -------------------------------------------------------------------------
-    
+
     script_start = time.time()
     print('\nPLOT SNR OVER NUMBER OF PRINCIPAL COMPONENTS\n', flush=True)
 
@@ -86,7 +86,7 @@ if __name__ == '__main__':
 
         # Make plot for each planet individually
         for i, planet_key in enumerate(planet_positions.keys()):
-    
+
             # Construct full name of the planet (target star + letter)
             planet_name = f'{config["metadata"]["TARGET_STAR"]} {planet_key}'
 
