@@ -19,6 +19,7 @@ setup(name='hsr4hci',
       url='https://github.com/timothygebhard/hsr4hci',
       install_requires=[
           'astropy',
+          'bottleneck',
           'contexttimer',
           'h5py',
           'joblib',
