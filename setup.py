@@ -35,4 +35,9 @@ setup(name='hsr4hci',
           'tqdm',
       ],
       packages=['hsr4hci'],
-      zip_safe=False)
+      zip_safe=False,
+      entry_points={
+        'console_scripts': [
+            'compute_snr = scripts.compute_snr:main',
+        ]},
+      )
