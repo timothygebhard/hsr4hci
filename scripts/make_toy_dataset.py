@@ -115,6 +115,14 @@ if __name__ == '__main__':
     toy_datasets_dir = os.path.join(data_dir, 'toy_datasets', 'Beta_Pictoris')
     Path(toy_datasets_dir).mkdir(exist_ok=True, parents=True)
 
+    # Save planet positions as a CSV file
+    file_path = os.path.join(data_dir, toy_datasets_dir, 'positions.csv')
+    np.savetxt(file_path, X=planet_positions, delimiter=",", fmt='%10.5f')
+
+    # Save the parallactic angles to a *.npy file
+    file_path = os.path.join(data_dir, toy_datasets_dir, 'parang.npy')
+    np.save(file=file_path, arr=parang)
+
     # Save results as a HDF file
     file_path = os.path.join(data_dir, toy_datasets_dir, 'default.hdf')
     with h5py.File(file_path, 'w') as hdf_file:
