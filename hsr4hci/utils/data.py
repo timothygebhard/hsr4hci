@@ -126,6 +126,9 @@ def load_default_data(
     elif planet == 'HR_8799':
         planet_part = ('HR_8799', 'Lp', '2012-08-25')
         frame_size = (101, 101)
+    elif planet == 'PZ_Telescopii':
+        planet_part = ('PZ_Telescopii', 'Lp', '2010-09-27')
+        frame_size = (81, 81)
     else:
         raise ValueError(f'{planet} is not a valid planet name!')
 
