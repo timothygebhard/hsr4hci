@@ -11,7 +11,8 @@ import pytest
 
 from hsr4hci.utils.general import crop_center, \
     get_from_nested_dict, \
-    set_in_nested_dict
+    set_in_nested_dict, \
+    rotate_position
 
 
 # -----------------------------------------------------------------------------
@@ -79,3 +80,17 @@ def test__set_in_nested_dict() -> None:
     dictionary = {'a': {'b': 42}}
     set_in_nested_dict(dictionary, ['a', 'b'], 23)
     assert dictionary == {'a': {'b': 23}}
+
+
+def test__rotate_position() -> None:
+
+    position = (10, 10)
+    center = (0, 0)
+
+    assert np.allclose(rotate_position(position, center, -90), (10, -10))
+    assert np.allclose(rotate_position(position, center, 0), (10, 10))
+    assert np.allclose(rotate_position(position, center, 45), (0, 14.14213562))
+    assert np.allclose(rotate_position(position, center, 90), (-10, 10))
+    assert np.allclose(rotate_position(position, center, 180), (-10, -10))
+    assert np.allclose(rotate_position(position, center, 360), (10, 10))
+    assert np.allclose(rotate_position(position, center, 720), (10, 10))
