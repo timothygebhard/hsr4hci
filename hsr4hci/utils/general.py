@@ -393,3 +393,33 @@ def set_in_nested_dict(nested_dict: dict,
     """
 
     get_from_nested_dict(nested_dict, location[:-1])[location[-1]] = value
+
+
+def rotate_position(
+    position: Tuple[float, float],
+    center: Tuple[float, float],
+    angle: float,
+) -> Tuple[float, float]:
+    """
+    Take a `position` and rotate it around the given `center` for the
+    given `angle`.
+
+    Args:
+        position: The initial position as a 2-tuple `(x, y)`.
+        center: The center of the rotation as a 2-tuple `(x_c, y_c)`.
+        angle: The rotation angle *in degrees* (not radian).
+
+    Returns:
+        The rotated position, again as a 2-tuple.
+    """
+
+    # Convert angle from degree to radian for numpy
+    phi = np.deg2rad(angle)
+
+    # Compute x- and y-coordinate of rotated position
+    x = center[1] + (position[0] - center[1]) * np.cos(phi) - \
+        (position[1] - center[0]) * np.sin(phi)
+    y = center[0] + (position[0] - center[1]) * np.sin(phi) + \
+        (position[1] - center[0]) * np.cos(phi)
+
+    return x, y
