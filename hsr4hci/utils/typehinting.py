@@ -49,3 +49,13 @@ class BaseLinearModelCV(BaseLinearModel):
     regularization parameter chosen by the cross-validation.
     """
     alpha_: np.ndarray
+
+
+class Scaler(Protocol):
+    """
+    Define type hint for pre-processing scalers (RobustScaler, ...).
+    """
+    def fit(self, X: np.ndarray, y: np.ndarray) -> None: ...
+    def fit_transform(self, X: np.ndarray, y: np.ndarray) -> np.ndarray: ...
+    def transform(self, X: np.ndarray, y: np.ndarray) -> np.ndarray: ...
+    def inverse_transform(self, X: np.ndarray) -> np.ndarray: ...
