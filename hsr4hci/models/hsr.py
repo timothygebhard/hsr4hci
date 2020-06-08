@@ -24,6 +24,7 @@ from hsr4hci.utils.fits import save_fits
 from hsr4hci.utils.importing import get_member_by_name
 from hsr4hci.utils.masking import get_roi_mask, get_positions_from_mask, \
     get_selection_mask
+from hsr4hci.utils.preprocessing import PredictorsTargetsScaler
 from hsr4hci.utils.splitting import TrainTestSplitter
 from hsr4hci.utils.tqdm import tqdm_joblib
 from hsr4hci.utils.typehinting import RegressorModel
@@ -205,11 +206,24 @@ class HalfSiblingRegression:
         for split_idx, (train_idx, apply_idx) in \
                 enumerate(self.train_test_splitter.split(self.n_frames)):
 
+            # Set up a new scaler for predictors and predictors
+            scaler_type = self.config['preprocessing']['scaler_type']
+            scaler = PredictorsTargetsScaler(scaler_type=scaler_type)
+
             # Select predictors and targets for both training and application
             train_predictors = self.stack[train_idx][:, selection_mask]
             apply_predictors = self.stack[apply_idx][:, selection_mask]
             train_targets = self.stack[train_idx, position[0], position[1]]
             apply_targets = self.stack[apply_idx, position[0], position[1]]
+
+            # Scale predictors and targets to bring all spatial pixels to the
+            # same scale (this is only important for regularized models)
+            train_predictors, apply_predictors = \
+                scaler.fit_transform_predictors(X_train=train_predictors,
+                                                X_apply=apply_predictors)
+            train_targets, apply_targets = \
+                scaler.fit_transform_targets(X_train=train_targets,
+                                             X_apply=apply_targets)
 
             # Instantiate a new model and fit it to the training data
             model = self._get_base_model_instance()
@@ -218,6 +232,11 @@ class HalfSiblingRegression:
             # Apply the learned model to the data that was held out and
             # store the predictions
             predictions[apply_idx] = model.predict(X=apply_predictors)
+
+            # Apply inverse scaling transform to predictions to move them back
+            # to the same scale as the data from which they will be subtracted
+            predictions[apply_idx] = \
+                scaler.inverse_transform_targets(X=predictions[apply_idx])
 
             # Run callbacks to collect their data
             for callback in callbacks:
