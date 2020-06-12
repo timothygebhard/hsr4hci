@@ -40,7 +40,6 @@ class NoneScaler(Scaler):
     def transform(
         self,
         X: np.ndarray,
-        y: Optional[np.ndarray] = None,
     ) -> np.ndarray:
         return X
 
@@ -80,7 +79,6 @@ class MadScaler(Scaler):
     def transform(
         self,
         X: np.ndarray,
-        y: Optional[np.ndarray] = None,
     ) -> np.ndarray:
 
         if (self.median is not None) and (self.mad is not None):
@@ -93,7 +91,7 @@ class MadScaler(Scaler):
         y: Optional[np.ndarray] = None,
     ) -> np.ndarray:
         self.fit(X=X, y=y)
-        return self.transform(X=X, y=y)
+        return self.transform(X=X)
 
     def inverse_transform(
         self,
@@ -176,8 +174,8 @@ class PredictorsTargetsScaler:
         scaler.fit(X=X_train, y=None)
 
         # Scale both the train and apply data
-        x_train_scaled = scaler.transform(X=X_train, y=None)
-        x_apply_scaled = scaler.transform(X=X_apply, y=None)
+        x_train_scaled = scaler.transform(X=X_train)
+        x_apply_scaled = scaler.transform(X=X_apply)
 
         # Return scaled data
         return x_train_scaled, x_apply_scaled
