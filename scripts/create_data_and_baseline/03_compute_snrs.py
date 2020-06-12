@@ -154,7 +154,7 @@ if __name__ == '__main__':
             # one frame with the corresponding signal_estimate (as well as the
             # index, so that we can reconstruct the correct result order)
             input_queue = Queue()
-            for index in range(signal_estimates.shape[0]):
+            for index in range(n_frames):
                 input_queue.put((index, signal_estimates[index]))
 
             # Initialize an output queue and a list for the results
@@ -196,7 +196,7 @@ if __name__ == '__main__':
             # -----------------------------------------------------------------
 
             # Define a context for the progress bar
-            with tqdm(ncols=80, total=len(signal_estimates)) as progressbar:
+            with tqdm(ncols=80, total=n_frames) as progressbar:
 
                 # Initialize a list for the processes that we start
                 processes: list = []
@@ -259,7 +259,8 @@ if __name__ == '__main__':
         # Create an additional index that associates every row in the data
         # frame with the corresponding number of principal components
         row_index = \
-            pd.MultiIndex.from_arrays(arrays=[range(n_frames), pca_numbers],
+            pd.MultiIndex.from_arrays(arrays=[range(n_frames),
+                                              pca_numbers[:n_frames]],
                                       names=[None, 'n_principal_components'])
 
         # Create an empty data frame using these two multi-indices
