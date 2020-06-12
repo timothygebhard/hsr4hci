@@ -81,7 +81,6 @@ class Scaler(Protocol):
     def transform(
         self,
         X: np.ndarray,
-        y: Optional[np.ndarray] = None,
     ) -> np.ndarray: ...
 
     # pylint: disable=missing-function-docstring
