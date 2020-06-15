@@ -1,5 +1,5 @@
 """
-Functions for reading and writing FITS files.
+Utility functions for reading and writing FITS files.
 """
 
 # -----------------------------------------------------------------------------
@@ -19,9 +19,10 @@ import numpy as np
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def read_fits(file_path: str,
-              return_header: bool = False) -> Union[np.ndarray,
-                                                    Tuple[np.ndarray, dict]]:
+def read_fits(
+    file_path: str,
+    return_header: bool = False,
+) -> Union[np.ndarray, Tuple[np.ndarray, dict]]:
     """
     Open a FITS file and return its contents as a numpy array.
 
@@ -39,14 +40,15 @@ def read_fits(file_path: str,
 
     if return_header:
         return array, header
-    else:
-        return array
+    return array
 
 
-def save_fits(array: np.ndarray,
-              file_path: str,
-              header: Optional[dict] = None,
-              overwrite: bool = True) -> None:
+def save_fits(
+    array: np.ndarray,
+    file_path: str,
+    header: Optional[dict] = None,
+    overwrite: bool = True,
+) -> None:
     """
     Save a numpy array as a FITS file (e.g., to inspect it with DS9).
 
