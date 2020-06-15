@@ -8,6 +8,7 @@ etc.) directly from the raw FITS files of the ESO archive.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from pathlib import Path
 from typing import Dict
 
 import json
@@ -61,8 +62,8 @@ if __name__ == '__main__':
     print('Collecting indices from PynPoint database...', end=' ', flush=True)
 
     # Define path to the PynPoint database
-    pynpoint_db_file_path = config['pynpoint_db_file_path']
-    pynpoint_db_index_key = config['pynpoint_db_index_key']
+    pynpoint_db_file_path = config['raw_data']['pynpoint_db_file_path']
+    pynpoint_db_index_key = config['raw_data']['pynpoint_db_index_key']
 
     # Read the indices of the selected frames
     with h5py.File(pynpoint_db_file_path, 'r') as hdf_file:
@@ -77,7 +78,7 @@ if __name__ == '__main__':
     print('Collecting paths to FITS files...', end=' ', flush=True)
 
     # Define path to directory that contains raw FITS files
-    fits_files_base_dir = config['fits_files_base_dir']
+    fits_files_base_dir = config['raw_data']['fits_files_base_dir']
 
     # Construct a list of the paths of all FITS files in this directory
     fits_files = os.listdir(fits_files_base_dir)
@@ -115,7 +116,13 @@ if __name__ == '__main__':
 
     print('Saving results to HDF file...', end=' ', flush=True)
 
-    results_file_path = os.path.join(base_dir, 'observing_conditions.hdf')
+    # Create the results directory for the observing conditions
+    results_dir = Path(base_dir) / 'observing_conditions'
+    results_dir.mkdir(exist_ok=True)
+
+    # Construct path to the result HDF file
+    results_file_path = (results_dir / 'observing_conditions.hdf').as_posix()
+
     with h5py.File(results_file_path, 'w') as hdf_file:
 
         # Add meta data about the data set and the instrument
