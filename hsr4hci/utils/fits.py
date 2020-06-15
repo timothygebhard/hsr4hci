@@ -145,8 +145,8 @@ def get_fits_header_value_array(
     n_frames: int = get_fits_header_value(file_path, 'NAXIS3', int)
 
     # Read the start and end value from the FITS file
-    start_value: str = get_fits_header_value(file_path, start_key, str)
-    end_value: str = get_fits_header_value(file_path, end_key, str)
+    start_value: float = get_fits_header_value(file_path, start_key, float)
+    end_value: float = get_fits_header_value(file_path, end_key, float)
 
     # Create an array with a linear interpolation between those two values
     array = np.linspace(start_value, end_value, n_frames)
