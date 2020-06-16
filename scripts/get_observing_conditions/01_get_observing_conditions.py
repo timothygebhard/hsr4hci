@@ -36,7 +36,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     script_start = time.time()
-    print('\nCOLLECT ADDITIONAL INFORMATION FROM FITS FILES\n', flush=True)
+    print('\nGET OBSERVING CONDITIONS FROM FITS FILES\n', flush=True)
 
     # -------------------------------------------------------------------------
     # Parse command line arguments and load config.json
@@ -90,7 +90,8 @@ if __name__ == '__main__':
     print('Preparing results dictionary...', end=' ', flush=True)
 
     # Initialize the dictionary of lists which will store the results
-    results: Dict[str, list] = {key: list() for key in get_key_map().keys()}
+    results: Dict[str, list] = \
+        {key: list() for key in get_key_map(metadata['INSTRUMENT']).keys()}
 
     print('Done!', flush=True)
 
@@ -103,7 +104,7 @@ if __name__ == '__main__':
 
         # Loop over all parameters describing the observing conditions and
         # retrieve them from the FITS file
-        for key, eso_keys in get_key_map().items():
+        for key, eso_keys in get_key_map(metadata['INSTRUMENT']).items():
             parameter_values = \
                 get_fits_header_value_array(file_path=fits_file,
                                             start_key=eso_keys['start_key'],
