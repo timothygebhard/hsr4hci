@@ -209,11 +209,11 @@ def get_description_and_unit(
 
 def load_observing_conditions(
     file_path: str,
-    parameters: Optional[Iterable[str]] = None,
+    parameters: Optional[Iterable[str]] = 'all',
     transform_wind_direction: bool = True,
     coherence_time_in_ms: bool = True,
     as_dataframe: bool = False,
-) -> Union[Dict[str, np.ndarray], pd.DataFrame]:
+) -> Optional[Union[Dict[str, np.ndarray], pd.DataFrame]]:
     """
     Convenience wrapper for loading observing conditions from HDF files.
 
@@ -221,8 +221,9 @@ def load_observing_conditions(
         file_path: Path to the HDF file containing the observing
             conditions.
         parameters: An iterable of strings, containing the names of the
-            parameters to be loaded. If `None` is given, all available
-            parameters are loaded.
+            parameters to be loaded. If "all" is given, all available
+            parameters are loaded. If `None` is given, an empty dict or
+            DataFrame is returned.
         transform_wind_direction: If True, do not return the values for
             `wind_direction` directly, but instead return the cosine and
             sine (useful if you want to use the wind direction as a
@@ -236,18 +237,22 @@ def load_observing_conditions(
     Returns:
         Either a dictionary or a pandas DataFrame containing the values
         of the requested `parameters` from the given file of observing
-        conditions.
+        conditions. May be empty, if parameter is None.
     """
-
-    # If no list of parameters was given, use all available parameters
-    if parameters is None:
-        parameters = list(get_key_map().keys())
 
     # Initialize dictionary to hold observing conditions
     observing_conditions: Dict[str, np.ndarray] = dict()
 
     # Load observing conditions from HDF file
     with h5py.File(file_path, 'r') as hdf_file:
+
+        # If no list of parameters was given, use all available parameters
+        if parameters == 'all':
+            parameters = sorted(list(hdf_file.keys()))
+        elif parameters is None:
+            parameters = list()
+
+        # Loop over parameter and load them from the HDF file
         for key in parameters:
             observing_conditions[key] = np.array(hdf_file[key])
 
