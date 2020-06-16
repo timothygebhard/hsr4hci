@@ -6,7 +6,7 @@ Utility functions related to dealing with observing conditions.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Dict, Iterable, Optional, Tuple, Union
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 import h5py
 import numpy as np
@@ -91,58 +91,112 @@ def get_key_map(
 
 
 def get_description_and_unit(
-    parameter: str,
-) -> Tuple[str, Optional[str]]:
+    parameter: Union[str, Sequence[str]],
+    long_description: bool = False,
+) -> Union[Tuple[str, Optional[str]], List[Tuple[str, Optional[str]]]]:
     """
-    For a given observing conditions parameter (as a string), return the
-    corresponding description and unit (as strings).
+    Get the description and unit (as strings) for a given parameter,
+    or a sequence of parameters.
+
+    Args:
+        parameter: A string (or a sequence of strings) containing the
+            name(s) of the observing conditions parameter(s) whose
+            description and unit we want to retrieve.
+        long_description: If `True`, a longer version of the description
+            is returned.
 
     Returns:
-        A tuple (description, unit) containing the description and unit
-        of the target parameter as strings. For dimensionless parameters
-        such as the relative air mass, `None` is returned as the unit.
+        A tuple `(description, unit)`, or a list of such tuples, which
+        contains the description and unit of the target parameter as
+        strings. For dimensionless parameters such as the relative air
+        mass, `None` is returned as the unit.
     """
 
-    if parameter == 'air_mass':
-        description = 'Air mass (relative to zenith)'
-        unit = None
-    elif parameter == 'seeing':
-        description = 'Observatory seeing (before AO corrections)'
-        unit = 'arcsec'
-    elif parameter == 'ir_sky_temperature':
-        description = 'Temperature of the IR sky'
-        unit = '?'
-    elif parameter == 'integrated_water_vapor':
-        description = 'Integrated Water Vapor'
-        unit = '?'
-    elif parameter == 'air_pressure':
-        description = 'Observatory ambient air pressure'
-        unit = 'hPa'
-    elif parameter == 'relative_humidity':
-        description = 'Observatory ambient relative humidity'
-        unit = '%'
-    elif parameter == 'average_coherence_time':
-        description = 'Average coherence time'
-        unit = 's'
-    elif parameter == 'observatory_temperature':
-        description = 'Observatory ambient temperature'
-        unit = 'degree Celsius'
-    elif parameter == 'wind_direction':
-        description = "Observatory ambient wind direction"
-        unit = 'degree'
-    elif parameter == 'cos_wind_direction':
-        description = "Cosine of observatory ambient wind direction"
-        unit = None
-    elif parameter == 'sin_wind_direction':
-        description = "Sine of observatory ambient wind direction"
-        unit = None
-    elif parameter == 'wind_speed':
-        description = "Observatory ambient wind speed"
-        unit = 'm/s'
-    else:
-        raise ValueError(f'Unknown parameter name: "{parameter}"!')
+    # Define the look-up table for all descriptions and units
+    descriptions_and_units: Dict[str, dict] = dict(
+        airmass=dict(
+            short='Air mass',
+            long='Air mass (relative to zenith)',
+            unit=None,
+        ),
+        seeing=dict(
+            short='Observatory seeing',
+            long='Observatory seeing (before AO corrections)',
+            unit='arcsec',
+        ),
+        ir_sky_temperature=dict(
+            short='IR sky temperature',
+            long='Temperature of the IR sky',
+            unit='?',
+        ),
+        integrated_water_vapor=dict(
+            short='Integrated Water Vapor',
+            long='Integrated Water Vapor',
+            unit='?',
+        ),
+        air_pressure=dict(
+            short='Air pressure',
+            long='Observatory ambient air pressure',
+            unit='hPa',
+        ),
+        relative_humidity=dict(
+            short='Relative humidity',
+            long='Observatory ambient relative humidity',
+            unit='%',
+        ),
+        average_coherence_time=dict(
+            short='Average coherence time',
+            long='Average coherence time',
+            unit='s',
+        ),
+        observatory_temperature=dict(
+            short='Observatory temperature',
+            long='Observatory ambient temperature',
+            unit='degree Celsius',
+        ),
+        wind_direction=dict(
+            short='Wind direction',
+            long='Observatory ambient wind direction',
+            unit='degree',
+        ),
+        cos_wind_direction=dict(
+            short='cos(wind direction)',
+            long='Cosine of observatory ambient wind direction',
+            unit=None,
+        ),
+        sin_wind_direction=dict(
+            short='sin(wind direction)',
+            long='Sine of observatory ambient wind direction',
+            unit=None,
+        ),
+        wind_speed=dict(
+            short='Wind speed',
+            long='Observatory ambient wind speed',
+            unit='m/s',
+        )
+    )
 
-    return description, unit
+    # Make sure that `parameter` is always a list, so that we can loop over it
+    if isinstance(parameter, str):
+        parameter = [parameter]
+
+    # Initialize list of results
+    results: List[Tuple[str, Optional[str]]] = list()
+
+    # Define the key for accessing the right description type
+    description_key = 'long' if long_description else 'short'
+
+    # Loop over all requested parameters and resolve them
+    for param in parameter:
+        description: str = descriptions_and_units[param][description_key]
+        unit: Optional[str] = descriptions_and_units[param]['unit']
+        results.append((description, unit))
+
+    # Return either a single tuple (if only one parameter was requested), or
+    # a list of tuples (if multiple parameters where requested)
+    if len(results) == 1:
+        return results[0]
+    return results
 
 
 def load_observing_conditions(
