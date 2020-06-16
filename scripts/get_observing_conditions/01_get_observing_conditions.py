@@ -100,16 +100,32 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     print('Processing raw FITS files:', flush=True)
+
+    warnings = list()
     for fits_file in tqdm(fits_files, ncols=80):
 
         # Loop over all parameters describing the observing conditions and
         # retrieve them from the FITS file
-        for key, eso_keys in get_key_map(metadata['INSTRUMENT']).items():
-            parameter_values = \
-                get_fits_header_value_array(file_path=fits_file,
-                                            start_key=eso_keys['start_key'],
-                                            end_key=eso_keys['end_key'])
-            results[key].append(parameter_values)
+        for key, value in get_key_map(metadata['INSTRUMENT']).items():
+
+            # Try to extract the current parameter from the FITS header
+            try:
+                parameter_values = \
+                    get_fits_header_value_array(file_path=fits_file,
+                                                start_key=value['start_key'],
+                                                end_key=value['end_key'])
+                results[key].append(parameter_values)
+
+            # In case this parameter cannot be found, store a warning
+            except KeyError:
+                warnings.append(f'Expected parameter {key} not found!')
+
+    # If there were warnings about missing keys, print them now
+    if warnings:
+        print('\nCAUTION! The following keys could not be found:')
+        for warning in sorted(list(set(warnings))):
+            print('--', warning)
+        print('')
 
     # -------------------------------------------------------------------------
     # Merge results list into numpy arrays and save the result as HDF
