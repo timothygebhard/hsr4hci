@@ -55,6 +55,9 @@ def get_key_map(
     key_map['average_coherence_time'] = \
         dict(start_key='HIERARCH ESO TEL AMBI TAU0',
              end_key='HIERARCH ESO TEL AMBI TAU0')
+    key_map['m1_temperature'] = \
+        dict(start_key='HIERARCH ESO TEL TH M1 TEMP',
+             end_key='HIERARCH ESO TEL TH M1 TEMP')
     key_map['observatory_temperature'] = \
         dict(start_key='HIERARCH ESO TEL AMBI TEMP',
              end_key='HIERARCH ESO TEL AMBI TEMP')
@@ -114,60 +117,65 @@ def get_description_and_unit(
 
     # Define the look-up table for all descriptions and units
     descriptions_and_units: Dict[str, dict] = dict(
-        airmass=dict(
+        air_mass=dict(
             short='Air mass',
             long='Air mass (relative to zenith)',
             unit=None,
-        ),
-        seeing=dict(
-            short='Observatory seeing',
-            long='Observatory seeing (before AO corrections)',
-            unit='arcsec',
-        ),
-        ir_sky_temperature=dict(
-            short='IR sky temperature',
-            long='Temperature of the IR sky',
-            unit='?',
-        ),
-        integrated_water_vapor=dict(
-            short='Integrated Water Vapor',
-            long='Integrated Water Vapor',
-            unit='?',
         ),
         air_pressure=dict(
             short='Air pressure',
             long='Observatory ambient air pressure',
             unit='hPa',
         ),
-        relative_humidity=dict(
-            short='Relative humidity',
-            long='Observatory ambient relative humidity',
-            unit='%',
-        ),
         average_coherence_time=dict(
             short='Average coherence time',
             long='Average coherence time',
             unit='s',
-        ),
-        observatory_temperature=dict(
-            short='Observatory temperature',
-            long='Observatory ambient temperature',
-            unit='degree Celsius',
-        ),
-        wind_direction=dict(
-            short='Wind direction',
-            long='Observatory ambient wind direction',
-            unit='degree',
         ),
         cos_wind_direction=dict(
             short='cos(wind direction)',
             long='Cosine of observatory ambient wind direction',
             unit=None,
         ),
+        integrated_water_vapor=dict(
+            short='Integrated Water Vapor',
+            long='Integrated Water Vapor',
+            unit='?',
+        ),
+        ir_sky_temperature=dict(
+            short='IR sky temperature',
+            long='Temperature of the IR sky',
+            unit='?',
+        ),
+        m1_temperature=dict(
+            short='M1 Temperature',
+            long='Superficial temperature of mirror M1',
+            unit='°C',
+        ),
+        observatory_temperature=dict(
+            short='Observatory temperature',
+            long='Observatory ambient temperature',
+            unit='°C',
+        ),
+        relative_humidity=dict(
+            short='Relative humidity',
+            long='Observatory ambient relative humidity',
+            unit='%',
+        ),
+        seeing=dict(
+            short='Observatory seeing',
+            long='Observatory seeing (before AO corrections)',
+            unit='arcsec',
+        ),
         sin_wind_direction=dict(
             short='sin(wind direction)',
             long='Sine of observatory ambient wind direction',
             unit=None,
+        ),
+        wind_direction=dict(
+            short='Wind direction',
+            long='Observatory ambient wind direction',
+            unit='°',
         ),
         wind_speed=dict(
             short='Wind speed',
