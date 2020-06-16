@@ -17,59 +17,77 @@ import pandas as pd
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-def get_key_map() -> Dict[str, Dict[str, str]]:
+def get_key_map(
+    instrument: str = 'NACO',
+) -> Dict[str, Dict[str, str]]:
     """
-    Return a dictionary mapping the "intuitive" names of relevant
+    Return a dictionary that maps the "intuitive" names of relevant
     observing condition parameters to the respective keys used in the
     headers of ESO/VLT FITS files.
+
+    As the set of available parameters is instrument-specific (not all
+    keys exist for all instruments), this function also takes the name
+    of the instrument as an input.
+
+    Args:
+        instrument: A string (either "NACO" or "IRDIS") containing the
+            name of the (sub)-instrument for which to get the key map.
 
     Returns:
         A dictionary mapping intuitive parameter names to the ones used
         in the header of a FITS file.
     """
 
-    return dict(
-        air_mass=dict(
-            start_key='HIERARCH ESO TEL AIRM START',
-            end_key='HIERARCH ESO TEL AIRM END',
-        ),
-        seeing=dict(
-            start_key='HIERARCH ESO TEL AMBI FWHM START',
-            end_key='HIERARCH ESO TEL AMBI FWHM END',
-        ),
-        ir_sky_temperature=dict(
-            start_key='HIERARCH ESO TEL AMBI IRSKY TEMP',
-            end_key='HIERARCH ESO TEL AMBI IRSKY TEMP',
-        ),
-        integrated_water_vapor=dict(
-            start_key='HIERARCH ESO TEL AMBI IWV START',
-            end_key='HIERARCH ESO TEL AMBI IWV END',
-        ),
-        air_pressure=dict(
-            start_key='HIERARCH ESO TEL AMBI PRES START',
-            end_key='HIERARCH ESO TEL AMBI PRES END',
-        ),
-        relative_humidity=dict(
-            start_key='HIERARCH ESO TEL AMBI RHUM',
-            end_key='HIERARCH ESO TEL AMBI RHUM',
-        ),
-        average_coherence_time=dict(
-            start_key='HIERARCH ESO TEL AMBI TAU0',
-            end_key='HIERARCH ESO TEL AMBI TAU0',
-        ),
-        observatory_temperature=dict(
-            start_key='HIERARCH ESO TEL AMBI TEMP',
-            end_key='HIERARCH ESO TEL AMBI TEMP',
-        ),
-        wind_direction=dict(
-            start_key="HIERARCH ESO TEL AMBI WINDDIR",
-            end_key="HIERARCH ESO TEL AMBI WINDDIR",
-        ),
-        wind_speed=dict(
-            start_key="HIERARCH ESO TEL AMBI WINDSP",
-            end_key="HIERARCH ESO TEL AMBI WINDSP",
-        ),
-    )
+    # Make sure we have received a valid value for the instrument
+    if instrument not in ('NACO', 'IRDIS'):
+        raise ValueError('Invalid value for "instrument"!')
+
+    # Initialize the key map
+    key_map = dict()
+
+    # Add keys that exist for all instruments
+    key_map['air_mass'] = \
+        dict(start_key='HIERARCH ESO TEL AIRM START',
+             end_key='HIERARCH ESO TEL AIRM END')
+    key_map['air_pressure'] = \
+        dict(start_key='HIERARCH ESO TEL AMBI PRES START',
+             end_key='HIERARCH ESO TEL AMBI PRES END')
+    key_map['average_coherence_time'] = \
+        dict(start_key='HIERARCH ESO TEL AMBI TAU0',
+             end_key='HIERARCH ESO TEL AMBI TAU0')
+    key_map['observatory_temperature'] = \
+        dict(start_key='HIERARCH ESO TEL AMBI TEMP',
+             end_key='HIERARCH ESO TEL AMBI TEMP')
+    key_map['relative_humidity'] = \
+        dict(start_key='HIERARCH ESO TEL AMBI RHUM',
+             end_key='HIERARCH ESO TEL AMBI RHUM')
+    key_map['seeing'] = \
+        dict(start_key='HIERARCH ESO TEL AMBI FWHM START',
+             end_key='HIERARCH ESO TEL AMBI FWHM END')
+    key_map['wind_direction'] = \
+        dict(start_key='HIERARCH ESO TEL AMBI WINDDIR',
+             end_key='HIERARCH ESO TEL AMBI WINDDIR')
+    key_map['wind_speed'] = \
+        dict(start_key='HIERARCH ESO TEL AMBI WINDSP',
+             end_key='HIERARCH ESO TEL AMBI WINDSP')
+
+    # Add keys that only exist for NACO
+    if instrument == 'NACO':
+        key_map['integrated_water_vapor'] = \
+            dict(start_key='HIERARCH ESO TEL AMBI IWV START',
+                 end_key='HIERARCH ESO TEL AMBI IWV END')
+        key_map['ir_sky_temperature'] = \
+            dict(start_key='HIERARCH ESO TEL AMBI IRSKY TEMP',
+                 end_key='HIERARCH ESO TEL AMBI IRSKY TEMP')
+
+    # Add keys that only exist for IRDIS
+    if instrument == 'IRDIS':
+        pass
+
+    # Make sure the dict is sorted. This only works for Python 3.7 and up!
+    key_map = {k: key_map[k] for k in sorted(key_map)}
+
+    return key_map
 
 
 def get_description_and_unit(
