@@ -149,6 +149,10 @@ if __name__ == '__main__':
         # Loop over different quantities
         for key in results.keys():
 
+            # Skip expected keys that could not be found in FITS file
+            if not results[key]:
+                continue
+
             # Merge list of result arrays into single array and apply
             # indices from frame selection
             values = np.hstack(results[key])
