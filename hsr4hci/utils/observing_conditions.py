@@ -135,12 +135,12 @@ def get_description_and_unit(
         integrated_water_vapor=dict(
             short='Integrated Water Vapor',
             long='Integrated Water Vapor',
-            unit='?',
+            unit='mm',
         ),
         ir_sky_temperature=dict(
             short='IR sky temperature',
             long='Temperature of the IR sky',
-            unit='?',
+            unit='°C',
         ),
         m1_temperature=dict(
             short='M1 Temperature',
