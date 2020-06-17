@@ -6,6 +6,7 @@ Utility functions related to dealing with observing conditions.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from datetime import datetime, timezone
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 import h5py
@@ -18,34 +19,31 @@ import pandas as pd
 # -----------------------------------------------------------------------------
 
 def get_key_map(
-    instrument: str = 'NACO',
+    obs_date: datetime = datetime(2000, 1, 1, 0, 0, 0, 0, timezone.utc),
 ) -> Dict[str, Dict[str, str]]:
     """
     Return a dictionary that maps the "intuitive" names of relevant
     observing condition parameters to the respective keys used in the
     headers of ESO/VLT FITS files.
 
-    As the set of available parameters is instrument-specific (not all
-    keys exist for all instruments), this function also takes the name
-    of the instrument as an input.
-
     Args:
-        instrument: A string (either "NACO" or "IRDIS") containing the
-            name of the (sub)-instrument for which to get the key map.
+        obs_date: A `datetime` object containing the observation date of
+            the data set. This is necessary because ESO upgraded their
+            astronomical site monitoring (ASM) systems on April 4, 2016,
+            meaning that data sets taken after this data have additional
+            parameters available. The default value for the `obs_date`
+            is January 1, 2000, meaning that by default, only the "old"
+            parameters are returned.
 
     Returns:
         A dictionary mapping intuitive parameter names to the ones used
         in the header of a FITS file.
     """
 
-    # Make sure we have received a valid value for the instrument
-    if instrument not in ('NACO', 'IRDIS'):
-        raise ValueError('Invalid value for "instrument"!')
-
     # Initialize the key map
     key_map = dict()
 
-    # Add keys that exist for all instruments
+    # Add keys that should always be available (regardless of the date)
     key_map['air_mass'] = \
         dict(start_key='HIERARCH ESO TEL AIRM START',
              end_key='HIERARCH ESO TEL AIRM END')
@@ -74,18 +72,15 @@ def get_key_map(
         dict(start_key='HIERARCH ESO TEL AMBI WINDSP',
              end_key='HIERARCH ESO TEL AMBI WINDSP')
 
-    # Add keys that only exist for NACO
-    if instrument == 'NACO':
+    # For data sets taken after 12:00 UTC on April 4, 2016, additional
+    # parameters about the observing conditions are available
+    if obs_date > datetime(2016, 4, 4, 12, 0, 0, 0, timezone.utc):
         key_map['integrated_water_vapor'] = \
             dict(start_key='HIERARCH ESO TEL AMBI IWV START',
                  end_key='HIERARCH ESO TEL AMBI IWV END')
         key_map['ir_sky_temperature'] = \
             dict(start_key='HIERARCH ESO TEL AMBI IRSKY TEMP',
                  end_key='HIERARCH ESO TEL AMBI IRSKY TEMP')
-
-    # Add keys that only exist for IRDIS
-    if instrument == 'IRDIS':
-        pass
 
     # Make sure the dict is sorted. This only works for Python 3.7 and up!
     key_map = {k: key_map[k] for k in sorted(key_map)}
