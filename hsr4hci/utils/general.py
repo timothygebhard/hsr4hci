@@ -27,9 +27,11 @@ import numpy as np
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def add_array_with_interpolation(array_large: np.ndarray,
-                                 array_small: np.ndarray,
-                                 position: Tuple[float, float]) -> np.ndarray:
+def add_array_with_interpolation(
+    array_large: np.ndarray,
+    array_small: np.ndarray,
+    position: Tuple[float, float],
+) -> np.ndarray:
     """
     An extension of astropy.nddata.utils.add_array to add a smaller
     array at a given position in a larger array. In this version, the
@@ -64,8 +66,10 @@ def add_array_with_interpolation(array_large: np.ndarray,
     return array_large + dummy
 
 
-def crop_center(array: np.ndarray,
-                size: Tuple[int, ...]) -> np.ndarray:
+def crop_center(
+    array: np.ndarray,
+    size: Tuple[int, ...],
+) -> np.ndarray:
     """
     Crop an n-dimensional array to the given size around its center.
 
@@ -97,8 +101,10 @@ def crop_center(array: np.ndarray,
     return array[tuple(slices)]
 
 
-def split_into_n_chunks(sequence: Sequence,
-                        n_chunks: int) -> List[Sequence]:
+def split_into_n_chunks(
+    sequence: Sequence,
+    n_chunks: int,
+) -> List[Sequence]:
     """
     Split a given `sequence` (list, numpy array, ...) into `n_chunks`
     "chunks" (sub-sequences) of approximately equal length, which are
@@ -129,9 +135,11 @@ def split_into_n_chunks(sequence: Sequence,
             for i in range(n_chunks)]
 
 
-def split_positions_into_chunks(list_of_positions: List[Tuple[int, int]],
-                                weight_function: Callable,
-                                n_chunks: int) -> List[List[Tuple[int, int]]]:
+def split_positions_into_chunks(
+    list_of_positions: List[Tuple[int, int]],
+    weight_function: Callable,
+    n_chunks: int,
+) -> List[List[Tuple[int, int]]]:
     """
     Takes a `list_of_positions` and a function that assigns an single
     position a weight, and then splits the `list_of_positions` into
@@ -304,10 +312,12 @@ def split_positions_into_chunks(list_of_positions: List[Tuple[int, int]],
     return result
 
 
-def prestack_array(array: np.ndarray,
-                   stacking_factor: int,
-                   stacking_function: Callable = np.median,
-                   axis: int = 0) -> np.ndarray:
+def prestack_array(
+    array: np.ndarray,
+    stacking_factor: int,
+    stacking_function: Callable = np.median,
+    axis: int = 0,
+) -> np.ndarray:
     """
     Perform "pre-stacking" on a given `array`: The array is split into
     blocks (each of size `stacking_factor`) along the given axis, and
@@ -349,8 +359,10 @@ def prestack_array(array: np.ndarray,
                      np.split(array, split_indices, axis=axis)], axis=axis)
 
 
-def get_from_nested_dict(nested_dict: dict,
-                         location: Sequence) -> Any:
+def get_from_nested_dict(
+    nested_dict: dict,
+    location: Sequence,
+) -> Any:
     """
     Get a value from a nested dictionary at a given location, described
     by a sequence of keys.
@@ -373,9 +385,11 @@ def get_from_nested_dict(nested_dict: dict,
     return reduce(operator.getitem, location, nested_dict)
 
 
-def set_in_nested_dict(nested_dict: dict,
-                       location: Sequence,
-                       value: Any) -> None:
+def set_in_nested_dict(
+    nested_dict: dict,
+    location: Sequence,
+    value: Any,
+) -> None:
     """
     Set a value at a given location (described by a sequence of keys)
     in a nested dictionary.
@@ -429,7 +443,7 @@ def rotate_position(
 
 def get_md5_checksum(
     file_path: str,
-    buffer_size: int = 8192
+    buffer_size: int = 8192,
 ) -> str:
     """
     Compute the MD5 checksum of the file at the given `file_path`.
