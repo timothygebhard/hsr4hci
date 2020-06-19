@@ -14,7 +14,10 @@
       "key":            null
     }
   },
-  "raw_fits_dir":       "/home/ipa/quanz/shared/stolkert/51eri_irdis_k12/raw",
+  "raw_data": {
+    "fits_dir":         "/home/ipa/quanz/shared/stolkert/51eri_irdis_k12/raw",
+    "name_pattern":     "^SPHER.2015-09-25.*$"
+  },
   "metadata": {
     "CENTRAL_LAMBDA":   "2110 nm",
     "DATE":             "2015-09-25",

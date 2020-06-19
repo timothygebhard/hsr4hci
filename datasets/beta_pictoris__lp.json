@@ -14,7 +14,10 @@
       "key":            "/flux"
     }
   },
-  "raw_fits_dir":       "/home/ipa/quanz/user_accounts/stolkert/betapic_naco_lp/data/science/Apo_165/0.2/200",
+  "raw_data": {
+    "fits_dir":         "/home/ipa/quanz/user_accounts/stolkert/betapic_naco_lp/data/science/Apo_165/0.2/200",
+    "name_pattern":     null
+  },
   "metadata": {
     "CENTRAL_LAMBDA":   "3800 nm",
     "DATE":             "2013-02-01",
