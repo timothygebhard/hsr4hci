@@ -19,6 +19,7 @@ import operator
 from astropy.nddata.utils import add_array
 from scipy import ndimage
 
+import magic
 import numpy as np
 
 
@@ -452,3 +453,35 @@ def get_md5_checksum(
             md5_checksum.update(chunk)
 
     return str(md5_checksum.hexdigest())
+
+
+def is_fits_file(
+    file_path: str,
+) -> bool:
+    """
+    Check if a given file is a FITS file.
+
+    Args:
+        file_path: A string containing a file path.
+
+    Returns:
+        True if the given file is a FITS file; False otherwise.
+    """
+
+    return bool(magic.from_file(file_path, mime=True) == 'image/fits')
+
+
+def is_hdf_file(
+    file_path: str,
+) -> bool:
+    """
+    Check if a given file is an HDF file.
+
+    Args:
+        file_path: A string containing a file path.
+
+    Returns:
+        True if the given file is a HDF file; False otherwise.
+    """
+
+    return bool(magic.from_file(file_path, mime=True) == 'application/x-hdf')
