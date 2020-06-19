@@ -6,6 +6,7 @@ Utility functions for reading and writing FITS files.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from datetime import datetime
 from typing import Any, Optional, Tuple, Type, Union
 
 import json
@@ -111,7 +112,14 @@ def get_fits_header_value(
 
     # If desired, attempt to convert the value to the given data type
     if dtype is not None and isinstance(dtype, type):
-        return dtype(value)
+
+        # Datetime objects in ISO 8601 format require special treatment
+        if dtype == datetime:
+            value = datetime.strptime(value, '%Y-%m-%dT%H:%M:%S.%f')
+
+        # Other values can be cast directly
+        value = dtype(value)
+
     return value
 
 
