@@ -8,7 +8,7 @@ etc.) directly from the raw FITS files of the ESO archive.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -55,9 +55,10 @@ if __name__ == '__main__':
         config = json.load(config_file)
 
     # Select meta data (about the data set) from the config file, and convert
-    # the observation date to a proper datetime object
+    # the observation date to a proper datetime object (assuming UTC time)
     metadata = config['metadata']
     obs_date = datetime.fromisoformat(metadata['DATE'])
+    obs_date = obs_date.replace(tzinfo=timezone.utc)
 
     # -------------------------------------------------------------------------
     # Get indices of selected frames from PynPoint database
