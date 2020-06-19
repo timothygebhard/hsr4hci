@@ -9,6 +9,7 @@ General purpose utilities, e.g., cropping arrays.
 from bisect import bisect
 from copy import deepcopy
 from functools import reduce
+from hashlib import md5
 from math import modf
 from types import SimpleNamespace
 from typing import Any, Callable, List, Sequence, Tuple
@@ -423,3 +424,31 @@ def rotate_position(
         (position[1] - center[0]) * np.cos(phi)
 
     return x, y
+
+
+def get_md5_checksum(
+    file_path: str,
+    buffer_size: int = 8192
+) -> str:
+    """
+    Compute the MD5 checksum of the file at the given `file_path`.
+
+    Args:
+        file_path: The to the file of which we want to compute the MD5
+            checksum.
+        buffer_size: Buffer size (in bytes) for reading in the target
+            file in chunks.
+
+    Returns:
+        The MD5 checksum of the specified file.
+    """
+
+    # Initialize the MD5 checksum
+    md5_checksum = md5()
+
+    # Open the input file and process it in chunks, updating the MD5 hash
+    with open(file_path, 'rb') as binary_file:
+        for chunk in iter(lambda: binary_file.read(buffer_size), b""):
+            md5_checksum.update(chunk)
+
+    return str(md5_checksum.hexdigest())
