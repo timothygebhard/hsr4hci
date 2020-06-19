@@ -23,7 +23,7 @@ import numpy as np
 
 from hsr4hci.utils.argparsing import get_base_directory
 from hsr4hci.utils.fits import get_fits_header_value, \
-    get_fits_header_value_array
+    get_fits_header_value_array, header_value_exists
 from hsr4hci.utils.observing_conditions import get_key_map
 
 
@@ -97,8 +97,12 @@ if __name__ == '__main__':
 
     # Construct a list of the paths of all FITS files in this directory
     fits_files = os.listdir(fits_files_base_dir)
-    fits_files = [_ for _ in fits_files if _.endswith('fits')]
-    fits_files = [os.path.join(fits_files_base_dir, _) for _ in fits_files]
+    fits_files = [os.path.join(fits_files_base_dir, file_name) for file_name
+                  in filter(lambda _: _.endswith('fits'), fits_files)]
+
+    # Remove all FITS files that do not contain a DATE-OBS key in the header
+    fits_files = \
+        list(filter(lambda _: header_value_exists(_, 'DATE-OBS'), fits_files))
 
     # Read out the observation date from each FITS file and make sure the
     # list of FITS files are sorted by this date
