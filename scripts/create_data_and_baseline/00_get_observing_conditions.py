@@ -92,7 +92,7 @@ if __name__ == '__main__':
     print('Collecting paths to FITS files...', end=' ', flush=True)
 
     # Define path to directory that contains raw FITS files
-    fits_files_base_dir = config['raw_data']['fits_files_base_dir']
+    fits_files_base_dir = config['raw_fits_dir']
 
     # Construct a list of the paths of all FITS files in this directory
     fits_files = os.listdir(fits_files_base_dir)
