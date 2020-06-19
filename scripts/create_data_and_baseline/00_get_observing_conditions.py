@@ -8,8 +8,9 @@ etc.) directly from the raw FITS files of the ESO archive.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from datetime import datetime
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 import json
 import os
@@ -21,7 +22,8 @@ import h5py
 import numpy as np
 
 from hsr4hci.utils.argparsing import get_base_directory
-from hsr4hci.utils.fits import get_fits_header_value_array
+from hsr4hci.utils.fits import get_fits_header_value, \
+    get_fits_header_value_array
 from hsr4hci.utils.observing_conditions import get_key_map
 
 
@@ -36,7 +38,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     script_start = time.time()
-    print('\nGET OBSERVING CONDITIONS FROM FITS FILES\n', flush=True)
+    print('\nGET OBSERVING CONDITIONS FROM RAW FITS FILES\n', flush=True)
 
     # -------------------------------------------------------------------------
     # Parse command line arguments and load config.json
@@ -52,8 +54,10 @@ if __name__ == '__main__':
     with open(file_path, 'r') as config_file:
         config = json.load(config_file)
 
-    # Select meta data (about the data set) from the config file
+    # Select meta data (about the data set) from the config file, and convert
+    # the observation date to a proper datetime object
     metadata = config['metadata']
+    obs_date = datetime.fromisoformat(metadata['DATE'])
 
     # -------------------------------------------------------------------------
     # Get indices of selected frames from PynPoint database
@@ -61,15 +65,25 @@ if __name__ == '__main__':
 
     print('Collecting indices from PynPoint database...', end=' ', flush=True)
 
-    # Define path to the PynPoint database
-    pynpoint_db_file_path = config['raw_data']['pynpoint_db_file_path']
-    pynpoint_db_index_key = config['raw_data']['pynpoint_db_index_key']
+    # Load path to the PynPoint database and key to selected indices
+    file_name = config['input_data']['stack']['file_name']
+    file_path = os.path.join(base_dir, 'input', file_name)
+    index_key = config['input_data']['stack']['key']
 
-    # Read the indices of the selected frames
-    with h5py.File(pynpoint_db_file_path, 'r') as hdf_file:
-        indices = np.array(hdf_file[pynpoint_db_index_key])
+    # Read the indices of the selected frames, that is, the indices of the
+    # frames in the raw FITS files that have passed quality control and are
+    # also present in the pre-processed version of the data from PynPoint.
+    # If no index key was given (e.g., for SPHERE data, where sometimes no
+    # frame selection is performed), set the indices themselves also to None.
+    if index_key is not None:
+        with h5py.File(file_path, 'r') as hdf_file:
+            indices = np.array(hdf_file[index_key])
+            len_indices: Optional[int] = len(indices)
+    else:
+        indices = None
+        len_indices = None
 
-    print('Done!', flush=True)
+    print(f'Done! (len(indices) = {len_indices})', flush=True)
 
     # -------------------------------------------------------------------------
     # Define paths and prepare results dictionary
@@ -84,9 +98,20 @@ if __name__ == '__main__':
     fits_files = os.listdir(fits_files_base_dir)
     fits_files = [_ for _ in fits_files if _.endswith('fits')]
     fits_files = [os.path.join(fits_files_base_dir, _) for _ in fits_files]
-    fits_files = sorted(fits_files)
 
-    print('Done!', flush=True)
+    # Read out the observation date from each FITS file and make sure the
+    # list of FITS files are sorted by this date
+    fits_files_with_dates = \
+        [(_, get_fits_header_value(_, key='DATE-OBS', dtype=datetime))
+         for _ in fits_files]
+    fits_files_with_dates = sorted(fits_files_with_dates, key=lambda _: _[1])
+    fits_files = [path for path, date in fits_files_with_dates]
+
+    # Count the total number of files and frames (before frame selection)
+    n_files = len(fits_files)
+    n_frames = sum((_, get_fits_header_value(_, 'NAXIS3')) for _ in fits_files)
+
+    print(f'Done! (n_files = {n_files}, n_frames = {n_frames})', flush=True)
     print('Preparing results dictionary...', end=' ', flush=True)
 
     # Initialize the dictionary of lists which will store the results
@@ -104,9 +129,10 @@ if __name__ == '__main__':
     warnings = list()
     for fits_file in tqdm(fits_files, ncols=80):
 
-        # Loop over all parameters describing the observing conditions and
-        # retrieve them from the FITS file
-        for key, value in get_key_map(metadata['INSTRUMENT']).items():
+        # Loop over all parameters describing the observing conditions that we
+        # expect from a data set with the given date and try to read them from
+        # the header or the current FITS file
+        for key, value in get_key_map(obs_date=obs_date).items():
 
             # Try to extract the current parameter from the FITS header
             try:
@@ -153,10 +179,13 @@ if __name__ == '__main__':
             if not results[key]:
                 continue
 
-            # Merge list of result arrays into single array and apply
-            # indices from frame selection
+            # Merge list of result arrays into single array
             values = np.hstack(results[key])
-            values = values[indices]
+
+            # If we previously have loaded the indices from frame selection,
+            # apply them now to select the correct values
+            if indices is not None:
+                values = values[indices]
 
             # Save them to the HDF file
             hdf_file.create_dataset(name=key,
