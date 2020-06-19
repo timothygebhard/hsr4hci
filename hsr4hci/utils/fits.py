@@ -118,7 +118,8 @@ def get_fits_header_value(
             value = datetime.strptime(value, '%Y-%m-%dT%H:%M:%S.%f')
 
         # Other values can be cast directly
-        value = dtype(value)
+        else:
+            value = dtype(value)
 
     return value
 
