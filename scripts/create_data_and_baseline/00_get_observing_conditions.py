@@ -68,7 +68,7 @@ if __name__ == '__main__':
     # Load path to the PynPoint database and key to selected indices
     file_name = config['input_data']['stack']['file_name']
     file_path = os.path.join(base_dir, 'input', file_name)
-    index_key = config['input_data']['stack']['key']
+    index_key = config['input_data']['stack']['index_key']
 
     # Read the indices of the selected frames, that is, the indices of the
     # frames in the raw FITS files that have passed quality control and are
