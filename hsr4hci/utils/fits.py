@@ -183,4 +183,4 @@ def header_value_exists(
 
     # Open the FITS file and read the target header value
     with fits.open(file_path) as hdu_list:
-        return key in hdu_list.header.keys()
+        return key in hdu_list[0].header.keys()
