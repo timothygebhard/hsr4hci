@@ -111,7 +111,7 @@ if __name__ == '__main__':
 
     # Remove all files that do not contain an attribute for the coherence time
     # TODO: Check if there is a better way of filtering out these files!
-    tau0_key = 'HIERARCH ESO TEL AMBI TAU0'
+    tau0_key = 'ESO TEL AMBI TAU0'
     fits_files = \
         list(filter(lambda _: header_value_exists(_, tau0_key), fits_files))
 
