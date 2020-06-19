@@ -181,6 +181,25 @@ def header_value_exists(
         key, and False otherwise.
     """
 
-    # Open the FITS file and read the target header value
+    # Open the FITS file and check if the requested key is present.
+    # The following approach based on try/except is necessary because of a
+    # strange convention regarding the role of the "HIERARCH" part of the
+    # name of many ESO FITS files, which is best illustrated as follows:
+    #
+    #   >>> header["HIERARCH ESO TEL AMBI TAU0"]
+    #   0.0053
+    #   >>> header["ESO TEL AMBI TAU0"]
+    #   0.0053
+    #   >>> "HIERARCH ESO TEL AMBI TAU0" in header.keys()
+    #   False
+    #   >>> "ESO TEL AMBI TAU0" in header.keys()
+    #   True
+    #
+    # Just because a key is not in `header.keys()` does therefore *not* mean
+    # that we cannot access that key -- hence the try/except construct.
     with fits.open(file_path) as hdu_list:
-        return key in hdu_list[0].header.keys()
+        try:
+            _ = hdu_list[0].header[key]
+            return True
+        except KeyError:
+            return False
