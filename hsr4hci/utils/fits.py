@@ -6,7 +6,7 @@ Utility functions for reading and writing FITS files.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional, Tuple, Type, Union
 
 import json
@@ -113,9 +113,11 @@ def get_fits_header_value(
     # If desired, attempt to convert the value to the given data type
     if dtype is not None and isinstance(dtype, type):
 
-        # Datetime objects in ISO 8601 format require special treatment
+        # Datetime objects in ISO 8601 format require special treatment.
+        # Furthermore, we assume that all datetime values will be given in UTC.
         if dtype == datetime:
             value = datetime.strptime(value, '%Y-%m-%dT%H:%M:%S.%f')
+            value = value.replace(tzinfo=timezone.utc)
 
         # Other values can be cast directly
         else:
