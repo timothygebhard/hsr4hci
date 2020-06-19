@@ -14,6 +14,7 @@ from typing import Dict, Optional
 
 import json
 import os
+import re
 import time
 
 from tqdm import tqdm
@@ -23,9 +24,8 @@ import numpy as np
 
 from hsr4hci.utils.argparsing import get_base_directory
 from hsr4hci.utils.fits import get_fits_header_value, \
-    get_fits_header_value_array, header_value_exists
+    get_fits_header_value_array
 from hsr4hci.utils.observing_conditions import get_key_map
-
 
 # -----------------------------------------------------------------------------
 # MAIN CODE
@@ -84,7 +84,7 @@ if __name__ == '__main__':
         indices = None
         len_indices = None
 
-    print(f'Done! (len(indices) = {len_indices})', flush=True)
+    print(f'Done! [len(indices) = {len_indices}]', flush=True)
 
     # -------------------------------------------------------------------------
     # Define paths and prepare results dictionary
@@ -92,17 +92,22 @@ if __name__ == '__main__':
 
     print('Collecting paths to FITS files...', end=' ', flush=True)
 
-    # Define path to directory that contains raw FITS files
-    fits_files_base_dir = config['raw_fits_dir']
+    # Get path to directory that contains raw FITS files, as well as any
+    # potential patterns that the names of the FITS files need to match
+    fits_dir = config['raw_data']['fits_dir']
+    name_pattern = config['raw_data']['name_pattern']
 
-    # Construct a list of the paths of all FITS files in this directory
-    fits_files = os.listdir(fits_files_base_dir)
-    fits_files = [os.path.join(fits_files_base_dir, file_name) for file_name
-                  in filter(lambda _: _.endswith('fits'), fits_files)]
-
-    # Remove all FITS files that do not contain a DATE-OBS key in the header
+    # Collect all FITS fits in the given FITS directory
     fits_files = \
-        list(filter(lambda _: header_value_exists(_, 'DATE-OBS'), fits_files))
+        list(filter(lambda _: _.endswith('fits'), os.listdir(fits_dir)))
+
+    # Filter out all files that do not match the given name pattern
+    if name_pattern is not None:
+        regex = re.compile(name_pattern)
+        fits_files = list(filter(regex.search, fits_files))
+
+    # Add base directory to file names
+    fits_files = [os.path.join(fits_dir, _) for _ in fits_files]
 
     # Read out the observation date from each FITS file and make sure the
     # list of FITS files are sorted by this date
@@ -116,7 +121,7 @@ if __name__ == '__main__':
     n_files = len(fits_files)
     n_frames = sum(get_fits_header_value(_, 'NAXIS3', int) for _ in fits_files)
 
-    print(f'Done! (n_files = {n_files}, n_frames = {n_frames})', flush=True)
+    print(f'Done! [n_files = {n_files}, n_frames = {n_frames}]', flush=True)
     print('Preparing results dictionary...', end=' ', flush=True)
 
     # Initialize the dictionary of lists which will store the results
