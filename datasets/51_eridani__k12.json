@@ -3,7 +3,7 @@
     "stack": {
       "file_name":      "science_cube001.fits",
       "stack_key":      null,
-      "index_kex":      null
+      "index_key":      null
     },
     "parang": {
       "file_name":      "science_derot.fits",

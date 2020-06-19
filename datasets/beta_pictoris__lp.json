@@ -3,7 +3,7 @@
     "stack": {
       "file_name":      "betapic_naco_lp_full.hdf5",
       "stack_key":      "/full",
-      "index_kex":      "/header_full/INDEX"
+      "index_key":      "/header_full/INDEX"
     },
     "parang": {
       "file_name":      "betapic_naco_lp_full.hdf5",
