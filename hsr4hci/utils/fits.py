@@ -163,3 +163,24 @@ def get_fits_header_value_array(
     array = np.linspace(start_value, end_value, n_frames)
 
     return array
+
+
+def header_value_exists(
+    file_path: str,
+    key: str,
+) -> bool:
+    """
+    Check if the header of a given FITS file contains a given key.
+
+    Args:
+        file_path: Path to the FITS file to check.
+        key: Name of the header field whose existence to check for.
+
+    Returns:
+        True if the header of the given FITS file contains the given
+        key, and False otherwise.
+    """
+
+    # Open the FITS file and read the target header value
+    with fits.open(file_path) as hdu_list:
+        return key in hdu_list.header.keys()
