@@ -24,7 +24,7 @@ import numpy as np
 
 from hsr4hci.utils.argparsing import get_base_directory
 from hsr4hci.utils.fits import get_fits_header_value, \
-    get_fits_header_value_array
+    get_fits_header_value_array, header_value_exists
 from hsr4hci.utils.observing_conditions import get_key_map
 
 # -----------------------------------------------------------------------------
@@ -108,6 +108,12 @@ if __name__ == '__main__':
 
     # Add base directory to file names
     fits_files = [os.path.join(fits_dir, _) for _ in fits_files]
+
+    # Remove all files that do not contain an attribute for the coherence time
+    # TODO: Check if there is a better way of filtering out these files!
+    tau0_key = 'HIERARCH ESO TEL AMBI TAU0'
+    fits_files = \
+        list(filter(lambda _: header_value_exists(_, tau0_key), fits_files))
 
     # Read out the observation date from each FITS file and make sure the
     # list of FITS files are sorted by this date
