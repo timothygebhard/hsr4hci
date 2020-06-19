@@ -109,14 +109,14 @@ if __name__ == '__main__':
 
     # Count the total number of files and frames (before frame selection)
     n_files = len(fits_files)
-    n_frames = sum((_, get_fits_header_value(_, 'NAXIS3')) for _ in fits_files)
+    n_frames = sum(get_fits_header_value(_, 'NAXIS3', int) for _ in fits_files)
 
     print(f'Done! (n_files = {n_files}, n_frames = {n_frames})', flush=True)
     print('Preparing results dictionary...', end=' ', flush=True)
 
     # Initialize the dictionary of lists which will store the results
     results: Dict[str, list] = \
-        {key: list() for key in get_key_map(metadata['INSTRUMENT']).keys()}
+        {key: list() for key in get_key_map(obs_date=obs_date).keys()}
 
     print('Done!', flush=True)
 
