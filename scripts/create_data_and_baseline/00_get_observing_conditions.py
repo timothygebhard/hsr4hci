@@ -87,15 +87,22 @@ if __name__ == '__main__':
     print(f'Done! [len(indices) = {len_indices}]', flush=True)
 
     # -------------------------------------------------------------------------
-    # Define paths and prepare results dictionary
+    # Collect and filter FITS files to read observing conditions from
     # -------------------------------------------------------------------------
 
     print('Collecting paths to FITS files...', end=' ', flush=True)
 
-    # Get path to directory that contains raw FITS files, as well as any
-    # potential patterns that the names of the FITS files need to match
+    # Get path to directory that contains raw FITS files
     fits_dir = config['raw_data']['fits_dir']
-    name_pattern = config['raw_data']['name_pattern']
+
+    # Get filters for excluding FITS files. There are currently 3 types of
+    # filters, which exclude files based on whether:
+    #   1. Their file name matches a given pattern (given as a regex)
+    #   2. Certain keys (e.g., DATE-OBS) are present in the header
+    #   3. Certain keys have given values (e.g., ESO DPR TYPE == "OBJECT")
+    name_pattern = config['raw_data']['filters']['name_pattern']
+    keys_present = config['raw_data']['filters']['keys_present']
+    keys_values = config['raw_data']['filters']['keys_values']
 
     # Collect all FITS fits in the given FITS directory
     fits_files = \
@@ -109,11 +116,18 @@ if __name__ == '__main__':
     # Add base directory to file names
     fits_files = [os.path.join(fits_dir, _) for _ in fits_files]
 
-    # Remove all files that do not contain an attribute for the coherence time
-    # TODO: Check if there is a better way of filtering out these files!
-    tau0_key = 'ESO TEL AMBI TAU0'
-    fits_files = \
-        list(filter(lambda _: header_value_exists(_, tau0_key), fits_files))
+    # Filter out all files that do not have the required keys in the header
+    if keys_present is not None:
+        for key in keys_present:
+            fits_files = \
+                list(filter(lambda _: header_value_exists(_, key), fits_files))
+
+    # Filter out all files where given keys do not have the required values
+    if keys_values is not None:
+        for (key, value) in keys_values:
+            fits_files = \
+                list(filter(lambda _: get_fits_header_value(_, key) == value,
+                            fits_files))
 
     # Read out the observation date from each FITS file and make sure the
     # list of FITS files are sorted by this date
