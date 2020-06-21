@@ -16,7 +16,11 @@
   },
   "raw_data": {
     "fits_dir":         "/home/ipa/quanz/shared/stolkert/51eri_irdis_k12/raw",
-    "name_pattern":     "^SPHER.2015-09-25.*$"
+    "filters": {
+      "name_pattern":   "^SPHER.2015-09-25.*$",
+      "keys_present":   null,
+      "keys_values":    [["HIERARCH ESO DPR TYPE", "OBJECT"]]
+    }
   },
   "metadata": {
     "CENTRAL_LAMBDA":   "2110 nm",
