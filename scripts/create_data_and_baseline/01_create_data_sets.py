@@ -9,7 +9,6 @@ files from it that contain the data at different levels of pre-stacking
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from hashlib import md5
 from pathlib import Path
 
 import json
@@ -22,40 +21,10 @@ import h5py
 import numpy as np
 
 from hsr4hci.utils.argparsing import get_base_directory
-from hsr4hci.utils.data import load_data
-from hsr4hci.utils.general import prestack_array
-
-
-# -----------------------------------------------------------------------------
-# FUNCTION DEFINITIONS
-# -----------------------------------------------------------------------------
-
-def get_md5_checksum(
-    file_path: str,
-    buffer_size: int = 8192
-) -> str:
-    """
-    Compute the MD5 checksum of the file at the given `file_path`.
-
-    Args:
-        file_path: The to the file of which we want to compute the MD5
-            checksum.
-        buffer_size: Buffer size (in bytes) for reading in the target
-            file in chunks.
-
-    Returns:
-        The MD5 checksum of the specified file.
-    """
-
-    # Initialize the MD5 checksum
-    md5_checksum = md5()
-
-    # Open the input file and process it in chunks, updating the MD5 hash
-    with open(file_path, 'rb') as binary_file:
-        for chunk in iter(lambda: binary_file.read(buffer_size), b""):
-            md5_checksum.update(chunk)
-
-    return str(md5_checksum.hexdigest())
+from hsr4hci.utils.fits import read_fits
+from hsr4hci.utils.general import prestack_array, get_md5_checksum, \
+    is_fits_file, is_hdf_file, crop_center
+from hsr4hci.utils.observing_conditions import load_observing_conditions
 
 
 # -----------------------------------------------------------------------------
@@ -89,16 +58,6 @@ if __name__ == '__main__':
     # Define shortcuts to various parts of the config
     # -------------------------------------------------------------------------
 
-    # Get name of the HDF file containing the raw data and construct path to
-    # the expected location (inside a folder named "raw")
-    hdf_file_name = config['hdf_file_name']
-    hdf_file_path = os.path.join(base_dir, 'raw', hdf_file_name)
-
-    # Get keys of the data sets within the HDF file that we need to load
-    stack_key = config['stack_key']
-    parang_key = config['parang_key']
-    psf_template_key = config['psf_template_key']
-
     # Get metadata for the data set
     metadata = config['metadata']
 
@@ -107,37 +66,96 @@ if __name__ == '__main__':
     stacking_factors = config['stacking_factors']
 
     # -------------------------------------------------------------------------
-    # Load data set and crop it to the desired spatial resolution
+    # Load the stack, parallactic angles and PSF template (from HDF or FITS)
     # -------------------------------------------------------------------------
 
-    # Load the data from the HDF file and crop to target frame_size
-    print('Loading raw data from HDF file...', end=' ', flush=True)
-    stack, parang, psf_template = load_data(file_path=hdf_file_path,
-                                            stack_key=stack_key,
-                                            parang_key=parang_key,
-                                            psf_template_key=psf_template_key,
-                                            frame_size=frame_size)
-    print('Done!')
+    print('Loading stack...', end=' ', flush=True)
 
-    # Augment the metadata based on the "raw" HDF file. This information is
+    # Construct path to stack file
+    stack_file_name = config['input_data']['stack']['file_name']
+    stack_file_path = os.path.join(base_dir, 'input', stack_file_name)
+
+    # Actually load the stack (from FITS or HDF)
+    if is_fits_file(file_path=stack_file_path):
+        stack = read_fits(file_path=stack_file_path)
+    elif is_hdf_file(file_path=stack_file_path):
+        stack_key = config['input_data']['stack']['stack_key']
+        with h5py.File(stack_file_path, 'r') as hdf_file:
+            stack = np.array(hdf_file[stack_key])
+    else:
+        raise RuntimeError('stack file must be either HDF or FITS!')
+
+    # Crop the stack around the center to the desired spatial size
+    stack = crop_center(stack, (-1, frame_size[0], frame_size[1]))
+
+    print('Done!')
+    print('Loading parallactic angles...', end=' ', flush=True)
+
+    # Construct path to parallactic angles file
+    parang_file_name = config['input_data']['parang']['file_name']
+    parang_file_path = os.path.join(base_dir, 'input', parang_file_name)
+
+    # Actually load the parang (from FITS or HDF)
+    if is_fits_file(file_path=parang_file_path):
+        parang = read_fits(file_path=parang_file_path)
+    elif is_hdf_file(file_path=parang_file_path):
+        parang_key = config['input_data']['parang']['key']
+        with h5py.File(parang_file_path, 'r') as hdf_file:
+            parang = np.array(hdf_file[parang_key])
+    else:
+        raise RuntimeError('parang file must be either HDF or FITS!')
+
+    print('Done!')
+    print('Loading PSF template...', end=' ', flush=True)
+
+    # Load the PSF template, if there exists one. Since not all data sets have
+    # a PSF template, this step is different from the stack and parang.
+    file_name = config['input_data']['psf_template']['file_name']
+    if file_name is not None:
+
+        # Construct full path to PSF template file
+        psf_file_path = os.path.join(base_dir, 'input', file_name)
+
+        # Actually load the PSF template (from FITS or HDF)
+        if is_fits_file(file_path=psf_file_path):
+            psf_template = read_fits(file_path=psf_file_path)
+        elif is_hdf_file(file_path=psf_file_path):
+            psf_template_key = config['input_data']['psf_template']['key']
+            with h5py.File(psf_file_path, 'r') as hdf_file:
+                psf_template = np.array(hdf_file[psf_template_key])
+        else:
+            raise RuntimeError('psf_template file must be either HDF or FITS!')
+
+    # If no psf_template is given, add an empty array and raise a warning
+    else:
+        psf_template = np.empty((0, 0))
+        warnings.warn('No unsaturated PSF template given!')
+
+    # -------------------------------------------------------------------------
+    # Augment meta data based on the original stack file
+    # -------------------------------------------------------------------------
+
+    # Augment the metadata based on the "raw" stack file. This information is
     # intended to make it easier to trace back where the data in the resulting
     # HDF file originally came from.
     print('Augmenting metadata for data set...', end=' ', flush=True)
-    metadata['ORIGINAL_FILE_NAME'] = hdf_file_name
-    metadata['ORIGINAL_FILE_HASH'] = get_md5_checksum(file_path=hdf_file_path)
+    metadata['ORIGINAL_STACK_FILE_NAME'] = stack_file_name
+    metadata['ORIGINAL_STACK_FILE_HASH'] = get_md5_checksum(stack_file_path)
     metadata['ORIGINAL_STACK_SHAPE'] = stack.shape
     print('Done!')
 
     # -------------------------------------------------------------------------
-    # Define a "default PSF template"
+    # Load observing conditions
     # -------------------------------------------------------------------------
 
-    # Adding an "empty" placeholder template feels better than adding a
-    # "default" template from another data set, as this information (i.e.,
-    # the template being from another data set) might easily get lost.
-    if psf_template is None:
-        psf_template = np.empty((0, 0))
-        warnings.warn('No unsaturated PSF template given!')
+    # Define expected file path for observing conditions
+    oc_file_name = 'observing_conditions.hdf'
+    oc_file_path = os.path.join(base_dir, 'observing_conditions', oc_file_name)
+
+    # Load the observing conditions from the HDF file (as a dictionary)
+    observing_conditions = \
+        load_observing_conditions(file_path=oc_file_path,
+                                  transform_wind_direction=False)
 
     # -------------------------------------------------------------------------
     # Loop over stacking factors and create a stacked data set for each
@@ -164,6 +182,15 @@ if __name__ == '__main__':
                                         stacking_factor=stacking_factor,
                                         stacking_function=bn.nanmean)
 
+        # Created stacked versions of the observing condition parameters
+        stacked_observing_conditions = dict()
+        if observing_conditions is not None:
+            for key, parameter in observing_conditions.items():
+                stacked_observing_conditions[key] = \
+                    prestack_array(array=parameter,
+                                   stacking_factor=stacking_factor,
+                                   stacking_function=bn.nanmedian)
+
         # Construct file name for output HDF file
         file_name = os.path.join(output_dir, f'stacked_{stacking_factor}.hdf')
 
@@ -180,6 +207,14 @@ if __name__ == '__main__':
             hdf_file.create_dataset(name='psf_template',
                                     data=psf_template,
                                     dtype=np.float32)
+
+            # Create new group for observing conditions and save them as well
+            if stacked_observing_conditions:
+                oc_group = hdf_file.create_group(name='observing_conditions')
+                for key, parameter in stacked_observing_conditions.items():
+                    oc_group.create_dataset(name=key,
+                                            data=parameter,
+                                            dtype=np.float32)
 
             # Add meta data about the data set and the instrument
             for key, value in metadata.items():
