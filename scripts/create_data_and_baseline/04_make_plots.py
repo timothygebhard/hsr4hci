@@ -51,8 +51,10 @@ if __name__ == '__main__':
     # Define some shortcuts
     # -------------------------------------------------------------------------
 
-    # Shortcuts to entries in the configuration
-    planet_positions = config['evaluation']['planet_positions']
+    # Define shortcuts for planet keys
+    planet_keys = list(config['evaluation']['planets'].keys())
+
+    # Shortcuts to other entries in the configuration
     plot_size = config['evaluation']['plot_size']
     min_n_components = config['pca']['min_n_components']
     max_n_components = config['pca']['max_n_components']
@@ -70,22 +72,29 @@ if __name__ == '__main__':
     # Run for each stacking factor
     for stacking_factor in config['stacking_factors']:
 
-        print(f'Running for stacking factor {stacking_factor}...',
-              end=' ', flush=True)
+        print(
+            f'Running for stacking factor {stacking_factor}...',
+            end=' ',
+            flush=True,
+        )
 
         # Construct path to result dir for this stacking factor
         result_dir = os.path.join(baselines_dir, f'stacked_{stacking_factor}')
 
         # Read in the CSV file with the figures of merit into a dataframe
         file_path = os.path.join(result_dir, 'figures_of_merit.csv')
-        dataframe = pd.read_csv(filepath_or_buffer=file_path, sep='\t',
-                                header=[0, 1], index_col=[0, 1])
+        dataframe = pd.read_csv(
+            filepath_or_buffer=file_path,
+            sep='\t',
+            header=[0, 1],
+            index_col=[0, 1],
+        )
 
         # Set up a figure
         plt.figure(figsize=tuple(plot_size))
 
         # Make plot for each planet individually
-        for i, planet_key in enumerate(planet_positions.keys()):
+        for i, planet_key in enumerate(planet_keys):
 
             # Construct full name of the planet (target star + letter)
             planet_name = f'{config["metadata"]["TARGET_STAR"]} {planet_key}'
@@ -95,17 +104,33 @@ if __name__ == '__main__':
 
             # Get maximum SNR and draw it separately
             max_snr_idx = int(np.argmax(snr_values))
-            plt.plot(pc_numbers[max_snr_idx], snr_values[max_snr_idx],
-                     color=adjust_luminosity(f'C{i}'), marker='x', ms=10)
+            plt.plot(
+                x=pc_numbers[max_snr_idx],
+                y=snr_values[max_snr_idx],
+                color=adjust_luminosity(f'C{i}'),
+                marker='x',
+                ms=10,
+            )
 
             # Plot the SNR as a step function
-            plt.step(pc_numbers, snr_values, 'o-', color=f'C{i}',
-                     where='mid', label=planet_name)
+            plt.step(
+                x=pc_numbers,
+                y=snr_values,
+                fmt='o-',
+                color=f'C{i}',
+                where='mid',
+                label=planet_name,
+            )
 
             # Add a label for each data point
             for (n, snr) in zip(pc_numbers, snr_values):
-                plt.annotate(s=f'{snr:.2f}\n{n:d}', xy=(n, snr),
-                             ha='center', va='center', fontsize=1.5)
+                plt.annotate(
+                    s=f'{snr:.2f}\n{n:d}',
+                    xy=(n, snr),
+                    ha='center',
+                    va='center',
+                    fontsize=1.5,
+                )
 
         # Determine maximum SNR for plot limits
         snr_idx = dataframe.columns.get_level_values(1) == 'snr'
