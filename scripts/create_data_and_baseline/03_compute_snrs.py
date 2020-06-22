@@ -81,8 +81,8 @@ if __name__ == '__main__':
 
     # Convert the relevant entries of the config to astropy.units.Quantity
     for key_tuple in [
-        ('evaluation', 'aperture_radius'),
-        ('evaluation', 'max_distance'),
+        ('evaluation', 'snr_options', 'aperture_radius'),
+        ('evaluation', 'snr_options', 'max_distance'),
     ]:
         config = convert_to_quantity(config, key_tuple)
 
