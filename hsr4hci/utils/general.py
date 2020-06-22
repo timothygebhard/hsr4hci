@@ -19,7 +19,6 @@ import operator
 from astropy.nddata.utils import add_array
 from scipy import ndimage
 
-import magic
 import numpy as np
 
 
@@ -473,7 +472,9 @@ def is_fits_file(
     file_path: str,
 ) -> bool:
     """
-    Check if a given file is a FITS file.
+    Check if a given file is a FITS file, based on the ending of the
+    file name (checking for magic numbers does not work, because ESO
+    FITS files seem to not always have the correct MIME type?).
 
     Args:
         file_path: A string containing a file path.
@@ -482,14 +483,15 @@ def is_fits_file(
         True if the given file is a FITS file; False otherwise.
     """
 
-    return bool(magic.from_file(file_path, mime=True) == 'image/fits')
+    return file_path.endswith('.fits')
 
 
 def is_hdf_file(
     file_path: str,
 ) -> bool:
     """
-    Check if a given file is an HDF file.
+    Check if a given file is an HDF file (based on file ending, which
+    can either be "hdf" or "hdf5").
 
     Args:
         file_path: A string containing a file path.
@@ -498,4 +500,4 @@ def is_hdf_file(
         True if the given file is a HDF file; False otherwise.
     """
 
-    return bool(magic.from_file(file_path, mime=True) == 'application/x-hdf')
+    return file_path.endswith('.hdf') or file_path.endswith('.hdf5')
