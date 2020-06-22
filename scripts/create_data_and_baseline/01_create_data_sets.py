@@ -1,8 +1,8 @@
 """
 This script essentially takes a PynPoint data base file (PynPoint is
 used for the pre-processing of the raw data) and creates several HDF
-files from it that contain the data at different levels of pre-stacking
-(i.e., combining blocks of frames using the mean or median).
+and FITS files from it that contain the data at different levels of
+pre-stacking (i.e., combining blocks of frames using the mean/median).
 """
 
 # -----------------------------------------------------------------------------
@@ -21,7 +21,7 @@ import h5py
 import numpy as np
 
 from hsr4hci.utils.argparsing import get_base_directory
-from hsr4hci.utils.fits import read_fits
+from hsr4hci.utils.fits import read_fits, save_fits
 from hsr4hci.utils.general import prestack_array, get_md5_checksum, \
     is_fits_file, is_hdf_file, crop_center
 from hsr4hci.utils.observing_conditions import load_observing_conditions
@@ -195,11 +195,11 @@ if __name__ == '__main__':
                                    stacking_factor=stacking_factor,
                                    stacking_function=bn.nanmedian)
 
-        # Construct file name for output HDF file
-        file_name = os.path.join(output_dir, f'stacked_{stacking_factor}.hdf')
+        # Construct file path for output HDF file
+        file_path = os.path.join(output_dir, f'stacked_{stacking_factor}.hdf')
 
         # Save the result as an HDF file in the output directory
-        with h5py.File(file_name, 'w') as hdf_file:
+        with h5py.File(file_path, 'w') as hdf_file:
 
             # Save data sets: stack, parallactic angles and PSF template
             hdf_file.create_dataset(name='stack',
@@ -224,7 +224,28 @@ if __name__ == '__main__':
             for key, value in metadata.items():
                 hdf_file.attrs[key] = value
 
-        print('Done!')
+        # Construct file name for output FITS file
+        file_path = os.path.join(output_dir, f'stacked_{stacking_factor}.fits')
+
+        # Save the stacked version of the stack (without parang or observing
+        # conditions) as a FITS file for quick inspection
+        save_fits(array=stacked_stack, file_path=file_path, header=metadata)
+
+        print('Done!', flush=True)
+
+    # -------------------------------------------------------------------------
+    # Finally, also save the PSF template as FITS for quick inspection
+    # -------------------------------------------------------------------------
+
+    print('\nSaving unsaturated PSF template to FITS...', flush=True)
+
+    # Construct file name for PSF template FITS file
+    file_path = os.path.join(output_dir, f'psf_template.fits')
+
+    # Save the PSF template as a FITS file
+    save_fits(array=psf_template, file_path=file_path)
+
+    print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
     # Postliminaries
