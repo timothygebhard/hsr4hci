@@ -181,14 +181,8 @@ if __name__ == '__main__':
     # Compute correlation matrix for the parameters of the observing conditions
     correlation_matrix = observing_conditions.corr()
 
-    # Compute a mask for plot (correlation matrix is symmetric; we only need
-    # to plot the lower half to keep things a little clearer)
-    mask = np.ones_like(correlation_matrix, dtype=np.bool)
-    mask[np.tril_indices_from(mask)] = False
-
     # Create an annotated heatmap-plot of the correlation matrix
     heatmap = sns.heatmap(data=correlation_matrix,
-                          mask=mask,
                           square=True,
                           linewidths=2,
                           cmap='coolwarm',
