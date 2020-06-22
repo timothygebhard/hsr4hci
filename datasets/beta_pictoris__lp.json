@@ -15,7 +15,7 @@
     }
   },
   "raw_data": {
-    "fits_dir":         "/home/ipa/quanz/user_accounts/stolkert/betapic_naco_lp/data/science/Apo_165/0.2/200",
+    "fits_dir":         "$STOLKER_USER/betapic_naco_lp/data/science/Apo_165/0.2/200",
     "filters": {
       "name_pattern":   null,
       "keys_present":   null,
