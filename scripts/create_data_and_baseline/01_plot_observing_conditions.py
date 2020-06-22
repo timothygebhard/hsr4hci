@@ -1,6 +1,6 @@
 """
 This script can be used to create various plots of the observing
-condition parameters obtained with 01_get_observing_conditions.py.
+condition parameters obtained with 00_get_observing_conditions.py.
 """
 
 # -----------------------------------------------------------------------------

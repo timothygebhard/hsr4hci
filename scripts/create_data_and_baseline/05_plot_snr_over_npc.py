@@ -1,7 +1,7 @@
 """
 This script plots the SNR as a function of the number of principal
 components, using the figures_of_merit.csv results file created by
-03_compute_snrs.py.
+04_compute_snrs.py.
 """
 
 # -----------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 """
 This script runs a PCA-based PSF subtraction on the data sets created by
-the 01_create_data_sets.py script, and computes the respective signal
+the 02_create_data_sets.py script, and computes the respective signal
 estimates (on which we can then compute the baseline SNR).
 """
 

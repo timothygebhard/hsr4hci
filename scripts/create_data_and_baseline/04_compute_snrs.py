@@ -1,5 +1,5 @@
 """
-This script takes the PCA-based signal estimates from 02_run_pca.py and
+This script takes the PCA-based signal estimates from 03_run_pca.py and
 computes the SNR at the planet positions specified in the config.json.
 To speed up the computation, process-based multiprocessing is used to
 compute the SNR for different numbers of PCs in parallel.
