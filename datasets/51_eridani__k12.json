@@ -1,61 +1,63 @@
 {
   "input_data": {
     "stack": {
-      "file_name":      "science_cube001.fits",
-      "stack_key":      null,
-      "index_key":      null
+      "file_name":       "science_cube001.fits",
+      "stack_key":       null,
+      "index_key":       null
     },
     "parang": {
-      "file_name":      "science_derot.fits",
-      "key":            null
+      "file_name":       "science_derot.fits",
+      "key":             null
     },
     "psf_template": {
-      "file_name":      "psf_cube000.fits",
-      "key":            null
+      "file_name":       "psf_cube000.fits",
+      "key":             null
     }
   },
   "raw_data": {
-    "fits_dir":         "$STOLKERT_SHARED/51eri_irdis_k12/raw",
+    "fits_dir":          "$STOLKERT_SHARED/51eri_irdis_k12/raw",
     "filters": {
-      "name_pattern":   "^SPHER.2015-09-25.*$",
-      "keys_present":   null,
-      "keys_values":    [["HIERARCH ESO DPR TYPE", "OBJECT"]]
+      "name_pattern":    "^SPHER.2015-09-25.*$",
+      "keys_present":    null,
+      "keys_values":     [["HIERARCH ESO DPR TYPE", "OBJECT"]]
     }
   },
   "metadata": {
-    "CENTRAL_LAMBDA":   "2110 nm",
-    "DATE":             "2015-09-25",
-    "DIT":              5.002,
-    "ESO_PROGRAM_ID":   "095.C-0298(D)",
-    "FILTER":           "K12",
-    "INSTRUMENT":       "IRDIS",
-    "LAMBDA_OVER_D":    0.0531,
-    "PIXSCALE":         0.012255,
-    "TARGET_STAR":      "51 Eridani"
+    "CENTRAL_LAMBDA":    "2110 nm",
+    "DATE":              "2015-09-25",
+    "DIT":               5.002,
+    "ESO_PROGRAM_ID":    "095.C-0298(D)",
+    "FILTER":            "K12",
+    "INSTRUMENT":        "IRDIS",
+    "LAMBDA_OVER_D":     0.0531,
+    "PIXSCALE":          0.012255,
+    "TARGET_STAR":       "51 Eridani"
   },
-  "frame_size":         [121, 121],
-  "stacking_factors":   [1, 2],
+  "frame_size":          [121, 121],
+  "stacking_factors":    [1, 2],
   "pca": {
-    "min_n_components": 1,
-    "max_n_components": 200
+    "min_n_components":  1,
+    "max_n_components":  200
   },
   "roi": {
-    "inner_radius":     [0.00, "arcsec"],
-    "outer_radius":     [0.70, "arcsec"]
+    "inner_radius":      [0.00, "arcsec"],
+    "outer_radius":      [0.70, "arcsec"]
   },
   "evaluation": {
     "planets": {
       "b": {
-        "position":     [54.58, 27.81],
+        "position":      [54.58, 27.81],
         "ignore_neighbors": 2
       }
     },
-    "aperture_radius":  [0.50, "lambda_over_d"],
-    "target":           "snr",
-    "method":           "brute",
-    "max_distance":     [2.00, "pixel"],
-    "time_limit":       300,
-    "n_processes":      null,
-    "plot_size":        [15, 5]
+    "snr_options": {
+      "aperture_radius": [0.50, "lambda_over_d"],
+      "target":          "snr",
+      "method":          "brute",
+      "max_distance":    [2.00, "pixel"],
+      "time_limit":      300
+    },
+    "n_processes":       null,
+    "plot_size":         [15, 5]
   }
 }

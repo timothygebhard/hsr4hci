@@ -1,61 +1,63 @@
 {
   "input_data": {
     "stack": {
-      "file_name":      "betapic_naco_lp_full.hdf5",
-      "stack_key":      "/full",
-      "index_key":      "/header_full/INDEX"
+      "file_name":       "betapic_naco_lp_full.hdf5",
+      "stack_key":       "/full",
+      "index_key":       "/header_full/INDEX"
     },
     "parang": {
-      "file_name":      "betapic_naco_lp_full.hdf5",
-      "key":            "/header_full/PARANG"
+      "file_name":       "betapic_naco_lp_full.hdf5",
+      "key":             "/header_full/PARANG"
     },
     "psf_template": {
-      "file_name":      "betapic_naco_lp_full.hdf5",
-      "key":            "/flux"
+      "file_name":       "betapic_naco_lp_full.hdf5",
+      "key":             "/flux"
     }
   },
   "raw_data": {
-    "fits_dir":         "$STOLKERT_USER/betapic_naco_lp/data/science/Apo_165/0.2/200",
+    "fits_dir":          "$STOLKERT_USER/betapic_naco_lp/data/science/Apo_165/0.2/200",
     "filters": {
-      "name_pattern":   null,
-      "keys_present":   null,
-      "keys_values":    null
+      "name_pattern":    null,
+      "keys_present":    null,
+      "keys_values":     null
     }
   },
   "metadata": {
-    "CENTRAL_LAMBDA":   "3800 nm",
-    "DATE":             "2013-02-01",
-    "DIT":              0.200,
-    "ESO_PROGRAM_ID":   "60.A-9800(J)",
-    "FILTER":           "L'",
-    "INSTRUMENT":       "NACO",
-    "LAMBDA_OVER_D":    0.0956,
-    "PIXSCALE":         0.0271,
-    "TARGET_STAR":      "Beta Pictoris"
+    "CENTRAL_LAMBDA":    "3800 nm",
+    "DATE":              "2013-02-01",
+    "DIT":               0.200,
+    "ESO_PROGRAM_ID":    "60.A-9800(J)",
+    "FILTER":            "L'",
+    "INSTRUMENT":        "NACO",
+    "LAMBDA_OVER_D":     0.0956,
+    "PIXSCALE":          0.0271,
+    "TARGET_STAR":       "Beta Pictoris"
   },
-  "frame_size":         [81, 81],
-  "stacking_factors":   [1, 5, 10, 25, 50, 100],
+  "frame_size":          [81, 81],
+  "stacking_factors":    [1, 5, 10, 25, 50, 100],
   "pca": {
-    "min_n_components": 1,
-    "max_n_components": 200
+    "min_n_components":  1,
+    "max_n_components":  200
   },
   "roi": {
-    "inner_radius":     [0.00, "arcsec"],
-    "outer_radius":     [0.70, "arcsec"]
+    "inner_radius":      [0.00, "arcsec"],
+    "outer_radius":      [0.70, "arcsec"]
   },
   "evaluation": {
     "planets": {
       "b": {
-        "position":     [48.98, 26.00],
+        "position":      [48.98, 26.00],
         "ignore_neighbors": 2
       }
     },
-    "aperture_radius":  [0.50, "lambda_over_d"],
-    "target":           "snr",
-    "method":           "brute",
-    "max_distance":     [2.00, "pixel"],
-    "time_limit":       300,
-    "n_processes":      null,
-    "plot_size":        [15, 5]
+    "snr_options": {
+      "aperture_radius": [0.50, "lambda_over_d"],
+      "target":          "snr",
+      "method":          "brute",
+      "max_distance":    [2.00, "pixel"],
+      "time_limit":      300
+    },
+    "n_processes":       null,
+    "plot_size":         [15, 5]
   }
 }
