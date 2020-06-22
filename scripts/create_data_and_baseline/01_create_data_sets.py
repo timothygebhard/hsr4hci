@@ -241,7 +241,7 @@ if __name__ == '__main__':
     # Finally, also save the PSF template as FITS for quick inspection
     # -------------------------------------------------------------------------
 
-    print('\nSaving unsaturated PSF template to FITS...', flush=True)
+    print('\nSaving unsaturated PSF template to FITS...', end=' ', flush=True)
 
     # Construct file name for PSF template FITS file
     file_path = os.path.join(output_dir, f'psf_template.fits')
