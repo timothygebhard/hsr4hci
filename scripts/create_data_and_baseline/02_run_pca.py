@@ -62,19 +62,22 @@ if __name__ == '__main__':
     # is a bit cumbersome, because in the meta data, we cannot use the usual
     # convention to specify units, as the meta data are also written to the HDF
     # file. Hence, we must hard-code the unit conventions here.
-    config['metadata']['PIXSCALE'] = \
-        units.Quantity(config['metadata']['PIXSCALE'], 'arcsec / pixel')
-    config['metadata']['LAMBDA_OVER_D'] = \
-        units.Quantity(config['metadata']['LAMBDA_OVER_D'], 'arcsec')
+    config['metadata']['PIXSCALE'] = units.Quantity(
+        config['metadata']['PIXSCALE'], 'arcsec / pixel'
+    )
+    config['metadata']['LAMBDA_OVER_D'] = units.Quantity(
+        config['metadata']['LAMBDA_OVER_D'], 'arcsec'
+    )
 
     # Use this to set up the instrument-specific conversion factors. We need
     # this here to that we can parse "lambda_over_d" as a unit in the config.
-    set_units_for_instrument(pixscale=config['metadata']['PIXSCALE'],
-                             lambda_over_d=config['metadata']['LAMBDA_OVER_D'])
+    set_units_for_instrument(
+        pixscale=config['metadata']['PIXSCALE'],
+        lambda_over_d=config['metadata']['LAMBDA_OVER_D'],
+    )
 
     # Convert the relevant entries of the config to astropy.units.Quantity
-    for key_tuple in [('roi', 'inner_radius'),
-                      ('roi', 'outer_radius')]:
+    for key_tuple in [('roi', 'inner_radius'), ('roi', 'outer_radius')]:
         config = convert_to_quantity(config, key_tuple)
 
     # -------------------------------------------------------------------------
@@ -90,9 +93,11 @@ if __name__ == '__main__':
     pca_numbers = list(range(min_n_components, max_n_components + 1))
 
     # Construct a ROI mask
-    roi_mask = get_roi_mask(mask_size=config['frame_size'],
-                            inner_radius=config['roi']['inner_radius'],
-                            outer_radius=config['roi']['outer_radius'])
+    roi_mask = get_roi_mask(
+        mask_size=config['frame_size'],
+        inner_radius=config['roi']['inner_radius'],
+        outer_radius=config['roi']['outer_radius'],
+    )
 
     # -------------------------------------------------------------------------
     # Run PCA
@@ -107,8 +112,9 @@ if __name__ == '__main__':
         # Create a directory in which we store the results
         # ---------------------------------------------------------------------
 
-        result_dir = os.path.join(base_dir, 'pca_baselines',
-                                  f'stacked_{stacking_factor}')
+        result_dir = os.path.join(
+            base_dir, 'pca_baselines', f'stacked_{stacking_factor}'
+        )
         Path(result_dir).mkdir(exist_ok=True, parents=True)
 
         # ---------------------------------------------------------------------
@@ -116,8 +122,9 @@ if __name__ == '__main__':
         # ---------------------------------------------------------------------
 
         # Load the input stack and the parallactic angles
-        file_path = os.path.join(base_dir, 'processed',
-                                 f'stacked_{stacking_factor}.hdf')
+        file_path = os.path.join(
+            base_dir, 'processed', f'stacked_{stacking_factor}.hdf'
+        )
         stack, parang, _ = load_data(file_path=file_path)
 
         # Apply the ROI mask to the input stack (we have to use 0 instead of
@@ -125,12 +132,13 @@ if __name__ == '__main__':
         stack[:, ~roi_mask] = 0
 
         # Compute the signal estimates and the principal components
-        signal_estimates, principal_components = \
-            get_pca_signal_estimates(stack=stack,
-                                     parang=parang,
-                                     pca_numbers=pca_numbers,
-                                     return_components=True,
-                                     verbose=True)
+        signal_estimates, principal_components = get_pca_signal_estimates(
+            stack=stack,
+            parang=parang,
+            pca_numbers=pca_numbers,
+            return_components=True,
+            verbose=True,
+        )
 
         # Apply the ROI mask to the signal estimates
         signal_estimates[:, ~roi_mask] = np.nan
