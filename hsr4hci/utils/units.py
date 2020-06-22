@@ -86,3 +86,20 @@ def set_units_for_instrument(pixscale: units.Quantity,
     # This line seems to be necessary to make our units and equivalencies
     # available also outside of the scope of this function
     units.set_enabled_equivalencies(equivalencies=[])
+
+
+def to_pixel(
+    quantity: units.Quantity,
+) -> float:
+    """
+    Convert a given quantity to pixels and return the value as a float.
+
+    Args:
+        quantity: A compatible astropy.units.Quantity, that is, a
+        quantity that can be converted to pixel.
+
+    Returns:
+        The value of `quantity` in pixels as a simple float.
+    """
+
+    return float(quantity.to('pixel').value)
