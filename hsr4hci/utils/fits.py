@@ -35,9 +35,9 @@ def read_fits(
         A numpy array containing the contents of the given FITS file.
     """
 
-    with fits.open(file_path, ignore_missing_end=True) as hdu_list:
-        array = np.array(hdu_list[0].data)
-        header = dict(hdu_list[0].header)
+    with fits.open(file_path) as hdulist:
+        array = np.array(hdulist[0].data)
+        header = dict(hdulist[0].header)
 
     if return_header:
         return array, header
@@ -107,7 +107,7 @@ def get_fits_header_value(
     """
 
     # Open the FITS file and read the target header value
-    with fits.open(file_path, ignore_missing_end=True) as hdu_list:
+    with fits.open(file_path) as hdu_list:
         value = hdu_list[0].header[key]
 
     # If desired, attempt to convert the value to the given data type
@@ -197,7 +197,7 @@ def header_value_exists(
     #
     # Just because a key is not in `header.keys()` does therefore *not* mean
     # that we cannot access that key -- hence the try/except construct.
-    with fits.open(file_path, ignore_missing_end=True) as hdu_list:
+    with fits.open(file_path) as hdu_list:
         try:
             _ = hdu_list[0].header[key]
             return True
