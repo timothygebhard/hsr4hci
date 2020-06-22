@@ -88,7 +88,7 @@ if __name__ == '__main__':
     # Crop the stack around the center to the desired spatial size
     stack = crop_center(stack, (-1, frame_size[0], frame_size[1]))
 
-    print('Done!')
+    print('Done!', flush=True)
     print('Loading parallactic angles...', end=' ', flush=True)
 
     # Construct path to parallactic angles file
@@ -105,7 +105,7 @@ if __name__ == '__main__':
     else:
         raise RuntimeError('parang file must be either HDF or FITS!')
 
-    print('Done!')
+    print('Done!', flush=True)
     print('Loading PSF template...', end=' ', flush=True)
 
     # Load the PSF template, if there exists one. Since not all data sets have
@@ -126,9 +126,13 @@ if __name__ == '__main__':
         else:
             raise RuntimeError('psf_template file must be either HDF or FITS!')
 
+        print('Done!', flush=True)
+
     # If no psf_template is given, add an empty array and raise a warning
     else:
+
         psf_template = np.empty((0, 0))
+        print('Done!', flush=True)
         warnings.warn('No unsaturated PSF template given!')
 
     # -------------------------------------------------------------------------
