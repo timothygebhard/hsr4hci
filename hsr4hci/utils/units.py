@@ -17,8 +17,10 @@ from hsr4hci.utils.general import get_from_nested_dict, set_in_nested_dict
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def convert_to_quantity(config: Dict[str, Any],
-                        key_tuple: Tuple[str, ...]) -> Dict[str, Any]:
+def convert_to_quantity(
+    config: Dict[str, Any],
+    key_tuple: Tuple[str, ...],
+) -> Dict[str, Any]:
     """
     Auxiliary function to convert a entry in a given configuration
     dictionary to an `astropy.units.Quantity` object.
@@ -48,10 +50,14 @@ def convert_to_quantity(config: Dict[str, Any],
     return config
 
 
-@units.quantity_input(pixscale=units.Unit('arcsec / pixel'),
-                      lambda_over_d=units.Unit('arcsec'))
-def set_units_for_instrument(pixscale: units.Quantity,
-                             lambda_over_d: units.Quantity) -> None:
+@units.quantity_input(
+    pixscale=units.Unit('arcsec / pixel'),
+    lambda_over_d=units.Unit('arcsec')
+)
+def set_units_for_instrument(
+    pixscale: units.Quantity,
+    lambda_over_d: units.Quantity,
+) -> None:
     """
     Define instrument-specific units and conversions.
 
