@@ -54,6 +54,10 @@ if __name__ == '__main__':
     with open(file_path, 'r') as config_file:
         config = json.load(config_file)
 
+    # Expand / resolve the environmental variables in the FITS directory
+    config['raw_data']['fits_dir'] = \
+        os.path.expandvars(config['raw_data']['fits_dir'])
+
     # Select meta data (about the data set) from the config file, and convert
     # the observation date to a proper datetime object (assuming UTC time)
     metadata = config['metadata']

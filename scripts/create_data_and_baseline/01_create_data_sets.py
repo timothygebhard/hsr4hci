@@ -54,10 +54,6 @@ if __name__ == '__main__':
     with open(file_path, 'r') as config_file:
         config = json.load(config_file)
 
-    # Expand / resolve the environmental variables in the FITS directory
-    config['raw_data']['fits_dir'] = \
-        os.path.expandvars(config['raw_data']['fits_dir'])
-
     # -------------------------------------------------------------------------
     # Define shortcuts to various parts of the config
     # -------------------------------------------------------------------------
