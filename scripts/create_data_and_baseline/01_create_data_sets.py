@@ -227,9 +227,13 @@ if __name__ == '__main__':
         # Construct file name for output FITS file
         file_path = os.path.join(output_dir, f'stacked_{stacking_factor}.fits')
 
+        # Create a FITS compatible version of the metadata dict that can be
+        # written to the FITS header (i.e., prepend HIERARCH to all keywords)
+        header = {'HIERARCH ' + key: value for key, value in metadata.items()}
+
         # Save the stacked version of the stack (without parang or observing
         # conditions) as a FITS file for quick inspection
-        save_fits(array=stacked_stack, file_path=file_path, header=metadata)
+        save_fits(array=stacked_stack, file_path=file_path, header=header)
 
         print('Done!', flush=True)
 
