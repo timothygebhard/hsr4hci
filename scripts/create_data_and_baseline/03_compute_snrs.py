@@ -26,7 +26,11 @@ from hsr4hci.utils.argparsing import get_base_directory
 from hsr4hci.utils.evaluation import compute_optimized_snr
 from hsr4hci.utils.fits import read_fits
 from hsr4hci.utils.queue import Queue
-from hsr4hci.utils.units import convert_to_quantity, set_units_for_instrument
+from hsr4hci.utils.units import (
+    convert_to_quantity,
+    to_pixel,
+    set_units_for_instrument,
+)
 
 
 # -----------------------------------------------------------------------------
@@ -61,36 +65,52 @@ if __name__ == '__main__':
     # is a bit cumbersome, because in the meta data, we cannot use the usual
     # convention to specify units, as the meta data are also written to the HDF
     # file. Hence, we must hard-code the unit conventions here.
-    config['metadata']['PIXSCALE'] = \
-        units.Quantity(config['metadata']['PIXSCALE'], 'arcsec / pixel')
-    config['metadata']['LAMBDA_OVER_D'] = \
-        units.Quantity(config['metadata']['LAMBDA_OVER_D'], 'arcsec')
+    config['metadata']['PIXSCALE'] = units.Quantity(
+        config['metadata']['PIXSCALE'], 'arcsec / pixel'
+    )
+    config['metadata']['LAMBDA_OVER_D'] = units.Quantity(
+        config['metadata']['LAMBDA_OVER_D'], 'arcsec'
+    )
 
     # Use this to set up the instrument-specific conversion factors. We need
     # this here to that we can parse "lambda_over_d" as a unit in the config.
-    set_units_for_instrument(pixscale=config['metadata']['PIXSCALE'],
-                             lambda_over_d=config['metadata']['LAMBDA_OVER_D'])
+    set_units_for_instrument(
+        pixscale=config['metadata']['PIXSCALE'],
+        lambda_over_d=config['metadata']['LAMBDA_OVER_D'],
+    )
 
     # Convert the relevant entries of the config to astropy.units.Quantity
-    for key_tuple in [('evaluation', 'aperture_radius'),
-                      ('evaluation', 'max_distance')]:
+    for key_tuple in [
+        ('evaluation', 'aperture_radius'),
+        ('evaluation', 'max_distance'),
+    ]:
         config = convert_to_quantity(config, key_tuple)
 
     # -------------------------------------------------------------------------
     # Define some shortcuts
     # -------------------------------------------------------------------------
 
+    # Define shortcuts for planet positions
+    planet_positions: Dict[str, Tuple[float, float]] = dict()
+    ignore_neighbors: Dict[str, int] = dict()
+    for planet_key, options in config['evaluation']['planets'].items():
+        planet_positions[planet_key] = (
+            float(options['position'][0]),
+            float(options['position'][1]),
+        )
+        ignore_neighbors[planet_key] = int(options['ignore_neighbors'])
+
+    # Define shortcuts for SNR options
+    snr_options = config['evaluation']['snr_options']
+    aperture_radius = to_pixel(snr_options['aperture_radius'])
+    max_distance = to_pixel(snr_options['max_distance'])
+    method = snr_options['method']
+    target = snr_options['target']
+    time_limit = snr_options['time_limit']
+
     # Shortcuts to entries in the configuration
-    aperture_radius = config['evaluation']['aperture_radius'].to('pixel').value
-    ignore_neighbors = config['evaluation']['ignore_neighbors']
     min_n_components = config['pca']['min_n_components']
-    max_distance = config['evaluation']['max_distance'].to('pixel').value
     max_n_components = config['pca']['max_n_components']
-    method = config['evaluation']['method']
-    planet_positions = config['evaluation']['planet_positions']
-    planet_positions = {k: tuple(v) for k, v in planet_positions.items()}
-    target = config['evaluation']['target']
-    time_limit = config['evaluation']['time_limit']
     n_processes = config['evaluation']['n_processes']
 
     # In case we do not explicitly limit the number of parallel processes, we
@@ -100,7 +120,7 @@ if __name__ == '__main__':
 
     # Construct numbers of principal components (and count them)
     pca_numbers = list(range(min_n_components, max_n_components + 1))
-    n_frames = len(pca_numbers)
+    n_signal_estimates = len(pca_numbers)
 
     # Other shortcuts
     baselines_dir = os.path.join(base_dir, 'pca_baselines')
@@ -154,7 +174,7 @@ if __name__ == '__main__':
             # one frame with the corresponding signal_estimate (as well as the
             # index, so that we can reconstruct the correct result order)
             input_queue = Queue()
-            for index in range(n_frames):
+            for index in range(n_signal_estimates):
                 input_queue.put((index, signal_estimates[index]))
 
             # Initialize an output queue and a list for the results
@@ -164,10 +184,7 @@ if __name__ == '__main__':
             # Define a partial function application of compute_optimized_snr():
             # Fix all arguments except for the frame, and make sure the output
             # is placed into the shared output queue.
-            def get_fom(
-                index: int,
-                frame: np.ndarray,
-            ) -> None:
+            def get_fom(index: int, frame: np.ndarray,) -> None:
                 """
                 Partial function application of compute_optimized_snr().
 
@@ -179,16 +196,16 @@ if __name__ == '__main__':
                         planet signal) for which to compute the SNR.
                 """
 
-                # pylint: disable=cell-var-from-loop
-                result = \
-                    compute_optimized_snr(frame=frame,
-                                          position=planet_position,
-                                          aperture_radius=aperture_radius,
-                                          ignore_neighbors=ignore_neighbors,
-                                          target=target,
-                                          method=method,
-                                          max_distance=max_distance,
-                                          time_limit=time_limit)
+                result = compute_optimized_snr(
+                    frame=frame,
+                    position=planet_position,
+                    aperture_radius=aperture_radius,
+                    ignore_neighbors=ignore_neighbors[planet_key],
+                    target=target,
+                    method=method,
+                    max_distance=max_distance,
+                    time_limit=time_limit,
+                )
                 output_queue.put((index, result))
 
             # -----------------------------------------------------------------
@@ -196,13 +213,13 @@ if __name__ == '__main__':
             # -----------------------------------------------------------------
 
             # Define a context for the progress bar
-            with tqdm(ncols=80, total=n_frames) as progressbar:
+            with tqdm(ncols=80, total=n_signal_estimates) as progressbar:
 
                 # Initialize a list for the processes that we start
-                processes: list = []
+                processes: List[Process] = []
 
                 # Keep going while we do not yet have results for all frames
-                while not len(results_list) == n_frames:
+                while not len(results_list) == n_signal_estimates:
 
                     # Remove processes that have terminated already from our
                     # list of (running) processes
@@ -212,8 +229,10 @@ if __name__ == '__main__':
 
                     # Start new processes until the input_queue is empty, or
                     # until we have reached the maximum number of processes
-                    while (not input_queue.empty() and
-                           len(processes) < n_processes):
+                    while (
+                        not input_queue.empty()
+                        and len(processes) < n_processes
+                    ):
 
                         # Get new frame from queue and define new process
                         index, frame = input_queue.get()
@@ -252,16 +271,20 @@ if __name__ == '__main__':
 
         # Create new multi-index from the Cartesian product of the planet
         # names and the names for the figures of merits
-        multi_index = \
-            pd.MultiIndex.from_product(iterables=[planet_names, fom_names],
-                                       names=['planet', 'figures_of_merit'])
+        multi_index = pd.MultiIndex.from_product(
+            iterables=[planet_names, fom_names],
+            names=['planet', 'figures_of_merit'],
+        )
 
         # Create an additional index that associates every row in the data
         # frame with the corresponding number of principal components
-        row_index = \
-            pd.MultiIndex.from_arrays(arrays=[range(n_frames),
-                                              pca_numbers[:n_frames]],
-                                      names=[None, 'n_principal_components'])
+        row_index = pd.MultiIndex.from_arrays(
+            arrays=[
+                range(n_signal_estimates),
+                pca_numbers[:n_signal_estimates],
+            ],
+            names=[None, 'n_principal_components'],
+        )
 
         # Create an empty data frame using these two multi-indices
         dataframe = pd.DataFrame(index=row_index, columns=multi_index)
