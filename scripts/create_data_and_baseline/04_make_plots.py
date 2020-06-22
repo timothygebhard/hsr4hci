@@ -105,8 +105,8 @@ if __name__ == '__main__':
             # Get maximum SNR and draw it separately
             max_snr_idx = int(np.argmax(snr_values))
             plt.plot(
-                x=pc_numbers[max_snr_idx],
-                y=snr_values[max_snr_idx],
+                pc_numbers[max_snr_idx],
+                snr_values[max_snr_idx],
                 color=adjust_luminosity(f'C{i}'),
                 marker='x',
                 ms=10,
@@ -114,9 +114,9 @@ if __name__ == '__main__':
 
             # Plot the SNR as a step function
             plt.step(
-                x=pc_numbers,
-                y=snr_values,
-                fmt='o-',
+                pc_numbers,
+                snr_values,
+                'o-',
                 color=f'C{i}',
                 where='mid',
                 label=planet_name,
