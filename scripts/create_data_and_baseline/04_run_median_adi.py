@@ -131,16 +131,18 @@ if __name__ == '__main__':
         stack, parang, _, __, ___ = load_data(file_path=file_path)
 
         # Compute the signal estimates and the principal components
+        print('Computing median ADI signal estimate...', end=' ', flush=True)
         signal_estimate = derotate_combine(
             stack=stack, parang=parang, mask=~roi_mask, subtract='median'
         )
+        print('Done!', flush=True)
 
         # ---------------------------------------------------------------------
         # Save the signal estimates as FITS files
         # ---------------------------------------------------------------------
 
         # Save signal estimates as FITS file
-        print('Saving signal estimates to FITS...', end=' ', flush=True)
+        print('Saving signal estimate to FITS...', end=' ', flush=True)
         file_path = os.path.join(result_dir, 'signal_estimate.fits')
         save_fits(array=signal_estimate, file_path=file_path)
         print('Done!', flush=True)
@@ -160,6 +162,7 @@ if __name__ == '__main__':
             ignore_neighbors[planet_key] = int(options['ignore_neighbors'])
 
         # Define shortcuts for SNR options
+        target_star = config["metadata"]["TARGET_STAR"]
         snr_options = config['evaluation']['snr_options']
         aperture_radius = to_pixel(snr_options['aperture_radius'])
         max_distance = to_pixel(snr_options['max_distance'])
@@ -170,9 +173,9 @@ if __name__ == '__main__':
         for planet_key, planet_position in planet_positions.items():
 
             # Construct full name of the planet (target star + letter)
-            planet_name = f'{config["metadata"]["TARGET_STAR"]} {planet_key}'
+            planet_name = f'{target_star} {planet_key}'
 
-            print(f'Running SNR computation for {planet_name}:', flush=True)
+            print(f'Computing SNR for {planet_name}...', end=' ', flush=True)
 
             # Actually compute the SNR and other quantities
             result = compute_optimized_snr(
@@ -187,7 +190,7 @@ if __name__ == '__main__':
             )
 
             # Save result for each planet individually as a CSV file
-            file_path = os.path.join(result_dir, f'{planet_name}.csv')
+            file_path = os.path.join(result_dir, f'{planet_key}.csv')
             with open(file_path, 'w') as csv_file:
                 csv_writer = csv.writer(csv_file)
                 csv_writer.writerows(result.items())
