@@ -81,7 +81,12 @@ if __name__ == '__main__':
     )
 
     # Convert the relevant entries of the config to astropy.units.Quantity
-    for key_tuple in [('roi', 'inner_radius'), ('roi', 'outer_radius')]:
+    for key_tuple in [
+        ('roi', 'inner_radius'),
+        ('roi', 'outer_radius'),
+        ('evaluation', 'snr_options', 'aperture_radius'),
+        ('evaluation', 'snr_options', 'max_distance'),
+    ]:
         config = convert_to_quantity(config, key_tuple)
 
     # -------------------------------------------------------------------------
