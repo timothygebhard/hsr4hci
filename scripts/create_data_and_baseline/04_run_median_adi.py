@@ -133,7 +133,7 @@ if __name__ == '__main__':
 
         # Compute the signal estimates and the principal components
         signal_estimate = derotate_combine(
-            stack=stack, parang=parang, mask=roi_mask, subtract='median'
+            stack=stack, parang=parang, mask=~roi_mask, subtract='median'
         )
 
         # ---------------------------------------------------------------------
