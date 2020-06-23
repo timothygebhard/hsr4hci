@@ -10,13 +10,12 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Dict, Tuple
 
+import csv
 import json
 import os
 import time
 
 from astropy import units
-
-import pandas as pd
 
 from hsr4hci.utils.argparsing import get_base_directory
 from hsr4hci.utils.data import load_data
@@ -189,7 +188,9 @@ if __name__ == '__main__':
 
             # Save result for each planet individually as a CSV file
             file_path = os.path.join(result_dir, f'{planet_name}.csv')
-            pd.DataFrame(result).to_csv(file_path)
+            with open(file_path, 'w') as csv_file:
+                csv_writer = csv.writer(csv_file)
+                csv_writer.writerows(result.items())
 
             print('Done!', flush=True)
             print(80 * '-', '\n', flush=True)
