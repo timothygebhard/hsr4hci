@@ -7,7 +7,7 @@ Utility functions for loading data.
 # -----------------------------------------------------------------------------
 
 from pathlib import Path
-from typing import Any, Optional, Tuple
+from typing import Dict, Optional, Tuple, Union
 
 import h5py
 import numpy as np
@@ -20,61 +20,69 @@ from hsr4hci.utils.general import crop_center
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def load_data(file_path: str,
-              stack_key: str = '/stack',
-              parang_key: str = '/parang',
-              psf_template_key: Optional[str] = None,
-              frame_size: Optional[Tuple[int, int]] = None,
-              presubtract: Optional[str] = None,
-              subsample: int = 1,
-              **_: Any) -> Tuple[np.ndarray, np.ndarray, Optional[np.ndarray]]:
+
+def load_data(
+    file_path: str,
+    frame_size: Optional[Tuple[int, int]] = None,
+    presubtract: Optional[str] = None,
+    subsample: int = 1,
+) -> Tuple[
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    Dict[str, np.ndarray],
+    Dict[str, Union[str, float]],
+]:
     """
-    Load a dataset from the HDF5 file at the given `file_path`.
+    Load a dataset from the HDF file at the given `file_path`.
+
+    Note: This function only works with HDF files that follow the
+        specific assumptions regarding the file structure that are
+        built into the script in the `create_data_and_baseline`
+        directory in the `scripts` folder.
 
     Args:
-        file_path: A string containing the path to the HDF5 file
-            containing the data set to be loading (consisting of the
-            stack of images, an array of parallactic angles, and
-            optionally an unsaturated PSF template).
-        stack_key: The key of the dataset in the HDF file that contains
-            the stack, which is expected to be a 3D array with the
-            following shape: (n_frames, width, height).
-        parang_key: The key of the dataset in the HDF file that contains
-            the parallactic angles, which is expected to be an 1D array
-            with the following shape: (n_frames, )
-        psf_template_key: Optionally, the key key of the dataset in the
-            HDF file that contains the unsaturated PSF template, which
-            is expected to be a 2D array of shape (width, height). The
-            size does not have to match the spatial size of the stack.
+        file_path: A string containing the path to the HDF file
+            containing the data set to be loaded.
         frame_size: A tuple (width, height) of integers specifying the
             spatial size (in pixels) to which the stack will be cropped
-            around the center. Dimensions should be odd numbers. If None
-            is given, the frames are not cropped.
+            around the center. Dimensions should be odd numbers.
+            If `None` is given, the frames are not cropped (default).
         presubtract: If this parameter is set to "mean" or "median",
-            we subtract the mean (or median) along the time axis from
+            the mean (or median) along the time axis is subtracted from
             the stack before returning it.
         subsample: An integer specifying the subsampling factor for the
-            stack. If set to n, we only keep every n-th frame. By
+            stack. If set to n, only every n-th frame is kept. By
             default, all frames are kept (i.e., subsample=1).
-        **_: Additional keywords (which will be ignored).
 
     Returns:
-        A tuple (stack, parang, psf_template), containing numpy array
-        with the frames, the parallactic angles and the unsaturated
-        PSF template.
+        A tuple `(stack, parang, psf_template, observing_conditions,
+        metadata)`, containing numpy arrays with the frames, the
+        parallactic angles and the unsaturated PSF template, as well as
+        dictionaries with the observing conditions and the metadata.
     """
 
     # Read in the dataset from the HDf file
     with h5py.File(file_path, 'r') as hdf_file:
 
         # Select stack and parallactic angles and subsample as desired
-        stack = np.array(hdf_file[stack_key][::subsample, ...])
-        parang = np.array(hdf_file[parang_key][::subsample, ...])
+        stack = np.array(hdf_file['/stack'][::subsample, ...])
+        parang = np.array(hdf_file['/parang'][::subsample, ...])
 
-        # If applicable, also select the PSF template
-        psf_template = None
-        if psf_template_key is not None:
-            psf_template = np.array(hdf_file[psf_template_key]).squeeze()
+        # Select the unsaturated PSF template
+        psf_template = np.array(hdf_file['/psf_template']).squeeze()
+
+        # Select the observing conditions
+        observing_conditions: Dict[str, np.ndarray] = dict()
+        for key in hdf_file['/observing_conditions'].keys():
+            observing_conditions[key] = np.array(
+                hdf_file['/observing_conditions'][key]
+            )
+
+        # Select the metadata
+        metadata: Dict[str, Union[str, float]] = dict()
+        for key in hdf_file.attrs.keys():
+            metadata[key] = hdf_file.attrs[key]
 
     # Spatially crop the stack around the center to the desired frame size
     if frame_size is not None:
@@ -86,14 +94,20 @@ def load_data(file_path: str,
     elif presubtract == 'mean':
         stack -= np.nanmean(stack, axis=0)
 
-    return stack, parang, psf_template
+    return stack, parang, psf_template, observing_conditions, metadata
 
 
 def load_default_data(
     planet: str,
     stacking_factor: int = 50,
-    data_dir: Optional[str] = None
-) -> Tuple[np.ndarray, np.ndarray]:
+    data_dir: Optional[str] = None,
+) -> Tuple[
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    Dict[str, np.ndarray],
+    Dict[str, Union[str, float]],
+]:
     """
     This function is a convenience wrapper around ``load_data``, which
     allows to load our most common data sets with default settings.
@@ -137,7 +151,8 @@ def load_default_data(
     file_path = Path(data_dir, *planet_part, 'processed', file_name)
 
     # Load the data
-    stack, parang, _ = load_data(file_path=file_path.as_posix(),
-                                 frame_size=frame_size)
+    stack, parang, psf_template, observing_conditions, metadata = load_data(
+        file_path=file_path.as_posix(), frame_size=frame_size
+    )
 
-    return stack, parang
+    return stack, parang, psf_template, observing_conditions, metadata
