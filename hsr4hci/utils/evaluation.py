@@ -31,11 +31,12 @@ class TimeoutException(Exception):
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def get_reference_positions(frame_size: Tuple[int, int],
-                            position: Tuple[float, float],
-                            aperture_radius: float,
-                            ignore_neighbors: int = 1) \
-        -> Dict[str, List[Tuple[float, float]]]:
+def get_reference_positions(
+    frame_size: Tuple[int, int],
+    position: Tuple[float, float],
+    aperture_radius: float,
+    ignore_neighbors: int = 1,
+) -> Dict[str, List[Tuple[float, float]]]:
     """
     Compute the positions at which the reference apertures will be
     placed that are needed to compute the SNR and FPF.
@@ -100,10 +101,12 @@ def get_reference_positions(frame_size: Tuple[int, int],
             'ignored': []}
 
 
-def compute_snr(frame: np.ndarray,
-                position: Tuple[float, float],
-                aperture_radius: float,
-                ignore_neighbors: int) -> Tuple[float, float, float, float]:
+def compute_snr(
+    frame: np.ndarray,
+    position: Tuple[float, float],
+    aperture_radius: float,
+    ignore_neighbors: int,
+) -> Tuple[float, float, float, float]:
     """
     Compute the signal-to-noise ratio (SNR) and related performance
     metrics (such as the FPF) for a given position in an image.
@@ -211,15 +214,17 @@ def timeout_handler(*_: Any, **__: Any) -> NoReturn:
     raise TimeoutException("Optimization timed out!")
 
 
-def compute_optimized_snr(frame: np.ndarray,
-                          position: Tuple[float, float],
-                          aperture_radius: float,
-                          ignore_neighbors: int = 0,
-                          target: Optional[str] = 'snr',
-                          max_distance: Optional[float] = 1.0,
-                          method: str = 'brute',
-                          grid_size: int = 16,
-                          time_limit: int = 30) -> Dict[str, Any]:
+def compute_optimized_snr(
+    frame: np.ndarray,
+    position: Tuple[float, float],
+    aperture_radius: float,
+    ignore_neighbors: int = 0,
+    target: Optional[str] = 'snr',
+    max_distance: Optional[float] = 1.0,
+    method: str = 'brute',
+    grid_size: int = 16,
+    time_limit: int = 30,
+) -> Dict[str, Any]:
     """
     Compute the *optimized* signal-to-noise ratio (SNR) and associated
     quantities (false positive fraction, signal sum, noise).
@@ -316,14 +321,16 @@ def compute_optimized_snr(frame: np.ndarray,
     # timeout decorator (which takes the desired time limit as an argument).
 
     @timeout(limit=int(time_limit), handler=timeout_handler)
-    def _compute_optimized_snr(frame: np.ndarray,
-                               position: Tuple[float, float],
-                               aperture_radius: float,
-                               ignore_neighbors: int = 1,
-                               target: Optional[str] = None,
-                               max_distance: float = 1.0,
-                               method: str = 'brute',
-                               grid_size: int = 16) -> Dict[str, Any]:
+    def _compute_optimized_snr(
+        frame: np.ndarray,
+        position: Tuple[float, float],
+        aperture_radius: float,
+        ignore_neighbors: int = 1,
+        target: Optional[str] = None,
+        max_distance: float = 1.0,
+        method: str = 'brute',
+        grid_size: int = 16,
+    ) -> Dict[str, Any]:
         """
         This is a dummy function which is needed to limit the runtime.
         """
