@@ -122,7 +122,7 @@ if __name__ == '__main__':
         elif is_hdf_file(file_path=psf_file_path):
             psf_template_key = config['input_data']['psf_template']['key']
             with h5py.File(psf_file_path, 'r') as hdf_file:
-                psf_template = np.array(hdf_file[psf_template_key])
+                psf_template = np.array(hdf_file[psf_template_key]).squeeze()
         else:
             raise RuntimeError('psf_template file must be either HDF or FITS!')
 
