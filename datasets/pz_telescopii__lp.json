@@ -33,7 +33,7 @@
     "PIXSCALE":             0.0271,
     "TARGET_STAR":          "PZ Telescopii"
   },
-  "frame_size":             [53, 53],
+  "frame_size":             [61, 61],
   "stacking_factors":       [1, 5, 10],
   "pca": {
     "min_n_components":     1,
@@ -46,7 +46,7 @@
   "evaluation": {
     "planets": {
       "b": {
-        "position":         [28.09, 47.01],
+        "position":         [18.11, 37.01],
         "ignore_neighbors": 1
       }
     },
