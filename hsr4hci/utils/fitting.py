@@ -6,11 +6,14 @@ Utility functions for fitting (e.g., PSFs with analytical models).
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from copy import deepcopy
 from typing import Any, Callable, Sequence, Tuple
 
 from scipy.optimize import curve_fit
 
 import numpy as np
+
+from hsr4hci.utils.masking import get_circle_mask
 
 
 # -----------------------------------------------------------------------------
@@ -115,6 +118,13 @@ def fit_2d_function(
     y_grid = np.arange(0, frame.shape[1])
     meshgrid = np.meshgrid(x_grid, y_grid)
 
+    # Mask the frame (to avoid that the fit ends up too far from p_0)
+    mask = get_circle_mask(mask_size=frame.shape,
+                           radius=5,
+                           center=(p0[1], p0[0]))
+    masked_frame = deepcopy(frame)
+    masked_frame[~mask] = 0
+
     # Define dummy function to ravel the output of the target function
     def target_function(*args: Any, **kwargs: Any) -> np.ndarray:
         return function(*args, **kwargs).ravel()
@@ -123,14 +133,15 @@ def fit_2d_function(
     with np.warnings.catch_warnings():
 
         # Ignore some numpy warnings here that can happen if the minimizer
-        # explores a particularly bad parameter range.
+        # explores a particularly bad parameter range
         np.warnings.filterwarnings('ignore', r'invalid value encountered in')
         np.warnings.filterwarnings('ignore', r'overflow encountered in')
 
         # Actually perform the fit using the Levenberg-Marquardt algorithm
         p_opt, _ = curve_fit(f=target_function,
                              xdata=meshgrid,
-                             ydata=np.nan_to_num(frame).ravel(),
-                             p0=p0)
+                             ydata=np.nan_to_num(masked_frame).ravel(),
+                             p0=p0,
+                             maxfev=10_000)
 
     return p_opt
