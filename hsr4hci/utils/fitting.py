@@ -17,15 +17,17 @@ import numpy as np
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def moffat_2d(meshgrid: Tuple[np.ndarray, np.ndarray],
-              x_center: float = 0.0,
-              y_center: float = 0.0,
-              fwhm_x: float = 1.0,
-              fwhm_y: float = 1.0,
-              amplitude: float = 1.0,
-              offset: float = 0.0,
-              theta: float = 0.0,
-              beta: float = 1.0) -> np.ndarray:
+def moffat_2d(
+    meshgrid: Tuple[np.ndarray, np.ndarray],
+    x_center: float = 0.0,
+    y_center: float = 0.0,
+    fwhm_x: float = 1.0,
+    fwhm_y: float = 1.0,
+    amplitude: float = 1.0,
+    offset: float = 0.0,
+    theta: float = 0.0,
+    beta: float = 1.0,
+) -> np.ndarray:
     """
     A 2D elliptical Moffat function that can be used to fit a PSF.
 
@@ -77,9 +79,11 @@ def moffat_2d(meshgrid: Tuple[np.ndarray, np.ndarray],
     return moffat
 
 
-def fit_2d_function(frame: np.ndarray,
-                    function: Callable,
-                    p0: Sequence) -> np.ndarray:
+def fit_2d_function(
+    frame: np.ndarray,
+    function: Callable,
+    p0: Sequence,
+) -> np.ndarray:
     """
     Fit a given 2D function to a frame (e.g., fit a PSF with a Moffat).
 
