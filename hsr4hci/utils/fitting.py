@@ -102,13 +102,13 @@ def fit_2d_function(frame: np.ndarray,
         optimized parameters of the function obtained from the fit.
     """
 
-    # Construct a meshgrid for the positions in the frame
-    # The offset of 0.5 on the coordinates is necessary because we will assume
-    # here that the value of a pixel in the frame is located at the center of
-    # a pixel, not at the lower left-hand corner. (Basically, the results will
-    # look more intuitive with this little trick enabled.)
-    x_grid = np.arange(0, frame.shape[0]) + 0.5
-    y_grid = np.arange(0, frame.shape[1]) + 0.5
+    # Construct a meshgrid for the positions in the frame.
+    # This should be consistent with the astropy / photutils conventions for
+    # pixel coordinates, where the lower left hand corner of an image is at
+    # (-0.5, -0.5), meaning the the center of the lower left hand corner pixel
+    # is at (0, 0).
+    x_grid = np.arange(0, frame.shape[0])
+    y_grid = np.arange(0, frame.shape[1])
     meshgrid = np.meshgrid(x_grid, y_grid)
 
     # Define dummy function to ravel the output of the target function
