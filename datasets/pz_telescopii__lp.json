@@ -7,7 +7,7 @@
     },
     "parang": {
       "file_name":          "pztel_naco_lp.hdf5",
-      "key":                "/header_full/PARANG"
+      "key":                "/header_science/PARANG"
     },
     "psf_template": {
       "file_name":          "pztel_naco_lp.hdf5",
