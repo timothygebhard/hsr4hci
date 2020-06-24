@@ -17,7 +17,7 @@
   "raw_data": {
     "fits_dir":             "$STOLKERT_USER/pztel_naco_lp/data/science/Full",
     "filters": {
-      "name_pattern":       "^NACO_IMG_.*&",
+      "name_pattern":       "^NACO_IMG_.*$",
       "keys_present":       null,
       "keys_values":        null
     }
