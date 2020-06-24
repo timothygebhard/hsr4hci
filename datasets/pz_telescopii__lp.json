@@ -1,0 +1,63 @@
+{
+  "input_data": {
+    "stack": {
+      "file_name":          "pztel_naco_lp.hdf5",
+      "stack_key":          "/science",
+      "index_key":          "/header_science/INDEX"
+    },
+    "parang": {
+      "file_name":          "pztel_naco_lp.hdf5",
+      "key":                "/header_full/PARANG"
+    },
+    "psf_template": {
+      "file_name":          "pztel_naco_lp.hdf5",
+      "key":                "/flux"
+    }
+  },
+  "raw_data": {
+    "fits_dir":             "$STOLKERT_USER/pztel_naco_lp/data/science/Full",
+    "filters": {
+      "name_pattern":       "$NACO_IMG_SCI269.*^",
+      "keys_present":       null,
+      "keys_values":        null
+    }
+  },
+  "metadata": {
+    "CENTRAL_LAMBDA":       "3800 nm",
+    "DATE":                 "2010-09-27",
+    "DIT":                  0.300,
+    "ESO_PROGRAM_ID":       "085.C-0277(B)",
+    "FILTER":               "L'",
+    "INSTRUMENT":           "NACO",
+    "LAMBDA_OVER_D":        0.0956,
+    "PIXSCALE":             0.0271,
+    "TARGET_STAR":          "PZ Telescopii"
+  },
+  "frame_size":             [53, 53],
+  "stacking_factors":       [1, 5, 10],
+  "pca": {
+    "min_n_components":     1,
+    "max_n_components":     200
+  },
+  "roi": {
+    "inner_radius":         [0.00, "arcsec"],
+    "outer_radius":         [0.70, "arcsec"]
+  },
+  "evaluation": {
+    "planets": {
+      "b": {
+        "position":         [28.09, 47.01],
+        "ignore_neighbors": 1
+      }
+    },
+    "snr_options": {
+      "aperture_radius":    [0.50, "lambda_over_d"],
+      "target":             "signal",
+      "method":             "brute",
+      "max_distance":       [2.00, "pixel"],
+      "time_limit":         300
+    },
+    "n_processes":          null,
+    "plot_size":            [15, 5]
+  }
+}
