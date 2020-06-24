@@ -125,7 +125,8 @@ if __name__ == '__main__':
         file_path = os.path.join(
             base_dir, 'processed', f'stacked_{stacking_factor}.hdf'
         )
-        stack, parang, _ = load_data(file_path=file_path)
+        stack, parang, psf_template, observing_conditions, metadata = \
+            load_data(file_path=file_path)
 
         # Apply the ROI mask to the input stack (we have to use 0 instead of
         # NaN here, because the PCA cannot deal with NaNs)
