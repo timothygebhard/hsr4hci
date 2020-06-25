@@ -106,6 +106,7 @@ if __name__ == '__main__':
     max_distance = to_pixel(snr_options['max_distance'])
     method = snr_options['method']
     target = snr_options['target']
+    grid_size = snr_options['grid_size']
     time_limit = snr_options['time_limit']
 
     # Shortcuts to entries in the configuration
@@ -204,6 +205,7 @@ if __name__ == '__main__':
                     target=target,
                     method=method,
                     max_distance=max_distance,
+                    grid_size=grid_size,
                     time_limit=time_limit,
                 )
                 output_queue.put((index, result))
