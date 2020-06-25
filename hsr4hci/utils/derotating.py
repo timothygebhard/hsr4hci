@@ -18,10 +18,12 @@ import numpy as np
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def derotate_frames(stack: np.ndarray,
-                    parang: np.ndarray,
-                    mask: Optional[np.ndarray] = None,
-                    order: int = 3) -> np.ndarray:
+def derotate_frames(
+    stack: np.ndarray,
+    parang: np.ndarray,
+    mask: Optional[np.ndarray] = None,
+    order: int = 3,
+) -> np.ndarray:
     """
     Derotate all frames in the stack by their parallactic angle.
 
@@ -57,12 +59,14 @@ def derotate_frames(stack: np.ndarray,
     return derotated
 
 
-def derotate_combine(stack: np.ndarray,
-                     parang: np.ndarray,
-                     mask: Optional[np.ndarray] = None,
-                     order: int = 3,
-                     subtract: Optional[str] = None,
-                     combine: str = 'mean') -> np.ndarray:
+def derotate_combine(
+    stack: np.ndarray,
+    parang: np.ndarray,
+    mask: Optional[np.ndarray] = None,
+    order: int = 3,
+    subtract: Optional[str] = None,
+    combine: str = 'mean',
+) -> np.ndarray:
     """
     Derotate all frames in the stack and combine (= average) them.
 
