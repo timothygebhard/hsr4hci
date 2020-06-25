@@ -14,6 +14,7 @@ from scipy.spatial.distance import euclidean
 from scipy.stats import t
 from scipy.optimize import minimize, brute
 
+import bottleneck as bn
 import numpy as np
 
 
@@ -183,14 +184,14 @@ def compute_snr(
     # ratio: According to eq. (8) in Mawet et al. (2014), this is given by
     # the difference between the integrated flux in the signal aperture and
     # the mean of the integrated flux in the reference apertures
-    signal = signal_flux - np.nanmean(reference_fluxes)
+    signal = signal_flux - bn.nanmean(reference_fluxes)
 
     # Compute the "noise", that is, the denominator of the signal-to-noise
     # ratio: According to eq. (8) in Mawet et al. (2014), this is given by
     # the *unbiased* standard deviation (i.e., including Bessel's correction)
     # of the integrated flux in the reference apertures times a correction
     # factor to account for the small sample statistics.
-    noise = np.std(reference_fluxes, ddof=1) * np.sqrt(1 + 1 / n_apertures)
+    noise = bn.nanstd(reference_fluxes, ddof=1) * np.sqrt(1 + 1 / n_apertures)
 
     # Compute the SNR by dividing the "signal" through the "noise"
     snr = signal / noise
