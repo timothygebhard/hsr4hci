@@ -8,6 +8,7 @@ Utility functions for (de)-rotating stacks and computing residuals.
 
 from typing import Optional
 
+from joblib import delayed, Parallel
 from scipy.ndimage import rotate
 
 import bottleneck as bn
@@ -23,6 +24,7 @@ def derotate_frames(
     parang: np.ndarray,
     mask: Optional[np.ndarray] = None,
     order: int = 3,
+    n_processes: int = 4,
 ) -> np.ndarray:
     """
     Derotate all frames in the stack by their parallactic angle.
@@ -34,23 +36,33 @@ def derotate_frames(
             there exist no real values are set to NaN. However, for
             derotating, these have to be casted to zeros (otherwise the
             interpolation turns everything into a NaN). This mask here
-            allows to restore these NaN values again.
+            allows to restore these NaN values again. Note that this
+            mask selects the pixels that will be set to NaN; that means,
+            for example, the usual ROI mask should be inverted before it
+            is passed to this function.
         order: The order of the spline interpolation for the rotation.
             Has to be in the range [0, 5]; default is 3.
+        n_processes: Number of parallel processes to be used to derotate
+            the frames in parallel; default is 4.
 
     Returns:
         The stack with every frame derotated by its parallactic angle.
     """
 
-    # Initialize array that will hold the de-rotated frames
-    derotated = np.zeros_like(stack)
+    # Define a helper function that defines the rotation for a single frame;
+    # this is only a partial function application of scipy.ndimage.rotate()
+    def rotate_frame(frame: np.ndarray, angle: float) -> np.ndarray:
+        return rotate(input=frame, angle=angle, reshape=False, order=order)
 
-    # Loop over all frames and derotate them by their parallactic angle
-    for i in range(stack.shape[0]):
-        derotated[i, :, :] = rotate(input=np.nan_to_num(stack[i, :, :]),
-                                    angle=-parang[i],
-                                    reshape=False,
-                                    order=order)
+    # Derotate frames in parallel using joblib
+    with Parallel(n_jobs=n_processes, require='sharedmem') as run:
+        derotated = run(
+            delayed(rotate_frame)(frame, angle)
+            for frame, angle in zip(np.nan_to_num(stack), -parang)
+        )
+
+    # Convert result to numpy array
+    derotated = np.array(derotated)
 
     # Check if there is a mask that we need to apply after derotating
     if mask is not None:
@@ -108,9 +120,9 @@ def derotate_combine(
     subtracted = stack - psf_frame
 
     # De-rotate all frames by their respective parallactic angles
-    residual_frames = derotate_frames(stack=subtracted,
-                                      parang=parang,
-                                      order=order)
+    residual_frames = derotate_frames(
+        stack=subtracted, parang=parang, order=order
+    )
 
     # Combine derotated frames either by taking the mean or median
     if combine == 'mean':
