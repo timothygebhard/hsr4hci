@@ -55,6 +55,7 @@
       "target":             "signal",
       "method":             "brute",
       "max_distance":       [2.00, "pixel"],
+      "grid_size":          20,
       "time_limit":         300
     },
     "n_processes":          null,
