@@ -10,6 +10,7 @@ from typing import Optional
 
 from scipy.ndimage import rotate
 
+import bottleneck as bn
 import numpy as np
 
 
@@ -107,21 +108,13 @@ def derotate_combine(stack: np.ndarray,
                                       parang=parang,
                                       order=order)
 
-    # Combine the residual frames by averaging along the time axis
-    with np.warnings.catch_warnings():
-
-        # Suppress "All-NaN slice / axis encountered" warning, which is
-        # expected for pixels outside of the region of interest
-        np.warnings.filterwarnings('ignore', r'All-NaN \w* encountered')
-        np.warnings.filterwarnings('ignore', r'Mean of empty slice')
-
-        # Combine derotated frames either by taking the mean or median
-        if combine == 'mean':
-            result = np.nanmean(residual_frames, axis=0)
-        elif combine == 'median':
-            result = np.nanmedian(residual_frames, axis=0)
-        else:
-            raise ValueError('Illegal option for parameter "combine"!')
+    # Combine derotated frames either by taking the mean or median
+    if combine == 'mean':
+        result = bn.nanmean(residual_frames, axis=0)
+    elif combine == 'median':
+        result = bn.nanmedian(residual_frames, axis=0)
+    else:
+        raise ValueError('Illegal option for parameter "combine"!')
 
     # Apply mask to result before returning it
     if mask is not None:
