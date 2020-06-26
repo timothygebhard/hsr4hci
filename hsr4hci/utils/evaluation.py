@@ -73,15 +73,22 @@ def get_reference_positions(
     # the given position. We use the *exact* solution here; a faster solution
     # that also gives a good approximation is given in the original paper by
     # Mawet et al. (2014): n_apertures = int(np.pi * radius / aperture_radius).
-    n_apertures = \
-        int(np.pi / np.arccos(1 - aperture_radius**2 / (2 * radius**2)))
+    n_apertures = int(
+        np.pi / np.arccos(1 - aperture_radius ** 2 / (2 * radius ** 2))
+    )
 
     # Define a little helper function to convert angles into positions
     def _angles_to_positions(angles: np.ndarray) -> List[Tuple[float, float]]:
-        x = center[1] + (position[0] - center[1]) * np.cos(angles) - \
-                        (position[1] - center[0]) * np.sin(angles)
-        y = center[0] + (position[0] - center[1]) * np.sin(angles) + \
-                        (position[1] - center[0]) * np.cos(angles)
+        x = (
+            center[1]
+            + (position[0] - center[1]) * np.cos(angles)
+            - (position[1] - center[0]) * np.sin(angles)
+        )
+        y = (
+            center[0]
+            + (position[0] - center[1]) * np.sin(angles)
+            + (position[1] - center[0]) * np.cos(angles)
+        )
         return list(zip(x, y))
 
     # Compute the position angles at which to place the noise apertures
@@ -92,14 +99,46 @@ def get_reference_positions(
     if ignore_neighbors > 0:
 
         reference_angles = all_angles[ignore_neighbors:-ignore_neighbors]
-        ignored_angles = np.concatenate((all_angles[0:ignore_neighbors],
-                                         all_angles[-ignore_neighbors:]))
+        ignored_angles = np.concatenate(
+            (all_angles[0:ignore_neighbors], all_angles[-ignore_neighbors:])
+        )
 
-        return {'reference': _angles_to_positions(reference_angles),
-                'ignored': _angles_to_positions(ignored_angles)}
+        return {
+            'reference': _angles_to_positions(reference_angles),
+            'ignored': _angles_to_positions(ignored_angles),
+        }
 
-    return {'reference': _angles_to_positions(all_angles),
-            'ignored': []}
+    return {'reference': _angles_to_positions(all_angles), 'ignored': []}
+
+
+def get_aperture_flux(
+    frame: np.ndarray,
+    position: Tuple[float, float],
+    aperture_radius: float,
+) -> float:
+    """
+    Get the (integrated) flux in an aperture with the given size (i.e.,
+    `aperture_radius`) at the given `position`.
+
+    Args:
+        frame: A 2D numpy array of shape (width, height) containing the
+            input frame (i.e., e.g., derotated and merged residuals).
+        position: A tuple (x, y) specifying the position at which the
+            aperture is placed on the `frame`.
+        aperture_radius: The radius (in pixel) of the apertures to be
+            used for measuring the signal and the noise. Usually, this
+            is chosen close to 0.5 * FWHM of the planet signal.
+
+    Returns:
+        The integrated flux (= sum of all pixels) in the aperture.
+    """
+
+    # Create an aperture, measure the flux, and cast the result to float
+    aperture = CircularAperture(position, aperture_radius)
+    photometry_table = aperture_photometry(frame, aperture, method='exact')
+    integrated_flux = float(photometry_table['aperture_sum'])
+
+    return integrated_flux
 
 
 def compute_snr(
@@ -156,29 +195,33 @@ def compute_snr(
 
     # Get the positions of the reference apertures, that is, the positions at
     # which we will measure the flux to estimate the noise level
-    reference_positions = \
-        get_reference_positions(frame_size=frame.shape,
-                                position=position,
-                                aperture_radius=aperture_radius,
-                                ignore_neighbors=ignore_neighbors)['reference']
+    aperture_positions = get_reference_positions(
+        frame_size=frame.shape,
+        position=position,
+        aperture_radius=aperture_radius,
+        ignore_neighbors=ignore_neighbors,
+    )
+    reference_positions = aperture_positions['reference']
     n_apertures = len(reference_positions)
 
     # Make sure we have have enough reference positions to compute the FPF
     if n_apertures < 2:
-        ValueError(f'Number of reference apertures is too small to calculate '
-                   f'the FPF! (n={n_apertures})')
+        ValueError(
+            f'Number of reference apertures is too small to calculate '
+            f'the FPF! (n={n_apertures})'
+        )
 
     # Get the integrated flux in all the reference apertures
     reference_fluxes = np.full(n_apertures, np.nan)
-    for i, (x, y) in enumerate(reference_positions):
-        aperture = CircularAperture((x, y), aperture_radius)
-        photometry_table = aperture_photometry(frame, aperture, method='exact')
-        reference_fluxes[i] = float(photometry_table['aperture_sum'])
+    for i, ref_position in enumerate(reference_positions):
+        reference_fluxes[i] = get_aperture_flux(
+            frame=frame, position=ref_position, aperture_radius=aperture_radius
+        )
 
     # Get the integrated flux in the signal aperture
-    aperture = CircularAperture(position, aperture_radius)
-    photometry_table = aperture_photometry(frame, aperture, method='exact')
-    signal_flux = float(photometry_table['aperture_sum'])
+    signal_flux = get_aperture_flux(
+        frame=frame, position=position, aperture_radius=aperture_radius
+    )
 
     # Compute the "signal", that is, the numerator of the signal-to-noise
     # ratio: According to eq. (8) in Mawet et al. (2014), this is given by
@@ -220,7 +263,7 @@ def compute_optimized_snr(
     position: Tuple[float, float],
     aperture_radius: float,
     ignore_neighbors: int = 0,
-    target: Optional[str] = 'snr',
+    target: Optional[str] = 'signal_flux',
     max_distance: Optional[float] = 1.0,
     method: str = 'brute',
     grid_size: int = 16,
@@ -251,11 +294,25 @@ def compute_optimized_snr(
             provide an unbiased estimate of the background noise, we
             usually want to exclude them from the reference positions.
             Default is 0 (i.e., do not ignore any apertures).
-        target: A string containing the target quantity that will be
-            optimized by the optimization method by varying the planet
-            position. Choices are: "signal", "noise", "snr" and "fpf".
-            If None is given, no optimization is performed and the SNR
-            is simply computed at the given position. Default is "snr".
+        target: Either None, or a string containing the target quantity
+            that will be optimized by the optimization method by varying
+            the planet position. Choices are the following:
+                None: Do not perform any optimization and simply compute
+                    the SNR at the given position.
+                "signal_flux": The flux of the signal aperture (which
+                    is completely independent of all noise apertures).
+                    This is the default.
+                "signal": The numerator of the SNR, that is, the
+                    integrated flux inside the signal aperture minus
+                    the mean of the noise apertures.
+                "noise": The denominator of the SNR, that is, the
+                    standard deviation of the integrated flux of the
+                    noise apertures, times a correction factor for small
+                    sample statistics.
+                "snr": The signal-to-noise ratio (SNR) as defined in
+                    eq. (8) of Mawet et al. (2014).
+                "fpf": The false positive fraction (FPF) as defined in
+                    eq. (10) of Mawet et al. (2014).
         max_distance: When using an optimizer, this parameter controls
             the maximum (Euclidean) distance of the optimal position
             from the initial position (in pixels).
@@ -348,7 +405,7 @@ def compute_optimized_snr(
             success = True
 
         # Otherwise, we first need to find the "optimal" position
-        elif target in ('signal', 'noise', 'snr', 'fpf'):
+        elif target in ('signal_flux', 'signal', 'noise', 'snr', 'fpf'):
 
             # -----------------------------------------------------------------
             # Define an objective function for the optimizer
@@ -358,33 +415,61 @@ def compute_optimized_snr(
                 candidate_position: Tuple[float, float],
             ) -> float:
 
-                # If the current position (`pos`) is too far from the initial
-                # position (`position`), we return default values which
-                # indicate the the current position not an admissible result.
+                # Initialize default values, which indicate that the current
+                # candidate position is either not admissible, or not optimal
+                signal_flux, signal, noise, snr, fpf = (
+                    -np.inf,
+                    -np.inf,
+                    np.inf,
+                    -np.inf,
+                    np.inf,
+                )
+
+                # Compute the distance between the candidate_position and the
+                # initial position. If this value is larger than the given
+                # max_distance, we return the above default values to indicate
+                # that the position is not admissible.
+                # Only if the candidate_position is close enough to the initial
+                # position do we actually compute the signal_flux or the SNR.
                 distance = euclidean(position, candidate_position)
-                if (max_distance is not None) and (distance > max_distance):
-                    signal, noise, snr, fpf = \
-                        -np.inf, np.inf, -np.inf, np.inf
 
-                # Otherwise, we compute the actual SNR at the current `pos`
-                else:
+                if (max_distance is not None) or (distance <= max_distance):
 
-                    # Try to compute the SNR at the current position. If this
-                    # fails for some reason, use default values to indicate
-                    # that the current position is not the optimum
-                    try:
-                        signal, noise, snr, fpf = \
-                            compute_snr(frame=frame,
-                                        position=candidate_position,
-                                        aperture_radius=aperture_radius,
-                                        ignore_neighbors=ignore_neighbors)
-                    except ValueError:
-                        signal, noise, snr, fpf = \
-                            -np.inf, np.inf, -np.inf, np.inf
+                    # Check if we only need the signal flux (this is cheaper
+                    # to compute than the SNR)
+                    if target == 'signal_flux':
+
+                        signal_flux = get_aperture_flux(
+                            frame=frame,
+                            position=candidate_position,
+                            aperture_radius=aperture_radius,
+                        )
+
+                    else:
+
+                        # Try to compute the SNR at the current position. If
+                        # this fails for some reason, use default values to
+                        # indicate that the current position is not the optimum
+                        try:
+                            signal, noise, snr, fpf = compute_snr(
+                                frame=frame,
+                                position=candidate_position,
+                                aperture_radius=aperture_radius,
+                                ignore_neighbors=ignore_neighbors,
+                            )
+                        except ValueError:
+                            signal, noise, snr, fpf = (
+                                -np.inf,
+                                np.inf,
+                                -np.inf,
+                                np.inf,
+                            )
 
                 # Depending on the target, we either want to minimize x or -x.
                 # For the FPF, we optimize the *negative inverse*, as the FPF
                 # can get very small, which is a problem for some optimizers.
+                if target == 'signal_flux':
+                    return float(-1 * signal_flux)
                 if target == 'signal':
                     return float(-1 * signal)
                 if target == 'noise':
@@ -393,8 +478,7 @@ def compute_optimized_snr(
                     return float(-1 * snr)
                 if target == 'fpf':
                     return float(-1 / fpf)
-                else:
-                    raise ValueError('Invalid value for "target"!')
+                raise ValueError('Invalid value for "target"!')
 
             # -----------------------------------------------------------------
             # Run optimizer to minimize the objective function
@@ -411,14 +495,21 @@ def compute_optimized_snr(
                 # NOTE: The finish=None argument is necessary so that
                 # the optimizer does not also run a downhill-simplex
                 # optimization starting at the optimal grid point!
-                optimum = \
-                    brute(func=objective_func,
-                          ranges=((position[0] - max_distance,
-                                   position[0] + max_distance),
-                                  (position[1] - max_distance,
-                                   position[1] + max_distance)),
-                          Ns=grid_size,
-                          finish=None)
+                optimum = brute(
+                    func=objective_func,
+                    ranges=(
+                        (
+                            position[0] - max_distance,
+                            position[0] + max_distance,
+                        ),
+                        (
+                            position[1] - max_distance,
+                            position[1] + max_distance,
+                        ),
+                    ),
+                    Ns=grid_size,
+                    finish=None,
+                )
 
                 # Get the result and set up the message and status
                 x, y = tuple(np.round(optimum, 2))
@@ -429,9 +520,9 @@ def compute_optimized_snr(
             else:
 
                 # Run the optimizer
-                optimum = minimize(fun=objective_func,
-                                   x0=np.array(position),
-                                   method=method)
+                optimum = minimize(
+                    fun=objective_func, x0=np.array(position), method=method
+                )
 
                 # Get the result and set up the message and status
                 x, y = tuple(np.round(optimum.x, 2))
@@ -440,29 +531,34 @@ def compute_optimized_snr(
 
         # Raise an error if we receive an invalid value for optimize
         else:
-            raise ValueError('optimize must be one of the following: '
-                             '[None, "signal", "noise", "snr", "fpf"]!')
+            raise ValueError(
+                'optimize must be one of the following: '
+                '[None, "signal_flux", "signal", "noise", "snr", "fpf"]!'
+            )
 
         # ---------------------------------------------------------------------
         # Actually compute SNR at the optimal position and return results
         # ---------------------------------------------------------------------
 
         # Compute signal, noise, SNR and FPF at the optimal position
-        signal, noise, snr, fpf = \
-            compute_snr(frame=frame,
-                        position=(x, y),
-                        aperture_radius=aperture_radius,
-                        ignore_neighbors=ignore_neighbors)
+        signal, noise, snr, fpf = compute_snr(
+            frame=frame,
+            position=(x, y),
+            aperture_radius=aperture_radius,
+            ignore_neighbors=ignore_neighbors,
+        )
 
         # Return everything, including the position found by the optimizer
-        return dict(signal=signal,
-                    noise=noise,
-                    snr=snr,
-                    fpf=fpf,
-                    old_position=position,
-                    new_position=(x, y),
-                    message=message,
-                    success=success)
+        return dict(
+            signal=signal,
+            noise=noise,
+            snr=snr,
+            fpf=fpf,
+            old_position=position,
+            new_position=(x, y),
+            message=message,
+            success=success,
+        )
 
     # -------------------------------------------------------------------------
     # Run dummy function to optimize the target quantity with a time limit
@@ -472,26 +568,29 @@ def compute_optimized_snr(
     # this function. It it finished successfully, we simply return its output:
     try:
 
-        result: Dict[str, Any] = \
-            _compute_optimized_snr(frame=frame,
-                                   position=position,
-                                   aperture_radius=aperture_radius,
-                                   ignore_neighbors=ignore_neighbors,
-                                   target=target,
-                                   method=method,
-                                   grid_size=grid_size,
-                                   max_distance=max_distance)
+        result: Dict[str, Any] = _compute_optimized_snr(
+            frame=frame,
+            position=position,
+            aperture_radius=aperture_radius,
+            ignore_neighbors=ignore_neighbors,
+            target=target,
+            method=method,
+            grid_size=grid_size,
+            max_distance=max_distance,
+        )
 
     # If the computation fails with a timeout, we return default values:
     except TimeoutException:
 
-        result = dict(signal=None,
-                      noise=None,
-                      snr=None,
-                      fpf=None,
-                      old_position=position,
-                      new_position=None,
-                      message='Optimization timed out!',
-                      success=False)
+        result = dict(
+            signal=None,
+            noise=None,
+            snr=None,
+            fpf=None,
+            old_position=position,
+            new_position=None,
+            message='Optimization timed out!',
+            success=False,
+        )
 
     return result
