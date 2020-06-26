@@ -54,12 +54,20 @@ def derotate_frames(
     def rotate_frame(frame: np.ndarray, angle: float) -> np.ndarray:
         return rotate(input=frame, angle=angle, reshape=False, order=order)
 
-    # Derotate frames in parallel using joblib
-    with Parallel(n_jobs=n_processes, require='sharedmem') as run:
-        derotated = run(
-            delayed(rotate_frame)(frame, angle)
+    # Either derotate frames in parallel using joblib...
+    if n_processes > 1:
+        with Parallel(n_jobs=n_processes, require='sharedmem') as run:
+            derotated = run(
+                delayed(rotate_frame)(frame, angle)
+                for frame, angle in zip(np.nan_to_num(stack), -parang)
+            )
+
+    # ...or simply process frames serially
+    else:
+        derotated = [
+            rotate_frame(frame, angle)
             for frame, angle in zip(np.nan_to_num(stack), -parang)
-        )
+        ]
 
     # Convert result to numpy array
     derotated = np.array(derotated)
@@ -78,6 +86,7 @@ def derotate_combine(
     order: int = 3,
     subtract: Optional[str] = None,
     combine: str = 'mean',
+    n_processes: int = 4,
 ) -> np.ndarray:
     """
     Derotate all frames in the stack and combine (= average) them.
@@ -99,6 +108,8 @@ def derotate_combine(
             or None.
         combine: A string specifying how to combine the frames after
             derotating them. Options are "mean" or "median".
+        n_processes: Number of parallel processes to be used to derotate
+            the frames in parallel; default is 4.
 
     Returns:
         A 2D numpy array of shape (width, height) containing the
@@ -121,7 +132,7 @@ def derotate_combine(
 
     # De-rotate all frames by their respective parallactic angles
     residual_frames = derotate_frames(
-        stack=subtracted, parang=parang, order=order
+        stack=subtracted, parang=parang, order=order, n_processes=n_processes,
     )
 
     # Combine derotated frames either by taking the mean or median
