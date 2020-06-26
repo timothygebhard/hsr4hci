@@ -7,14 +7,16 @@ Utility functions for performing principal component analysis (PCA).
 # -----------------------------------------------------------------------------
 
 from copy import deepcopy
-from typing import Any, Iterable, Tuple, Union
+from typing import Iterable, Tuple, Union
 
+from joblib import delayed, Parallel
 from sklearn.decomposition import PCA
 from tqdm import tqdm
 
 import numpy as np
 
 from hsr4hci.utils.derotating import derotate_combine
+from hsr4hci.utils.tqdm import tqdm_joblib
 
 
 # -----------------------------------------------------------------------------
@@ -63,8 +65,8 @@ def get_pca_noise_estimate(
 
     # Use inverse transform to map the dimensionality-reduced frame vectors
     # back into the original space so that we can interpret them as frames
-    noise_estimate = \
-        pca.inverse_transform(transformed_stack).reshape(stack.shape)
+    noise_estimate = pca.inverse_transform(transformed_stack)
+    noise_estimate = noise_estimate.reshape(stack.shape)
 
     return noise_estimate
 
@@ -74,8 +76,8 @@ def get_pca_signal_estimates(
     parang: np.ndarray,
     pca_numbers: Iterable[int],
     return_components: bool = True,
+    n_processes: int = 4,
     verbose: bool = False,
-    **kwargs: Any,
 ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
     """
     Get the signal estimate (i.e., the derotated and combined stack that
@@ -96,10 +98,13 @@ def get_pca_signal_estimates(
             the numbers of principal components for which to run PCA.
         return_components: Whether or not to return the principal
             components of the PCA.
+        n_processes: Number of parallel processes to be used to process
+            the different numbers of principal components. Choosing this
+            value too high will actually decrease the performance (due
+            to the increased process initialization costs)!
+            If this value is chosen as 1, no multiprocessing is used and
+            the different numbers of components are processed serially.
         verbose: Whether or not to print debugging information.
-        kwargs: Additional keyword arguments that will directly be
-            passed to the ``derotate_combine`` function that is used
-            to compute the signal estimate.
 
     Returns:
         A 3D numpy array of shape `(N, width, height)` (where N is the
@@ -138,39 +143,56 @@ def get_pca_signal_estimates(
     else:
         components = None
 
-    # Initiate a list to keep track of the signal estimates
-    signal_estimates = list()
-
-    # Loop over all requested numbers of principal components, starting from
-    # the maximum number, going to the minimum number
-    vprint('Computing signal estimates:')
-    iterator = pca_numbers if not verbose else tqdm(pca_numbers, ncols=80)
-    for n_components in iterator:
+    # Define helper function to get signal estimate for a given n_components
+    def get_signal_estimate(
+        n_components: int, pca: PCA,
+    ) -> Tuple[int, np.ndarray]:
 
         # Only keep the first `n_components` PCs
-        pca.components_ = pca.components_[:n_components]
+        truncated_pca = deepcopy(pca)
+        truncated_pca.components_ = truncated_pca.components_[:n_components]
 
         # Apply the dimensionality-reducing transformation
-        transformed_stack = pca.transform(reshaped_stack)
+        transformed_stack = truncated_pca.transform(reshaped_stack)
 
         # Use inverse transform to map the dimensionality-reduced frame vectors
         # back into the original space so that we can interpret them as frames
-        noise_estimate = \
-            pca.inverse_transform(transformed_stack).reshape(stack.shape)
+        noise_estimate = truncated_pca.inverse_transform(transformed_stack)
+        noise_estimate = noise_estimate.reshape(stack.shape)
 
         # Compute the residual stack
         residual_stack = stack - noise_estimate
 
-        # Derotate and combine the residuals to compute the signal estimate
-        signal_estimate = derotate_combine(stack=residual_stack,
-                                           parang=parang,
-                                           **kwargs)
-        signal_estimates.append(signal_estimate)
+        # Derotate and combine the residuals to compute the signal estimate.
+        # Do not use multiprocessing here, because nested multiprocessing is
+        # probably a bad idea.
+        signal_estimate = derotate_combine(
+            stack=residual_stack, parang=parang, n_processes=1,
+        )
 
-    # Reverse the list such that signal estimates are ordered by increasing
+        return n_components, signal_estimate
+
+    # Use joblib to process the different values of n_components in parallel...
+    if n_processes > 1:
+        vprint('Computing signal estimates (in parallel):')
+        with tqdm_joblib(tqdm(total=len(pca_numbers), ncols=80)) as _:
+            with Parallel(n_jobs=n_processes, require='sharedmem') as run:
+                signal_estimates = run(
+                    delayed(get_signal_estimate)(n_components, pca)
+                    for n_components in pca_numbers
+                )
+
+    # ...or simply serially if n_processes == 1
+    else:
+        vprint('Computing signal estimates (serially):')
+        signal_estimates = list()
+        for n_components in tqdm(pca_numbers, ncols=80):
+            signal_estimates.append(get_signal_estimate(n_components, pca))
+
+    # Sort the list such that signal estimates are ordered by increasing
     # number of principal components, and convert to a numpy array
-    signal_estimates = signal_estimates[::-1]
-    signal_estimates = np.array(signal_estimates)
+    signal_estimates = sorted(signal_estimates, key=lambda _: _[0])
+    signal_estimates = np.array([_[1] for _ in signal_estimates])
 
     # Return the signal estimates and optionally also the principal components
     if return_components:
