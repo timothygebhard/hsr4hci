@@ -41,7 +41,7 @@
   },
   "roi": {
     "inner_radius":         [0.00, "arcsec"],
-    "outer_radius":         [1.00, "arcsec"]
+    "outer_radius":         [2.20, "arcsec"]
   },
   "evaluation": {
     "planets": {
