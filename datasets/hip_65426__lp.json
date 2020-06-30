@@ -33,15 +33,15 @@
     "PIXSCALE":             0.0271,
     "TARGET_STAR":          "HIP 65426"
   },
-  "frame_size":             [81, 81],
+  "frame_size":             [93, 93],
   "stacking_factors":       [1, 5, 10, 25, 50, 100],
   "pca": {
     "min_n_components":     1,
     "max_n_components":     200
   },
   "roi": {
-    "inner_radius":         [0.00, "arcsec"],
-    "outer_radius":         [1.00, "arcsec"]
+    "inner_radius":         [ 0, "lambda_over_d"],
+    "outer_radius":         [11, "lambda_over_d"]
   },
   "evaluation": {
     "planets": {
