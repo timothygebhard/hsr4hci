@@ -33,15 +33,15 @@
     "PIXSCALE":             0.012255,
     "TARGET_STAR":          "51 Eridani"
   },
-  "frame_size":             [121, 121],
+  "frame_size":             [115, 115],
   "stacking_factors":       [1, 2],
   "pca": {
     "min_n_components":     1,
     "max_n_components":     200
   },
   "roi": {
-    "inner_radius":         [0.00, "arcsec"],
-    "outer_radius":         [0.70, "arcsec"]
+    "inner_radius":         [ 0, "lambda_over_d"],
+    "outer_radius":         [11, "lambda_over_d"]
   },
   "evaluation": {
     "planets": {
