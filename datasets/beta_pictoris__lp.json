@@ -33,15 +33,15 @@
     "PIXSCALE":             0.0271,
     "TARGET_STAR":          "Beta Pictoris"
   },
-  "frame_size":             [81, 81],
+  "frame_size":             [65, 65],
   "stacking_factors":       [1, 5, 10, 25, 50, 100],
   "pca": {
     "min_n_components":     1,
     "max_n_components":     200
   },
   "roi": {
-    "inner_radius":         [0.00, "arcsec"],
-    "outer_radius":         [0.70, "arcsec"]
+    "inner_radius":         [0, "lambda_over_d"],
+    "outer_radius":         [7, "lambda_over_d"]
   },
   "evaluation": {
     "planets": {
