@@ -46,7 +46,7 @@
   "evaluation": {
     "planets": {
       "b": {
-        "position":         [18.11, 37.01],
+        "position":         [17.10, 36.04],
         "ignore_neighbors": 1
       }
     },
@@ -55,7 +55,7 @@
       "target":             "signal_flux",
       "method":             "brute",
       "max_distance":       [2.00, "pixel"],
-      "grid_size":          20,
+      "grid_size":          40,
       "time_limit":         300
     },
     "n_processes":          null,
