@@ -33,15 +33,15 @@
     "PIXSCALE":             0.012255,
     "TARGET_STAR":          "HR 8799"
   },
-  "frame_size":             [327, 327],
+  "frame_size":             [309, 309],
   "stacking_factors":       [1, 5, 10, 25],
   "pca": {
     "min_n_components":     1,
     "max_n_components":     200
   },
   "roi": {
-    "inner_radius":         [0.00, "arcsec"],
-    "outer_radius":         [2.00, "arcsec"]
+    "inner_radius":         [ 0, "lambda_over_d"],
+    "outer_radius":         [58, "lambda_over_d"]
   },
   "evaluation": {
     "planets": {
