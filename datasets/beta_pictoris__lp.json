@@ -17,7 +17,7 @@
   "raw_data": {
     "fits_dir":             "$STOLKERT_USER/betapic_naco_lp/data/science/Apo_165/0.2/200",
     "filters": {
-      "name_pattern":       null,
+      "name_pattern":       "^NACO_CORO_.*$",
       "keys_present":       null,
       "keys_values":        null
     }
