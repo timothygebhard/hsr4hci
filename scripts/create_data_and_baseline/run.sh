@@ -18,4 +18,6 @@ stdbuf -i0 -o0 -e0 python 05_plot_pca_snr_over_npc.py --base-directory "$1";
 printf "\n";
 stdbuf -i0 -o0 -e0 python 06_run_median_adi_and_compute_snr.py --base-directory "$1";
 printf "\n";
+stdbuf -i0 -o0 -e0 python 07_create_pdf_plots.py --base-directory "$1";
+printf "\n";
 printf "Completed pipeline for directory: %s \n\n" "$1";
