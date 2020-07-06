@@ -46,16 +46,16 @@
   "evaluation": {
     "planets": {
       "b": {
-        "position":         [48.98, 26.00],
-        "ignore_neighbors": 2
+        "position":         [45.1, 21.2],
+        "ignore_neighbors": 4
       }
     },
     "snr_options": {
       "aperture_radius":    [0.50, "lambda_over_d"],
       "target":             "signal_flux",
       "method":             "brute",
-      "max_distance":       [2.00, "pixel"],
-      "grid_size":          20,
+      "max_distance":       [3.00, "pixel"],
+      "grid_size":          60,
       "time_limit":         300
     },
     "n_processes":          null,

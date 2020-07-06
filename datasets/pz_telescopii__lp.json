@@ -46,7 +46,7 @@
   "evaluation": {
     "planets": {
       "b": {
-        "position":         [17.10, 36.04],
+        "position":         [17.1, 36.0],
         "ignore_neighbors": 1
       }
     },
@@ -54,8 +54,8 @@
       "aperture_radius":    [0.50, "lambda_over_d"],
       "target":             "signal_flux",
       "method":             "brute",
-      "max_distance":       [2.00, "pixel"],
-      "grid_size":          40,
+      "max_distance":       [3.00, "pixel"],
+      "grid_size":          60,
       "time_limit":         300
     },
     "n_processes":          null,
