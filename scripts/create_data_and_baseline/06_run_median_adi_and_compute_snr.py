@@ -198,7 +198,8 @@ if __name__ == '__main__':
                 csv_writer.writerows(result.items())
 
             print('Done!', flush=True)
-            print(80 * '-', '\n', flush=True)
+
+        print(80 * '-', '\n', flush=True)
 
     # -------------------------------------------------------------------------
     # Postliminaries
