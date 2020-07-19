@@ -86,6 +86,11 @@ def crop_center(
     assert array.ndim == len(size), \
         'Length of size must match number of dimensions of array!'
 
+    # Ensure that we are not "cropping" to something larger than the input
+    for (in_size, out_size) in zip(array.shape, size):
+        assert out_size <= in_size or out_size == -1, \
+            'Output size cannot be larger than input size when cropping array!'
+
     # Loop over the the axes of the array to create slices
     slices = list()
     for old_len, new_len in zip(array.shape, size):
