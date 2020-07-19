@@ -7,7 +7,7 @@ Utility functions for loading data.
 # -----------------------------------------------------------------------------
 
 from pathlib import Path
-from typing import Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 import h5py
 import numpy as np
@@ -26,6 +26,7 @@ def load_data(
     frame_size: Optional[Tuple[int, int]] = None,
     presubtract: Optional[str] = None,
     subsample: int = 1,
+    **_: Any,
 ) -> Tuple[
     np.ndarray,
     np.ndarray,
@@ -54,6 +55,7 @@ def load_data(
         subsample: An integer specifying the subsampling factor for the
             stack. If set to n, only every n-th frame is kept. By
             default, all frames are kept (i.e., subsample=1).
+        **_: Additional keyword arguments that will be ignored.
 
     Returns:
         A tuple `(stack, parang, psf_template, observing_conditions,
