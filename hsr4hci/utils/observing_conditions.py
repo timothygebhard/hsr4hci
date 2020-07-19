@@ -267,3 +267,57 @@ def load_observing_conditions(
     if as_dataframe:
         return pd.DataFrame(observing_conditions)
     return observing_conditions
+
+
+def dict2array(
+    observing_conditions: Dict[str, np.ndarray],
+    n_frames: int,
+    selected_keys: Optional[Union[List[str], str]] = None,
+) -> np.ndarray:
+    """
+    Take a dictionary of observing conditions and return the selected
+    subset of it as a 2D numpy array, where each column is one feature
+    of the observing conditions (in the order of `selected_keys` if it
+    is a list of strings; otherwise alphabetically).
+
+    Args:
+        observing_conditions: A dictionary where each key (e.g,
+            "air_mass") maps to a numpy array containing the
+            values for this respective feature.
+        n_frames: The total number of frames in the stack.
+        selected_keys: The keys of the observing conditions to be
+            selected. If None or an empty list is given, an empty
+            array with shape (n_frames, 0) is returned. If "all"
+            is given, all available features are returned.
+
+    Returns:
+        A 2D numpy array of shape (n_frames, n_features), where each
+        column is one feature of the observing conditions.
+    """
+
+    # If no keys were selected (either None, or an empty list), we simply
+    # return an empty 2D array of shape (n_frames, 0). This can still be
+    # concatenated to the predictors of an HSR model, so we do not need to
+    # take special care of it later.
+    if (not selected_keys) or (selected_keys is None):
+        return np.empty((n_frames, 0))
+
+    # Otherwise, check the given selected_keys:
+    # First, resolve selected_keys == "all" to use all available features
+    if isinstance(selected_keys, str) and selected_keys == 'all':
+        selected_keys = sorted(list(observing_conditions.keys()))
+
+    # Now, make sure that the selected keys only contain existing keys
+    selected_keys = list(
+        filter(lambda _: _ in observing_conditions.keys(), selected_keys)
+    )
+
+    # Finally, construct a 2D numpy where each column corresponds to one
+    # selected key and double-check that it has the expected shape
+    result = np.hstack(
+        [observing_conditions[_].reshape(-1, 1) for _ in selected_keys]
+    )
+    assert (result.ndim == 2) and (result.shape[0] == n_frames), \
+        'Result has not the expected shape, aborting!'
+
+    return result
