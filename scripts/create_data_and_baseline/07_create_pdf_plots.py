@@ -9,112 +9,20 @@ highest SNR, both for PCA and for median ADI.
 
 from ast import literal_eval
 from pathlib import Path
-from typing import List, Tuple
 
 import json
 import os
 import time
 
 from astropy import units
-from photutils import CircularAperture
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
 from hsr4hci.utils.argparsing import get_base_directory
 from hsr4hci.utils.fits import read_fits
-from hsr4hci.utils.plotting import (
-    add_colorbar_to_ax,
-    get_cmap,
-    MatplotlibColor,
-)
+from hsr4hci.utils.plotting import plot_frame
 from hsr4hci.utils.units import set_units_for_instrument, to_pixel
-
-
-# -----------------------------------------------------------------------------
-# FUNCTION DEFINITIONS
-# -----------------------------------------------------------------------------
-
-def make_plot(
-    frame: np.ndarray,
-    file_path: str,
-    positions: List[Tuple[float, float]],
-    aperture_radius: float,
-    snrs: List[float],
-    color: MatplotlibColor = 'darkgreen',
-) -> None:
-
-    # Set up a new figure
-    fig, ax = plt.subplots(figsize=(4, 4))
-    fig.set_constrained_layout_pads(w_pad=0, h_pad=0)
-
-    # Define aperture to get plot limits, and also to for plotting later
-    aperture = CircularAperture(positions=positions, r=aperture_radius)
-    photometry, _ = aperture.do_photometry(data=frame)
-
-    # Determine the limits for the color map
-    limit = 1.2 * np.nanmax(photometry) / aperture.area
-
-    # Create the actual plot and add a colorbar
-    img = plt.imshow(
-        X=frame,
-        origin='lower',
-        cmap=get_cmap(),
-        vmin=-limit,
-        vmax=limit,
-        interpolation='none',
-    )
-    add_colorbar_to_ax(img=img, fig=fig, ax=ax)
-
-    # Plot the optimal signal apertures and the resulting SNR
-    aperture.plot(axes=ax, **dict(color=color, lw=1, ls='-'))
-    for snr, position in zip(snrs, positions):
-
-        # Compute position of the label containing the SNR
-        angle = np.arctan2(
-            position[1] - frame.shape[1] / 2, position[0] - frame.shape[0] / 2
-        )
-        x = position[0] + 3 * aperture_radius * np.cos(angle)
-        y = position[1] + 3 * aperture_radius * np.sin(angle)
-
-        # Actually add the label with the SNR at this position
-        ax.text(
-            x=x,
-            y=y,
-            s=f'{snr:.1f}',
-            ha='center',
-            va='center',
-            color='white',
-            fontsize=6,
-            bbox=dict(
-                facecolor=color, edgecolor='none', boxstyle='round,pad=0.15',
-            ),
-        )
-
-        # Draw connection between label and aperture
-        ax.plot(
-            [position[0] + aperture_radius * np.cos(angle), x],
-            [position[1] + aperture_radius * np.sin(angle), y],
-            color=color,
-            lw=1,
-        )
-
-    # Remove ax ticks
-    ax.tick_params(
-        axis='both',
-        which='both',
-        bottom=False,
-        left=False,
-        labelleft=False,
-        labelbottom=False,
-    )
-
-    # Save the results
-    plt.savefig(file_path, bbox_inches='tight', pad=0)
-
-    # Close the figure
-    plt.close(fig=fig)
 
 
 # -----------------------------------------------------------------------------
@@ -202,7 +110,7 @@ if __name__ == '__main__':
 
         # Plot the result and save it as a PDF
         file_path = os.path.join(plots_dir, f'madi__{stacking_factor}.pdf')
-        make_plot(
+        plot_frame(
             frame=frame,
             file_path=file_path,
             positions=positions,
@@ -248,10 +156,10 @@ if __name__ == '__main__':
             for pn in planet_names:
                 positions.append(
                     literal_eval(
-                        dataframe[planet_name]['new_position'].values[n_pc]
+                        dataframe[pn]['new_position'].values[n_pc]
                     )
                 )
-                snrs.append(dataframe[planet_name]['snr'].values[n_pc])
+                snrs.append(dataframe[pn]['snr'].values[n_pc])
 
             # Select the signal estimate that matches the given number of PCs
             frame = signal_estimates[n_pc]
@@ -260,7 +168,7 @@ if __name__ == '__main__':
             file_path = os.path.join(
                 plots_dir, f'pca__{stacking_factor}__{planet_name}.pdf'
             )
-            make_plot(
+            plot_frame(
                 frame=frame,
                 file_path=file_path,
                 positions=positions,
