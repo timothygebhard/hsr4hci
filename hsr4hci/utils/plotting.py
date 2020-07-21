@@ -181,6 +181,7 @@ def plot_frame(
     positions: Optional[List[Tuple[float, float]]] = None,
     snrs: Optional[List[float]] = None,
     draw_color: Optional[MatplotlibColor] = 'darkgreen',
+    limit: Optional[float] = None,
 ) -> Figure:
     """
     Plot a single frame (e.g., a signal estimate). If desired, also add
@@ -202,9 +203,10 @@ def plot_frame(
             these SNR labels.
         draw_color: The color to be used for drawing the aperture and
             also the label.
+        limit: Range limit to be used for the plot (vmin, vmax).
 
     Returns:
-
+        A matplotlib figure containing the plot of the frame.
     """
 
     # -------------------------------------------------------------------------
@@ -225,19 +227,21 @@ def plot_frame(
 
         # Determine the limits for the color map: Use 120% of the average pixel
         # value in the aperture with the highest total flux
-        limit = 1.2 * np.nanmax(np.abs(photometry)) / aperture.area
+        if limit is None:
+            limit = 1.2 * np.nanmax(np.abs(photometry)) / aperture.area
 
     # Otherwise, just compute the limit based on the entire frame
     else:
+        if limit is None:
+            limit = 1.2 * np.nanmax(np.abs(frame))
         aperture = None
-        limit = 1.2 * np.nanmax(np.abs(frame))
 
     # Create the actual plot and use the limit we just computed
     plt.imshow(
         X=frame,
         origin='lower',
         cmap=get_cmap(),
-        vmin=-limit,
+        vmin=(-1 * limit),
         vmax=limit,
         interpolation='none',
     )
@@ -262,8 +266,8 @@ def plot_frame(
                 position[1] - frame.shape[1] / 2,
                 position[0] - frame.shape[0] / 2
             )
-            x = position[0] + max((8, 0.1 * position[0])) * np.cos(angle)
-            y = position[1] + max((8, 0.1 * position[1])) * np.sin(angle)
+            x = position[0] + max((8, 0.2 * position[0])) * np.cos(angle)
+            y = position[1] + max((8, 0.2 * position[1])) * np.sin(angle)
 
             # Actually add the label with the SNR at this position
             ax.text(
@@ -273,7 +277,7 @@ def plot_frame(
                 ha='center',
                 va='center',
                 color='white',
-                fontsize=6,
+                fontsize=12,
                 bbox=dict(
                     facecolor=draw_color,
                     edgecolor='none',
@@ -305,6 +309,6 @@ def plot_frame(
 
     # Save the results
     if file_path is not None:
-        plt.savefig(file_path, bbox_inches='tight', pad=0)
+        plt.savefig(file_path, bbox_inches='tight', pad=0, dpi=300)
 
     return fig
