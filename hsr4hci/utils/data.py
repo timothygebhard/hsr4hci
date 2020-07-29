@@ -115,10 +115,10 @@ def load_default_data(
     allows to load our most common data sets with default settings.
 
     Args:
-        planet: The name of the planet. Must be either "Beta_Pictoris",
-            "HIP_65426", or "HR_8799".
+        planet: The name of the planet, given as "Planet_Name__Filter".
         stacking_factor: The pre-stacking factor of the data set. In
-            general, this must be in (1, 5, 10, 25, 50, 100).
+            general, this must be in (1, 5, 10, 25, 50, 100); the exact
+            value depends on the data set.
         data_dir: The path to be base of the data directory, in case
             you do not want to use the system default defined in the
             environmental variable HSR4HCI_DATA_DIR.
@@ -133,18 +133,30 @@ def load_default_data(
     data_dir = data_dir if data_dir is not None else get_data_dir()
 
     # Hard-code some information about our most common data sets
-    if planet == 'Beta_Pictoris':
+    if planet == '51_Eridani__K1':
+        planet_part = ('51_Eridani', 'K1', '2015-09-25')
+        frame_size = (115, 115)
+    elif planet == 'Beta_Pictoris__Lp':
         planet_part = ('Beta_Pictoris', 'Lp', '2013-02-01')
-        frame_size = (81, 81)
-    elif planet == 'HIP_65426':
+        frame_size = (65, 65)
+    elif planet == 'Beta_Pictoris__Mp':
+        planet_part = ('Beta_Pictoris', 'Mp', '2012-11-26')
+        frame_size = (73, 73)
+    elif planet == 'HIP_65426__Lp':
         planet_part = ('HIP_65426', 'Lp', '2017-05-19')
-        frame_size = (81, 81)
-    elif planet == 'HR_8799':
-        planet_part = ('HR_8799', 'Lp', '2012-08-25')
-        frame_size = (101, 101)
-    elif planet == 'PZ_Telescopii':
+        frame_size = (93, 93)
+    elif planet == 'HR_8799__J':
+        planet_part = ('HR_8799', 'J', '2014-08-14')
+        frame_size = (309, 309)
+    elif planet == 'HR_8799__Lp':
+        planet_part = ('HR_8799', 'Lp', '2011-09-01')
+        frame_size = (165, 165)
+    elif planet == 'PZ_Telescopii__Lp':
         planet_part = ('PZ_Telescopii', 'Lp', '2010-09-27')
-        frame_size = (81, 81)
+        frame_size = (59, 59)
+    elif planet == 'R_CrA__Lp':
+        planet_part = ('R_CrA', 'Lp', '2018-06-07')
+        frame_size = (51, 51)
     else:
         raise ValueError(f'{planet} is not a valid planet name!')
 
