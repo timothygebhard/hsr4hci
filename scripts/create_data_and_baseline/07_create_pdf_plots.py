@@ -36,7 +36,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     script_start = time.time()
-    print('\nRUN MEDIAN ADI AND COMPUTE SIGNAL ESTIMATES\n', flush=True)
+    print('\nCREATING RESULT PLOTS AS PDF AND PNG\n', flush=True)
 
     # -------------------------------------------------------------------------
     # Parse command line arguments and load config.json
@@ -167,6 +167,18 @@ if __name__ == '__main__':
             # Plot the result and save it as a PDF
             file_path = os.path.join(
                 plots_dir, f'pca__{stacking_factor}__{planet_name}.pdf'
+            )
+            plot_frame(
+                frame=frame,
+                file_path=file_path,
+                positions=positions,
+                aperture_radius=aperture_radius,
+                snrs=snrs,
+            )
+
+            # Plot the result and save it as a PNG
+            file_path = os.path.join(
+                plots_dir, f'pca__{stacking_factor}__{planet_name}.png'
             )
             plot_frame(
                 frame=frame,
