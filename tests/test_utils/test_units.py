@@ -8,6 +8,8 @@ Tests for units.py
 
 from astropy import units
 
+import pytest
+
 from hsr4hci.utils.units import convert_to_quantity, set_units_for_instrument
 
 
@@ -36,6 +38,17 @@ def test__set_units_for_instrument() -> None:
     quantity = units.Quantity(1.0, 'lambda_over_d')
     assert quantity.to('arcsec').value == 0.096
     assert quantity.to('pixel').value == 3.5424354243542435
+
+    # Test case 4: Overwriting units after they have been set already: This
+    # currently does not work, so we need to catch the expected error...
+    pixscale = units.Quantity(0.012255, 'arcsec / pixel')
+    lambda_over_d = units.Quantity(0.0531, 'arcsec')
+    with pytest.raises(RuntimeError) as error:
+        set_units_for_instrument(
+            pixscale=pixscale,
+            lambda_over_d=lambda_over_d
+        )
+    assert 'Overwriting units is currently not possible!' in str(error)
 
 
 def test__convert_to_quantity() -> None:

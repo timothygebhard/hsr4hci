@@ -81,7 +81,10 @@ def set_units_for_instrument(
     # Construct a new Unit for lambda_over_d and add it to the unit registry.
     lod_unit = units.def_unit(s=['lod', 'lambda_over_d'],
                               represents=lambda_over_d.value * units.arcsec)
-    units.add_enabled_units(units=lod_unit)
+    try:
+        units.add_enabled_units(units=lod_unit)
+    except ValueError:
+        raise RuntimeError('Overwriting units is currently not possible!')
 
     # Construct an Equivalency object for the pixel scale and add it to the
     # global unit registry. This object will be used by astropy.units to
