@@ -53,6 +53,11 @@ def get_pca_noise_estimate(
         in the stack.
     """
 
+    # Cover a special corner case: for 0 principal components, the noise
+    # estimate is 0 (alternatively, it could be the mean / median?)
+    if n_components == 0:
+        return np.zeros_like(stack)
+
     # Instantiate new PCA
     pca = PCA(n_components=n_components)
 
