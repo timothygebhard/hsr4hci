@@ -21,9 +21,11 @@ from hsr4hci.utils.general import add_array_with_interpolation
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def crop_psf_template(psf_template: np.ndarray,
-                      psf_radius: units.Quantity,
-                      rescale_psf: bool = True) -> np.ndarray:
+def crop_psf_template(
+    psf_template: np.ndarray,
+    psf_radius: units.Quantity,
+    rescale_psf: bool = True,
+) -> np.ndarray:
     """
     Take a raw unsaturated PSF template, and crop it to a circle of
     radius `psf_radius` around it's center, which is determined by
@@ -63,10 +65,12 @@ def crop_psf_template(psf_template: np.ndarray,
     return psf_masked
 
 
-def get_signal_stack(position: Tuple[int, int],
-                     frame_size: Tuple[int, int],
-                     parang: np.ndarray,
-                     psf_cropped: np.ndarray) -> Tuple[np.ndarray, list]:
+def get_signal_stack(
+    position: Tuple[int, int],
+    frame_size: Tuple[int, int],
+    parang: np.ndarray,
+    psf_cropped: np.ndarray,
+) -> Tuple[np.ndarray, list]:
     """
     Compute the forward model: Assume that at time t=0, the planet is
     at the given `position. The apparent motion of the sky (and thus `
