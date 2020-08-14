@@ -51,8 +51,9 @@ def load_config(config_file_path: str) -> Dict[str, Any]:
 
     # Replace dummy data directory with machine-specific data directory
     data_dir = get_data_dir()
-    config['dataset']['file_path'] = \
-        config['dataset']['file_path'].replace('DATA_DIR', data_dir)
+    config['dataset']['file_path'] = config['dataset']['file_path'].replace(
+        'DATA_DIR', data_dir
+    )
 
     # -------------------------------------------------------------------------
     # Convert values into astropy.units.Quantity objects
@@ -64,16 +65,20 @@ def load_config(config_file_path: str) -> Dict[str, Any]:
 
     # Use this to set up the instrument-specific conversion factors. We need
     # this here to that we can parse "lambda_over_d" as a unit in the config.
-    set_units_for_instrument(pixscale=config['dataset']['pixscale'],
-                             lambda_over_d=config['dataset']['lambda_over_d'])
+    set_units_for_instrument(
+        pixscale=config['dataset']['pixscale'],
+        lambda_over_d=config['dataset']['lambda_over_d'],
+    )
 
     # Convert the remaining entries of the config to astropy.units.Quantity
-    for key_tuple in [('roi_mask', 'inner_radius'),
-                      ('roi_mask', 'outer_radius'),
-                      ('selection_mask', 'annulus_width'),
-                      ('selection_mask', 'radius_position'),
-                      ('selection_mask', 'radius_mirror_position'),
-                      ('selection_mask', 'minimum_distance')]:
+    for key_tuple in [
+        ('roi_mask', 'inner_radius'),
+        ('roi_mask', 'outer_radius'),
+        ('selection_mask', 'annulus_width'),
+        ('selection_mask', 'radius_position'),
+        ('selection_mask', 'radius_mirror_position'),
+        ('selection_mask', 'minimum_distance'),
+    ]:
         config = convert_to_quantity(config, key_tuple)
 
     return config
