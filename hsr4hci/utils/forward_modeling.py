@@ -15,6 +15,7 @@ from photutils import centroid_2dg, CircularAperture
 import numpy as np
 
 from hsr4hci.utils.general import add_array_with_interpolation
+from hsr4hci.utils.masking import get_circle_mask
 
 
 # -----------------------------------------------------------------------------
@@ -52,8 +53,11 @@ def crop_psf_template(
     epsilon = np.finfo(np.float64).eps
     psf_clipped = np.clip(a=psf_rescaled, a_min=epsilon, a_max=None)
 
+    # Create a mask for the centering process
+    mask = get_circle_mask(mask_size=psf_clipped.shape, radius=5)
+
     # Fit the center of the clipped PSF template
-    psf_clipped_center = centroid_2dg(psf_clipped)
+    psf_clipped_center = centroid_2dg(data=psf_clipped, mask=~mask)
 
     # Create a circular mask and multiply it with the clipped PSF. The
     # resulting masked PSF is automatically cropped to its bounding box.
@@ -66,7 +70,7 @@ def crop_psf_template(
 
 
 def get_signal_stack(
-    position: Tuple[int, int],
+    position: Tuple[float, float],
     frame_size: Tuple[int, int],
     parang: np.ndarray,
     psf_cropped: np.ndarray,
