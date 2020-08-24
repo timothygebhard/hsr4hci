@@ -27,7 +27,7 @@
     "DATE":                 "2015-09-25",
     "DIT":                  5.002,
     "ESO_PROGRAM_ID":       "095.C-0298(D)",
-    "FILTER":               "K12",
+    "FILTER":               "K1",
     "INSTRUMENT":           "IRDIS",
     "LAMBDA_OVER_D":        0.0531,
     "PIXSCALE":             0.012255,
