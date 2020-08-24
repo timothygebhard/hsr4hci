@@ -309,6 +309,6 @@ def plot_frame(
 
     # Save the results
     if file_path is not None:
-        plt.savefig(file_path, bbox_inches='tight', pad=0, dpi=300)
+        plt.savefig(file_path, bbox_inches='tight', dpi=300)
 
     return fig
