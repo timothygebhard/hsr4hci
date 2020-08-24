@@ -57,6 +57,7 @@ def convert_to_quantity(
 def set_units_for_instrument(
     pixscale: units.Quantity,
     lambda_over_d: units.Quantity,
+    verbose: bool = True,
 ) -> None:
     """
     Define instrument-specific units and conversions.
@@ -76,6 +77,9 @@ def set_units_for_instrument(
             astropy.units.Quantity in units of arc seconds per pixel.
         lambda_over_d: The instrument constant lambda over D, as an
             astropy.units.Quantity in units of arc seconds.
+        verbose: Whether or not to print a message about the instrument-
+            specific unit conversion context that was activated by
+            calling this function.
     """
 
     # Construct a new Unit for lambda_over_d and add it to the unit registry.
@@ -95,6 +99,11 @@ def set_units_for_instrument(
     # This line seems to be necessary to make our units and equivalencies
     # available also outside of the scope of this function
     units.set_enabled_equivalencies(equivalencies=[])
+
+    if verbose:
+        print('Activated instrument-specific unit conversion context:')
+        print('  PIXSCALE      =', pixscale)
+        print('  LAMBDA_OVER_D =', lambda_over_d, '\n')
 
 
 def to_pixel(
