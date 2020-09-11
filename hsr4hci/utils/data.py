@@ -20,7 +20,6 @@ from hsr4hci.utils.general import crop_center
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-
 def load_data(
     file_path: str,
     frame_size: Optional[Tuple[int, int]] = None,
@@ -71,8 +70,10 @@ def load_data(
         stack = np.array(hdf_file['/stack'][::subsample, ...])
         parang = np.array(hdf_file['/parang'][::subsample, ...])
 
-        # Select the unsaturated PSF template
+        # Select the unsaturated PSF template and ensure it is 2D
         psf_template = np.array(hdf_file['/psf_template']).squeeze()
+        if psf_template.ndim == 3:
+            psf_template = np.mean(psf_template, axis=0)
 
         # Select the observing conditions
         observing_conditions: Dict[str, np.ndarray] = dict()
