@@ -10,7 +10,7 @@ from typing import Any, List, Optional, Tuple, Union
 
 import colorsys
 
-from matplotlib.axes import SubplotBase
+from matplotlib.axes import Axes
 from matplotlib.cm import get_cmap as original_get_cmap
 from matplotlib.colors import Colormap, LinearSegmentedColormap, ListedColormap
 from matplotlib.figure import Figure
@@ -33,25 +33,24 @@ import numpy as np
 # - An RGB tuple specifying the color. Example: (1, 0, 0) for red.
 # - An RGBA tuple, specifying the color and the alpha channel (i.e., the
 #   transparency). Example: (1, 0, 0, 0.5) for a semitransparent red.
-MatplotlibColor = Union[str,
-                        Tuple[float, float, float],
-                        Tuple[float, float, float, float]]
+MatplotlibColor = Union[
+    str, Tuple[float, float, float], Tuple[float, float, float, float]
+]
 
 
 # -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def get_cmap(cmap_name: str = 'RdBu_r',
-             bad_color: str = '#212121') -> Union[Colormap,
-                                                  LinearSegmentedColormap,
-                                                  ListedColormap]:
+def get_cmap(
+    cmap_name: str = 'RdBu_r', bad_color: str = '#212121'
+) -> Union[Colormap, LinearSegmentedColormap, ListedColormap]:
     """
     Convenience wrapper around matplotlib.cm.get_cmap() which allows to
     also set the `bad_color` (i.e., the color for NaN value)
 
     Args:
-        cmap_name: The name of a matplotlib color map, for example 'RdBu_r'.
+        cmap_name: The name of a matplotlib color map (e.g., 'RdBu_r').
         bad_color: A string specifying a color in HTML format: (e.g.,
             '#FF0000') which will be used as the 'bad color' of the
             color map; that is, the color used, for example, for NaN
@@ -87,10 +86,9 @@ def get_transparent_cmap(color: MatplotlibColor = 'red') -> ListedColormap:
     return ListedColormap([(0, 0, 0, 0), color])
 
 
-def add_colorbar_to_ax(img: AxesImage,
-                       fig: Figure,
-                       ax: SubplotBase,
-                       where: str = 'right') -> None:
+def add_colorbar_to_ax(
+    img: AxesImage, fig: Figure, ax: Axes, where: str = 'right'
+) -> None:
     """
     Add a "nice" colorbar to an imshow plot.
 
@@ -99,7 +97,7 @@ def add_colorbar_to_ax(img: AxesImage,
     Args:
         img: The return of the respective imshow() command.
         fig: The figure that the plot is part of (e.g., `plt.gcf()`).
-        ax: The that of the plot is contained in (e.g., `plt.gca()`).
+        ax: The ax which contains the plot (e.g., `plt.gca()`).
         where: Where to place the colorbar (left, right, top or bottom).
     """
 
@@ -108,16 +106,19 @@ def add_colorbar_to_ax(img: AxesImage,
     elif where in ('top', 'bottom'):
         orientation = 'horizontal'
     else:
-        raise ValueError(f'Illegal value for `where`: "{where}". Must be one '
-                         'of ["left", "right", "top", "bottom"].')
+        raise ValueError(
+            f'Illegal value for `where`: "{where}". Must be one '
+            'of ["left", "right", "top", "bottom"].'
+        )
 
     divider = make_axes_locatable(ax)
     cax = divider.append_axes(where, size='5%', pad=0.05)
     fig.colorbar(img, cax=cax, orientation=orientation)
 
 
-def adjust_luminosity(color: MatplotlibColor,
-                      amount: float = 1.4) -> Tuple[float, float, float]:
+def adjust_luminosity(
+    color: MatplotlibColor, amount: float = 1.4
+) -> Tuple[float, float, float]:
     """
     Adjusts the luminosity of the input `color` by the given `amount`.
 
@@ -157,9 +158,7 @@ def adjust_luminosity(color: MatplotlibColor,
     return rgb
 
 
-def disable_ticks(
-    ax: Any,
-) -> None:
+def disable_ticks(ax: Any,) -> None:
     """
     Disable the ticks and labels on the given matplotlib `ax`. This is
     similar to calling `ax.axis('off')`, except that the frame around
@@ -169,8 +168,16 @@ def disable_ticks(
         ax: A matplotlib axis.
     """
 
-    ax.tick_params(axis='both', which='both', top=False, bottom=False,
-                   left=False, right=False, labelbottom=False, labelleft=False)
+    ax.tick_params(
+        axis='both',
+        which='both',
+        top=False,
+        bottom=False,
+        left=False,
+        right=False,
+        labelbottom=False,
+        labelleft=False,
+    )
 
 
 def plot_frame(
@@ -264,7 +271,7 @@ def plot_frame(
             # Compute position of the label containing the SNR
             angle = np.arctan2(
                 position[1] - frame.shape[1] / 2,
-                position[0] - frame.shape[0] / 2
+                position[0] - frame.shape[0] / 2,
             )
             x = position[0] + max((8, 0.2 * position[0])) * np.cos(angle)
             y = position[1] + max((8, 0.2 * position[1])) * np.sin(angle)
@@ -312,3 +319,41 @@ def plot_frame(
         plt.savefig(file_path, bbox_inches='tight', dpi=300)
 
     return fig
+
+
+def zerocenter_imshow(ax: Axes) -> None:
+    """
+    Make sure that he `(vmin, vmax)` range of the `imshow()` plot in
+    the given `ax` object is symmetric around zero.
+
+    Args:
+        ax: The ax which contains the plot (e.g., `plt.gca()`).
+    """
+
+    # Get plot and current limits
+    img = ax.get_images()[0]
+    vmin, vmax = img.get_clim()
+
+    # Compute and set new limits
+    limit = max(np.abs(vmin), np.abs(vmax))
+    img.set_clim((-limit, limit))
+
+
+def zerocenter_plot(ax: Axes, which: str) -> None:
+    """
+    Make sure that the `xlim` or `ylim` range of the plot object in the
+    given `ax` object is symmetric around zero.
+
+    Args:
+        ax: The ax which contains the plot (e.g., `plt.gca()`).
+        which: Which axis to center around zero, that is, "x" or "y".
+    """
+
+    if which == 'x':
+        limit = abs(max(ax.get_xlim(), key=abs))
+        ax.set_ylim(ymin=-limit, ymax=limit)
+    elif which == 'y':
+        limit = abs(max(ax.get_ylim(), key=abs))
+        ax.set_ylim(ymin=-limit, ymax=limit)
+    else:
+        raise ValueError('Parameter which must be "x" or "y"!')
