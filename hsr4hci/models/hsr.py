@@ -391,6 +391,17 @@ class HalfSiblingRegression:
         save_fits(array=self.predictions, file_path=file_path)
         print('Done!', flush=True)
 
+    def save_signal_estimate(self) -> None:
+        """
+        Save signal estimate as a FITS file to the results directory.
+        """
+
+        print('Saving signal estimate to FITS...', end=' ', flush=True)
+        self._ensure_results_dir()
+        file_path = os.path.join(self.results_dir, 'signal_estimate.fits')
+        save_fits(array=self.get_signal_estimate(), file_path=file_path)
+        print('Done!', flush=True)
+
     def save_residuals(self) -> None:
         """
         Save residuals as a FITS file to the results directory.
