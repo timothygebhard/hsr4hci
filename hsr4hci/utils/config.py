@@ -11,8 +11,6 @@ from typing import Any, Dict
 import json
 import os
 
-from hsr4hci.utils.units import convert_to_quantity, set_units_for_instrument
-
 
 # -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
@@ -48,38 +46,6 @@ def load_config(config_file_path: str) -> Dict[str, Any]:
 
     # Add the path to the experiments folder to the config dict
     config['experiment_dir'] = os.path.dirname(config_file_path) or '.'
-
-    # Replace dummy data directory with machine-specific data directory
-    data_dir = get_data_dir()
-    config['dataset']['file_path'] = config['dataset']['file_path'].replace(
-        'DATA_DIR', data_dir
-    )
-
-    # -------------------------------------------------------------------------
-    # Convert values into astropy.units.Quantity objects
-    # -------------------------------------------------------------------------
-
-    # First, convert pixscale and lambda_over_d to astropy.units.Quantity
-    config = convert_to_quantity(config, ('dataset', 'pixscale'))
-    config = convert_to_quantity(config, ('dataset', 'lambda_over_d'))
-
-    # Use this to set up the instrument-specific conversion factors. We need
-    # this here to that we can parse "lambda_over_d" as a unit in the config.
-    set_units_for_instrument(
-        pixscale=config['dataset']['pixscale'],
-        lambda_over_d=config['dataset']['lambda_over_d'],
-    )
-
-    # Convert the remaining entries of the config to astropy.units.Quantity
-    for key_tuple in [
-        ('roi_mask', 'inner_radius'),
-        ('roi_mask', 'outer_radius'),
-        ('selection_mask', 'annulus_width'),
-        ('selection_mask', 'radius_position'),
-        ('selection_mask', 'radius_mirror_position'),
-        ('selection_mask', 'minimum_distance'),
-    ]:
-        config = convert_to_quantity(config, key_tuple)
 
     return config
 
