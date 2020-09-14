@@ -54,7 +54,8 @@ def test__set_units_for_instrument() -> None:
 def test__convert_to_quantity() -> None:
 
     original_nested_dict = dict(a=dict(b=[42, 'meter']))
-    converted_nested_dict = convert_to_quantity(config=original_nested_dict,
-                                                key_tuple=('a', 'b'))
+    converted_nested_dict = convert_to_quantity(
+        config=original_nested_dict, key_tuple=('a', 'b')
+    )
 
     assert converted_nested_dict['a']['b'] == units.Quantity(42, 'meter')
