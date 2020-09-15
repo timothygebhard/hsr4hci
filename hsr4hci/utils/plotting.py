@@ -6,6 +6,7 @@ Utility functions for plotting.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from copy import copy
 from typing import Any, List, Optional, Tuple, Union
 
 import colorsys
@@ -61,7 +62,7 @@ def get_cmap(
     """
 
     # Get desired color map and set the desired bad_color
-    cmap = original_get_cmap(cmap_name)
+    cmap = copy(original_get_cmap(cmap_name))
     cmap.set_bad(color=bad_color)
 
     return cmap
