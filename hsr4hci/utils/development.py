@@ -765,10 +765,11 @@ def get_match_fraction(
             # Check if the residuals contain NaN, which would indicate that
             # the test position is outside of the ROI, or was so close to the
             # star that the `max_signal_length` threshold has caused us not to
-            # learn this model. In this case, we skip the test position instead
-            # of recording a 0 in the matches, because we actually do not know
-            # if this test position matches the original planet hypothesis.
+            # learn this model.
+            # In this case, we default to "failed the consistency test" to
+            # avoid artifacts in the final match_fraction array.
             if np.isnan(residuals).any():
+                matches.append(0)
                 continue
 
             # Split the residual into the part that should contain a planet
@@ -791,12 +792,9 @@ def get_match_fraction(
             else:
                 matches.append(0)
 
-        # Finally, compute the match fraction for the current position.
-        # In case the match list is empty (i.e., we have skipped all test
-        # positions), we manually set the match_fraction to 0.
-        if matches:
-            match_fraction[position[0], position[1]] = np.mean(matches)
-        else:
-            match_fraction[position[0], position[1]] = 0
+        # Finally, compute the match fraction for the current position
+        match_fraction[position[0], position[1]] = (
+                np.sum(matches) / n_test_positions
+        )
 
     return match_fraction
