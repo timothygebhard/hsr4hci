@@ -793,8 +793,6 @@ def get_match_fraction(
                 matches.append(0)
 
         # Finally, compute the match fraction for the current position
-        match_fraction[position[0], position[1]] = (
-                np.sum(matches) / n_test_positions
-        )
+        match_fraction[position[0], position[1]] = np.mean(matches)
 
     return match_fraction
