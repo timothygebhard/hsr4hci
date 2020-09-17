@@ -16,12 +16,12 @@ import os
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def load_config(config_file_path: str) -> Dict[str, Any]:
+def load_config(file_path: str) -> Dict[str, Any]:
     """
     Load and augment an experiment configuration.
 
     Args:
-        config_file_path: Path to the JSON file containing the
+        file_path: Path to the JSON file containing the
             configuration to be loaded.
 
     Returns:
@@ -33,11 +33,11 @@ def load_config(config_file_path: str) -> Dict[str, Any]:
     # -------------------------------------------------------------------------
 
     # Build the full path to the config file and check if it exists
-    if not os.path.exists(config_file_path):
-        raise FileNotFoundError(f'{config_file_path} does not exist!')
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f'{file_path} does not exist!')
 
     # Load the config file into a dict
-    with open(config_file_path, 'r') as json_file:
+    with open(file_path, 'r') as json_file:
         config: Dict[str, Any] = json.load(json_file)
 
     # -------------------------------------------------------------------------
@@ -45,7 +45,7 @@ def load_config(config_file_path: str) -> Dict[str, Any]:
     # -------------------------------------------------------------------------
 
     # Add the path to the experiments folder to the config dict
-    config['experiment_dir'] = os.path.dirname(config_file_path) or '.'
+    config['experiment_dir'] = os.path.dirname(file_path) or '.'
 
     return config
 
