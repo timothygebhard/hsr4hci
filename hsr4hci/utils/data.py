@@ -7,7 +7,7 @@ Utility functions for loading data.
 # -----------------------------------------------------------------------------
 
 from pathlib import Path
-from typing import Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 import h5py
 import numpy as np
@@ -36,7 +36,8 @@ def load_data(
     Dict[str, Union[str, float]],
 ]:
     """
-    Load a dataset from the HDF file at the given `file_path`.
+    Load a data set specified by the target and filter name, date and
+    stacking factor, and optionally apply some pre-processing.
 
     Note: This function only works with HDF files that follow the
         specific assumptions regarding the file structure that are
@@ -183,3 +184,49 @@ def load_default_data(
         date=date,
         stacking_factor=stacking_factor,
     )
+
+
+def load_parang(
+    target_name: str,
+    filter_name: str,
+    date: str,
+    stacking_factor: int,
+    **_: Any,
+) -> np.ndarray:
+    """
+    Load the parallactic angles from the data set specified by the
+    target and filter name, date and stacking factor.
+
+    This is essentially just a subset of the `load_data()` function for
+    cases where we do not want to load the entire stack into memory to
+    get the parallactic angles.
+
+    Args:
+        target_name: Name of the target of the observation, that is, the
+            name of the host star; e.g., "Beta_Pictoris".
+        filter_name: Name of the filter that was used, e.g., "Lp".
+        date: The date of the observation in format "YYYY-MM-DD".
+        stacking_factor: The number of (raw) frames that were merged
+            during the pre-processing of the data set.
+
+    Returns:
+        A numpy array containing the parallactic angles.
+    """
+
+    # Construct path to HDF file containing the data
+    file_path = Path(
+        get_data_dir(),
+        target_name,
+        filter_name,
+        date,
+        'processed',
+        f'stacked_{stacking_factor}.hdf',
+    )
+
+    # Read in the dataset from the HDf file
+    with h5py.File(file_path, 'r') as hdf_file:
+
+        # Select stack and parallactic angles and subsample as desired
+        parang = np.array(hdf_file['parang'])
+
+    return parang
