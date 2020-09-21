@@ -6,17 +6,21 @@ Utilities for reading in config files.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Any, Dict
+from pathlib import Path
+from typing import Any, Dict, Union
 
 import json
 import os
+
+import hsr4hci
 
 
 # -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def load_config(file_path: str) -> Dict[str, Any]:
+
+def load_config(file_path: Union[str, Path]) -> Dict[str, Any]:
     """
     Load and augment an experiment configuration.
 
@@ -28,31 +32,56 @@ def load_config(file_path: str) -> Dict[str, Any]:
         A dictionary containing the augmented configuration.
     """
 
-    # -------------------------------------------------------------------------
-    # Load configuration from JSON file
-    # -------------------------------------------------------------------------
+    # Make sure that the file_path is an instance of Path
+    if not isinstance(file_path, Path):
+        file_path = Path(file_path)
 
-    # Build the full path to the config file and check if it exists
-    if not os.path.exists(file_path):
+    # Double-check that the target file exists
+    if not file_path.exists():
         raise FileNotFoundError(f'{file_path} does not exist!')
 
     # Load the config file into a dict
     with open(file_path, 'r') as json_file:
         config: Dict[str, Any] = json.load(json_file)
 
-    # -------------------------------------------------------------------------
-    # Augment configuration (i.e., add implicitly defined variables)
-    # -------------------------------------------------------------------------
-
     # Add the path to the experiments folder to the config dict
-    config['experiment_dir'] = os.path.dirname(file_path) or '.'
+    config['experiment_dir'] = file_path.parent or '.'
 
     return config
 
 
-def get_data_dir() -> str:
+def load_dataset_config(target_name: str, filter_name: str) -> Dict[str, Any]:
     """
-    Get the path to the data directory from an environment variable.
+
+    Args:
+        target_name:
+        filter_name:
+
+    Returns:
+
+    """
+
+    # Construct full path to the JSON file containing the configuration
+    # of the target data set
+    file_name = f'{target_name}__{filter_name}.json'.lower()
+    file_path = Path(hsr4hci.__file__).parent.parent / 'datasets' / file_name
+
+    # Double-check that the target file exists
+    if not file_path.exists():
+        raise FileNotFoundError(
+            f'No data set configuration file found for target "{target_name}" '
+            f'and filter "{filter_name}"!'
+        )
+
+    # Otherwise, read in the JSON file, parse it to a dict, and return it
+    with open(file_path, 'r') as json_file:
+        dataset_config: Dict[str, Any] = json.load(json_file)
+    return dataset_config
+
+
+def get_data_dir() -> Path:
+    """
+    Get the Path of the data directory from an environment variable.
 
     Returns:
         Path to the data directory.
@@ -60,12 +89,12 @@ def get_data_dir() -> str:
 
     # Check if the HSR4HCI_DATA_DIR environment variable is set
     if 'HSR4HCI_DATA_DIR' in os.environ.keys():
-        data_dir = os.environ['HSR4HCI_DATA_DIR']
+        data_dir = Path(os.environ['HSR4HCI_DATA_DIR'])
     else:
         raise RuntimeError('Environment variable HSR4HCI_DATA_DIR not set!')
 
     # Check if the value it contains is a valid directory
-    if not os.path.isdir(data_dir):
+    if not data_dir.is_dir():
         raise RuntimeError('Value of HSR4HCI_DATA_DIR is not a directory!')
 
     return data_dir
