@@ -6,6 +6,8 @@ Tests for config.py
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from pathlib import Path
+
 import os
 
 from _pytest.monkeypatch import MonkeyPatch
@@ -29,7 +31,7 @@ def test__get_data_dir(monkeypatch: MonkeyPatch) -> None:
 
     # Case 1: HSR4HCI_DATA_DIR contains a "valid" data directory
     monkeypatch.setenv("HSR4HCI_DATA_DIR", ".")
-    assert get_data_dir() == '.'
+    assert get_data_dir() == Path('.')
 
     # Case 2: HSR4HCI_DATA_DIR is not set
     monkeypatch.delenv("HSR4HCI_DATA_DIR", raising=False)
