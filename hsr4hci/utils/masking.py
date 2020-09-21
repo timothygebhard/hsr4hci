@@ -7,11 +7,15 @@ Utility functions for creating and working with (binary) masks.
 # -----------------------------------------------------------------------------
 
 from cmath import polar
+from math import sin, cos, degrees, radians
 from typing import List, Optional, Tuple
 
 from astropy import units
+from scipy.ndimage import binary_dilation
 
 import numpy as np
+
+from hsr4hci.utils.signal_masking import get_signal_length
 
 
 # -----------------------------------------------------------------------------
@@ -103,8 +107,8 @@ def get_wedge_mask(
     """
 
     # Convert angles from degree to radian (and use shorter names)
-    theta = np.deg2rad(orientation_angle)
-    phi = np.deg2rad(opening_angle)
+    theta = radians(orientation_angle % 360)
+    phi = radians(opening_angle % 360)
 
     # Create a suitable grid
     x_, y_ = np.ogrid[: mask_size[0], : mask_size[1]]
@@ -121,12 +125,8 @@ def get_wedge_mask(
     # grid belongs to the wedge, we need to know on which side of the lines
     # it falls, which we can find out by taking the scalar product with the
     # normal vector of said straight lines.
-    scalarproduct_v = x * np.cos(theta + phi / 2.0) - y * np.sin(
-        theta + phi / 2.0
-    )
-    scalarproduct_w = x * np.cos(theta - phi / 2.0) - y * np.sin(
-        theta - phi / 2.0
-    )
+    scalarproduct_v = x * cos(theta + phi / 2) - y * sin(theta + phi / 2)
+    scalarproduct_w = x * cos(theta - phi / 2) - y * sin(theta - phi / 2)
 
     # Ultimately, we only need to combine the two sets (i.e., half planes).
     # The way we do this depends whether the opening angle is smaller or
@@ -141,52 +141,40 @@ def get_wedge_mask(
 
 def get_sausage_mask(
     mask_size: Tuple[int, int],
-    position: Tuple[int, int],
+    position: Tuple[float, float],
     radius: float,
-    opening_angle: float,
+    angle: float,
 ) -> np.ndarray:
     """
     Get a "sausage"-shaped mask, which corresponds to the shape you get
-    if you place a circle with `sausage_radius` at the given `position`
-    and then slide it along an arc with the given `opening_angle` around
-    the center of the mask (the `position` bisects this arc).
-
-    This type of mask can be used to get the "exclusion region" of
-    pixels that can not be used a predictors for a given pixel (because
-    they may contain planet signal if the pixel at `position` contains
-    planet signal). In this case, the opening angle should be *twice*
-    the field rotation of the data set.
+    if you place a circle with the given `radius` at `position` and then
+    slide it along an arc (around the center) with the given `angle`.
+    The sign of the angle defines the direction (clockwise or counter-
+    clockwise) of the sausage shape.
 
     Args:
-        mask_size: A tuple (width, height) specifying the size of the
+        mask_size: A tuple `(width, height)` specifying the size of the
             mask to be created.
-        position: A tuple (x, y) specifying the position which defines
-            the sausage mask (i.e., the center of the "sausage").
-        radius: The radius (in pixels) which defines the width of the
-            "sausage".
-        opening_angle: The angle (in degrees) which defines the length
-            of the "sausage".
+        position: A tuple `(x, y)` specifying the position which defines
+            the starting position of the sausage mask.
+        radius: The radius (in pixels) of the "sausage".
+        angle: The angle (in degrees) which defines the length and
+            orientation of the "sausage".
 
     Returns:
         A numpy array containing a "sausage"-shaped binary mask.
     """
 
     # Compute the center of the mask
-    center = tuple([_ / 2 for _ in mask_size])
+    center = (mask_size[0] / 2, mask_size[1] / 2)
 
     # Convert the given position to polar coordinates
     r, phi = polar(complex(position[1] - center[1], position[0] - center[0]))
 
-    # Get start and end position in cartesian coordinates
-    start_position = r * np.exp(1j * (phi - np.deg2rad(opening_angle / 2)))
-    start_position = (
-        np.imag(start_position) + center[0],
-        np.real(start_position) + center[1],
-    )
-    end_position = r * np.exp(1j * (phi + np.deg2rad(opening_angle / 2)))
+    # Get the end position in cartesian coordinates
     end_position = (
-        np.imag(end_position) + center[0],
-        np.real(end_position) + center[1],
+        center[0] + r * sin(phi + radians(angle)),
+        center[1] + r * cos(phi + radians(angle)),
     )
 
     # Get the annulus mask
@@ -199,13 +187,13 @@ def get_sausage_mask(
     # Get the wedge mask
     wedge_mask = get_wedge_mask(
         mask_size=mask_size,
-        orientation_angle=np.rad2deg(phi),
-        opening_angle=opening_angle,
+        orientation_angle=(degrees(phi) + angle / 2),
+        opening_angle=angle,
     )
 
     # Get "end cap" masks
     end_cap_mask_1 = get_circle_mask(
-        mask_size=mask_size, radius=radius, center=start_position
+        mask_size=mask_size, radius=radius, center=position
     )
     end_cap_mask_2 = get_circle_mask(
         mask_size=mask_size, radius=radius, center=end_position
@@ -315,7 +303,7 @@ def get_predictor_mask(
     """
 
     # Compute mask center and separation of `position` from the center
-    center = tuple([_ / 2 for _ in mask_size])
+    center = (mask_size[0] / 2, mask_size[1] / 2)
     separation = np.hypot((position[0] - center[0]), (position[1] - center[1]))
 
     # Initialize an empty mask of the desired size
@@ -353,15 +341,113 @@ def get_predictor_mask(
     return mask
 
 
+def get_exclusion_mask(
+    mask_size: Tuple[int, int],
+    position: Tuple[float, float],
+    parang: np.ndarray,
+    signal_time: Optional[int],
+    psf_diameter: float,
+    dilation_size: Optional[int] = None,
+    use_field_rotation: bool = True,
+) -> np.ndarray:
+    """
+    Get a mask of the pixels that we must not use as predictors.
+
+    Args:
+        mask_size:
+        position:
+        parang:
+        signal_time:
+        psf_diameter:
+        dilation_size:
+        use_field_rotation:
+
+    Returns:
+
+    """
+
+    # Make sure that the options do not contradict each other
+    if signal_time is None and use_field_rotation:
+        raise ValueError(
+            'No signal_time given; this only works in combination with '
+            'use_field_rotation=False!'
+        )
+
+    # Defines shortcuts
+    center = (mask_size[0] / 2, mask_size[1] / 2)
+    n_frames = len(parang)
+
+    # In case we use the field rotation (e.g., for signal masking models), we
+    # need to compute the size of it based on the expected signal length at
+    # the current position. Basically, we have two exclude all pixels whose
+    # time series have bumps that (temporally) overlap with the (potential)
+    # signal bump in the pixel at the current `position`.
+    if use_field_rotation and signal_time is not None:
+
+        # Get expected total signal length at the current (spatio-temporal)
+        # position; this is a quantity in units of "number of frames"
+        length_1, length_2 = get_signal_length(
+            position=position,
+            signal_time=signal_time,
+            center=center,
+            parang=parang,
+            psf_diameter=psf_diameter,
+        )
+        signal_length = int(length_1 + length_2)
+
+        # Compute the exclusion angle in forward and backward direction
+        upper = min(n_frames - 1, signal_time + signal_length)
+        lower = max(0, signal_time - signal_length)
+        exclusion_angle_1 = parang[signal_time] - parang[upper]
+        exclusion_angle_2 = parang[signal_time] - parang[lower]
+
+    # In case we do not use the field rotation to compute the exclusion region,
+    # as it is the case for the "baseline" models, we simply set the exclusion
+    # angles to zero; this will result in a circular exclusion mask
+    else:
+        exclusion_angle_1 = 0
+        exclusion_angle_2 = 0
+
+    # Get the two parts of the exclusion mask (clockwise / counter-clockwise)
+    part_1 = get_sausage_mask(
+        mask_size=mask_size,
+        position=position,
+        radius=2 * psf_diameter,
+        angle=exclusion_angle_1,
+    )
+    part_2 = get_sausage_mask(
+        mask_size=mask_size,
+        position=position,
+        radius=2 * psf_diameter,
+        angle=exclusion_angle_2,
+    )
+
+    # Combine the two parts to get the full exclusion mask
+    exclusion_mask = np.logical_or(part_1, part_2)
+
+    # If desired, apply a binary dilation to the exclusion mask
+    if dilation_size is not None:
+        dilation_kernel = get_circle_mask(
+            mask_size=(dilation_size, dilation_size), radius=dilation_size / 2
+        )
+        exclusion_mask = binary_dilation(
+            input=exclusion_mask, structure=dilation_kernel
+        )
+
+    return exclusion_mask
+
+
 def get_selection_mask(
     mask_size: Tuple[int, int],
     position: Tuple[int, int],
-    field_rotation: units.Quantity,
+    signal_time: Optional[int],
+    parang: np.ndarray,
     annulus_width: units.Quantity,
     radius_position: units.Quantity,
     radius_mirror_position: units.Quantity,
-    minimum_distance: units.Quantity,
-    subsample_predictors: bool = False,
+    subsample_predictors: bool,
+    psf_diameter: float,
+    dilation_size: int,
     use_field_rotation: bool = True,
 ) -> np.ndarray:
     """
@@ -373,9 +459,8 @@ def get_selection_mask(
         position: A tuple (x, y) specifying the position for which this
             mask is created, i.e., the mask selects the pixels that are
             used as predictors for (x, y).
-        field_rotation: The field rotation (as an astropy.units.Quantity
-            that can be converted to degree) of the data set.
-            This is needed to determine the size of the exclusion mask.
+        signal_time: FIXME
+        parang: FIXME
         annulus_width: The width (as an astropy.units.Quantity that can
             be converted to pixels) of the annulus used in the
             get_predictor_mask() function.
@@ -386,15 +471,13 @@ def get_selection_mask(
         radius_mirror_position: The radius (as an astropy.units.Quantity
             that can be converted to pixels) of the circular region
             around the mirrored `position`.
-        minimum_distance: The radius used for the exclusion region (as
-            an astropy.units.Quantity that can be converted to pixels),
-            that is, the minimum distance that a pixel must have to the
-            given `position` to be admissible as a predictor pixel.
+        psf_diameter:  FIXME
         subsample_predictors: A boolean indicating whether or not to
             subsample the predictor mask, i.e. only select every other
             predictor. Assuming that neighboring pixels are strongly
             correlated, this may be a simple way to reduce the number
             of predictors (and improve the training speed).
+        dilation_size: FIXME
         use_field_rotation: A boolean indicating whether or not to use
             the field rotation when determining the exclusion region.
 
@@ -418,15 +501,14 @@ def get_selection_mask(
         predictor_mask = np.logical_and(predictor_mask, subsampling_mask)
 
     # Get exclusion mask (i.e., pixels we must not use as predictors)
-    exclusion_radius = minimum_distance.to('pixel').value
-    opening_angle = (
-        2 * field_rotation.to('degree').value if use_field_rotation else 0
-    )
-    exclusion_mask = get_sausage_mask(
+    exclusion_mask = get_exclusion_mask(
         mask_size=mask_size,
         position=position,
-        radius=exclusion_radius,
-        opening_angle=opening_angle,
+        parang=parang,
+        signal_time=signal_time,
+        psf_diameter=psf_diameter,
+        dilation_size=dilation_size,
+        use_field_rotation=use_field_rotation,
     )
 
     # Create the actual selection mask by removing the exclusion mask
