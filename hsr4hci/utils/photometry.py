@@ -169,7 +169,6 @@ class CustomCircularAperture(CircularAperture):
             abs_max = bn.nanmax(np.abs(cropped_data)) + 1
             bounds = [(-abs_max, 1), (abs_max, np.inf)]
             p0 = [abs_max, 1]
-            print(bounds)
 
             # Fit the 2D Gaussian to the cropped data, and return the optimal
             # parameters according to the fit (ignore the covariance matrix)
