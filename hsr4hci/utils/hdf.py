@@ -7,6 +7,7 @@ The code here is based on: https://codereview.stackexchange.com/a/121308
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from pathlib import Path
 from typing import Union
 
 import h5py
@@ -39,7 +40,7 @@ H5PY_SUPPORTED_TYPES = (
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def save_dict_to_hdf(dictionary: dict, file_path: str) -> None:
+def save_dict_to_hdf(dictionary: dict, file_path: Union[Path, str]) -> None:
     """
     Save the given `dictionary` as an HDF file at the given `file_path`.
     If the `dictionary` is nested, the HDF file will replicate this
@@ -50,6 +51,9 @@ def save_dict_to_hdf(dictionary: dict, file_path: str) -> None:
         file_path: The path to the target file (including name and
             file ending).
     """
+
+    # Make sure that file_path is a proper Path
+    file_path = Path(file_path)
 
     # Open an HDF file at the given location
     with h5py.File(file_path, 'w') as hdf_file:
@@ -97,7 +101,7 @@ def recursively_save_dict_contents_to_group(
             raise TypeError(f'Unsupported type {type(item)} for {path}!')
 
 
-def load_dict_from_hdf(file_path: str) -> dict:
+def load_dict_from_hdf(file_path: Union[Path, str]) -> dict:
     """
     Load the contents of an HDF file into a dictionary to replicate the
     internal structure (group, subgroups, ...) of the HDF file.
@@ -108,6 +112,9 @@ def load_dict_from_hdf(file_path: str) -> dict:
     Returns:
         A `dict` containing the contents of the specified HDF file.
     """
+
+    # Make sure that file_path is a proper Path
+    file_path = Path(file_path)
 
     # Open the target HDF file
     with h5py.File(file_path, 'r') as hdf_file:
