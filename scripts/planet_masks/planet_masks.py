@@ -90,7 +90,7 @@ if __name__ == '__main__':
             # Create a 2D Airy disk of the correct size as a numpy array
             print('-- Creating dummy PSF template...', end=' ', flush=True)
             psf_template = AiryDisk2DKernel(
-                radius=0.55 * lambda_over_d / pixscale,  # TODO: Fix
+                radius=1.383 * lambda_over_d / pixscale,
                 x_size=x_size,
                 y_size=y_size,
             ).array
