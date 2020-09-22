@@ -17,11 +17,13 @@ from matplotlib.colors import Colormap, LinearSegmentedColormap, ListedColormap
 from matplotlib.figure import Figure
 from matplotlib.image import AxesImage
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from photutils import CircularAperture
 
+import bottleneck as bn
 import matplotlib.colors as mc
 import matplotlib.pyplot as plt
 import numpy as np
+
+from hsr4hci.utils.photometry import CustomCircularAperture
 
 
 # -----------------------------------------------------------------------------
@@ -225,24 +227,30 @@ def plot_frame(
     fig, ax = plt.subplots(figsize=figsize)
     fig.set_constrained_layout_pads(w_pad=0, h_pad=0)
 
+    # Initialize aperture
+    aperture: Optional[CustomCircularAperture] = None
+
     # If apertures are to be drawn, we can define them here and use the
     # photometry values from them to define the value limits of the plot
     if (aperture_radius is not None) and (positions is not None):
 
-        # Define aperture to get plot limits, and also to for plotting later
-        aperture = CircularAperture(positions=positions, r=aperture_radius)
-        photometry, _ = aperture.do_photometry(data=frame)
+        # Define aperture to get plot limits, and also for plotting later
+        aperture = CustomCircularAperture(
+            positions=positions, r=aperture_radius
+        )
+        aperture_max = aperture.get_statistic(
+            data=frame, statistic_function=bn.nanmax
+        )
 
         # Determine the limits for the color map: Use 120% of the average pixel
         # value in the aperture with the highest total flux
         if limit is None:
-            limit = 1.2 * np.nanmax(np.abs(photometry)) / aperture.area
+            limit = 1.2 * aperture_max
 
     # Otherwise, just compute the limit based on the entire frame
     else:
         if limit is None:
-            limit = 1.2 * np.nanmax(np.abs(frame))
-        aperture = None
+            limit = 1.2 * bn.nanmax(np.abs(frame))
 
     # Create the actual plot and use the limit we just computed
     plt.imshow(
