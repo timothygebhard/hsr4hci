@@ -7,6 +7,7 @@ Utility functions for reading and writing FITS files.
 # -----------------------------------------------------------------------------
 
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Optional, Tuple, Type, Union
 
 import json
@@ -21,7 +22,7 @@ import numpy as np
 # -----------------------------------------------------------------------------
 
 def read_fits(
-    file_path: str,
+    file_path: Union[Path, str],
     return_header: bool = False,
 ) -> Union[np.ndarray, Tuple[np.ndarray, dict]]:
     """
@@ -35,10 +36,15 @@ def read_fits(
         A numpy array containing the contents of the given FITS file.
     """
 
-    with fits.open(file_path) as hdulist:
+    # Make sure that file_path is a proper Path
+    file_path = Path(file_path)
+
+    # Open the FITS file and read the contents as well as the header
+    with fits.open(file_path.as_posix()) as hdulist:
         array = np.array(hdulist[0].data)
         header = dict(hdulist[0].header)
 
+    # Return either the contents and the header, or just the contents
     if return_header:
         return array, header
     return array
@@ -46,7 +52,7 @@ def read_fits(
 
 def save_fits(
     array: np.ndarray,
-    file_path: str,
+    file_path: Union[Path, str],
     header: Optional[dict] = None,
     overwrite: bool = True,
 ) -> None:
@@ -59,6 +65,9 @@ def save_fits(
         header: A dictionary with additional header information.
         overwrite: Whether or not to overwrite an existing FITS file.
     """
+
+    # Make sure that file_path is a proper Path
+    file_path = Path(file_path)
 
     # Create a new HDU for the array
     hdu = fits.PrimaryHDU(array)
@@ -84,11 +93,11 @@ def save_fits(
             hdu.header[key.upper()] = value
 
     # Save the HDU to the specified FITS file
-    fits.HDUList([hdu]).writeto(file_path, overwrite=overwrite)
+    fits.HDUList([hdu]).writeto(file_path.as_posix(), overwrite=overwrite)
 
 
 def get_fits_header_value(
-    file_path: str,
+    file_path: Union[Path, str],
     key: str,
     dtype: Optional[Type] = None,
 ) -> Any:
@@ -106,8 +115,11 @@ def get_fits_header_value(
         The value of the header field in the given FITS file.
     """
 
+    # Make sure that file_path is a proper Path
+    file_path = Path(file_path)
+
     # Open the FITS file and read the target header value
-    with fits.open(file_path) as hdu_list:
+    with fits.open(file_path.as_posix()) as hdu_list:
         value = hdu_list[0].header[key]
 
     # If desired, attempt to convert the value to the given data type
@@ -127,7 +139,7 @@ def get_fits_header_value(
 
 
 def get_fits_header_value_array(
-    file_path: str,
+    file_path: Union[Path, str],
     start_key: str,
     end_key: str,
 ) -> np.ndarray:
@@ -152,6 +164,9 @@ def get_fits_header_value_array(
         of the values corresponding to the given start and end keys.
     """
 
+    # Make sure that file_path is a proper Path
+    file_path = Path(file_path)
+
     # Get the number of frames in the current cube
     n_frames: int = get_fits_header_value(file_path, 'NAXIS3', int)
 
@@ -166,7 +181,7 @@ def get_fits_header_value_array(
 
 
 def header_value_exists(
-    file_path: str,
+    file_path: Union[Path, str],
     key: str,
 ) -> bool:
     """
@@ -180,6 +195,9 @@ def header_value_exists(
         True if the header of the given FITS file contains the given
         key, and False otherwise.
     """
+
+    # Make sure that file_path is a proper Path
+    file_path = Path(file_path)
 
     # Open the FITS file and check if the requested key is present.
     # The following approach based on try/except is necessary because of a
@@ -197,7 +215,7 @@ def header_value_exists(
     #
     # Just because a key is not in `header.keys()` does therefore *not* mean
     # that we cannot access that key -- hence the try/except construct.
-    with fits.open(file_path) as hdu_list:
+    with fits.open(file_path.as_posix()) as hdu_list:
         try:
             _ = hdu_list[0].header[key]
             return True
