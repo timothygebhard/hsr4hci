@@ -161,7 +161,9 @@ def adjust_luminosity(
     return rgb
 
 
-def disable_ticks(ax: Any,) -> None:
+def disable_ticks(
+    ax: Any,
+) -> None:
     """
     Disable the ticks and labels on the given matplotlib `ax`. This is
     similar to calling `ax.axis('off')`, except that the frame around
@@ -234,31 +236,39 @@ def plot_frame(
     # photometry values from them to define the value limits of the plot
     if (aperture_radius is not None) and (positions is not None):
 
-        # Define aperture to get plot limits, and also for plotting later
+        # Define aperture, because we need it for plotting later
         aperture = CustomCircularAperture(
             positions=positions, r=aperture_radius
         )
-        aperture_max = aperture.get_statistic(
-            data=frame, statistic_function=bn.nanmax
-        )
 
-        # Determine the limits for the color map: Use 120% of the average pixel
-        # value in the aperture with the highest total flux
+        # If no explicit plot limits are given, we fit the aperture(s) to
+        # determine the limit from the data
         if limit is None:
-            limit = 1.2 * aperture_max
 
-    # Otherwise, just compute the limit based on the entire frame
-    else:
-        if limit is None:
-            limit = 1.2 * bn.nanmax(np.abs(frame))
+            # Fit each aperture with a 2D Gaussian; the results should have
+            # the form `(amplitude, sigma)`.
+            fit_results = aperture.fit_2d_gaussian(data=frame)
+
+            # If we have multiple apertures, we need to still take the maximum
+            # over them; otherwise, we can directly use the value from the fit
+            if isinstance(fit_results, list):
+                limit = 1.1 * max(_[0] for _ in fit_results)
+            else:
+                limit = 1.1 * fit_results[0]
+
+    # If the limit is still None at this point (i.e., if no apertures were
+    # given, and there are also no explicit plot limits), just compute the
+    # limit based on the entire frame
+    if limit is None:
+        limit = 1.1 * bn.nanmax(np.abs(frame))
 
     # Create the actual plot and use the limit we just computed
     plt.imshow(
         X=frame,
         origin='lower',
         cmap=get_cmap(),
-        vmin=(-1 * limit),
-        vmax=limit,
+        vmin=-1 * float(limit),
+        vmax=float(limit),
         interpolation='none',
     )
 
