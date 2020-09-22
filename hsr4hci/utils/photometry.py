@@ -6,7 +6,7 @@ Provide a few custom extensions to the photometry functions of photutils
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Callable, Tuple
+from typing import Callable, List, Tuple, Union
 
 from scipy.optimize import curve_fit
 from photutils import CircularAperture
@@ -24,11 +24,13 @@ class CustomCircularAperture(CircularAperture):
     provides additional functions to do photometry.
     """
 
-    def get_statistic(self,
-                      data: np.ndarray,
-                      statistic_function: Callable = np.nansum,
-                      method: str = 'exact',
-                      subpixels: int = 5) -> float:
+    def get_statistic(
+        self,
+        data: np.ndarray,
+        statistic_function: Callable = np.nansum,
+        method: str = 'exact',
+        subpixels: int = 5,
+    ) -> Union[float, List[float]]:
         """
         Compute a particular summary statistic (such as the pixel sum
         or the maximum) for the aperture.
@@ -51,26 +53,46 @@ class CustomCircularAperture(CircularAperture):
             in the CustomCircularAperture.
         """
 
+        # Initialize list results
+        results = []
+
         # Create a mask from the aperture and use it to crop the data
-        mask = self.to_mask(method=method, subpixels=subpixels)
-        cropped_data = mask.cutout(data, copy=True)
+        masks = self.to_mask(method=method, subpixels=subpixels)
 
-        # Set everything outside of the masked area to NaN. There seems to
-        # exist no better way to do this if we want to avoid "taking into
-        # account edge effects" (i.e, multiplying the edges of the aperture
-        # with some factor F with 0 < F < 1), which would bias the calculation
-        # of the statistics_function to too low values.
-        # noinspection PyProtectedMember
-        # pylint: disable=protected-access
-        cropped_data[mask._mask] = np.nan
+        # Make sure that masks is always a list. This is necessary because
+        # self.to_mask() may return either a single mask, or a list of masks,
+        # depending on whether the `CustomCircularAperture` in instantiated
+        # using a single or multiple `positions`.
+        if not isinstance(masks, list):
+            masks = [masks]
 
-        # Return the statistic_function for the cropped, masked data
-        return float(statistic_function(cropped_data))
+        # Loop over all masks to collect results
+        for mask in masks:
 
-    def fit_2d_gaussian(self,
-                        data: np.ndarray,
-                        method: str = 'exact',
-                        subpixels: int = 5) -> Tuple[float, float]:
+            # Crop the data using the (current) circular aperture mask
+            cropped_data = mask.cutout(data, copy=True)
+
+            # Set everything outside of the masked area to NaN. There seems to
+            # exist no better way to do this if we want to avoid "taking into
+            # account edge effects" (i.e, multiplying the edges of the aperture
+            # with some factor F with 0 < F < 1), which would bias the
+            # calculation of the statistics_function to too low values.
+            # noinspection PyProtectedMember
+            # pylint: disable=protected-access
+            cropped_data[mask._mask] = np.nan
+
+            # Compute and store the statistic_function for the cropped and
+            # masked data
+            results.append(float(statistic_function(cropped_data)))
+
+        # Either return a list of values, or a single value
+        if len(results) > 1:
+            return results
+        return results[0]
+
+    def fit_2d_gaussian(
+        self, data: np.ndarray, method: str = 'exact', subpixels: int = 5
+    ) -> Tuple[float, float]:
         """
         Fit a simple, symmetric 2D Gauss with only two parameters (i.e.,
         the amplitude and standard deviation) to the center of the
@@ -78,6 +100,9 @@ class CustomCircularAperture(CircularAperture):
 
         This is possibly a more robust way to estimate the "maximum" of
         the aperture, rather than simply taking a pixel-wise maximum.
+
+        # FIXME: This function does not yet work with multiple
+        #        `positions` in in the constructor call.
 
         Args:
             data: A 2D numpy array containing the data on which the
@@ -108,18 +133,23 @@ class CustomCircularAperture(CircularAperture):
         center = tuple([_ / 2 - 0.5 for _ in cropped_data.shape])
 
         # Get the indices of positions inside the aperture
-        idx = mask.data.astype(bool).reshape(-1,)
+        idx = mask.data.astype(bool).reshape(
+            -1,
+        )
 
         # Use the indices to select the data which we can use for the fit
         xdata = np.indices(cropped_data.shape).reshape(2, -1)[:, idx]
-        ydata = cropped_data.reshape(-1,)[idx]
+        ydata = cropped_data.reshape(
+            -1,
+        )[idx]
 
         # Define a 2D Gauss function using the value for center computed above
-        def gauss2d(x: Tuple[float, float],
-                    amplitude: float,
-                    sigma: float) -> float:
-            inner = ((x[0] - center[0]) ** 2 / (2 * sigma) ** 2 +
-                     (x[1] - center[1]) ** 2 / (2 * sigma) ** 2)
+        def gauss2d(
+            x: Tuple[float, float], amplitude: float, sigma: float
+        ) -> float:
+            inner = (x[0] - center[0]) ** 2 / (2 * sigma) ** 2 + (
+                x[1] - center[1]
+            ) ** 2 / (2 * sigma) ** 2
             return amplitude * float(np.exp(-inner))
 
         # Define the bounds and the initial values for the fit
@@ -129,13 +159,15 @@ class CustomCircularAperture(CircularAperture):
 
         # Fit the 2D Gaussian to the cropped data, and return the optimal
         # parameters according to the fit (ignore the covariance matrix)
-        parameters, _ = curve_fit(f=gauss2d,
-                                  xdata=xdata,
-                                  ydata=ydata,
-                                  bounds=bounds,
-                                  p0=p0,
-                                  xtol=0.001,
-                                  ftol=0.001)
+        parameters, _ = curve_fit(
+            f=gauss2d,
+            xdata=xdata,
+            ydata=ydata,
+            bounds=bounds,
+            p0=p0,
+            xtol=0.001,
+            ftol=0.001,
+        )
 
         # Unpack the parameters and return them as a tuple
         amplitude, sigma = parameters
