@@ -7,6 +7,7 @@ Utility functions related to dealing with observing conditions.
 # -----------------------------------------------------------------------------
 
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 import h5py
@@ -203,7 +204,7 @@ def get_description_and_unit(
 
 
 def load_observing_conditions(
-    file_path: str,
+    file_path: Union[Path, str],
     parameters: Optional[Iterable[str]] = 'all',
     transform_wind_direction: bool = True,
     coherence_time_in_ms: bool = True,
