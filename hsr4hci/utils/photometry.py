@@ -11,6 +11,7 @@ from typing import Callable, List, Tuple, Union
 from scipy.optimize import curve_fit
 from photutils import CircularAperture
 
+import bottleneck as bn
 import numpy as np
 
 
@@ -27,7 +28,7 @@ class CustomCircularAperture(CircularAperture):
     def get_statistic(
         self,
         data: np.ndarray,
-        statistic_function: Callable = np.nansum,
+        statistic_function: Callable = bn.nansum,
         method: str = 'exact',
         subpixels: int = 5,
     ) -> Union[float, List[float]]:
@@ -92,7 +93,7 @@ class CustomCircularAperture(CircularAperture):
 
     def fit_2d_gaussian(
         self, data: np.ndarray, method: str = 'exact', subpixels: int = 5
-    ) -> Tuple[float, float]:
+    ) -> Union[Tuple[float, float], List[Tuple[float, float]]]:
         """
         Fit a simple, symmetric 2D Gauss with only two parameters (i.e.,
         the amplitude and standard deviation) to the center of the
@@ -100,9 +101,6 @@ class CustomCircularAperture(CircularAperture):
 
         This is possibly a more robust way to estimate the "maximum" of
         the aperture, rather than simply taking a pixel-wise maximum.
-
-        # FIXME: This function does not yet work with multiple
-        #        `positions` in in the constructor call.
 
         Args:
             data: A 2D numpy array containing the data on which the
@@ -115,60 +113,81 @@ class CustomCircularAperture(CircularAperture):
                 method.
 
         Returns:
-            A numpy array containing the parameters for the 2D Gaussian
-            returned by the fit. Should be `(amplitude, sigma)`.
+            A tuple, or a list of tuples (in case multiples `positions`
+            were given), containing the parameters for the 2D Gaussian
+            returned by the fit: `(amplitude, sigma)`.
         """
 
+        # Initialize list results
+        results = []
+
         # Create a mask from the aperture and use it to crop the data
-        mask = self.to_mask(method=method, subpixels=subpixels)
-        cropped_data = mask.cutout(data, copy=True)
+        masks = self.to_mask(method=method, subpixels=subpixels)
 
-        # Compute center of the cropped data
-        # Note: The -0.5 is necessary, because of the following reason: The
-        # size of the bounding box of the aperture is always odd, say 11 by 11
-        # pixels. The center of this now would be (5.5, 5.5). However, the grid
-        # of positions that we create by np.indices() below starts at 0, which
-        # means the x and y positions are [0, 1, ..., 10]. The correct center
-        # for this grid is actually (5, 5) -- hence the correction by -0.5.
-        center = tuple([_ / 2 - 0.5 for _ in cropped_data.shape])
+        # Make sure that masks is always a list (see `get_statistic()`)
+        if not isinstance(masks, list):
+            masks = [masks]
 
-        # Get the indices of positions inside the aperture
-        idx = mask.data.astype(bool).reshape(
-            -1,
-        )
+        # Loop over all masks and fit their contents with a 2D Gaussian
+        for mask in masks:
 
-        # Use the indices to select the data which we can use for the fit
-        xdata = np.indices(cropped_data.shape).reshape(2, -1)[:, idx]
-        ydata = cropped_data.reshape(
-            -1,
-        )[idx]
+            cropped_data = mask.cutout(data, copy=True)
 
-        # Define a 2D Gauss function using the value for center computed above
-        def gauss2d(
-            x: Tuple[float, float], amplitude: float, sigma: float
-        ) -> float:
-            inner = (x[0] - center[0]) ** 2 / (2 * sigma) ** 2 + (
-                x[1] - center[1]
-            ) ** 2 / (2 * sigma) ** 2
-            return amplitude * float(np.exp(-inner))
+            # Compute center of the cropped data
+            # Note: The -0.5 is necessary, because of the following reason:
+            # The size of the bounding box of the aperture is always odd, say
+            # 11 by 11 pixels. The center of this now would be (5.5, 5.5).
+            # However, the grid of positions that we create by np.indices()
+            # below starts at 0, which means the x and y positions are
+            # [0, 1, ..., 10]. The correct center for this grid is actually
+            # (5, 5) -- hence the correction by -0.5.
+            center = (
+                cropped_data.shape[0] / 2 - 0.5,
+                cropped_data.shape[1] / 2 - 0.5
+            )
 
-        # Define the bounds and the initial values for the fit
-        abs_max = np.nanmax(np.abs(cropped_data))
-        bounds = [(-abs_max, 1), (abs_max, np.inf)]
-        p0 = [abs_max, 1]
+            # Get the indices of positions inside the aperture
+            idx = mask.data.astype(bool).ravel()
 
-        # Fit the 2D Gaussian to the cropped data, and return the optimal
-        # parameters according to the fit (ignore the covariance matrix)
-        parameters, _ = curve_fit(
-            f=gauss2d,
-            xdata=xdata,
-            ydata=ydata,
-            bounds=bounds,
-            p0=p0,
-            xtol=0.001,
-            ftol=0.001,
-        )
+            # Use the indices to select the data which we can use for the fit
+            xdata = np.indices(cropped_data.shape).reshape(2, -1)[:, idx]
+            ydata = cropped_data.ravel()[idx]
 
-        # Unpack the parameters and return them as a tuple
-        amplitude, sigma = parameters
-        return amplitude, sigma
+            # Define a 2D Gauss function using the center value computed above
+            def gauss2d(
+                x: Tuple[float, float], amplitude: float, sigma: float
+            ) -> np.ndarray:
+                inner = (
+                    (x[0] - center[0])**2 / (2 * sigma)**2 +
+                    (x[1] - center[1])**2 / (2 * sigma)**2
+                )
+                return np.asarray(amplitude * np.exp(-inner))
+
+            # Define the bounds and the initial values for the fit
+            # Note: The `+ 1` is needed to avoid errors when trying to fit a
+            # region where `abs_max` otherwise would be 0.
+            abs_max = bn.nanmax(np.abs(cropped_data)) + 1
+            bounds = [(-abs_max, 1), (abs_max, np.inf)]
+            p0 = [abs_max, 1]
+            print(bounds)
+
+            # Fit the 2D Gaussian to the cropped data, and return the optimal
+            # parameters according to the fit (ignore the covariance matrix)
+            parameters, _ = curve_fit(
+                f=gauss2d,
+                xdata=xdata,
+                ydata=ydata,
+                bounds=bounds,
+                p0=p0,
+                xtol=0.001,
+                ftol=0.001,
+            )
+
+            # Unpack the parameters and return them as a tuple
+            amplitude, sigma = parameters
+            results.append((amplitude, sigma))
+
+        # Either return a list of values, or a single value
+        if len(results) > 1:
+            return results
+        return results[0]
