@@ -7,11 +7,15 @@ Utility functions for forward modeling (necessary for toy data sets!).
 # -----------------------------------------------------------------------------
 
 from cmath import polar
-from typing import Tuple
+from typing import Dict, Tuple
+
+from astropy.convolution import AiryDisk2DKernel
+from astropy.units import Quantity
 
 import numpy as np
 
-from hsr4hci.utils.general import add_array_with_interpolation
+from hsr4hci.utils.general import add_array_with_interpolation, rotate_position
+from hsr4hci.utils.psf import crop_psf_template
 
 
 # -----------------------------------------------------------------------------
@@ -93,3 +97,118 @@ def get_signal_stack(
                                          position=injection_position)
 
     return signal_stack, planet_positions
+
+
+def get_planet_paths(
+    stack_shape: Tuple[int, int, int],
+    parang: np.ndarray,
+    psf_template: np.ndarray,
+    pixscale: Quantity,
+    lambda_over_d: Quantity,
+    planet_config: Dict[str, dict],
+    threshold: float = 5e-1,
+) -> Tuple[np.ndarray, Dict[str, np.ndarray]]:
+    """
+    Auxiliary function for computing the paths of the planets in the
+    data set (as a list of tuples indicating positions), as well as for
+    creating binary masks that indicate which spatial pixels in a data
+    set contain planet signal at some point in time.
+
+    Args:
+        stack_shape: A tuple `(n_frames, x_size, y_size)` giving the
+            shape of the stack of the data set.
+        parang: A 1D numpy array of shape `(n_frames, )` containing the
+            parallactic angles.
+        psf_template: A 2D numpy array containing the raw, unsaturated
+            PSF template. If no such template is available, you can use
+            a numpy array of size `(0, 0)` to automatically create a
+            fake PSF template (using a 2D Airy function) to get an
+            approximate solution.
+        pixscale: An `astropy.units.Quantity` in units of arc seconds
+            per pixel specifying the pixel scale of the instrument.
+        lambda_over_d: An `astropy.units.Quantity` in units of arc
+            seconds specifying the ratio between the filter wavelength
+            lambda and the diameter of the telescope's primary mirror.
+        planet_config: A dictionary containing information about the
+            planets in the data set. Each key (usually the letter that
+            indicates the name of the planet, e.g., "b") must map onto
+            another dictionary, which contains a key named "position",
+            which specifies the position of the planet in the *final*,
+            derotated signal estimate (e.g., the PCA estimate).
+        threshold: The threshold value for creating the binary mask;
+            basically the minimum planet signal to be contained in a
+            pixel (at some point) to add this pixel to the mask.
+
+    Returns:
+        A 2D numpy array of shape `(x_size, y_size)` in which every
+        pixel that at some point in time contains planet signal is True
+        and all other pixels are False.
+    """
+
+    # Define shortcuts
+    n_frames, x_size, y_size = stack_shape
+    center = (x_size / 2, y_size / 2)
+
+    # In case there is no PSF template present, we need to create a fake
+    # one using an Airy kernel of the appropriate size
+    if psf_template.shape == (0, 0):
+
+        # Create a 2D Airy disk of the correct size as a numpy array.
+        # The factor of 1.383 is a "magic" number that was determined by
+        # comparing real PSFs (for which the PIXSCALE and LAMBDA_OVER_D were
+        # known) against the output of the AiryDisk2DKernel() function, and
+        # adjusting the radius of the latter by a factor to minimize the
+        # difference between the real and the fake PSF.
+        psf_template = AiryDisk2DKernel(
+            radius=1.383 * (lambda_over_d / pixscale).to('pixel').value,
+            x_size=x_size,
+            y_size=y_size,
+        ).array
+
+    # Compute the cropping radius for the PSF: We use 1 lambda_over_d here,
+    # because we ignore the secondary maxima for the planet path mask. Then,
+    # crop the PSF template to that size.
+    psf_radius = lambda_over_d.to('pixel').value
+    psf_cropped = crop_psf_template(
+        psf_template=psf_template,
+        psf_radius=psf_radius,
+    )
+
+    # Instantiate an empty stack-like variable from which we will generate the
+    # mask, and a dictionary which will hold the planet positions
+    stack = np.zeros(stack_shape)
+    all_planet_positions: Dict[str, np.ndarray] = dict()
+
+    # Loop over the different planets for the data set
+    for key, values in planet_config.items():
+
+        # Get final position of the planet
+        final_position = values['position'][::-1]
+
+        # Compute the starting position of the planet
+        starting_position = rotate_position(
+            position=final_position,
+            center=center,
+            angle=parang[0],
+        )
+
+        # Compute a forward model for this planet
+        planet_model, planet_positions = get_signal_stack(
+            position=starting_position,
+            frame_size=(x_size, y_size),
+            parang=parang,
+            psf_cropped=psf_cropped,
+        )
+
+        # Convert the planet positions to a 2D array and store them
+        planet_positions = np.array(planet_positions)
+        all_planet_positions[key] = planet_positions
+
+        # Add this to the existing stack
+        stack += planet_model
+
+    # Compute the mask of the planet paths by taking the maximum along the
+    # temporal dimension and thresholding the result
+    planet_paths_mask = np.max(stack, axis=0) > threshold
+
+    return planet_paths_mask, all_planet_positions
