@@ -9,8 +9,6 @@ planets in the data.
 
 from pathlib import Path
 
-import json
-import os
 import time
 
 from astropy import units
@@ -18,11 +16,13 @@ from astropy.convolution import AiryDisk2DKernel
 
 import numpy as np
 
+from hsr4hci.utils.config import load_dataset_config
 from hsr4hci.utils.data import load_default_data
 from hsr4hci.utils.derotating import derotate_combine
 from hsr4hci.utils.fits import save_fits
+from hsr4hci.utils.forward_modeling import get_signal_stack
 from hsr4hci.utils.general import rotate_position
-from hsr4hci.utils.forward_modeling import crop_psf_template, get_signal_stack
+from hsr4hci.utils.psf import crop_psf_template
 
 
 # -----------------------------------------------------------------------------
@@ -43,33 +43,31 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Ensure the results directory exists
-    results_dir = os.path.join('.', 'results')
-    Path(results_dir).mkdir(exist_ok=True)
+    results_dir = Path('.', 'results')
+    results_dir.mkdir(exist_ok=True)
 
     # Loop over all data sets and process them
-    for dataset in [
-        '51_eridani__k1',
-        'beta_pictoris__lp',
-        'beta_pictoris__mp',
-        'hip_65426__lp',
-        'hr_8799__j',
-        'hr_8799__lp',
-        'pz_telescopii__lp',
-        'r_cra__lp',
+    for target_name, filter_name in [
+        ('51_Eridani', 'K1'),
+        ('Beta_Pictoris', 'Lp'),
+        ('Beta_Pictoris', 'Mp'),
+        ('HIP_65426', 'Lp'),
+        ('HR_8799', 'J'),
+        ('HR_8799', 'Lp'),
+        ('PZ_Telescopii', 'Lp'),
+        ('R_CrA', 'Lp'),
     ]:
 
-        print(f'Processing data set: {dataset}')
+        print(f'Processing data set: {target_name} ({filter_name}):')
 
         # Construct path to data set configuration file
         print('-- Loading configuration file...', end=' ', flush=True)
-        file_path = os.path.join('../../datasets', f'{dataset}.json')
-        with open(file_path, 'r') as json_file:
-            config = json.load(json_file)
+        config = load_dataset_config(
+            target_name=target_name, filter_name=filter_name
+        )
         print('Done!', flush=True)
 
         # Define shortcuts
-        target_name = config['metadata']['TARGET_STAR'].replace(' ', '_')
-        filter_name = config['metadata']['FILTER'].replace('\'', 'p')
         pixscale = config['metadata']['PIXSCALE']
         lambda_over_d = config['metadata']['LAMBDA_OVER_D']
         x_size, y_size = config['frame_size']
@@ -77,10 +75,16 @@ if __name__ == '__main__':
 
         # Load stack, parallactic angles and PSF template
         print('-- Loading data...', end=' ', flush=True)
-        stack, parang, psf_template, observing_conditions, metadata = \
-            load_default_data(
-                planet=f'{target_name}__{filter_name}', stacking_factor=1,
-            )
+        (
+            stack,
+            parang,
+            psf_template,
+            observing_conditions,
+            metadata,
+        ) = load_default_data(
+            planet=f'{target_name}__{filter_name}',
+            stacking_factor=1,
+        )
         print(f'Done! [stack.shape = {stack.shape}]', flush=True)
 
         # In case there is no PSF template present, we need to create a fake
@@ -139,7 +143,9 @@ if __name__ == '__main__':
         # Create binary mask and save as as a FITS file
         print('-- Creating and saving binary mask...', end=' ', flush=True)
         binary_mask = (np.max(forward_model, axis=0) > 5e-1).astype(int)
-        file_path = os.path.join(results_dir, f'{dataset}__binary_mask.fits')
+        file_path = (
+            results_dir / f'{target_name}_{filter_name}__binary_mask.fits'
+        )
         save_fits(binary_mask, file_path)
         print('Done!', flush=True)
 
@@ -149,7 +155,9 @@ if __name__ == '__main__':
             stack=forward_model,
             parang=parang,
         )
-        file_path = os.path.join(results_dir, f'{dataset}__sanity_check.fits')
+        file_path = (
+            results_dir / f'{target_name}_{filter_name}__sanity_check.fits'
+        )
         save_fits(derotated, file_path)
         print('Done!\n', flush=True)
 
