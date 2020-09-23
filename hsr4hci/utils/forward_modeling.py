@@ -165,13 +165,11 @@ def get_planet_paths(
             y_size=y_size,
         ).array
 
-    # Compute the cropping radius for the PSF: We use 1 lambda_over_d here,
-    # because we ignore the secondary maxima for the planet path mask. Then,
-    # crop the PSF template to that size.
-    psf_radius = lambda_over_d.to('pixel').value
+    # Crop the PSF to a 1 lambda_over_d region here (because we ignore the
+    # secondary maxima for the planet path mask)
     psf_cropped = crop_psf_template(
         psf_template=psf_template,
-        psf_radius=psf_radius,
+        psf_radius=lambda_over_d,
     )
 
     # Instantiate an empty stack-like variable from which we will generate the
