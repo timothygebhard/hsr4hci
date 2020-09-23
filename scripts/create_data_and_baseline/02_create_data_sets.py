@@ -9,12 +9,11 @@ pre-stacking (i.e., combining blocks of frames using the mean/median).
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from pathlib import Path
-
 import json
-import os
 import time
 import warnings
+
+from astropy.units import Quantity
 
 import bottleneck as bn
 import h5py
@@ -22,8 +21,14 @@ import numpy as np
 
 from hsr4hci.utils.argparsing import get_base_directory
 from hsr4hci.utils.fits import read_fits, save_fits
-from hsr4hci.utils.general import prestack_array, get_md5_checksum, \
-    is_fits_file, is_hdf_file, crop_center
+from hsr4hci.utils.forward_modeling import get_planet_paths
+from hsr4hci.utils.general import (
+    prestack_array,
+    get_md5_checksum,
+    is_fits_file,
+    is_hdf_file,
+    crop_center,
+)
 from hsr4hci.utils.observing_conditions import load_observing_conditions
 
 
@@ -47,10 +52,8 @@ if __name__ == '__main__':
     # Get base_directory from command line arguments
     base_dir = get_base_directory()
 
-    # Construct expected path to config.json
-    file_path = os.path.join(base_dir, 'config.json')
-
     # Read in the config file and parse it
+    file_path = base_dir / 'config.json'
     with open(file_path, 'r') as config_file:
         config = json.load(config_file)
 
@@ -58,12 +61,10 @@ if __name__ == '__main__':
     # Define shortcuts to various parts of the config
     # -------------------------------------------------------------------------
 
-    # Get metadata for the data set
     metadata = config['metadata']
-
-    # Get processing options
     frame_size = config['frame_size']
     stacking_factors = config['stacking_factors']
+    planet_config = config['evaluation']['planets']
 
     # -------------------------------------------------------------------------
     # Load the stack, parallactic angles and PSF template (from HDF or FITS)
@@ -73,12 +74,12 @@ if __name__ == '__main__':
 
     # Construct path to stack file
     stack_file_name = config['input_data']['stack']['file_name']
-    stack_file_path = os.path.join(base_dir, 'input', stack_file_name)
+    stack_file_path = base_dir / 'input' / stack_file_name
 
     # Actually load the stack (from FITS or HDF)
-    if is_fits_file(file_path=stack_file_path):
-        stack = read_fits(file_path=stack_file_path)
-    elif is_hdf_file(file_path=stack_file_path):
+    if is_fits_file(stack_file_path):
+        stack = read_fits(stack_file_path)
+    elif is_hdf_file(stack_file_path):
         stack_key = config['input_data']['stack']['stack_key']
         with h5py.File(stack_file_path, 'r') as hdf_file:
             stack = np.array(hdf_file[stack_key])
@@ -93,12 +94,12 @@ if __name__ == '__main__':
 
     # Construct path to parallactic angles file
     parang_file_name = config['input_data']['parang']['file_name']
-    parang_file_path = os.path.join(base_dir, 'input', parang_file_name)
+    parang_file_path = base_dir / 'input' / parang_file_name
 
     # Actually load the parang (from FITS or HDF)
-    if is_fits_file(file_path=parang_file_path):
-        parang = read_fits(file_path=parang_file_path)
-    elif is_hdf_file(file_path=parang_file_path):
+    if is_fits_file(parang_file_path):
+        parang = read_fits(parang_file_path)
+    elif is_hdf_file(parang_file_path):
         parang_key = config['input_data']['parang']['key']
         with h5py.File(parang_file_path, 'r') as hdf_file:
             parang = np.array(hdf_file[parang_key])
@@ -114,12 +115,12 @@ if __name__ == '__main__':
     if file_name is not None:
 
         # Construct full path to PSF template file
-        psf_file_path = os.path.join(base_dir, 'input', file_name)
+        psf_file_path = base_dir / 'input' / file_name
 
         # Actually load the PSF template (from FITS or HDF)
-        if is_fits_file(file_path=psf_file_path):
-            psf_template = read_fits(file_path=psf_file_path)
-        elif is_hdf_file(file_path=psf_file_path):
+        if is_fits_file(psf_file_path):
+            psf_template = read_fits(psf_file_path)
+        elif is_hdf_file(psf_file_path):
             psf_template_key = config['input_data']['psf_template']['key']
             with h5py.File(psf_file_path, 'r') as hdf_file:
                 psf_template = np.array(hdf_file[psf_template_key]).squeeze()
@@ -154,78 +155,112 @@ if __name__ == '__main__':
 
     # Define expected file path for observing conditions
     oc_file_name = 'observing_conditions.hdf'
-    oc_file_path = os.path.join(base_dir, 'observing_conditions', oc_file_name)
+    oc_file_path = base_dir / 'observing_conditions' / oc_file_name
 
     # Load the observing conditions from the HDF file (as a dictionary)
-    observing_conditions = \
-        load_observing_conditions(file_path=oc_file_path,
-                                  transform_wind_direction=False)
+    observing_conditions = load_observing_conditions(
+        file_path=oc_file_path, transform_wind_direction=False
+    )
 
     # -------------------------------------------------------------------------
     # Loop over stacking factors and create a stacked data set for each
     # -------------------------------------------------------------------------
 
     # Make sure the directory for the processed data sets exists
-    output_dir = os.path.join(base_dir, 'processed')
-    Path(output_dir).mkdir(exist_ok=True)
+    output_dir = base_dir / 'processed'
+    output_dir.mkdir(exist_ok=True)
 
     print('\nStacking frames and saving results:', flush=True)
 
     # Loop over all stacking factors and create data set
     for stacking_factor in stacking_factors:
 
-        print(f'-- Running for stacking factor = {stacking_factor}...',
-              end=' ', flush=True)
+        print(
+            f'-- Running for stacking factor = {stacking_factor}...',
+            end=' ',
+            flush=True,
+        )
 
         # Stack frames and parallactic angles (use median for frames and mean
         # for parallactic angles, as those are the PynPoint defaults)
-        stacked_stack = prestack_array(array=stack,
-                                       stacking_factor=stacking_factor,
-                                       stacking_function=bn.nanmedian)
-        stacked_parang = prestack_array(array=parang,
-                                        stacking_factor=stacking_factor,
-                                        stacking_function=bn.nanmean)
+        stacked_stack = prestack_array(
+            array=stack,
+            stacking_factor=stacking_factor,
+            stacking_function=bn.nanmedian,
+        )
+        stacked_parang = prestack_array(
+            array=parang,
+            stacking_factor=stacking_factor,
+            stacking_function=bn.nanmean,
+        )
 
         # Created stacked versions of the observing condition parameters
         stacked_observing_conditions = dict()
         if observing_conditions is not None:
             for key, parameter in observing_conditions.items():
-                stacked_observing_conditions[key] = \
-                    prestack_array(array=parameter,
-                                   stacking_factor=stacking_factor,
-                                   stacking_function=bn.nanmedian)
+                stacked_observing_conditions[key] = prestack_array(
+                    array=parameter,
+                    stacking_factor=stacking_factor,
+                    stacking_function=bn.nanmedian,
+                )
+
+        # Compute a binary mask of the pixels on the planet path(s) (i.e., the
+        # spatial pixels that at some point in time contain planet signal), as
+        # well as the exact positions of the planet(s) for each time step
+        planet_paths_mask, planet_positions = get_planet_paths(
+            stack_shape=stacked_stack.shape,
+            parang=stacked_parang,
+            psf_template=psf_template,
+            pixscale=Quantity(metadata['PIXSCALE'], 'arcsec / pixel'),
+            lambda_over_d=Quantity(metadata['LAMBDA_OVER_D'], 'arcsec'),
+            planet_config=planet_config,
+            threshold=5e-1,
+        )
+
+        # Cast the mask to integer, because FITS complains about binary masks
+        planet_paths_mask = planet_paths_mask.astype(int)
 
         # Construct file path for output HDF file
-        file_path = os.path.join(output_dir, f'stacked_{stacking_factor}.hdf')
+        file_path = output_dir / f'stacked__{stacking_factor}.hdf'
 
         # Save the result as an HDF file in the output directory
         with h5py.File(file_path, 'w') as hdf_file:
 
-            # Save data sets: stack, parallactic angles and PSF template
-            hdf_file.create_dataset(name='stack',
-                                    data=stacked_stack,
-                                    dtype=np.float32)
-            hdf_file.create_dataset(name='parang',
-                                    data=stacked_parang,
-                                    dtype=np.float32)
-            hdf_file.create_dataset(name='psf_template',
-                                    data=psf_template,
-                                    dtype=np.float32)
+            # Save data sets: stack, parallactic angles, PSF template, as well
+            # as a binary mask indicating the paths of the planets in the data
+            hdf_file.create_dataset(
+                name='stack', data=stacked_stack, dtype=np.float32
+            )
+            hdf_file.create_dataset(
+                name='parang', data=stacked_parang, dtype=np.float32
+            )
+            hdf_file.create_dataset(
+                name='psf_template', data=psf_template, dtype=np.float32
+            )
+            hdf_file.create_dataset(
+                name='planet_paths_mask',
+                data=planet_paths_mask,
+                dtype=np.int
+            )
+
+            # Create a group for the planet positions
+            pp_group = hdf_file.create_group(name='planet_positions')
+            for planet_name, positions in planet_positions.items():
+                pp_group.create_dataset(
+                    name=planet_name, data=positions, dtype=np.float32
+                )
 
             # Create new group for observing conditions and save them as well
             if stacked_observing_conditions:
                 oc_group = hdf_file.create_group(name='observing_conditions')
                 for key, parameter in stacked_observing_conditions.items():
-                    oc_group.create_dataset(name=key,
-                                            data=parameter,
-                                            dtype=np.float32)
+                    oc_group.create_dataset(
+                        name=key, data=parameter, dtype=np.float32
+                    )
 
             # Add meta data about the data set and the instrument
             for key, value in metadata.items():
                 hdf_file.attrs[key] = value
-
-        # Construct file name for output FITS file
-        file_path = os.path.join(output_dir, f'stacked_{stacking_factor}.fits')
 
         # Create a FITS compatible version of the metadata dict that can be
         # written to the FITS header (i.e., prepend HIERARCH to all keywords)
@@ -233,7 +268,12 @@ if __name__ == '__main__':
 
         # Save the stacked version of the stack (without parang or observing
         # conditions) as a FITS file for quick inspection
+        file_path = output_dir / f'stacked__{stacking_factor}.fits'
         save_fits(array=stacked_stack, file_path=file_path, header=header)
+
+        # Also save the planet_paths_mask to FITS for quick inspection
+        file_path = output_dir / f'planet_paths_mask__{stacking_factor}.fits'
+        save_fits(array=planet_paths_mask, file_path=file_path)
 
         print('Done!', flush=True)
 
@@ -244,7 +284,7 @@ if __name__ == '__main__':
     print('\nSaving unsaturated PSF template to FITS...', end=' ', flush=True)
 
     # Construct file name for PSF template FITS file
-    file_path = os.path.join(output_dir, 'psf_template.fits')
+    file_path = output_dir / 'psf_template.fits'
 
     # Save the PSF template as a FITS file
     save_fits(array=psf_template, file_path=file_path)

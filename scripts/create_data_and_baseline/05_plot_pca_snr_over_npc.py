@@ -9,7 +9,6 @@ components, using the figures_of_merit.csv results file created by
 # -----------------------------------------------------------------------------
 
 import json
-import os
 import time
 
 import matplotlib.pyplot as plt
@@ -40,10 +39,8 @@ if __name__ == '__main__':
     # Get base_directory from command line arguments
     base_dir = get_base_directory()
 
-    # Construct (expected) path to config.json
-    file_path = os.path.join(base_dir, 'config.json')
-
     # Read in the config file and parse it
+    file_path = base_dir / 'config.json'
     with open(file_path, 'r') as config_file:
         config = json.load(config_file)
 
@@ -63,7 +60,7 @@ if __name__ == '__main__':
     pc_numbers = list(range(min_n_components, max_n_components + 1))
 
     # Other shortcuts
-    baselines_dir = os.path.join(base_dir, 'pca_baselines')
+    baselines_dir = base_dir / 'pca_baselines'
 
     # -------------------------------------------------------------------------
     # Make plots for different stacking factors
@@ -79,10 +76,10 @@ if __name__ == '__main__':
         )
 
         # Construct path to result dir for this stacking factor
-        result_dir = os.path.join(baselines_dir, f'stacked_{stacking_factor}')
+        result_dir = baselines_dir / f'stacked_{stacking_factor}'
 
         # Read in the CSV file with the figures of merit into a dataframe
-        file_path = os.path.join(result_dir, 'figures_of_merit.csv')
+        file_path = result_dir / 'figures_of_merit.csv'
         dataframe = pd.read_csv(
             filepath_or_buffer=file_path,
             sep='\t',
@@ -148,7 +145,7 @@ if __name__ == '__main__':
         plt.grid(which='both', ls='--', color='LightGray', alpha=0.5)
 
         # Save plot as a PDF
-        file_path = os.path.join(result_dir, 'snr_over_npc.pdf')
+        file_path = result_dir / 'snr_over_npc.pdf'
         plt.savefig(file_path, bbox_inches='tight', pad=0)
         plt.clf()
 

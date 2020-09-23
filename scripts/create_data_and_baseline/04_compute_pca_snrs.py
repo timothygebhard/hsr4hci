@@ -9,15 +9,14 @@ compute the SNR for different numbers of PCs in parallel.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from multiprocessing import Process, cpu_count
-from typing import Dict, List, Tuple
+from multiprocessing import Process, set_start_method
+from typing import Any, Dict, List, Tuple
 
 import json
-import os
 import time
 
-from astropy import units
-from tqdm import tqdm
+from astropy.units import Quantity
+from tqdm.auto import tqdm
 
 import numpy as np
 import pandas as pd
@@ -25,12 +24,67 @@ import pandas as pd
 from hsr4hci.utils.argparsing import get_base_directory
 from hsr4hci.utils.evaluation import compute_optimized_snr
 from hsr4hci.utils.fits import read_fits
-from hsr4hci.utils.queue import Queue
-from hsr4hci.utils.units import (
-    convert_to_quantity,
-    to_pixel,
-    set_units_for_instrument,
-)
+from hsr4hci.utils.queue import Queue, get_available_cpu_count
+from hsr4hci.utils.units import set_units_for_instrument
+
+
+# -----------------------------------------------------------------------------
+# AUXILIARY FUNCTIONS
+# -----------------------------------------------------------------------------
+
+def get_fom(
+    index: int,
+    frame: np.ndarray,
+    position: Tuple[float, float],
+    aperture_radius: float,
+    ignore_neighbors: int,
+    target: str,
+    method: str,
+    max_distance: float,
+    grid_size: int,
+    time_limit: int,
+    output_queue: 'Queue',
+) -> None:
+    """
+    This is a thin wrapper around the `compute_optimized_snr()` function
+    to enable it to be used in parallel with multiple worker processes.
+    The point of the function is basically to make sure that the outputs
+    of `compute_optimized_snr()` end up in the correct results queue.
+
+    Args:
+        index: Index of the current frame in the array of signal
+            estimates (essentially the number of PCs that were used to
+            create the `frame`).
+        frame: The frame (containing an estimate for the planet signal)
+            for which to compute the SNR.
+        position: (Starting) position for the SNR evaluation
+        aperture_radius: Aperture radius (in pixels).
+        ignore_neighbors: Number if neighboring apertures to ignore.
+        target: Target for the optimization (usually "signal_flux").
+        method: Optimization method (usually "brute" for brute force
+            optimization on a grid).
+        max_distance: Maximum distance (in pixels) between the optimized
+            planet positions and the starting position.
+        grid_size: When using method == 'brute', this parameter defines
+            the size of the grid.
+        time_limit: Time limit (in seconds) for the SNR computation.
+        output_queue: The queue (in shared memory!) to which this
+            function when it is run by a worker process will deliver
+            its results.
+    """
+
+    result: Dict[str, Any] = compute_optimized_snr(
+        frame=frame,
+        position=position,
+        aperture_radius=aperture_radius,
+        ignore_neighbors=ignore_neighbors,
+        target=target,
+        method=method,
+        max_distance=max_distance,
+        grid_size=grid_size,
+        time_limit=time_limit,
+    )
+    output_queue.put((index, result))
 
 
 # -----------------------------------------------------------------------------
@@ -53,42 +107,38 @@ if __name__ == '__main__':
     # Get base_directory from command line arguments
     base_dir = get_base_directory()
 
-    # Construct (expected) path to config.json
-    file_path = os.path.join(base_dir, 'config.json')
-
     # Read in the config file and parse it
+    file_path = base_dir / 'config.json'
     with open(file_path, 'r') as config_file:
         config = json.load(config_file)
 
-    # Now, apply unit conversions to astropy.units:
-    # First, convert pixscale and lambda_over_d to astropy.units.Quantity. This
-    # is a bit cumbersome, because in the meta data, we cannot use the usual
-    # convention to specify units, as the meta data are also written to the HDF
-    # file. Hence, we must hard-code the unit conventions here.
-    config['metadata']['PIXSCALE'] = units.Quantity(
-        config['metadata']['PIXSCALE'], 'arcsec / pixel'
-    )
-    config['metadata']['LAMBDA_OVER_D'] = units.Quantity(
-        config['metadata']['LAMBDA_OVER_D'], 'arcsec'
-    )
+    # Define shortcuts to values in config
+    metadata = config['metadata']
+    pixscale = metadata['PIXSCALE']
+    lambda_over_d = metadata['LAMBDA_OVER_D']
 
     # Use this to set up the instrument-specific conversion factors. We need
     # this here to that we can parse "lambda_over_d" as a unit in the config.
     set_units_for_instrument(
-        pixscale=config['metadata']['PIXSCALE'],
-        lambda_over_d=config['metadata']['LAMBDA_OVER_D'],
+        pixscale=Quantity(pixscale, 'arcsec / pixel'),
+        lambda_over_d=Quantity(lambda_over_d, 'arcsec'),
     )
-
-    # Convert the relevant entries of the config to astropy.units.Quantity
-    for key_tuple in [
-        ('evaluation', 'snr_options', 'aperture_radius'),
-        ('evaluation', 'snr_options', 'max_distance'),
-    ]:
-        config = convert_to_quantity(config, key_tuple)
 
     # -------------------------------------------------------------------------
     # Define some shortcuts
     # -------------------------------------------------------------------------
+
+    # Parse Quantities to pixel values and define shortcuts to SNR options
+    snr_options = config['evaluation']['snr_options']
+    for _ in ('aperture_radius', 'max_distance'):
+        snr_options[_] = Quantity(*snr_options[_])
+        snr_options[_] = snr_options[_].to('pixel').value
+    aperture_radius = snr_options['aperture_radius']
+    max_distance = snr_options['max_distance']
+    method = snr_options['method']
+    target = snr_options['target']
+    grid_size = snr_options['grid_size']
+    time_limit = snr_options['time_limit']
 
     # Define shortcuts for planet positions
     planet_positions: Dict[str, Tuple[float, float]] = dict()
@@ -100,31 +150,22 @@ if __name__ == '__main__':
         )
         ignore_neighbors[planet_key] = int(options['ignore_neighbors'])
 
-    # Define shortcuts for SNR options
-    snr_options = config['evaluation']['snr_options']
-    aperture_radius = to_pixel(snr_options['aperture_radius'])
-    max_distance = to_pixel(snr_options['max_distance'])
-    method = snr_options['method']
-    target = snr_options['target']
-    grid_size = snr_options['grid_size']
-    time_limit = snr_options['time_limit']
-
     # Shortcuts to entries in the configuration
     min_n_components = config['pca']['min_n_components']
     max_n_components = config['pca']['max_n_components']
     n_processes = config['evaluation']['n_processes']
 
     # In case we do not explicitly limit the number of parallel processes, we
-    # use the number of CPU cores in the current machine
+    # use the maximum number of CPU cores available to the current process
     if n_processes is None:
-        n_processes = cpu_count()
+        n_processes = get_available_cpu_count()
 
     # Construct numbers of principal components (and count them)
     pca_numbers = list(range(min_n_components, max_n_components + 1))
     n_signal_estimates = len(pca_numbers)
 
     # Other shortcuts
-    baselines_dir = os.path.join(base_dir, 'pca_baselines')
+    baselines_dir = base_dir / 'pca_baselines'
 
     # -------------------------------------------------------------------------
     # Read in the residuals for each stacking factor and compute SNR
@@ -137,12 +178,12 @@ if __name__ == '__main__':
         print(80 * '-', flush=True)
 
         # Construct path to result dir for this stacking factor
-        result_dir = os.path.join(baselines_dir, f'stacked_{stacking_factor}')
+        result_dir = baselines_dir / f'stacked_{stacking_factor}'
 
         # Construct path to signal estimates and read the FITS files to numpy
         print('Reading in signal estimates...', end=' ', flush=True)
-        file_path = os.path.join(result_dir, 'signal_estimates.fits')
-        signal_estimates: np.ndarray = read_fits(file_path=file_path)
+        file_path = result_dir / 'signal_estimates.fits'
+        signal_estimates = read_fits(file_path=file_path)
         print('Done!', flush=True)
 
         # Initialize dict with lists that will hold results for each planet
@@ -171,6 +212,16 @@ if __name__ == '__main__':
             # Prepare queues and target function
             # -----------------------------------------------------------------
 
+            # Ensure that the start method for new processes is 'fork'.
+            # Python 3.8 changed the default from 'fork' to 'spawn', because
+            # the former is considered unsafe. However, when the worker
+            # processes are spawned rather than forked, it seems that they
+            # can no longer access the (shared) output queue correctly.
+            # Forcing the start method to be 'fork' again seems to be the
+            # simplest workaround for now.
+            # FIXME: Find a less hacky solution to this problem!
+            set_start_method('fork')
+
             # Initialize a queue for the inputs, i.e., for each number of PCs
             # one frame with the corresponding signal_estimate (as well as the
             # index, so that we can reconstruct the correct result order)
@@ -181,34 +232,6 @@ if __name__ == '__main__':
             # Initialize an output queue and a list for the results
             output_queue = Queue()
             results_list: List[Tuple[int, np.ndarray]] = []
-
-            # Define a partial function application of compute_optimized_snr():
-            # Fix all arguments except for the frame, and make sure the output
-            # is placed into the shared output queue.
-            def get_fom(index: int, frame: np.ndarray,) -> None:
-                """
-                Partial function application of compute_optimized_snr().
-
-                Args:
-                    index: Index of the current frame in the array of
-                        signal estimates (essentially the number of PCs
-                        that were used to create the `frame`).
-                    frame: The frame (containing an estimate for the
-                        planet signal) for which to compute the SNR.
-                """
-
-                result = compute_optimized_snr(
-                    frame=frame,
-                    position=planet_position,
-                    aperture_radius=aperture_radius,
-                    ignore_neighbors=ignore_neighbors[planet_key],
-                    target=target,
-                    method=method,
-                    max_distance=max_distance,
-                    grid_size=grid_size,
-                    time_limit=time_limit,
-                )
-                output_queue.put((index, result))
 
             # -----------------------------------------------------------------
             # Process signal_estimate frames in parallel
@@ -232,13 +255,28 @@ if __name__ == '__main__':
                     # Start new processes until the input_queue is empty, or
                     # until we have reached the maximum number of processes
                     while (
-                        not input_queue.empty()
+                        input_queue.qsize() > 0
                         and len(processes) < n_processes
                     ):
 
                         # Get new frame from queue and define new process
                         index, frame = input_queue.get()
-                        process = Process(target=get_fom, args=(index, frame))
+                        process = Process(
+                            target=get_fom,
+                            kwargs=dict(
+                                index=index,
+                                frame=frame,
+                                position=planet_position,
+                                aperture_radius=aperture_radius,
+                                ignore_neighbors=ignore_neighbors,
+                                target=target,
+                                method=method,
+                                max_distance=max_distance,
+                                grid_size=grid_size,
+                                time_limit=time_limit,
+                                output_queue=output_queue,
+                            ),
+                        )
 
                         # Add to list of processes and start process
                         processes.append(process)
@@ -247,7 +285,7 @@ if __name__ == '__main__':
                     # Move results from output_queue to results_list:
                     # Without this part, the output_queue blocks the worker
                     # processes so that they will not terminate.
-                    while not output_queue.empty():
+                    while output_queue.qsize() > 0:
                         results_list.append(output_queue.get())
 
                     # Update the progress bar based on the number of results
@@ -304,7 +342,7 @@ if __name__ == '__main__':
 
         # Save the figures of merit as a CSV file
         print('Saving results as CSV file...', end=' ', flush=True)
-        file_path = os.path.join(result_dir, 'figures_of_merit.csv')
+        file_path = result_dir / 'figures_of_merit.csv'
         dataframe.to_csv(path_or_buf=file_path, sep='\t', float_format='%.3f')
         print('Done!\n')
 

@@ -7,10 +7,8 @@ condition parameters obtained with 00_get_observing_conditions.py.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from pathlib import Path
 from textwrap import wrap
 
-import os
 import time
 
 import matplotlib.pyplot as plt
@@ -19,8 +17,10 @@ import pandas as pd
 import seaborn as sns
 
 from hsr4hci.utils.argparsing import get_base_directory
-from hsr4hci.utils.observing_conditions import get_description_and_unit, \
-    load_observing_conditions
+from hsr4hci.utils.observing_conditions import (
+    get_description_and_unit,
+    load_observing_conditions,
+)
 
 
 # -----------------------------------------------------------------------------
@@ -44,16 +44,16 @@ if __name__ == '__main__':
     base_dir = get_base_directory()
 
     # Construct path to result dir and plot dir; make sure the latter exists
-    results_dir = os.path.join(base_dir, 'observing_conditions')
-    plots_dir = os.path.join(results_dir, 'plots')
-    Path(plots_dir).mkdir(exist_ok=True)
+    obscon_dir = base_dir / 'observing_conditions'
+    plots_dir = obscon_dir / 'plots'
+    plots_dir.mkdir(exist_ok=True)
 
     # Load observing conditions as a pandas DataFrame
     print('Loading observing conditions...', end=' ', flush=True)
-    file_path = os.path.join(results_dir, 'observing_conditions.hdf')
-    observing_conditions: pd.DataFrame = \
-        load_observing_conditions(file_path=file_path,
-                                  as_dataframe=True)
+    file_path = obscon_dir / 'observing_conditions.hdf'
+    observing_conditions: pd.DataFrame = load_observing_conditions(
+        file_path=file_path, as_dataframe=True
+    )
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
@@ -63,8 +63,8 @@ if __name__ == '__main__':
     print('Plotting parameter values over time...', end=' ', flush=True)
 
     # Make sure the respective sub-directory in the plots directory exists
-    parameters_dir = os.path.join(plots_dir, 'parameters')
-    Path(parameters_dir).mkdir(exist_ok=True)
+    parameters_dir = plots_dir / 'parameters'
+    parameters_dir.mkdir(exist_ok=True)
 
     # Loop over all observing condition parameters
     for i, parameter in enumerate(observing_conditions):
@@ -98,7 +98,7 @@ if __name__ == '__main__':
 
         # Save plot and close figure
         plt.tight_layout()
-        file_path = os.path.join(parameters_dir, f'{parameter}__values.pdf')
+        file_path = parameters_dir / f'{parameter}__values.pdf'
         plt.savefig(file_path, bbox_inches='tight', pad=0)
         plt.close(fig=fig)
 
@@ -111,8 +111,8 @@ if __name__ == '__main__':
     print('Plotting parameter values histograms...', end=' ', flush=True)
 
     # Make sure the respective sub-directory in the plots directory exists
-    histograms_dir = os.path.join(plots_dir, 'histograms')
-    Path(histograms_dir).mkdir(exist_ok=True)
+    histograms_dir = plots_dir / 'histograms'
+    histograms_dir.mkdir(exist_ok=True)
 
     # Loop over all observing condition parameters
     for i, parameter in enumerate(observing_conditions):
@@ -143,10 +143,16 @@ if __name__ == '__main__':
 
         # Plot the mean, median and standard deviation
         ax.axvline(x=np.mean(values), label='mean', color='C1')
-        ax.axvline(x=np.mean(values) - np.std(values), label='mean ± std',
-                   color='C1', ls='--', alpha=0.5)
-        ax.axvline(x=np.mean(values) + np.std(values),
-                   color='C1', ls='--', alpha=0.5)
+        ax.axvline(
+            x=np.mean(values) - np.std(values),
+            label='mean ± std',
+            color='C1',
+            ls='--',
+            alpha=0.5,
+        )
+        ax.axvline(
+            x=np.mean(values) + np.std(values), color='C1', ls='--', alpha=0.5
+        )
         ax.axvline(x=np.median(values), label='median', color='C2')
 
         # Set up title, axes labels and legend
@@ -163,7 +169,7 @@ if __name__ == '__main__':
 
         # Save plot and close figure
         plt.tight_layout()
-        file_path = os.path.join(histograms_dir, f'{parameter}__histogram.pdf')
+        file_path = histograms_dir / f'{parameter}__histogram.pdf'
         plt.savefig(file_path, bbox_inches='tight', pad=0)
         plt.close(fig=fig)
 
@@ -182,15 +188,17 @@ if __name__ == '__main__':
     correlation_matrix = observing_conditions.corr()
 
     # Create an annotated heatmap-plot of the correlation matrix
-    heatmap = sns.heatmap(data=correlation_matrix,
-                          square=True,
-                          linewidths=2,
-                          cmap='coolwarm',
-                          vmin=-1,
-                          vmax=1,
-                          cbar=False,
-                          annot=True,
-                          annot_kws={'size': 12})
+    heatmap = sns.heatmap(
+        data=correlation_matrix,
+        square=True,
+        linewidths=2,
+        cmap='coolwarm',
+        vmin=-1,
+        vmax=1,
+        cbar=False,
+        annot=True,
+        annot_kws={'size': 12},
+    )
 
     # Add the column names as labels
     ax.set_yticklabels(correlation_matrix.columns, rotation=0)
@@ -198,7 +206,7 @@ if __name__ == '__main__':
 
     # Save plot and close figure
     plt.tight_layout()
-    file_path = os.path.join(plots_dir, 'correlations.pdf')
+    file_path = plots_dir / 'correlations.pdf'
     plt.savefig(file_path, bbox_inches='tight', pad=0)
     plt.close(fig=fig)
 

@@ -23,9 +23,13 @@ import h5py
 import numpy as np
 
 from hsr4hci.utils.argparsing import get_base_directory
-from hsr4hci.utils.fits import get_fits_header_value, \
-    get_fits_header_value_array, header_value_exists
+from hsr4hci.utils.fits import (
+    get_fits_header_value,
+    get_fits_header_value_array,
+    header_value_exists,
+)
 from hsr4hci.utils.observing_conditions import get_key_map
+
 
 # -----------------------------------------------------------------------------
 # MAIN CODE
@@ -47,16 +51,15 @@ if __name__ == '__main__':
     # Get base_directory from command line arguments
     base_dir = get_base_directory()
 
-    # Construct expected path to config.json
-    file_path = os.path.join(base_dir, 'config.json')
-
-    # Read in the config file and parse it
+    # Read in the data set config file and parse it
+    file_path = base_dir / 'config.json'
     with open(file_path, 'r') as config_file:
         config = json.load(config_file)
 
     # Expand / resolve the environmental variables in the FITS directory
-    config['raw_data']['fits_dir'] = \
-        os.path.expandvars(config['raw_data']['fits_dir'])
+    config['raw_data']['fits_dir'] = os.path.expandvars(
+        config['raw_data']['fits_dir']
+    )
 
     # Select meta data (about the data set) from the config file, and convert
     # the observation date to a proper datetime object (assuming UTC time)
@@ -71,9 +74,9 @@ if __name__ == '__main__':
     print('Collecting indices from PynPoint database...', end=' ', flush=True)
 
     # Load path to the PynPoint database and key to selected indices
-    file_name = config['input_data']['stack']['file_name']
-    file_path = os.path.join(base_dir, 'input', file_name)
     index_key = config['input_data']['stack']['index_key']
+    file_name = config['input_data']['stack']['file_name']
+    file_path = base_dir / 'input' / file_name
 
     # Read the indices of the selected frames, that is, the indices of the
     # frames in the raw FITS files that have passed quality control and are
@@ -97,7 +100,7 @@ if __name__ == '__main__':
     print('Collecting paths to FITS files...', end=' ', flush=True)
 
     # Get path to directory that contains raw FITS files
-    fits_dir = config['raw_data']['fits_dir']
+    fits_dir = Path(config['raw_data']['fits_dir'])
 
     # Get filters for excluding FITS files. There are currently 3 types of
     # filters, which exclude files based on whether:
@@ -109,35 +112,41 @@ if __name__ == '__main__':
     keys_values = config['raw_data']['filters']['keys_values']
 
     # Collect all FITS fits in the given FITS directory
-    fits_files = \
-        list(filter(lambda _: _.endswith('fits'), os.listdir(fits_dir)))
+    fits_files = list(
+        filter(lambda _: _.name.endswith('fits'), fits_dir.iterdir())
+    )
 
     # Filter out all files that do not match the given name pattern
     if name_pattern is not None:
         regex = re.compile(name_pattern)
         fits_files = list(filter(regex.search, fits_files))
 
-    # Add base directory to file names
-    fits_files = [os.path.join(fits_dir, _) for _ in fits_files]
+    # Construct full path for each FITS file (not just file names)
+    fits_files = [fits_dir / fits_file for fits_file in fits_files]
 
     # Filter out all files that do not have the required keys in the header
     if keys_present is not None:
         for key in keys_present:
-            fits_files = \
-                list(filter(lambda _: header_value_exists(_, key), fits_files))
+            fits_files = list(
+                filter(lambda _: header_value_exists(_, key), fits_files)
+            )
 
     # Filter out all files where given keys do not have the required values
     if keys_values is not None:
         for (key, value) in keys_values:
-            fits_files = \
-                list(filter(lambda _: get_fits_header_value(_, key) == value,
-                            fits_files))
+            fits_files = list(
+                filter(
+                    lambda _: get_fits_header_value(_, key) == value,
+                    fits_files,
+                )
+            )
 
     # Read out the observation date from each FITS file and make sure the
-    # list of FITS files are sorted by this date
-    fits_files_with_dates = \
-        [(_, get_fits_header_value(_, key='DATE-OBS', dtype=datetime))
-         for _ in fits_files]
+    # list of FITS files is sorted by this date
+    fits_files_with_dates = [
+        (_, get_fits_header_value(_, key='DATE-OBS', dtype=datetime))
+        for _ in fits_files
+    ]
     fits_files_with_dates = sorted(fits_files_with_dates, key=lambda _: _[1])
     fits_files = [path for path, date in fits_files_with_dates]
 
@@ -149,8 +158,9 @@ if __name__ == '__main__':
     print('Preparing results dictionary...', end=' ', flush=True)
 
     # Initialize the dictionary of lists which will store the results
-    results: Dict[str, list] = \
-        {key: list() for key in get_key_map(obs_date=obs_date).keys()}
+    results: Dict[str, list] = {
+        key: list() for key in get_key_map(obs_date=obs_date).keys()
+    }
 
     print('Done!', flush=True)
 
@@ -170,10 +180,11 @@ if __name__ == '__main__':
 
             # Try to extract the current parameter from the FITS header
             try:
-                parameter_values = \
-                    get_fits_header_value_array(file_path=fits_file,
-                                                start_key=value['start_key'],
-                                                end_key=value['end_key'])
+                parameter_values = get_fits_header_value_array(
+                    file_path=fits_file,
+                    start_key=value['start_key'],
+                    end_key=value['end_key'],
+                )
                 results[key].append(parameter_values)
 
             # In case this parameter cannot be found, store a warning
@@ -194,11 +205,11 @@ if __name__ == '__main__':
     print('Saving results to HDF file...', end=' ', flush=True)
 
     # Create the results directory for the observing conditions
-    results_dir = Path(base_dir) / 'observing_conditions'
+    results_dir = base_dir / 'observing_conditions'
     results_dir.mkdir(exist_ok=True)
 
     # Construct path to the result HDF file
-    results_file_path = (results_dir / 'observing_conditions.hdf').as_posix()
+    results_file_path = results_dir / 'observing_conditions.hdf'
 
     with h5py.File(results_file_path, 'w') as hdf_file:
 
@@ -222,9 +233,7 @@ if __name__ == '__main__':
                 values = values[indices]
 
             # Save them to the HDF file
-            hdf_file.create_dataset(name=key,
-                                    dtype=np.float32,
-                                    data=values)
+            hdf_file.create_dataset(name=key, dtype=np.float32, data=values)
 
     print('Done!', flush=True)
 

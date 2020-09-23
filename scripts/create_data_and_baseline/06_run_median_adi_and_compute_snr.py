@@ -6,19 +6,18 @@ This script creates a simple median ADI baseline for each data set.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from copy import deepcopy
-from pathlib import Path
 from typing import Dict, Tuple
 
 import csv
 import json
-import os
 import time
 
-from astropy import units
+from astropy.units import Quantity
+
+import h5py
+import numpy as np
 
 from hsr4hci.utils.argparsing import get_base_directory
-from hsr4hci.utils.data import load_data
 from hsr4hci.utils.derotating import derotate_combine
 from hsr4hci.utils.evaluation import compute_optimized_snr
 from hsr4hci.utils.fits import save_fits
@@ -50,33 +49,21 @@ if __name__ == '__main__':
     # Get base_directory from command line arguments
     base_dir = get_base_directory()
 
-    # Construct (expected) path to config.json
-    file_path = os.path.join(base_dir, 'config.json')
-
     # Read in the config file and parse it
+    file_path = base_dir / 'config.json'
     with open(file_path, 'r') as config_file:
         config = json.load(config_file)
 
-    # Get a copy of the pixscale without units
-    pixscale = deepcopy(config['metadata']['PIXSCALE'])
-
-    # Now, apply unit conversions to astropy.units:
-    # First, convert pixscale and lambda_over_d to astropy.units.Quantity. This
-    # is a bit cumbersome, because in the meta data, we cannot use the usual
-    # convention to specify units, as the meta data are also written to the HDF
-    # file. Hence, we must hard-code the unit conventions here.
-    config['metadata']['PIXSCALE'] = units.Quantity(
-        config['metadata']['PIXSCALE'], 'arcsec / pixel'
-    )
-    config['metadata']['LAMBDA_OVER_D'] = units.Quantity(
-        config['metadata']['LAMBDA_OVER_D'], 'arcsec'
-    )
+    # Define shortcuts to values in config
+    metadata = config['metadata']
+    pixscale = metadata['PIXSCALE']
+    lambda_over_d = metadata['LAMBDA_OVER_D']
 
     # Use this to set up the instrument-specific conversion factors. We need
     # this here to that we can parse "lambda_over_d" as a unit in the config.
     set_units_for_instrument(
-        pixscale=config['metadata']['PIXSCALE'],
-        lambda_over_d=config['metadata']['LAMBDA_OVER_D'],
+        pixscale=Quantity(pixscale, 'arcsec / pixel'),
+        lambda_over_d=Quantity(lambda_over_d, 'arcsec'),
     )
 
     # Convert the relevant entries of the config to astropy.units.Quantity
@@ -115,20 +102,20 @@ if __name__ == '__main__':
         # Create a directory in which we store the results
         # ---------------------------------------------------------------------
 
-        result_dir = os.path.join(
-            base_dir, 'median_adi_baselines', f'stacked_{stacking_factor}'
+        result_dir = (
+            base_dir / 'median_adi_baselines' / f'stacked__{stacking_factor}'
         )
-        Path(result_dir).mkdir(exist_ok=True, parents=True)
+        result_dir.mkdir(exist_ok=True, parents=True)
 
         # ---------------------------------------------------------------------
         # Load the data and run median ADI to get the signal estimate
         # ---------------------------------------------------------------------
 
         # Load the input stack and the parallactic angles
-        file_path = os.path.join(
-            base_dir, 'processed', f'stacked_{stacking_factor}.hdf'
-        )
-        stack, parang, _, __, ___ = load_data(file_path=file_path)
+        file_path = base_dir / 'processed' / f'stacked__{stacking_factor}.hdf'
+        with h5py.File(file_path, 'r') as hdf_file:
+            stack = np.array(hdf_file['stack'])
+            parang = np.array(hdf_file['parang'])
 
         # Compute the signal estimates and the principal components
         print('Computing median ADI signal estimate...', end=' ', flush=True)
@@ -143,7 +130,7 @@ if __name__ == '__main__':
 
         # Save signal estimates as FITS file
         print('Saving signal estimate to FITS...', end=' ', flush=True)
-        file_path = os.path.join(result_dir, 'signal_estimate.fits')
+        file_path = result_dir / 'signal_estimate.fits'
         save_fits(array=signal_estimate, file_path=file_path)
         print('Done!', flush=True)
 
@@ -192,7 +179,7 @@ if __name__ == '__main__':
             )
 
             # Save result for each planet individually as a CSV file
-            file_path = os.path.join(result_dir, f'{planet_key}.csv')
+            file_path = result_dir / f'{planet_key}.csv'
             with open(file_path, 'w') as csv_file:
                 csv_writer = csv.writer(csv_file)
                 csv_writer.writerows(result.items())
