@@ -34,7 +34,7 @@
     "TARGET_STAR":          "HR 8799"
   },
   "frame_size":             [309, 309],
-  "stacking_factors":       [1, 5, 10, 25],
+  "stacking_factors":       [1, 2, 3, 4, 5, 8, 10, 16, 25, 32, 50, 64, 75, 100, 128, 150],
   "pca": {
     "min_n_components":     1,
     "max_n_components":     200

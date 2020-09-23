@@ -34,7 +34,7 @@
     "TARGET_STAR":          "PZ Telescopii"
   },
   "frame_size":             [59, 59],
-  "stacking_factors":       [1, 5, 10],
+  "stacking_factors":       [1, 2, 3, 4, 5, 8, 10, 16, 25, 32, 50, 64, 75, 100, 128, 150],
   "pca": {
     "min_n_components":     1,
     "max_n_components":     200
