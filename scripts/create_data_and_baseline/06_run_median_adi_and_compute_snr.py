@@ -54,7 +54,11 @@ if __name__ == '__main__':
     with open(file_path, 'r') as config_file:
         config = json.load(config_file)
 
-    # Define shortcuts to values in config
+    # -------------------------------------------------------------------------
+    # Define shortcuts and set up unit conversions
+    # -------------------------------------------------------------------------
+
+    # Shortcuts to PIXSCALE and LAMBDA_OVER_D
     metadata = config['metadata']
     pixscale = metadata['PIXSCALE']
     lambda_over_d = metadata['LAMBDA_OVER_D']
@@ -75,14 +79,13 @@ if __name__ == '__main__':
     ]:
         config = convert_to_quantity(config, key_tuple)
 
-    # -------------------------------------------------------------------------
-    # Define shortcuts to various parts of the config
-    # -------------------------------------------------------------------------
-
-    # Get stacking factors
+    # Other shortcuts to elements in the config
     stacking_factors = config['stacking_factors']
 
+    # -------------------------------------------------------------------------
     # Construct a ROI mask
+    # -------------------------------------------------------------------------
+
     roi_mask = get_roi_mask(
         mask_size=config['frame_size'],
         inner_radius=config['roi']['inner_radius'],

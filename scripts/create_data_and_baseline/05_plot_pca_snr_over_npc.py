@@ -141,13 +141,14 @@ if __name__ == '__main__':
         plt.title(f'PynPoint baseline for stacked_{stacking_factor}')
         plt.legend(loc='best')
         plt.tight_layout()
-        plt.xticks(list(range(min_n_components - 1, max_n_components + 1, 5)))
+        plt.xticks(list(range(min_n_components - 1, max_n_components + 1, 10)))
         plt.grid(which='both', ls='--', color='LightGray', alpha=0.5)
 
         # Save plot as a PDF
         file_path = result_dir / 'snr_over_npc.pdf'
         plt.savefig(file_path, bbox_inches='tight', pad=0)
         plt.clf()
+        plt.close()
 
         print('Done!', flush=True)
 

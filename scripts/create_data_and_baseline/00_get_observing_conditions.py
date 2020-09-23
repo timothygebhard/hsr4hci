@@ -119,7 +119,7 @@ if __name__ == '__main__':
     # Filter out all files that do not match the given name pattern
     if name_pattern is not None:
         regex = re.compile(name_pattern)
-        fits_files = list(filter(regex.search, fits_files))
+        fits_files = [_ for _ in fits_files if regex.search(_.name)]
 
     # Construct full path for each FITS file (not just file names)
     fits_files = [fits_dir / fits_file for fits_file in fits_files]

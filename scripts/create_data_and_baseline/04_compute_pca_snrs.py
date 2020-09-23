@@ -112,7 +112,11 @@ if __name__ == '__main__':
     with open(file_path, 'r') as config_file:
         config = json.load(config_file)
 
-    # Define shortcuts to values in config
+    # -------------------------------------------------------------------------
+    # Define shortcuts and set up unit conversions
+    # -------------------------------------------------------------------------
+
+    # Shortcuts to PIXSCALE and LAMBDA_OVER_D
     metadata = config['metadata']
     pixscale = metadata['PIXSCALE']
     lambda_over_d = metadata['LAMBDA_OVER_D']
@@ -123,10 +127,6 @@ if __name__ == '__main__':
         pixscale=Quantity(pixscale, 'arcsec / pixel'),
         lambda_over_d=Quantity(lambda_over_d, 'arcsec'),
     )
-
-    # -------------------------------------------------------------------------
-    # Define some shortcuts
-    # -------------------------------------------------------------------------
 
     # Parse Quantities to pixel values and define shortcuts to SNR options
     snr_options = config['evaluation']['snr_options']
@@ -171,6 +171,15 @@ if __name__ == '__main__':
     # Read in the residuals for each stacking factor and compute SNR
     # -------------------------------------------------------------------------
 
+    # Ensure that the start method for new processes is 'fork'.
+    # Python 3.8 changed the default from 'fork' to 'spawn', because the former
+    # is considered unsafe. However, when the worker processes are spawned
+    # rather than forked, it seems that they can no longer access the (shared)
+    # output queue correctly. Forcing the start method to be 'fork' again seems
+    # to be the simplest workaround for now.
+    # TODO: Find a less hacky solution to this problem!
+    set_start_method('fork')
+
     # Run for each stacking factor
     for stacking_factor in config['stacking_factors']:
 
@@ -211,16 +220,6 @@ if __name__ == '__main__':
             # -----------------------------------------------------------------
             # Prepare queues and target function
             # -----------------------------------------------------------------
-
-            # Ensure that the start method for new processes is 'fork'.
-            # Python 3.8 changed the default from 'fork' to 'spawn', because
-            # the former is considered unsafe. However, when the worker
-            # processes are spawned rather than forked, it seems that they
-            # can no longer access the (shared) output queue correctly.
-            # Forcing the start method to be 'fork' again seems to be the
-            # simplest workaround for now.
-            # FIXME: Find a less hacky solution to this problem!
-            set_start_method('fork')
 
             # Initialize a queue for the inputs, i.e., for each number of PCs
             # one frame with the corresponding signal_estimate (as well as the
@@ -268,7 +267,7 @@ if __name__ == '__main__':
                                 frame=frame,
                                 position=planet_position,
                                 aperture_radius=aperture_radius,
-                                ignore_neighbors=ignore_neighbors,
+                                ignore_neighbors=ignore_neighbors[planet_key],
                                 target=target,
                                 method=method,
                                 max_distance=max_distance,

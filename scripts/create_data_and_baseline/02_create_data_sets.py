@@ -30,6 +30,7 @@ from hsr4hci.utils.general import (
     crop_center,
 )
 from hsr4hci.utils.observing_conditions import load_observing_conditions
+from hsr4hci.utils.units import set_units_for_instrument
 
 
 # -----------------------------------------------------------------------------
@@ -58,16 +59,28 @@ if __name__ == '__main__':
         config = json.load(config_file)
 
     # -------------------------------------------------------------------------
-    # Define shortcuts to various parts of the config
+    # Define shortcuts and set up unit conversions
     # -------------------------------------------------------------------------
 
+    # Shortcuts to PIXSCALE and LAMBDA_OVER_D
     metadata = config['metadata']
+    pixscale = metadata['PIXSCALE']
+    lambda_over_d = metadata['LAMBDA_OVER_D']
+
+    # Use this to set up the instrument-specific conversion factors. We need
+    # this here to that we can parse "lambda_over_d" as a unit in the config.
+    set_units_for_instrument(
+        pixscale=Quantity(pixscale, 'arcsec / pixel'),
+        lambda_over_d=Quantity(lambda_over_d, 'arcsec'),
+    )
+
+    # Other shortcuts to elements in the config
     frame_size = config['frame_size']
     stacking_factors = config['stacking_factors']
     planet_config = config['evaluation']['planets']
 
     # -------------------------------------------------------------------------
-    # Load the stack, parallactic angles and PSF template (from HDF or FITS)
+    # Load the stack (from HDF or FITS)
     # -------------------------------------------------------------------------
 
     print('Loading stack...', end=' ', flush=True)
@@ -90,6 +103,11 @@ if __name__ == '__main__':
     stack = crop_center(stack, (-1, frame_size[0], frame_size[1]))
 
     print('Done!', flush=True)
+
+    # -------------------------------------------------------------------------
+    # Load the parallactic angles (from HDF or FITS)
+    # -------------------------------------------------------------------------
+
     print('Loading parallactic angles...', end=' ', flush=True)
 
     # Construct path to parallactic angles file
@@ -107,6 +125,11 @@ if __name__ == '__main__':
         raise RuntimeError('parang file must be either HDF or FITS!')
 
     print('Done!', flush=True)
+
+    # -------------------------------------------------------------------------
+    # Load the unsaturated PSF template (from HDF or FITS)
+    # -------------------------------------------------------------------------
+
     print('Loading PSF template...', end=' ', flush=True)
 
     # Load the PSF template, if there exists one. Since not all data sets have
@@ -119,13 +142,17 @@ if __name__ == '__main__':
 
         # Actually load the PSF template (from FITS or HDF)
         if is_fits_file(psf_file_path):
-            psf_template = read_fits(psf_file_path)
+            psf_template: np.ndarray = read_fits(psf_file_path)
         elif is_hdf_file(psf_file_path):
             psf_template_key = config['input_data']['psf_template']['key']
             with h5py.File(psf_file_path, 'r') as hdf_file:
                 psf_template = np.array(hdf_file[psf_template_key]).squeeze()
         else:
             raise RuntimeError('psf_template file must be either HDF or FITS!')
+
+        # Make sure that the PSF template is actually 2D
+        if psf_template.ndim == 3:
+            psf_template = np.mean(psf_template, axis=0)
 
         print('Done!', flush=True)
 
@@ -150,7 +177,7 @@ if __name__ == '__main__':
     print('Done!')
 
     # -------------------------------------------------------------------------
-    # Load observing conditions
+    # Load observing conditions (from HDF)
     # -------------------------------------------------------------------------
 
     # Define expected file path for observing conditions
@@ -180,6 +207,10 @@ if __name__ == '__main__':
             end=' ',
             flush=True,
         )
+
+        # ---------------------------------------------------------------------
+        # Create pre-stacked version of stack, parang, obs_con and planet mask
+        # ---------------------------------------------------------------------
 
         # Stack frames and parallactic angles (use median for frames and mean
         # for parallactic angles, as those are the PynPoint defaults)
@@ -211,14 +242,18 @@ if __name__ == '__main__':
             stack_shape=stacked_stack.shape,
             parang=stacked_parang,
             psf_template=psf_template,
-            pixscale=Quantity(metadata['PIXSCALE'], 'arcsec / pixel'),
-            lambda_over_d=Quantity(metadata['LAMBDA_OVER_D'], 'arcsec'),
+            pixscale=Quantity(pixscale, 'arcsec / pixel'),
+            lambda_over_d=Quantity(lambda_over_d, 'arcsec'),
             planet_config=planet_config,
             threshold=5e-1,
         )
 
         # Cast the mask to integer, because FITS complains about binary masks
         planet_paths_mask = planet_paths_mask.astype(int)
+
+        # ---------------------------------------------------------------------
+        # Save everything to a new HDF file
+        # ---------------------------------------------------------------------
 
         # Construct file path for output HDF file
         file_path = output_dir / f'stacked__{stacking_factor}.hdf'

@@ -14,6 +14,7 @@ import time
 
 from astropy.units import Quantity
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -48,7 +49,11 @@ if __name__ == '__main__':
     with open(file_path, 'r') as config_file:
         config = json.load(config_file)
 
-    # Define shortcuts to values in config
+    # -------------------------------------------------------------------------
+    # Define shortcuts and set up unit conversions
+    # -------------------------------------------------------------------------
+
+    # Shortcuts to PIXSCALE and LAMBDA_OVER_D
     metadata = config['metadata']
     pixscale = metadata['PIXSCALE']
     lambda_over_d = metadata['LAMBDA_OVER_D']
@@ -60,7 +65,7 @@ if __name__ == '__main__':
         lambda_over_d=Quantity(lambda_over_d, 'arcsec'),
     )
 
-    # Define shortcuts
+    # Other shortcuts to elements in the config
     stacking_factors = config['stacking_factors']
     planet_names = list(config['evaluation']['planets'].keys())
     aperture_radius = config['evaluation']['snr_options']['aperture_radius']
@@ -156,13 +161,14 @@ if __name__ == '__main__':
                 file_path = (
                     plots_dir / f'pca__{stacking_factor}__{planet_name}.{ext}'
                 )
-                plot_frame(
+                fig = plot_frame(
                     frame=frame,
                     file_path=file_path,
                     positions=positions,
                     aperture_radius=aperture_radius,
                     snrs=snrs,
                 )
+                plt.close(fig=fig)
 
     # -------------------------------------------------------------------------
     # Postliminaries
