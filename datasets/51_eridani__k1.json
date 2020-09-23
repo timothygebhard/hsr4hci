@@ -15,7 +15,7 @@
     }
   },
   "raw_data": {
-    "fits_dir":             "$STOLKERT_SHARED/51eri_irdis_k12/raw",
+    "fits_dir":             "$STOLKERT_USER/51eri_irdis_k12/raw",
     "filters": {
       "name_pattern":       "^SPHER.2015-09-25.*$",
       "keys_present":       null,
