@@ -11,8 +11,9 @@ from copy import deepcopy
 from functools import reduce
 from hashlib import md5
 from math import modf
+from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Callable, List, Sequence, Tuple
+from typing import Any, Callable, List, Sequence, Tuple, Union
 
 import operator
 
@@ -474,7 +475,7 @@ def get_md5_checksum(
 
 
 def is_fits_file(
-    file_path: str,
+    file_path: Union[Path, str],
 ) -> bool:
     """
     Check if a given file is a FITS file, based on the ending of the
@@ -488,11 +489,11 @@ def is_fits_file(
         True if the given file is a FITS file; False otherwise.
     """
 
-    return file_path.endswith('.fits')
+    return Path(file_path).name.endswith('.fits')
 
 
 def is_hdf_file(
-    file_path: str,
+    file_path: Union[Path, str],
 ) -> bool:
     """
     Check if a given file is an HDF file (based on file ending, which
@@ -505,4 +506,7 @@ def is_hdf_file(
         True if the given file is a HDF file; False otherwise.
     """
 
-    return file_path.endswith('.hdf') or file_path.endswith('.hdf5')
+    return (
+        Path(file_path).name.endswith('.hdf') or
+        Path(file_path).name.endswith('.hdf5')
+    )
