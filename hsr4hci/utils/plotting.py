@@ -7,6 +7,7 @@ Utility functions for plotting.
 # -----------------------------------------------------------------------------
 
 from copy import copy
+from pathlib import Path
 from typing import Any, List, Optional, Tuple, Union
 
 import colorsys
@@ -187,7 +188,7 @@ def disable_ticks(
 
 def plot_frame(
     frame: np.ndarray,
-    file_path: Optional[str] = None,
+    file_path: Optional[Union[Path, str]] = None,
     figsize: Tuple[float, float] = (4.0, 4.0),
     aperture_radius: Optional[float] = None,
     positions: Optional[List[Tuple[float, float]]] = None,
