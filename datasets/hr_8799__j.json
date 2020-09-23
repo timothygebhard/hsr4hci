@@ -15,7 +15,7 @@
     }
   },
   "raw_data": {
-    "fits_dir":             "$STOLKERT_SHARED/hr8799_irdis_j/raw",
+    "fits_dir":             "$STOLKERT_USER/hr8799_irdis_j/raw",
     "filters": {
       "name_pattern":       "^SPHER.2014-08-14.*$",
       "keys_present":       null,
