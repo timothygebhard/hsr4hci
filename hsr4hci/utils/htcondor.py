@@ -6,7 +6,7 @@ Utility classes and functions to work with the HTCondor cluster system.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Deque, Dict, List, Optional, Set
+from typing import Deque, Dict, List, Optional, Set, Union
 from pathlib import Path
 
 import sys
@@ -26,7 +26,7 @@ class SubmitFile:
 
     def __init__(
         self,
-        clusterlogs_dir: Optional[str] = None,
+        clusterlogs_dir: Optional[Union[Path, str]] = None,
         executable: str = sys.executable,
         getenv: bool = True,
         memory: int = 8192,
@@ -51,7 +51,6 @@ class SubmitFile:
         """
 
         # Store options for this submit file
-        self.clusterlogs_path = clusterlogs_dir
         self.executable = executable
         self.getenv = getenv
         self.memory = memory
@@ -61,7 +60,10 @@ class SubmitFile:
 
         # Make sure that the clusterlogs_dir exists
         if clusterlogs_dir is not None:
-            Path(clusterlogs_dir).mkdir(exist_ok=True, parents=True)
+            self.clusterlogs_dir: Optional[Path] = Path(clusterlogs_dir)
+            self.clusterlogs_dir.mkdir(exist_ok=True, parents=True)
+        else:
+            self.clusterlogs_dir = None
 
         # Initialize list of requirements for this submit file
         if requirements == '':
@@ -123,17 +125,17 @@ class SubmitFile:
 
             # Add output, error and log file for job
             contents.append('# Logging Information')
-            if self.clusterlogs_path is not None:
+            if self.clusterlogs_dir is not None:
                 contents.append(
-                    f'output = {self.clusterlogs_path}/'
+                    f'output = {self.clusterlogs_dir.as_posix()}/'
                     f'{job["name"]}.out.$(Process)'
                 )
                 contents.append(
-                    f'error = {self.clusterlogs_path}/'
+                    f'error = {self.clusterlogs_dir.as_posix()}/'
                     f'{job["name"]}.err.$(Process)'
                 )
                 contents.append(
-                    f'log = {self.clusterlogs_path}/'
+                    f'log = {self.clusterlogs_dir.as_posix()}/'
                     f'{job["name"]}.log.$(Process)'
                 )
             else:
@@ -183,7 +185,7 @@ class Node:
         self.dependent_nodes.add(child_node_name)
 
 
-class DAGFile():
+class DAGFile:
     """
     Create submit files for HTCondors DAGman.
     """
@@ -290,7 +292,7 @@ class DAGFile():
 
         return '\n'.join(contents)
 
-    def save(self, file_path: str) -> None:
+    def save(self, file_path: Union[Path, str]) -> None:
 
         with open(file_path, 'w') as dag_file:
             dag_file.write(self.__str__())
