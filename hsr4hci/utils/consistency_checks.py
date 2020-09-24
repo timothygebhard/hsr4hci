@@ -265,6 +265,9 @@ def get_match_fraction(
                 matches.append(0)
 
         # Finally, compute the match fraction for the current position
-        match_fraction[position[0], position[1]] = np.mean(matches)
+        if matches:
+            match_fraction[position[0], position[1]] = np.mean(matches)
+        else:
+            match_fraction[position[0], position[1]] = 0
 
     return match_fraction
