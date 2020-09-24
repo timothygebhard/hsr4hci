@@ -278,7 +278,8 @@ def plot_frame(
         vmax=float(limit),
         shading='nearest',
         cmap=get_cmap(),
-        snap=True
+        snap=True,
+        rasterized=True,
     )
 
     # -------------------------------------------------------------------------
@@ -344,7 +345,7 @@ def plot_frame(
 
     # Save the results
     if file_path is not None:
-        plt.savefig(file_path, bbox_inches='tight', pad_inches=0, dpi=300)
+        plt.savefig(file_path, bbox_inches='tight', pad_inches=0, dpi=600)
 
     return fig
 
