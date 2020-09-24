@@ -77,7 +77,7 @@ def load_data(
         filter_name,
         date,
         'processed',
-        f'stacked_{stacking_factor}.hdf',
+        f'stacked__{stacking_factor}.hdf',
     )
 
     # Read in the dataset from the HDf file
@@ -220,7 +220,7 @@ def load_parang(
         filter_name,
         date,
         'processed',
-        f'stacked_{stacking_factor}.hdf',
+        f'stacked__{stacking_factor}.hdf',
     )
 
     # Read in the dataset from the HDf file
