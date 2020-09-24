@@ -1,6 +1,8 @@
 """
 Utility functions for dealing with HDF files.
-The code here is based on: https://codereview.stackexchange.com/a/121308
+
+Parts of the code in the module are based on:
+    https://codereview.stackexchange.com/a/121308
 """
 
 # -----------------------------------------------------------------------------
@@ -39,6 +41,25 @@ H5PY_SUPPORTED_TYPES = (
 # -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
+
+def is_hdf_file(
+    file_path: Union[Path, str],
+) -> bool:
+    """
+    Check the ending of a file_path to determine if it is an HDF file.
+
+    Args:
+        file_path: Path to the target file to be checked.
+
+    Returns:
+        True if the given file is a HDF file; False otherwise.
+    """
+
+    endswith_hdf = Path(file_path).name.endswith('.hdf')
+    endswith_hdf5 = Path(file_path).name.endswith('.hdf5')
+
+    return endswith_hdf or endswith_hdf5
+
 
 def save_dict_to_hdf(dictionary: dict, file_path: Union[Path, str]) -> None:
     """

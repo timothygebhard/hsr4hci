@@ -21,6 +21,26 @@ import numpy as np
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
+def is_fits_file(
+    file_path: Union[Path, str],
+) -> bool:
+    """
+    Check the ending of a file_path to determine if it is a FITS file.
+
+    Note: checking for magic numbers to determine the file type does
+        not work in general, because ESO FITS files seem to not always
+        have the correct MIME type.
+
+    Args:
+        file_path: Path to the target file to be checked.
+
+    Returns:
+        True if the given file is a FITS file; False otherwise.
+    """
+
+    return Path(file_path).name.endswith('.fits')
+
+
 def read_fits(
     file_path: Union[Path, str],
     return_header: bool = False,

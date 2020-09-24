@@ -20,15 +20,14 @@ import h5py
 import numpy as np
 
 from hsr4hci.utils.argparsing import get_base_directory
-from hsr4hci.utils.fits import read_fits, save_fits
+from hsr4hci.utils.fits import is_fits_file, read_fits, save_fits
 from hsr4hci.utils.forward_modeling import get_planet_paths
 from hsr4hci.utils.general import (
-    prestack_array,
-    get_md5_checksum,
-    is_fits_file,
-    is_hdf_file,
     crop_center,
+    get_md5_checksum,
+    prestack_array,
 )
+from hsr4hci.utils.hdf import is_hdf_file
 from hsr4hci.utils.observing_conditions import load_observing_conditions
 from hsr4hci.utils.units import set_units_for_instrument
 
