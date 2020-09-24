@@ -276,8 +276,9 @@ def plot_frame(
         frame,
         vmin=-1 * float(limit),
         vmax=float(limit),
-        shading='auto',
-        cmap=get_cmap()
+        shading='nearest',
+        cmap=get_cmap(),
+        snap=True
     )
 
     # -------------------------------------------------------------------------
