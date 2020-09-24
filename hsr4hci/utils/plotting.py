@@ -263,14 +263,21 @@ def plot_frame(
     if limit is None:
         limit = 1.1 * bn.nanmax(np.abs(frame))
 
-    # Create the actual plot and use the limit we just computed
-    plt.imshow(
-        X=frame,
-        origin='lower',
-        cmap=get_cmap(),
+    x_range = np.arange(frame.shape[0])
+    y_range = np.arange(frame.shape[1])
+    x, y = np.meshgrid(x_range, y_range)
+
+    # Create the actual plot and use the limit we just computed.
+    # Using pcolormesh() instead of imshow() avoids interpolation artifacts in
+    # most PDF viewers (otherwise, the PDF version will often look blurry).
+    plt.pcolormesh(
+        x,
+        y,
+        frame,
         vmin=-1 * float(limit),
         vmax=float(limit),
-        interpolation='none',
+        shading='auto',
+        cmap=get_cmap()
     )
 
     # -------------------------------------------------------------------------
@@ -336,7 +343,7 @@ def plot_frame(
 
     # Save the results
     if file_path is not None:
-        plt.savefig(file_path, bbox_inches='tight', dpi=300)
+        plt.savefig(file_path, bbox_inches='tight', pad_inches=0, dpi=300)
 
     return fig
 
