@@ -29,7 +29,7 @@ from hsr4hci.utils.general import (
 )
 from hsr4hci.utils.hdf import is_hdf_file
 from hsr4hci.utils.observing_conditions import load_observing_conditions
-from hsr4hci.utils.psf import crop_psf_template
+from hsr4hci.utils.psf import crop_psf_template, get_artificial_psf
 from hsr4hci.utils.units import set_units_for_instrument
 
 
@@ -154,20 +154,31 @@ if __name__ == '__main__':
         if psf_template.ndim == 3:
             psf_template = np.mean(psf_template, axis=0)
 
-        # Compute a cropped version of the PSF template
-        psf_cropped = crop_psf_template(
-            psf_template=psf_template, psf_radius=Quantity(1, 'lambda_over_d'),
-        )
-
         print('Done!', flush=True)
 
     # If no psf_template is given, add an empty array and raise a warning
     else:
 
         psf_template = np.empty((0, 0))
-        psf_cropped = np.empty((0, 0))
         print('Done!', flush=True)
         warnings.warn('No unsaturated PSF template given!')
+
+    # Create a cropped version of the PSF template. If necessary (i.e., if no
+    # real template is available) use an artificial PSF template.
+    if psf_template.shape != (0, 0):
+        psf_cropped = crop_psf_template(
+            psf_template=psf_template,
+            psf_radius=Quantity(1, 'lambda_over_d'),
+        )
+    else:
+        fake_psf_template = get_artificial_psf(
+            pixscale=Quantity(pixscale, 'arcsec / pixel'),
+            lambda_over_d=Quantity(lambda_over_d, 'arcsec'),
+        )
+        psf_cropped = crop_psf_template(
+            psf_template=fake_psf_template,
+            psf_radius=Quantity(1, 'lambda_over_d'),
+        )
 
     # -------------------------------------------------------------------------
     # Augment meta data based on the original stack file
@@ -248,8 +259,6 @@ if __name__ == '__main__':
             stack_shape=stacked_stack.shape,
             parang=stacked_parang,
             psf_cropped=psf_cropped,
-            pixscale=Quantity(pixscale, 'arcsec / pixel'),
-            lambda_over_d=Quantity(lambda_over_d, 'arcsec'),
             planet_config=planet_config,
             threshold=5e-1,
         )
