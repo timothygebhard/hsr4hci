@@ -16,7 +16,6 @@ from scipy.interpolate import RegularGridInterpolator
 import numpy as np
 
 from hsr4hci.utils.general import add_array_with_interpolation, rotate_position
-from hsr4hci.utils.psf import crop_psf_template
 
 
 # -----------------------------------------------------------------------------
@@ -186,7 +185,7 @@ def get_time_series_for_position(
 def get_planet_paths(
     stack_shape: Tuple[int, int, int],
     parang: np.ndarray,
-    psf_template: np.ndarray,
+    psf_cropped: np.ndarray,
     pixscale: Quantity,
     lambda_over_d: Quantity,
     planet_config: Dict[str, dict],
@@ -203,11 +202,11 @@ def get_planet_paths(
             shape of the stack of the data set.
         parang: A 1D numpy array of shape `(n_frames, )` containing the
             parallactic angles.
-        psf_template: A 2D numpy array containing the raw, unsaturated
-            PSF template. If no such template is available, you can use
-            a numpy array of size `(0, 0)` to automatically create a
-            fake PSF template (using a 2D Airy function) to get an
-            approximate solution.
+        psf_cropped: A 2D numpy array containing a cropped version of
+            the raw, unsaturated PSF template. If no such template is
+            available, you can use a numpy array of size `(0, 0)` to
+            automatically create a fake PSF template (using a 2D Airy
+            function) to get an approximate solution.
         pixscale: An `astropy.units.Quantity` in units of arc seconds
             per pixel specifying the pixel scale of the instrument.
         lambda_over_d: An `astropy.units.Quantity` in units of arc
@@ -235,7 +234,7 @@ def get_planet_paths(
 
     # In case there is no PSF template present, we need to create a fake
     # one using an Airy kernel of the appropriate size
-    if psf_template.shape == (0, 0):
+    if psf_cropped.shape == (0, 0):
 
         # Create a 2D Airy disk of the correct size as a numpy array.
         # The factor of 1.383 is a "magic" number that was determined by
@@ -243,18 +242,9 @@ def get_planet_paths(
         # known) against the output of the AiryDisk2DKernel() function, and
         # adjusting the radius of the latter by a factor to minimize the
         # difference between the real and the fake PSF.
-        psf_template = AiryDisk2DKernel(
+        psf_cropped = AiryDisk2DKernel(
             radius=1.383 * (lambda_over_d / pixscale).to('pixel').value,
-            x_size=x_size,
-            y_size=y_size,
         ).array
-
-    # Crop the PSF to a 1 lambda_over_d region here (because we ignore the
-    # secondary maxima for the planet path mask)
-    psf_cropped = crop_psf_template(
-        psf_template=psf_template,
-        psf_radius=lambda_over_d,
-    )
 
     # Instantiate an empty stack-like variable from which we will generate the
     # mask, and a dictionary which will hold the planet positions
