@@ -15,7 +15,7 @@ import numpy as np
 
 from hsr4hci.utils.consistency_checks import has_bump
 from hsr4hci.utils.masking import get_selection_mask
-from hsr4hci.utils.signal_masking import get_noise_signal_masks
+from hsr4hci.utils.signal_masking import get_signal_masks
 from hsr4hci.utils.splitting import TrainTestSplitter
 
 
@@ -146,6 +146,7 @@ def get_signal_masking_results(
     n_signal_times: int,
     frame_size: Tuple[int, int],
     psf_diameter: float,
+    psf_cropped: np.ndarray,
     n_splits: int,
     max_signal_length: float,
 ) -> Dict[str, Dict[str, np.ndarray]]:
@@ -165,6 +166,7 @@ def get_signal_masking_results(
         n_signal_times:
         frame_size:
         psf_diameter:
+        psf_cropped:
         n_splits:
         max_signal_length:
 
@@ -216,15 +218,13 @@ def get_signal_masking_results(
     # training data to find the "best" exclusion region, and thus the best
     # model, which (ideally) was trained only on the part of the time series
     # that does not contain any planet signal.
-    for i, (_, signal_mask, signal_time) in enumerate(
-        get_noise_signal_masks(
-            position=position,
-            parang=parang,
-            n_signal_times=n_signal_times,
-            frame_size=frame_size,
-            psf_diameter=psf_diameter,
-            max_signal_length=max_signal_length,
-        )
+    for i, signal_mask, signal_time in get_signal_masks(
+        position=position,
+        parang=parang,
+        n_signal_times=n_signal_times,
+        frame_size=frame_size,
+        psf_cropped=psf_cropped,
+        max_signal_length=max_signal_length,
     ):
 
         # Define the selection mask
