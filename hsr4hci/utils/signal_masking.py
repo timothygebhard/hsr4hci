@@ -11,6 +11,8 @@ from typing import List, Tuple
 
 import numpy as np
 
+from hsr4hci.utils.forward_modeling import get_time_series_for_position
+
 
 # -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
@@ -65,11 +67,6 @@ def get_signal_length(
     temporal derivative of the parallactic angle is non-constant over
     the course of an observation, but can change up to around 50% for
     some data sets.
-
-    In theory, a more exact estimate for this number can be achieved
-    using proper forward modeling, but that takes about O(10^4) times
-    longer, and still involves some arbitrary choices, meaning that
-    there is no real *true* value anyway.
 
     Args:
         position:
@@ -131,14 +128,14 @@ def get_signal_length(
     return length_1, length_2
 
 
-def get_noise_signal_masks(
+def get_signal_masks_analytically(
     position: Tuple[int, int],
     parang: np.ndarray,
     n_signal_times: int,
     frame_size: Tuple[int, int],
     psf_diameter: float,
     max_signal_length: float = 0.7,
-) -> List[Tuple[np.ndarray, np.ndarray, int]]:
+) -> List[Tuple[int, np.ndarray, int]]:
     """
     Generate the masks for training a series of models where different
     possible planet positions are masked out during training.
@@ -148,6 +145,11 @@ def get_noise_signal_masks(
     then assume that the planet signal is present at this point in time,
     and generate a binary mask that indicates all points in time that,
     under this hypothesis, would also contain planet signal.
+
+    This function uses an "analytical" approximation based on
+    `get_effective_pixel_width()` and `get_signal_length()` to estimate
+    the signal masks, which is fast, but not as accurate as really
+    modeling the movement of the planet signal in time.
 
     Args:
         position: An integer tuple `(x, y)` specifying the spatial
@@ -169,10 +171,7 @@ def get_noise_signal_masks(
     Returns:
         This function returns a list of up to `n_position` 3-tuples
         of the following form:
-            `(noise_mask, signal_mask, signal_time)`.
-        The first two elements are 1D binary numpy arrays of length
-        `n_frames`, whereas the last element is an integer giving the
-        position of the peak of the planet signal.
+            `(signal_time_index, signal_mask, signal_time)`.
     """
 
     # Define shortcuts
@@ -187,7 +186,7 @@ def get_noise_signal_masks(
     signal_times = np.linspace(0, n_frames - 1, n_signal_times)
 
     # Loop over all these time points to generate the corresponding indices
-    for signal_time in signal_times:
+    for i, signal_time in enumerate(signal_times):
 
         # Make sure the signal time is an integer (we use it as an index)
         signal_time = int(signal_time)
@@ -214,10 +213,92 @@ def get_noise_signal_masks(
         signal_mask[position_1:signal_time] = True
         signal_mask[signal_time:position_2] = True
 
-        # Compute noise_mask as the complement of the signal_mask
-        noise_mask = np.logical_not(signal_mask)
+        # Store the current (signal_time_index, signal_mask, signal_time) tuple
+        results.append((i, signal_mask, signal_time))
 
-        # Store the current (noise_mask, signal_mask, signal_time) tuple
-        results.append((noise_mask, signal_mask, signal_time))
+    return results
+
+
+def get_signal_masks(
+    position: Tuple[int, int],
+    parang: np.ndarray,
+    n_signal_times: int,
+    frame_size: Tuple[int, int],
+    psf_cropped: np.ndarray,
+    max_signal_length: float = 0.7,
+) -> List[Tuple[int, np.ndarray, int]]:
+    """
+    Generate the masks for training a series of models where different
+    possible planet positions are masked out during training.
+
+    Similar to `get_signal_masks_analytically()`; however, this version
+    makes use of `get_time_series_for_position()` to accurately model
+    the expected shape of the planet signal at the given `position`, and
+    determines the signal mask by thresholding this expected signal.
+
+    Args:
+        position: An integer tuple `(x, y)` specifying the spatial
+            position of the pixel for which we are computing the masks.
+        parang: A numpy array of shape `(n_frames, )` containing the
+            parallactic angles.
+        n_signal_times: The number of different possible temporal
+            positions of the planet signal for which to return a mask.
+        frame_size: A tuple `(width, height)` specifying the spatial
+            size of the stack.
+        psf_cropped: A 2D numpy array containing a (cropped) version of
+            the PSF template. Typically, the PSF is cropped to a radius
+            of 1 lambda over D (to only contain the central peak) or
+            3 lambda over D (to also capture the secondary maxima).
+        max_signal_length: A value in [0.0, 1.0] which describes the
+            maximum value of `expected_signal_length / n_frames`, which
+            will determine for which pixels we do not want to use the
+            "mask out a potential signal region"-approach, because the
+            potential signal region is too large to leave us with a
+            reasonable amount of training data.
+
+    Returns:
+        This function returns a list of up to `n_position` 3-tuples
+        of the following form:
+            `(signal_time_index, signal_mask, signal_time)`.
+    """
+
+    # Define shortcuts
+    n_frames = len(parang)
+
+    # Initialize lists in which we store the results
+    results = list()
+
+    # Generate `n_signal_times` different possible points in time (distributed
+    # uniformly over the observation) at which we planet signal could be
+    signal_times = np.linspace(0, n_frames - 1, n_signal_times)
+
+    # Loop over all these time points to generate the corresponding indices
+    for i, signal_time in enumerate(signal_times):
+
+        # Make sure the signal time is an integer (we use it as an index)
+        signal_time = int(signal_time)
+
+        # Compute the expected time series for given `position` under the
+        # assumption that a planet is there at the current `signal_time`
+        expected_signal = get_time_series_for_position(
+            position=position,
+            signal_time=signal_time,
+            frame_size=frame_size,
+            parang=parang,
+            psf_cropped=psf_cropped,
+        )
+
+        # Threshold the expected signal to create a binary mask.
+        # The threshold value here is somewhat arbitrary (?)
+        signal_mask = expected_signal > 0.2
+
+        # Check if the expected signal length is larger than the threshold.
+        # In this case, we do not compute the noise and signal masks, but
+        # skip this signal time.
+        if np.sum(signal_mask) / n_frames > max_signal_length:
+            continue
+
+        # Store the current (signal_time_index, signal_mask, signal_time) tuple
+        results.append((i, signal_mask, signal_time))
 
     return results
