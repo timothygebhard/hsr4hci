@@ -28,32 +28,26 @@ def get_circle_mask(
     center: Optional[Tuple[float, float]] = None,
 ) -> np.ndarray:
     """
-    Create a circle mask of a given size.
+    Create a circle mask.
 
     Args:
-        mask_size: A tuple (width, height) containing the size of the
-            mask (in pixels) to be created. Should match the size of
-            the array which is masked.
+        mask_size: A tuple `(width, height)` containing the size of the
+            mask (in pixels) to be created.
         radius: Radius of the disk in pixels.
-        center: Center of the circle. If None is given, the disk
-            will be centered within the array. This is the default.
+        center: A tuple `(x, y)` containing the center of the circle.
+            If None is given the circle will be centered within the
+            mask (this is the default).
 
     Returns:
-        A numpy array of the specified size which is zero everywhere,
-        except in a circular region of given radius around the
-        specified disk center.
+        A numpy array of the given `mask_size` which is False
+        everywhere, except in a circular region of given radius around
+        the specified `center`.
     """
 
-    x_size, y_size = mask_size
-    x, y = np.ogrid[:x_size, :y_size]
-
+    x, y = np.ogrid[:mask_size[0], :mask_size[1]]
     if center is None:
-        x_offset, y_offset = int(x_size / 2), int(x_size / 2)
-        center = (x_offset, y_offset)
-
-    circle_mask = (x - center[0]) ** 2 + (y - center[1]) ** 2 < radius ** 2
-
-    return circle_mask
+        center = (int(mask_size[0] / 2), int(mask_size[1] / 2))
+    return (x - center[0]) ** 2 + (y - center[1]) ** 2 < radius ** 2
 
 
 def get_annulus_mask(
