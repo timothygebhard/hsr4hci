@@ -8,7 +8,7 @@ Utility functions for plotting.
 
 from copy import copy
 from pathlib import Path
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import colorsys
 
@@ -45,6 +45,7 @@ MatplotlibColor = Union[
 # -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
+
 
 def get_cmap(
     cmap_name: str = 'RdBu_r', bad_color: str = '#212121'
@@ -195,6 +196,7 @@ def plot_frame(
     snrs: Optional[List[float]] = None,
     draw_color: Optional[MatplotlibColor] = 'darkgreen',
     limit: Optional[float] = None,
+    label_options: Optional[Dict[str, Any]] = None,
 ) -> Figure:
     """
     Plot a single frame (e.g., a signal estimate). If desired, also add
@@ -217,6 +219,8 @@ def plot_frame(
         draw_color: The color to be used for drawing the aperture and
             also the label.
         limit: Range limit to be used for the plot (vmin, vmax).
+        label_options: Additional keyword arguments that are passed to
+            the `plt.text()` command that is used for the SNR labels.
 
     Returns:
         A matplotlib figure containing the plot of the frame.
@@ -290,6 +294,24 @@ def plot_frame(
     if aperture is not None:
         aperture.plot(axes=ax, **dict(color=draw_color, lw=1, ls='-'))
 
+    # Define default options for the SNR label
+    label_kwargs = dict(
+        ha='center',
+        va='center',
+        color='white',
+        fontsize=24,
+        bbox=dict(
+            facecolor=draw_color,
+            edgecolor='none',
+            boxstyle='round, pad=0.15',
+        ),
+    )
+
+    # Add or overwrite options that were passed using the `label_kwargs`
+    if label_options is not None:
+        for key, value in label_kwargs.items():
+            label_options[key] = value
+
     # Add labels for their respective SNR
     if (snrs is not None) and (positions is not None):
 
@@ -306,20 +328,7 @@ def plot_frame(
             y = position[1] + max((8, 0.2 * position[1])) * np.sin(angle)
 
             # Actually add the label with the SNR at this position
-            ax.text(
-                x=x,
-                y=y,
-                s=f'{snr:.1f}',
-                ha='center',
-                va='center',
-                color='white',
-                fontsize=12,
-                bbox=dict(
-                    facecolor=draw_color,
-                    edgecolor='none',
-                    boxstyle='round,pad=0.15',
-                ),
-            )
+            ax.text(x=x, y=y, s=f'{snr:.1f}', **label_kwargs)
 
             # Draw connection between label and aperture
             ax.plot(
