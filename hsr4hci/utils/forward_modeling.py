@@ -11,6 +11,7 @@ from typing import Dict, Tuple
 
 from astropy.convolution import AiryDisk2DKernel
 from astropy.units import Quantity
+from scipy.interpolate import RegularGridInterpolator
 
 import numpy as np
 
@@ -101,6 +102,85 @@ def get_signal_stack(
         )
 
     return signal_stack, planet_positions
+
+
+def get_time_series_for_position(
+    position: Tuple[float, float],
+    signal_time: int,
+    frame_size: Tuple[int, int],
+    parang: np.ndarray,
+    psf_cropped: np.ndarray,
+) -> np.ndarray:
+    """
+    Compute the expected signal time series for a pixel at `position`
+    under the assumption that the planet signal is centered on this
+    pixel at the given `signal_time`.
+
+    If we are only interested in a single such time series, using this
+    function will be *dramatically* faster than computing the full stack
+    using `get_signal_stack()` and selecting the position of interest.
+
+    The idea behind this function is that we can get the time series of
+    interest (or a very good approximation of it) by creating a single
+    frame of all zeros, into which we place the PSF template at the
+    target `position`, and then sample this array along the implied
+    path (determined by the fact that the signal is supposed to be at
+    `position` at the `signal_time`) of the planet.
+
+    Args:
+        position: A tuple `(x, y)` for which we want to compute the
+            time series under a given planet path hypothesis.
+        signal_time: An integer specifying the time (= the frame number)
+            at which the signal is to be assumed to be centered on the
+            pixel at the given `position`.
+        frame_size: A tuple `(x_size, y_size)` giving the spatial size
+            of the stack.
+        parang: A numpy array containing the parallactic angle for
+            every frame.
+        psf_cropped: A numpy array containing the cropped and masked
+            PSF template, as it is returned by `crop_psf_template()`.
+
+    Returns:
+        The time series for `position` computed under the hypothesis for
+        the planet movement explained above.
+    """
+
+    # Compute center of the frame
+    center = (frame_size[0] / 2, frame_size[1] / 2)
+
+    # Create array where we place the PSF template at the target `position`
+    array = add_array_with_interpolation(
+        array_large=np.zeros(frame_size),
+        array_small=psf_cropped,
+        position=position,
+    )
+
+    # Find the starting position of the planet under the hypothesis
+    angle = parang[0] - parang[signal_time]
+    starting_position = rotate_position(
+        position=position, angle=angle, center=center
+    )
+
+    # Compute the full array of all planet positions (at all times)
+    planet_positions = np.vstack(
+        rotate_position(
+            position=starting_position,
+            angle=(parang - parang[0]),
+            center=center,
+        )
+    ).T
+
+    # Create an interpolator for the array that allows us to evaluate it also
+    # at non-integer positions. This function uses (bi)-linear interpolation.
+    x_range = np.arange(frame_size[0])
+    y_range = np.arange(frame_size[1])
+    interpolator = RegularGridInterpolator((x_range, y_range), array)
+
+    # The target time series is given by (interpolated) array values at the
+    # positions along the planet path
+    time_series = interpolator(planet_positions)
+
+    return time_series
 
 
 def get_planet_paths(
