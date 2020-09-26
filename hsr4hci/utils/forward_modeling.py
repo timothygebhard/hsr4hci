@@ -65,8 +65,9 @@ def get_signal_stack(
     rotation_angles = parang - parang[0]
 
     # Compute polar representation of initial position
-    r, phi = polar(complex(position[1] - frame_center[1],
-                           position[0] - frame_center[0]))
+    r, phi = polar(
+        complex(position[1] - frame_center[1], position[0] - frame_center[0])
+    )
 
     # Initialize empty signal stack and list of planet positions
     signal_stack = np.zeros((n_frames, frame_width, frame_height))
@@ -83,18 +84,21 @@ def get_signal_stack(
         # with the signal stack we have constructed.
         theta = np.deg2rad(rotation_angles[i])
         new_complex_position = r * np.exp(1j * (phi - theta))
-        injection_position = (np.imag(new_complex_position) + frame_center[0],
-                              np.real(new_complex_position) + frame_center[1])
+        injection_position = (
+            np.imag(new_complex_position) + frame_center[0],
+            np.real(new_complex_position) + frame_center[1],
+        )
         planet_positions.append(injection_position)
 
         # Add cropped and masked PSF template at the injection_position.
         # The add_array_with_interpolation() function is able to automatically
         # deal with cases where the injection_position is a tuple of floats,
         # or the PSF template exceeds the bounds of the signal stack.
-        signal_stack[i] = \
-            add_array_with_interpolation(array_large=signal_stack[i],
-                                         array_small=psf_cropped,
-                                         position=injection_position)
+        signal_stack[i] = add_array_with_interpolation(
+            array_large=signal_stack[i],
+            array_small=psf_cropped,
+            position=injection_position,
+        )
 
     return signal_stack, planet_positions
 
