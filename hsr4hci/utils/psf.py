@@ -8,7 +8,8 @@ Utility functions for working with point spread functions.
 
 from typing import Optional
 
-from astropy import units
+from astropy.convolution import AiryDisk2DKernel
+from astropy.units import Quantity
 from photutils import centroid_2dg, CircularAperture
 
 import numpy as np
@@ -24,7 +25,7 @@ from hsr4hci.utils.masking import get_circle_mask
 
 def crop_psf_template(
     psf_template: np.ndarray,
-    psf_radius: units.Quantity,
+    psf_radius: Quantity,
     rescale_psf: bool = True,
 ) -> np.ndarray:
     """
@@ -127,3 +128,32 @@ def get_psf_diameter(
         raise RuntimeError('Could not determine PSF diameter')
 
     return psf_diameter
+
+
+def get_artificial_psf(
+    pixscale: Quantity,
+    lambda_over_d: Quantity,
+) -> np.ndarray:
+    """
+    Create an artificial PSF template based on a 2D Airy function which
+    can be used for data sets where no real PSF template is available.
+
+    Args:
+        pixscale: The PIXSCALE of the data set, usually in units of
+            arc seconds per pixel.
+        lambda_over_d: The ratio of the wavelength of the observation,
+            lambda, and the size of the primary mirror of the telescope.
+            Usually in units of arc seconds.
+
+    Returns:
+        A 2D numpy array containing an artificial PSF template.
+    """
+
+    # The factor of 1.383 is a "magic" number that was determined by
+    # comparing real PSFs (for which the PIXSCALE and LAMBDA_OVER_D were
+    # known) against the output of the AiryDisk2DKernel() function, and
+    # adjusting the radius of the latter by a factor to minimize the
+    # difference between the real and the fake PSF.
+    return AiryDisk2DKernel(
+        radius=1.383 * (lambda_over_d / pixscale).to('pixel').value,
+    ).array
