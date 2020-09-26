@@ -9,8 +9,6 @@ Utility functions for forward modeling (necessary for toy data sets!).
 from cmath import polar
 from typing import Dict, Tuple
 
-from astropy.convolution import AiryDisk2DKernel
-from astropy.units import Quantity
 from scipy.interpolate import RegularGridInterpolator
 
 import numpy as np
@@ -186,8 +184,6 @@ def get_planet_paths(
     stack_shape: Tuple[int, int, int],
     parang: np.ndarray,
     psf_cropped: np.ndarray,
-    pixscale: Quantity,
-    lambda_over_d: Quantity,
     planet_config: Dict[str, dict],
     threshold: float = 5e-1,
 ) -> Tuple[np.ndarray, Dict[str, np.ndarray]]:
@@ -203,15 +199,7 @@ def get_planet_paths(
         parang: A 1D numpy array of shape `(n_frames, )` containing the
             parallactic angles.
         psf_cropped: A 2D numpy array containing a cropped version of
-            the raw, unsaturated PSF template. If no such template is
-            available, you can use a numpy array of size `(0, 0)` to
-            automatically create a fake PSF template (using a 2D Airy
-            function) to get an approximate solution.
-        pixscale: An `astropy.units.Quantity` in units of arc seconds
-            per pixel specifying the pixel scale of the instrument.
-        lambda_over_d: An `astropy.units.Quantity` in units of arc
-            seconds specifying the ratio between the filter wavelength
-            lambda and the diameter of the telescope's primary mirror.
+            the raw, unsaturated PSF template.
         planet_config: A dictionary containing information about the
             planets in the data set. Each key (usually the letter that
             indicates the name of the planet, e.g., "b") must map onto
@@ -231,20 +219,6 @@ def get_planet_paths(
     # Define shortcuts
     n_frames, x_size, y_size = stack_shape
     center = (x_size / 2, y_size / 2)
-
-    # In case there is no PSF template present, we need to create a fake
-    # one using an Airy kernel of the appropriate size
-    if psf_cropped.shape == (0, 0):
-
-        # Create a 2D Airy disk of the correct size as a numpy array.
-        # The factor of 1.383 is a "magic" number that was determined by
-        # comparing real PSFs (for which the PIXSCALE and LAMBDA_OVER_D were
-        # known) against the output of the AiryDisk2DKernel() function, and
-        # adjusting the radius of the latter by a factor to minimize the
-        # difference between the real and the fake PSF.
-        psf_cropped = AiryDisk2DKernel(
-            radius=1.383 * (lambda_over_d / pixscale).to('pixel').value,
-        ).array
 
     # Instantiate an empty stack-like variable from which we will generate the
     # mask, and a dictionary which will hold the planet positions
