@@ -8,6 +8,7 @@ Utility functions for consistency checks and related tasks.
 
 from typing import List, Tuple
 
+from scipy.interpolate import RegularGridInterpolator
 from sklearn.linear_model import LinearRegression
 
 from tqdm.auto import tqdm
@@ -185,7 +186,13 @@ def get_match_fraction(
 
     # Define some useful shortcuts
     signal_times = results['signal_times']
+    n_frames = len(parang)
     frame_size = roi_mask.shape
+
+    # Prepare a grid for the RegularGridInterpolator() below
+    t_grid = np.arange(n_frames)
+    x_grid = np.arange(frame_size[0])
+    y_grid = np.arange(frame_size[1])
 
     # Initialize array in which we keep track of the fraction of test positions
     # which are consistent with the best signal masking-model for each pixel
@@ -225,14 +232,42 @@ def get_match_fraction(
         # Loop over all test positions and perform the consistency check
         for (test_position, test_time, test_mask) in consistency_check_data:
 
-            # Get the number of the best-matching model, that is, the number
-            # of the model whose signal mask is most similar to the test_mask
-            split_number = np.abs(signal_times.ravel() - test_time).argmin()
+            # We have only trained signal masking models for a finite set of
+            # possible signal times. Out of those, we now find the one that is
+            # the closest to the current `test_time`, because we will be using
+            # the residuals obtained from this model for the consistency check.
+            closest_signal_time = np.abs(
+                signal_times.ravel() - test_time
+            ).argmin()
 
-            # Select the residuals from this model
-            residuals = results[str(split_number)]['residuals'][
-                :, test_position[0], test_position[1]
-            ]
+            # Set up an interpolator for the residuals of the model that was
+            # trained assuming the signal was at `closest_signal_time`.
+            # Rationale: Most `test_positions` will not exactly match one of
+            # the spatial positions for which we have trained a model and
+            # computed residuals. If we simply round the `test_position` to
+            # the closest integer position, we will likely get duplicates for
+            # higher values of `n_test_positions`, which might introduce a bias
+            # to the match fraction. Setting up this interpolator circumvents
+            # this because it allows us to get the value of the the residuals
+            # at *arbitrary* spatio-temporal positions, thus removing the need
+            # to round the `test_position` to the closest integer position.
+            interpolator = RegularGridInterpolator(
+                points=(t_grid, x_grid, y_grid),
+                values=results[str(closest_signal_time)]['residuals']
+            )
+
+            # Define the spatio-temporal positions at which we want to retrieve
+            # the residual values. By taking only integer values for the first
+            # (= temporal) dimension, we are effectively only interpolating the
+            # residuals spatially, but not temporally. In other words, for each
+            # point in time, we get the residual value by interpolating it from
+            # the four closest residual values, using bilinear interpolation.
+            residual_positions = np.array(
+                [(_, ) + test_position for _ in np.arange(n_frames)]
+            )
+
+            # Select the interpolated residuals for the current `test_position`
+            residuals = interpolator(residual_positions)
 
             # Check if the residuals contain NaN, which would indicate that
             # the test position is outside of the ROI, or was so close to the
