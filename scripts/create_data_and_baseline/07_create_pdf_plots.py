@@ -110,7 +110,7 @@ if __name__ == '__main__':
             frame=frame,
             file_path=file_path,
             positions=positions,
-            aperture_radius=3*aperture_radius,
+            aperture_radius=aperture_radius,
             snrs=snrs,
         )
 
@@ -167,7 +167,7 @@ if __name__ == '__main__':
                     frame=frame,
                     file_path=file_path,
                     positions=positions,
-                    aperture_radius=3*aperture_radius,
+                    aperture_radius=aperture_radius,
                     snrs=snrs,
                 )
                 plt.close(fig=fig)
