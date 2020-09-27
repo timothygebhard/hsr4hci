@@ -232,7 +232,6 @@ def plot_frame(
 
     # Set up a new figure
     fig, ax = plt.subplots(figsize=figsize)
-    fig.set_constrained_layout_pads(w_pad=0, h_pad=0)
 
     # Initialize aperture
     aperture: Optional[CustomCircularAperture] = None
@@ -274,7 +273,7 @@ def plot_frame(
     # Create the actual plot and use the limit we just computed.
     # Using pcolormesh() instead of imshow() avoids interpolation artifacts in
     # most PDF viewers (otherwise, the PDF version will often look blurry).
-    plt.pcolormesh(
+    ax.pcolormesh(
         x,
         y,
         frame,
@@ -292,18 +291,18 @@ def plot_frame(
 
     # Plot the desired apertures
     if aperture is not None:
-        aperture.plot(axes=ax, **dict(color=draw_color, lw=1, ls='-'))
+        aperture.plot(axes=ax, **dict(color=draw_color, lw=2, ls='-'))
 
     # Define default options for the SNR label
     label_kwargs = dict(
         ha='center',
         va='center',
         color='white',
-        fontsize=24,
+        fontsize=18,
         bbox=dict(
             facecolor=draw_color,
             edgecolor='none',
-            boxstyle='round, pad=0.15',
+            boxstyle='square,pad=0.075',
         ),
     )
 
@@ -313,30 +312,35 @@ def plot_frame(
             label_options[key] = value
 
     # Add labels for their respective SNR
-    if (snrs is not None) and (positions is not None):
-
-        # If SNRs and positions do not have the same length, the zip will fail,
-        # so we do not have to add another check for this
+    if (
+        (snrs is not None)
+        and (positions is not None)
+        and (aperture_radius is not None)
+    ):
         for snr, position in zip(snrs, positions):
 
-            # Compute position of the label containing the SNR
-            angle = np.arctan2(
-                position[1] - frame.shape[1] / 2,
-                position[0] - frame.shape[0] / 2,
+            # Plot the label as a dummy first, to determine the size of its
+            # bbox, from which we can then compute the necessary offset
+            dummy = ax.text(x=0, y=0, s=f'{snr:.1f}', **label_kwargs)
+            fig.canvas.draw()
+            renderer = fig.canvas.get_renderer()
+            bbox = dummy.get_window_extent(renderer=renderer).transformed(
+                ax.transData.inverted()
             )
-            x = position[0] + max((8, 0.2 * position[0])) * np.cos(angle)
-            y = position[1] + max((8, 0.2 * position[1])) * np.sin(angle)
+            x_offset = bbox.width / 2
+            dummy.remove()
+
+            # Compute the position at which to plot the label
+            x = position[0] + 2 * aperture_radius + x_offset
+            y = position[1]
 
             # Actually add the label with the SNR at this position
             ax.text(x=x, y=y, s=f'{snr:.1f}', **label_kwargs)
 
-            # Draw connection between label and aperture
-            ax.plot(
-                [position[0] + aperture_radius * np.cos(angle), x],
-                [position[1] + aperture_radius * np.sin(angle), y],
-                color=draw_color,
-                lw=1,
-            )
+            # Add a connecting line between the label and the aperture
+            x = [position[0] + _ * aperture_radius for _ in (1, 2)]
+            y = [position[1], position[1]]
+            ax.plot(x, y, color=draw_color, lw=2)
 
     # -------------------------------------------------------------------------
     # Set plot options and save result
