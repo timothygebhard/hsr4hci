@@ -12,15 +12,18 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import colorsys
 
+from astropy.units import Quantity
 from matplotlib.axes import Axes
 from matplotlib.cm import get_cmap as original_get_cmap
 from matplotlib.colors import Colormap, LinearSegmentedColormap, ListedColormap
 from matplotlib.figure import Figure
 from matplotlib.image import AxesImage
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 
 import bottleneck as bn
 import matplotlib.colors as mc
+import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -192,6 +195,7 @@ def plot_frame(
     file_path: Optional[Union[Path, str]] = None,
     figsize: Tuple[float, float] = (4.0, 4.0),
     aperture_radius: Optional[float] = None,
+    expand_radius: float = 2.5,
     positions: Optional[List[Tuple[float, float]]] = None,
     snrs: Optional[List[float]] = None,
     draw_color: Optional[MatplotlibColor] = 'darkgreen',
@@ -211,6 +215,8 @@ def plot_frame(
             the figure in inches.
         aperture_radius: If apertures are to be draw (see below), this
             is the radius (in units of pixels) that is used for them.
+        expand_radius: Factor by which to multiply the `aperture_radius`
+            for drawing purposes.
         positions: Optionally, a list of positions. At each position,
             an aperture is drawn with the given aperture radius.
         snrs: Optionally, each aperture can also be decorated with a
@@ -236,13 +242,19 @@ def plot_frame(
     # Initialize aperture
     aperture: Optional[CustomCircularAperture] = None
 
+    # Define the radius for drawing
+    if aperture_radius is not None:
+        draw_radius: Optional[float] = aperture_radius * expand_radius
+    else:
+        draw_radius = None
+
     # If apertures are to be drawn, we can define them here and use the
     # photometry values from them to define the value limits of the plot
     if (aperture_radius is not None) and (positions is not None):
 
         # Define aperture, because we need it for plotting later
         aperture = CustomCircularAperture(
-            positions=positions, r=aperture_radius
+            positions=positions, r=draw_radius
         )
 
         # If no explicit plot limits are given, we fit the aperture(s) to
@@ -251,7 +263,7 @@ def plot_frame(
 
             # Fit each aperture with a 2D Gaussian; the results should have
             # the form `(amplitude, sigma)`.
-            fit_results = aperture.fit_2d_gaussian(data=frame)
+            fit_results = aperture.fit_2d_gaussian(data=np.nan_to_num(frame))
 
             # If we have multiple apertures, we need to still take the maximum
             # over them; otherwise, we can directly use the value from the fit
@@ -295,7 +307,7 @@ def plot_frame(
 
     # Define default options for the SNR label
     label_kwargs = dict(
-        ha='center',
+        ha='left',
         va='center',
         color='white',
         fontsize=18,
@@ -315,43 +327,80 @@ def plot_frame(
     if (
         (snrs is not None)
         and (positions is not None)
-        and (aperture_radius is not None)
+        and (draw_radius is not None)
     ):
         for snr, position in zip(snrs, positions):
 
-            # Plot the label as a dummy first, to determine the size of its
-            # bbox, from which we can then compute the necessary offset
-            dummy = ax.text(x=0, y=0, s=f'{snr:.1f}', **label_kwargs)
-            fig.canvas.draw()
-            renderer = fig.canvas.get_renderer()
-            bbox = dummy.get_window_extent(renderer=renderer).transformed(
-                ax.transData.inverted()
+            ax.annotate(
+                text=f'{snr:.1f}',
+                xy=(position[0] + draw_radius, position[1]),
+                xytext=(10, 0),
+                textcoords='offset pixels',
+                arrowprops=dict(
+                    arrowstyle='-',
+                    shrinkA=0,
+                    shrinkB=0,
+                    lw=2,
+                    color=draw_color
+                ),
+                **label_kwargs,
             )
-            x_offset = bbox.width / 2
-            dummy.remove()
 
-            # Compute the position at which to plot the label
-            x = position[0] + 2 * aperture_radius + x_offset
-            y = position[1]
+    # -------------------------------------------------------------------------
+    # Add stellar position and scale bar
+    # -------------------------------------------------------------------------
 
-            # Actually add the label with the SNR at this position
-            ax.text(x=x, y=y, s=f'{snr:.1f}', **label_kwargs)
+    # Place a "+"-marker at the center for the frame
+    center = (frame.shape[0] / 2, frame.shape[1] / 2)
+    ax.plot(center[0], center[1], '+', ms=10, color='black')
 
-            # Add a connecting line between the label and the aperture
-            x = [position[0] + _ * aperture_radius for _ in (1, 2)]
-            y = [position[1], position[1]]
-            ax.plot(x, y, color=draw_color, lw=2)
+    # Compute size of the scale bar, and define its label accordingly
+    scalebar_size = Quantity(1.0, 'arcsec').to('pixel').value
+    scalebar_label_value = 1.0
+    while scalebar_size > 0.3 * frame.shape[0]:
+        scalebar_size /= 2
+        scalebar_label_value /= 2
+    scalebar_label = f'{scalebar_label_value}"'
+
+    # Create the scale bar and add it to the frame (loc=1 means "upper right")
+    scalebar = AnchoredSizeBar(
+        transform=ax.transData,
+        size=scalebar_size,
+        label=scalebar_label,
+        loc=1,
+        pad=1,
+        color='white',
+        frameon=False,
+        size_vertical=0,
+        fontproperties=fm.FontProperties(size=12),
+    )
+    ax.add_artist(scalebar)
 
     # -------------------------------------------------------------------------
     # Set plot options and save result
     # -------------------------------------------------------------------------
 
-    # Remove ax ticks
+    # Define tick positions
+    delta = scalebar_size / 2
+    xticks, yticks = [], []
+    for i in range(5):
+        xticks += [center[0] - i * delta, center[0] + i * delta]
+        yticks += [center[1] - i * delta, center[1] + i * delta]
+    xticks = list(filter(lambda _: 0 < _ < frame.shape[0], xticks))
+    yticks = list(filter(lambda _: 0 < _ < frame.shape[0], yticks))
+    ax.set_xticks(xticks)
+    ax.set_yticks(yticks)
+
+    # Define which ticks to show
     ax.tick_params(
         axis='both',
         which='both',
-        bottom=False,
-        left=False,
+        direction='in',
+        color='white',
+        top=True,
+        bottom=True,
+        left=True,
+        right=True,
         labelleft=False,
         labelbottom=False,
     )
