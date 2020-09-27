@@ -13,6 +13,7 @@ import json
 import time
 
 from astropy.units import Quantity
+from tqdm.auto import tqdm
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -79,7 +80,8 @@ if __name__ == '__main__':
     plots_dir = base_dir / 'plots'
     plots_dir.mkdir(exist_ok=True)
 
-    for stacking_factor in stacking_factors:
+    print('Creating plots:')
+    for stacking_factor in tqdm(stacking_factors, ncols=80):
 
         # ---------------------------------------------------------------------
         # Create plots for median ADI results
@@ -108,7 +110,7 @@ if __name__ == '__main__':
             frame=frame,
             file_path=file_path,
             positions=positions,
-            aperture_radius=aperture_radius,
+            aperture_radius=3*aperture_radius,
             snrs=snrs,
         )
 
@@ -165,7 +167,7 @@ if __name__ == '__main__':
                     frame=frame,
                     file_path=file_path,
                     positions=positions,
-                    aperture_radius=aperture_radius,
+                    aperture_radius=3*aperture_radius,
                     snrs=snrs,
                 )
                 plt.close(fig=fig)
@@ -174,4 +176,4 @@ if __name__ == '__main__':
     # Postliminaries
     # -------------------------------------------------------------------------
 
-    print(f'This took {time.time() - script_start:.1f} seconds!\n')
+    print(f'\nThis took {time.time() - script_start:.1f} seconds!\n')
