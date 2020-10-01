@@ -20,6 +20,7 @@ from matplotlib.figure import Figure
 from matplotlib.image import AxesImage
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 import bottleneck as bn
 import matplotlib.colors as mc
@@ -201,6 +202,9 @@ def plot_frame(
     draw_color: Optional[MatplotlibColor] = 'darkgreen',
     limit: Optional[float] = None,
     label_options: Optional[Dict[str, Any]] = None,
+    use_ticks: bool = True,
+    use_colorbar: bool = False,
+    use_logscale: bool = True,
 ) -> Figure:
     """
     Plot a single frame (e.g., a signal estimate). If desired, also add
@@ -227,6 +231,12 @@ def plot_frame(
         limit: Range limit to be used for the plot (vmin, vmax).
         label_options: Additional keyword arguments that are passed to
             the `plt.text()` command that is used for the SNR labels.
+        use_ticks: Whether or not to place ticks around the borders of
+            the frame (to better understand the scale of the frame).
+        use_colorbar: Whether or not to place a (tiny) colorbar on the
+            frame (in the bottom right-hand corner).
+        use_logscale: Whether or not to use a (symmetric) log scale for
+            the color bar.
 
     Returns:
         A matplotlib figure containing the plot of the frame.
@@ -253,9 +263,7 @@ def plot_frame(
     if (aperture_radius is not None) and (positions is not None):
 
         # Define aperture, because we need it for plotting later
-        aperture = CustomCircularAperture(
-            positions=positions, r=draw_radius
-        )
+        aperture = CustomCircularAperture(positions=positions, r=draw_radius)
 
         # If no explicit plot limits are given, we fit the aperture(s) to
         # determine the limit from the data
@@ -268,16 +276,27 @@ def plot_frame(
             # If we have multiple apertures, we need to still take the maximum
             # over them; otherwise, we can directly use the value from the fit
             if isinstance(fit_results, list):
-                limit = 1.1 * max(_[0] for _ in fit_results)
+                limit = np.around(1.1 * max(_[0] for _ in fit_results), 1)
             else:
-                limit = 1.1 * fit_results[0]
+                limit = np.around(1.1 * fit_results[0], 1)
 
     # If the limit is still None at this point (i.e., if no apertures were
     # given, and there are also no explicit plot limits), just compute the
     # limit based on the entire frame
     if limit is None:
-        limit = 1.1 * bn.nanmax(np.abs(frame))
+        limit = np.around(1.1 * bn.nanmax(np.abs(frame)), 1)
 
+    # Prepare norm for the
+    if use_logscale:
+        norm = mc.SymLogNorm(
+            linthresh=0.1 * limit, vmin=-1 * limit, vmax=limit, base=10,
+        )
+    else:
+        norm = mc.PowerNorm(
+            gamma=1, vmin=-1 * limit, vmax=limit,
+        )
+
+    # Prepare grid for the pcolormesh()
     x_range = np.arange(frame.shape[0])
     y_range = np.arange(frame.shape[1])
     x, y = np.meshgrid(x_range, y_range)
@@ -285,16 +304,15 @@ def plot_frame(
     # Create the actual plot and use the limit we just computed.
     # Using pcolormesh() instead of imshow() avoids interpolation artifacts in
     # most PDF viewers (otherwise, the PDF version will often look blurry).
-    ax.pcolormesh(
+    img = ax.pcolormesh(
         x,
         y,
         frame,
-        vmin=-1 * float(limit),
-        vmax=float(limit),
         shading='nearest',
         cmap=get_cmap(),
         snap=True,
         rasterized=True,
+        norm=norm,
     )
 
     # -------------------------------------------------------------------------
@@ -334,14 +352,14 @@ def plot_frame(
             ax.annotate(
                 text=f'{snr:.1f}',
                 xy=(position[0] + draw_radius, position[1]),
-                xytext=(10, 0),
+                xytext=(8, 0),
                 textcoords='offset pixels',
                 arrowprops=dict(
                     arrowstyle='-',
                     shrinkA=0,
                     shrinkB=0,
                     lw=2,
-                    color=draw_color
+                    color=draw_color,
                 ),
                 **label_kwargs,
             )
@@ -377,6 +395,30 @@ def plot_frame(
     ax.add_artist(scalebar)
 
     # -------------------------------------------------------------------------
+    # Add color bar
+    # -------------------------------------------------------------------------
+
+    if use_colorbar:
+
+        # Create new ax object for colorbar
+        cax = inset_axes(
+            parent_axes=ax,
+            width="18%",
+            height="2%",
+            loc='lower right',
+            borderpad=2
+        )
+
+        # Set up the rest of the colorbar options
+        cbar = fig.colorbar(img, cax=cax, orientation='horizontal')
+        cbar.set_ticks([-limit, 0, limit])
+        cbar.ax.yaxis.set_tick_params(color='white')
+        plt.setp(plt.getp(cbar.ax.axes, 'xticklabels'), color='white')
+        cbar.outline.set_edgecolor('white')
+        cbar.ax.tick_params(labelsize=8, pad=1, length=3, color='white')
+        cbar.ax.set_xticklabels(["{:.1f}".format(i) for i in cbar.get_ticks()])
+
+    # -------------------------------------------------------------------------
     # Set plot options and save result
     # -------------------------------------------------------------------------
 
@@ -397,10 +439,10 @@ def plot_frame(
         which='both',
         direction='in',
         color='white',
-        top=True,
-        bottom=True,
-        left=True,
-        right=True,
+        top=use_ticks,
+        bottom=use_ticks,
+        left=use_ticks,
+        right=use_ticks,
         labelleft=False,
         labelbottom=False,
     )
