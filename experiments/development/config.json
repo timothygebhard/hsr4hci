@@ -1,0 +1,43 @@
+{
+  "experiment_dir":            null,
+  "dataset": {
+    "target_name":             "Beta_Pictoris",
+    "filter_name":             "Lp",
+    "date":                    "2013-02-01",
+    "stacking_factor":         50
+  },
+  "observing_conditions": {
+    "selected_keys":           null
+  },
+  "roi_mask": {
+    "inner_radius":            [0, "lambda_over_d"],
+    "outer_radius":            [7, "lambda_over_d"]
+  },
+  "selection_mask": {
+    "annulus_width":           [1.00, "lambda_over_d"],
+    "radius_position":         [4.00, "lambda_over_d"],
+    "radius_mirror_position":  [4.00, "lambda_over_d"],
+    "dilation_size":           3,
+    "subsample_predictors":    false
+  },
+  "signal_masking":{
+    "n_signal_times":          20,
+    "max_signal_length":       0.7
+  },
+  "n_splits": {
+    "baseline":                3,
+    "signal_masking":          3
+  },
+  "base_model": {
+    "module":                  "sklearn.linear_model",
+    "class":                   "RidgeCV",
+    "parameters": {
+      "fit_intercept":         false,
+      "alphas":                [5e1, 1e6, 21]
+    }
+  },
+  "consistency_checks": {
+    "n_test_positions":        20,
+    "filter_size":             2
+  }
+}
