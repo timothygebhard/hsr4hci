@@ -9,11 +9,14 @@ Utility functions for loading data.
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Union
 
+from astropy.units import Quantity
+
 import h5py
 import numpy as np
 
 from hsr4hci.utils.config import get_data_dir
 from hsr4hci.utils.general import crop_center
+from hsr4hci.utils.psf import get_artificial_psf
 
 
 # -----------------------------------------------------------------------------
@@ -28,6 +31,7 @@ def load_data(
     frame_size: Optional[Tuple[int, int]] = None,
     presubtract: Optional[str] = None,
     subsample: int = 1,
+    add_artificial_psf_template: bool = True,
 ) -> Tuple[
     np.ndarray,
     np.ndarray,
@@ -61,6 +65,8 @@ def load_data(
         subsample: An integer specifying the subsampling factor for the
             stack. If set to n, only every n-th frame is kept. By
             default, all frames are kept (i.e., subsample=1).
+        add_artificial_psf_template: Add an artificial PSF template if
+            no real PSF  template is found. Default is True.
 
     Returns:
         A 5-tuple of the following form:
@@ -113,6 +119,13 @@ def load_data(
         stack -= np.nanmedian(stack, axis=0)
     elif presubtract == 'mean':
         stack -= np.nanmean(stack, axis=0)
+
+    # If necessary, create an artificial PSF
+    if psf_template.shape[0] == 0 and add_artificial_psf_template:
+        psf_template = get_artificial_psf(
+            pixscale=Quantity(metadata['PIXSCALE'], 'arcsec / pixel'),
+            lambda_over_d=Quantity(metadata['LAMBDA_OVER_D'], 'arcsec'),
+        )
 
     return stack, parang, psf_template, observing_conditions, metadata
 
