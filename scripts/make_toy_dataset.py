@@ -128,7 +128,7 @@ if __name__ == '__main__':
 
     # Save planet positions to a *.npy file
     file_path = results_dir / 'positions.npy'
-    np.save(file_path.as_posix(), arr=planet_positions)
+    np.save(file=file_path.as_posix(), arr=planet_positions)
 
     # Save the parallactic angles to a *.npy file
     file_path = results_dir / 'parang.npy'
