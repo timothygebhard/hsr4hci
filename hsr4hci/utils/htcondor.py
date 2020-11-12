@@ -165,7 +165,7 @@ class SubmitFile:
 
         return '\n'.join(contents)
 
-    def save(self, file_path: str) -> None:
+    def save(self, file_path: Union[Path, str]) -> None:
 
         with open(file_path, 'w') as submit_file:
             submit_file.write(self.__str__())
