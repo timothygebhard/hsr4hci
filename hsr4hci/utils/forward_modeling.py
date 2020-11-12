@@ -177,6 +177,9 @@ def get_time_series_for_position(
     # positions along the planet path
     time_series = interpolator(planet_positions)
 
+    # Make sure that the time series is normalized to a maximum of 1
+    time_series /= np.nanmax(time_series)
+
     return time_series
 
 
