@@ -341,3 +341,36 @@ def find_closest(sequence: Sequence, value: Any) -> Any:
     if after - value < value - before:
         return after
     return before
+
+
+def fast_corrcoef(
+    x: np.ndarray,
+    y: np.ndarray,
+) -> float:
+    """
+    A fast(er) way to compute the correlation coefficient between
+    the variables `x` and `y`, based on `numpy.einsum()`.
+
+    For array sizes between 2 and 10^8, this implementation is, on
+    average, 4.2 (+-2.2) times faster than `numpy.corrcoef()`, and
+    2.9 (+-1.1) times faster than `scipy.stats.pearsonr()`.
+
+    Args:
+        x: A numpy array with realizations of the random variable X.
+        y: A numpy array with realizations of the random variable Y.
+
+    Returns:
+        The correlation coefficient Corr(X, Y).
+    """
+
+    n = x.shape[0]
+    dx = x - (np.einsum("n->", x) / np.double(n))
+    dy = y - (np.einsum("n->", y) / np.double(n))
+
+    cov = np.einsum("i,i->", dy, dx)
+
+    var_x = np.einsum("n,n->", dy, dy)
+    var_y = np.einsum("n,n->", dx, dx)
+    tmp = var_x * var_y
+
+    return float(cov / np.sqrt(tmp))
