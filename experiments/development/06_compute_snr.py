@@ -96,7 +96,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     script_start = time.time()
-    print('\nCOMPUTE SIGNAL-TO-NOISE RATIO AND CREATE PLOTS\n', flush=True)
+    print('\nCOMPUTE SIGNAL-TO-NOISE RATIO (AND CREATE PLOTS)\n', flush=True)
 
     # -------------------------------------------------------------------------
     # Load experiment configuration and data
@@ -105,17 +105,25 @@ if __name__ == '__main__':
     # Define paths for experiment folder and results folder
     experiment_dir = Path(os.path.realpath(__file__)).parent
     results_dir = experiment_dir / 'results'
+    masks_dir = results_dir / 'masks_and_thresholds'
 
     # Load experiment config from JSON
     print('Loading experiment configuration...', end=' ', flush=True)
     file_path = experiment_dir / 'config.json'
     config = load_config(file_path)
+    metric_function = config['signal_masking']['metric_function']
     print('Done!', flush=True)
 
-    # Define path to results directory and load signal estimate
-    print('Loading signal_estimates.fits file...', end=' ', flush=True)
-    file_path = results_dir / 'signal_estimates.fits'
+    # Load signal estimates
+    print('Loading signal estimates...', end=' ', flush=True)
+    file_path = results_dir / f'signal_estimates__{metric_function}.fits'
     signal_estimates = read_fits(file_path)
+    print('Done!', flush=True)
+
+    # Load thresholds
+    print('Loading thresholds...', end=' ', flush=True)
+    file_path = masks_dir / f'thresholds__{metric_function}.csv'
+    thresholds = np.genfromtxt(file_path, delimiter=',')
     print('Done!', flush=True)
 
     # Construct path to original dataset configuration and load it
@@ -131,6 +139,7 @@ if __name__ == '__main__':
 
     # Values in experiment configuration
     n_test_positions = config['consistency_checks']['n_test_positions']
+    metric_function = config['signal_masking']['metric_function']
 
     # Values from the original data set configuration
     metadata = dataset_config['metadata']
@@ -166,6 +175,9 @@ if __name__ == '__main__':
     grid_size = snr_options['grid_size']
     time_limit = snr_options['time_limit']
 
+    # Other shortcuts
+    n_signal_estimates = len(signal_estimates)
+
     # -------------------------------------------------------------------------
     # Loop over planets and compute SNR for each signal_estimate
     # -------------------------------------------------------------------------
@@ -182,11 +194,6 @@ if __name__ == '__main__':
     # Get the number of available CPU cores which defines the number of
     # concurrent processes we can use for the evaluation
     n_processes = get_available_cpu_count()
-
-    # Get thresholds that are associated with each signal_estimate frame
-    thresholds = np.linspace(0, 1, n_test_positions + 1)
-    thresholds = np.insert(thresholds, 0, -1)
-    n_signal_estimates = len(signal_estimates)
 
     # Initialize dict with lists that will hold results for each planet
     results: Dict[str, list] = {_: list() for _ in planet_positions.keys()}
@@ -214,12 +221,12 @@ if __name__ == '__main__':
         # Initialize a queue for the inputs, i.e., for each number of PCs
         # one frame with the corresponding signal_estimate (as well as the
         # index, so that we can reconstruct the correct result order)
-        input_queue: 'Queue' = Queue()
+        input_queue = Queue()
         for index, signal_estimate in enumerate(signal_estimates):
             input_queue.put((index, signal_estimate))
 
         # Initialize an output queue and a list for the results
-        output_queue: 'Queue' = Queue()
+        output_queue = Queue()
         results_list: List[Tuple[int, Dict[str, Any]]] = []
 
         # ---------------------------------------------------------------------
@@ -325,21 +332,21 @@ if __name__ == '__main__':
         for fom_name in planet_dict.keys():
             dataframe[(planet_key, fom_name)] = planet_dict[fom_name]
 
+    # Initialize plot directory
+    plots_dir = results_dir / 'plots_and_snrs'
+    plots_dir.mkdir(exist_ok=True)
+
     # Save the figures of merit as a CSV file
     print('\nSaving results as CSV file...', end=' ', flush=True)
-    file_path = results_dir / 'figures_of_merit.csv'
-    dataframe.to_csv(file_path.as_posix(), sep='\t', float_format='%.3f')
+    file_path = plots_dir / f'figures_of_merit__{metric_function}.csv'
+    dataframe.to_csv(file_path, sep='\t', float_format='%.3f')
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
     # Create a joint plot of the SNR as a function of the threshold
     # -------------------------------------------------------------------------
 
-    # Initialize plot directory
-    plots_dir = results_dir / 'plots'
-    plots_dir.mkdir(exist_ok=True)
-
-    print('Creating snr_over_threshold.pdf...', end=' ', flush=True)
+    print('Plotting SNR over thresholds...', end=' ', flush=True)
 
     # Create a new figure
     fig, ax = plt.subplots(figsize=(12, 6))
@@ -414,8 +421,8 @@ if __name__ == '__main__':
     ax.grid(which='both', ls='--', color='LightGray', alpha=0.5)
 
     # Save plot as a PNG
-    file_path = plots_dir / 'snr_over_threshold.pdf'
-    fig.savefig(file_path.as_posix(), pad_inches=0)
+    file_path = plots_dir / f'snr_over_threshold__{metric_function}.pdf'
+    fig.savefig(file_path, pad_inches=0)
 
     print('Done!', flush=True)
 
@@ -426,7 +433,7 @@ if __name__ == '__main__':
     for planet_key in planet_keys:
 
         # Define shortcuts
-        file_name = f'{target_name}_{planet_key}.pdf'
+        file_name = f'{target_name}_{planet_key}__{metric_function}.pdf'
         file_path = plots_dir / file_name
 
         # Create plot
@@ -445,7 +452,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Define shortcuts
-    file_name = 'baseline.pdf'
+    file_name = f'baseline__{metric_function}.pdf'
     file_path = plots_dir / file_name
 
     # Create plot
