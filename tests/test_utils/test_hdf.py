@@ -44,17 +44,17 @@ def test__save_dict_to_hdf(tmp_path_factory: TempPathFactory) -> None:
     file_path = test_dir / 'test.hdf'
 
     # Save to HDF; this test succeeds if no error occurs here
-    save_dict_to_hdf(dictionary=TEST_DICT, file_path=file_path.as_posix())
+    save_dict_to_hdf(dictionary=TEST_DICT, file_path=file_path)
 
 
-def test__read_fits(tmp_path_factory: TempPathFactory) -> None:
+def test__load_dict_from_hdf(tmp_path_factory: TempPathFactory) -> None:
 
     # Define location of test file in temporary directory
     test_dir = tmp_path_factory.getbasetemp() / 'hdf'
     file_path = test_dir / 'test.hdf'
 
     # Read the test HDF file
-    data = load_dict_from_hdf(file_path=file_path.as_posix())
+    data = load_dict_from_hdf(file_path=file_path)
 
     # Compute the difference between the original test data and the data that
     # we have just loaded from the test HDF file. We need to ignore various
