@@ -6,6 +6,7 @@ General purpose utilities, e.g., cropping arrays.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from bisect import bisect_left
 from functools import reduce
 from hashlib import md5
 from math import modf
@@ -310,3 +311,33 @@ def get_md5_checksum(
             md5_checksum.update(chunk)
 
     return str(md5_checksum.hexdigest())
+
+
+def find_closest(sequence: Sequence, value: Any) -> Any:
+    """
+    Given a sorted `sequence`, find the entry in it that is the closest
+    to the given `value`.
+
+    Source: https://stackoverflow.com/a/12141511/4100721
+
+    Args:
+        sequence: A sequence (basically: a list, tuple or array).
+        value: A numeric value (i.e., usually an int or float).
+
+    Returns:
+        The entry in `sequence` that is the closest to `value`.
+    """
+
+    pos = bisect_left(sequence, value)
+
+    if pos == 0:
+        return sequence[0]
+    if pos == len(sequence):
+        return sequence[-1]
+
+    before = sequence[pos - 1]
+    after = sequence[pos]
+
+    if after - value < value - before:
+        return after
+    return before
