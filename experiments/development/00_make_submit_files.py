@@ -83,7 +83,7 @@ if __name__ == '__main__':
 
     # Load experiment config from JSON
     print('Loading experiment configuration...', end=' ', flush=True)
-    config = load_config((experiment_dir / 'config.json').as_posix())
+    config = load_config(experiment_dir / 'config.json')
     print('Done!', flush=True)
 
     # Load frames, parallactic angles, etc. from HDF file
@@ -228,7 +228,7 @@ if __name__ == '__main__':
         bid=bid,
     )
     file_path = htcondor_dir / f'{name}.sub'
-    submit_file.save(file_path=file_path.as_posix())
+    submit_file.save(file_path=file_path)
     print('Done!', flush=True)
 
     # Add submit file to DAG
@@ -260,7 +260,7 @@ if __name__ == '__main__':
         bid=bid,
     )
     file_path = htcondor_dir / f'{name}.sub'
-    submit_file.save(file_path=file_path.as_posix())
+    submit_file.save(file_path=file_path)
     print('Done!', flush=True)
 
     # Add submit file to DAG
@@ -290,7 +290,7 @@ if __name__ == '__main__':
         bid=bid,
     )
     file_path = htcondor_dir / f'{name}.sub'
-    submit_file.save(file_path=file_path.as_posix())
+    submit_file.save(file_path=file_path)
     print('Done!', flush=True)
 
     # Add submit file to DAG
@@ -320,7 +320,7 @@ if __name__ == '__main__':
         bid=bid,
     )
     file_path = htcondor_dir / f'{name}.sub'
-    submit_file.save(file_path=file_path.as_posix())
+    submit_file.save(file_path=file_path)
     print('Done!', flush=True)
 
     # Add submit file to DAG
@@ -338,7 +338,7 @@ if __name__ == '__main__':
 
     print('Saving DAG file...', end=' ', flush=True)
     file_path = htcondor_dir / 'run_experiment.dag'
-    dag_file.save(file_path=file_path.as_posix())
+    dag_file.save(file_path=file_path)
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
