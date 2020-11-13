@@ -23,7 +23,7 @@ from hsr4hci.utils.splitting import TrainTestSplitter
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def get_baseline_results(
+def get_default_results(
     position: Tuple[int, int],
     stack: np.ndarray,
     parang: np.ndarray,
@@ -34,8 +34,8 @@ def get_baseline_results(
     n_splits: int,
 ) -> Dict[str, np.ndarray]:
     """
-    Get the baseline results for a given pixel, that is, the results
-    without masking out any potential signal region.
+    Get the default results for a given pixel, that is, the results
+    *without* masking out any potential signal region.
 
     Args:
         position:
@@ -48,7 +48,9 @@ def get_baseline_results(
         n_splits:
 
     Returns:
-
+        A dictionary with keys "residuals" and "predictions" (which each
+        map to a 1D numpy array of length `n_frames`) that contains the
+        default results for the given `position`.
     """
 
     # -------------------------------------------------------------------------
