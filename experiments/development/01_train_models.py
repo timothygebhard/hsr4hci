@@ -37,7 +37,7 @@ from hsr4hci.utils.psf import (
     get_psf_diameter,
 )
 from hsr4hci.utils.training import (
-    get_baseline_results,
+    get_default_results,
     get_signal_masking_results,
 )
 from hsr4hci.utils.typehinting import RegressorModel
@@ -103,7 +103,7 @@ if __name__ == '__main__':
 
     # Load experiment config from JSON
     print('Loading experiment configuration...', end=' ', flush=True)
-    config = load_config((experiment_dir / 'config.json').as_posix())
+    config = load_config(experiment_dir / 'config.json')
     print('Done!', flush=True)
 
     # Load frames, parallactic angles, etc. from HDF file
@@ -341,11 +341,11 @@ if __name__ == '__main__':
         insort_left(processed_column_indices, insert_idx)
 
         # ---------------------------------------------------------------------
-        # Compute and store the baseline
+        # Compute and store the default results
         # ---------------------------------------------------------------------
 
-        # Get baseline results
-        baseline_results = get_baseline_results(
+        # Get default results
+        default_results = get_default_results(
             position=position,
             stack=stack,
             parang=parang,
@@ -358,8 +358,8 @@ if __name__ == '__main__':
 
         # If 'baseline' does not yet exist in the results dictionary (i.e.,
         # during the first iteration of the loop), initialize with empty lists
-        if 'baseline' not in results.keys():
-            results['baseline'] = dict(
+        if 'default' not in results.keys():
+            results['default'] = dict(
                 predictions=[],
                 residuals=[],
                 mask=np.full(frame_size, False),
@@ -371,8 +371,8 @@ if __name__ == '__main__':
         # it to a subset of a stack-shaped 3D array, everything ends up at the
         # expected position.
         for _ in ('predictions', 'residuals'):
-            results['baseline'][_].insert(insert_idx, baseline_results[_])
-        np.asarray(results['baseline']['mask'])[position[0], position[1]] = 1
+            results['default'][_].insert(insert_idx, default_results[_])
+        np.asarray(results['default']['mask'])[position[0], position[1]] = 1
 
         # ---------------------------------------------------------------------
         # Compute and store the results based on masking a potential signal
