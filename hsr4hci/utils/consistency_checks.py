@@ -6,18 +6,20 @@ Utility functions for consistency checks and related tasks.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 from scipy.interpolate import interp1d, RegularGridInterpolator
 from sklearn.linear_model import LinearRegression
+from sklearn.metrics.pairwise import cosine_similarity
 
 from tqdm.auto import tqdm
 
 import numpy as np
 
-from hsr4hci.utils.general import rotate_position
+from hsr4hci.utils.forward_modeling import get_time_series_for_position
+from hsr4hci.utils.general import fast_corrcoef, find_closest, rotate_position
 from hsr4hci.utils.masking import get_positions_from_mask
-from hsr4hci.utils.signal_masking import get_signal_length
+from hsr4hci.utils.signal_masking import get_signal_mask
 
 
 # -----------------------------------------------------------------------------
@@ -154,91 +156,117 @@ def get_consistency_check_data(
     # Combine the test_positions and test_times into a list of tuples
     return [((p[0], p[1]), t) for p, t in zip(test_positions, test_times)]
 
-        # Collect and store result tuple
-        result = (test_position, test_time, test_mask)
-        results.append(result)
 
-    return results
-
-
-def get_match_fraction(
-    results: dict,
+def get_matches(
+    results: Dict[str, np.ndarray],
+    hypotheses: np.ndarray,
     parang: np.ndarray,
-    psf_diameter: float,
-    roi_mask: np.ndarray,
+    psf_cropped: np.ndarray,
     n_test_positions: int,
+    metric_function: str = 'cosine_similarity',
+    verbose: bool = True,
 ) -> np.ndarray:
     """
-    Run consistency tests to compute the fraction of matches for each
-    position. This is the basis for choosing for which pixels we use the
-    baseline model and for which we use the best signal masking model.
+    Construct the match_stack, that is, a 3D numpy array of shape:
+        `(n_test_positions, width, height)`
+    where each entry describes how well the corresponding test position
+    matched the original hypothesis for the respective spatial position.
+    All entries are from the interval [0, 1]; the simplest metric based
+    on the bump height will only give values from {0, 1}.
 
     Args:
-        results:
-        parang:
-        psf_diameter:
-        roi_mask:
-        n_test_positions:
+        results: A dictionary containing the full training results. In
+            particular, we expect that for each signal time T on the
+            temporal grid that was used during training, there is a key
+            T (as a string) that maps to another dictionary which has a
+            key `residuals`, which is a 3D numpy array consisting of the
+            residuals that were obtained when trained the signal masking
+            models under the hypothesis that there is a planet at T (for
+            each spatial position).
+        hypotheses: A 2D numpy array of shape `(width, height)`, where
+            each entry contains the `signal_time` (as an integer that
+            can be used as a temporal index) indicating our hypothesis
+            for this spatial position (found by the `find_hypothesis()`
+            function), that is, basically saying "if there is a planet
+            signal at this spatial position, it peaks at this time".
+        parang: A numpy array of shape `(n_frames, )` that contains the
+            parallactic angles for each frame.
+        psf_cropped: A 2D numpy array containing a cropped version of
+            the unsaturated PSF template for the data set. This is
+            needed to compute the expected signal shape with which we
+            compare to determine a match.
+        n_test_positions: An integer specifying the desired number of
+            test positions along the planet trajectory that is implied
+            by the tuple `(position, signal_time)`.
+        metric_function: A string defining the metric function that is
+            used to determine a match. Must be one of the following:
+                - "bump_height"
+                - "correlation_coefficient"
+                - "cosine_similarity"
+            This function is used to check whether at the test positions
+            we find a signal that is compatible with the planet path
+            hypothesis from the `hypotheses` array.
+        verbose: Whether or not to print a progress bar.
 
     Returns:
-
+        A 3D numpy array of shape `(n_test_positions, width, height)`,
+        which for each spatial position contains the result of the
+        consistency check at the `n_test_positions` test position (i.e.,
+        a number in [0, 1] or {0, 1}, depending on `metric_function`).
     """
 
     # Define some useful shortcuts
-    signal_times = results['signal_times']
     n_frames = len(parang)
-    frame_size = roi_mask.shape
+    signal_times = sorted(
+        list(map(int, filter(lambda _: _.isdigit(), results.keys())))
+    )
+    frame_size = hypotheses.shape
+
+    # Define ROI mask: all positions for which we actually have a hypothesis
+    roi_mask = np.logical_not(np.isnan(hypotheses))
 
     # Prepare a grid for the RegularGridInterpolator() below
     t_grid = np.arange(n_frames)
     x_grid = np.arange(frame_size[0])
     y_grid = np.arange(frame_size[1])
 
-    # Initialize array in which we keep track of the fraction of test positions
-    # which are consistent with the best signal masking-model for each pixel
-    match_fraction = np.full(frame_size, np.nan)
+    # Initialize array in which we keep track of the test positions which are
+    # (not) consistent with the best signal masking-model for each pixel
+    matches = np.full((n_test_positions,) + frame_size, np.nan)
+
+    # -------------------------------------------------------------------------
+    # Loop over all spatial positions in the ROI and count matches
+    # -------------------------------------------------------------------------
+
+    # Get a list of all spatial positions in the ROI; add progress bar
+    positions = get_positions_from_mask(roi_mask)
+    if verbose:
+        positions = tqdm(positions, ncols=80)
 
     # Loop over all positions in the ROI
-    for position in tqdm(get_positions_from_mask(roi_mask), ncols=80):
+    for position in positions:
 
-        # Check if the best signal time for this pixel is NaN, which implies
-        # that for this pixel there exists no best signal-masking model. In
-        # this case, we do not have to run consistency checks and can set the
-        # match fraction directly to 0.
-        signal_time = results['best']['signal_time'][position[0], position[1]]
-        if np.isnan(signal_time):
-            match_fraction[position[0], position[1]] = 0
-            continue
+        # Get the signal time-hypothesis for the current position
+        signal_time = hypotheses[position[0], position[1]]
 
-        # Otherwise, we can convert the best signal time to an integer
-        signal_time = int(signal_time)
-
-        # Get the data for the consistency check, that is, a list of spatial
-        # positions and temporal indices (plus masks) at which we also expect
-        # to see a planet if the hypothesis about the planet path that is
-        # implied by the above best signal masking-model is correct.
+        # Get the test positions for the current hypothesis
         consistency_check_data = get_consistency_check_data(
             position=position,
             signal_time=signal_time,
             parang=parang,
             frame_size=frame_size,
-            psf_diameter=psf_diameter,
             n_test_positions=n_test_positions,
         )
 
-        # Initialize a list to keep track of the matching test position
-        matches: List[int] = list()
+        # ---------------------------------------------------------------------
+        # Loop over test positions and check if they match or not
+        # ---------------------------------------------------------------------
 
-        # Loop over all test positions and perform the consistency check
-        for (test_position, test_time, test_mask) in consistency_check_data:
+        for i, (test_position, test_time) in enumerate(consistency_check_data):
 
-            # We have only trained signal masking models for a finite set of
-            # possible signal times. Out of those, we now find the one that is
-            # the closest to the current `test_time`, because we will be using
-            # the residuals obtained from this model for the consistency check.
-            closest_signal_time = np.abs(
-                signal_times.ravel() - test_time
-            ).argmin()
+            # Find the closest signal_time for which we actually have trained
+            # a model. TODO: Or we could also use interpolation here?
+            closest_signal_time = find_closest(signal_times, test_time)
 
             # Set up an interpolator for the residuals of the model that was
             # trained assuming the signal was at `closest_signal_time`.
@@ -253,7 +281,7 @@ def get_match_fraction(
             # to round the `test_position` to the closest integer position.
             interpolator = RegularGridInterpolator(
                 points=(t_grid, x_grid, y_grid),
-                values=results[str(closest_signal_time)]['residuals']
+                values=results[str(closest_signal_time)]['residuals'],
             )
 
             # Define the spatio-temporal positions at which we want to retrieve
@@ -263,46 +291,83 @@ def get_match_fraction(
             # point in time, we get the residual value by interpolating it from
             # the four closest residual values, using bilinear interpolation.
             residual_positions = np.array(
-                [(_, ) + test_position for _ in np.arange(n_frames)]
+                [(_,) + test_position for _ in np.arange(n_frames)]
             )
 
             # Select the interpolated residuals for the current `test_position`
-            residuals = interpolator(residual_positions)
+            interpolated_residual = interpolator(residual_positions)
 
-            # Check if the residuals contain NaN, which would indicate that
-            # the test position is outside of the ROI, or was so close to the
-            # star that the `max_signal_length` threshold has caused us not to
-            # learn this model.
-            # In this case, we default to "failed the consistency test" to
-            # avoid artifacts in the final match_fraction array.
-            if np.isnan(residuals).any():
-                matches.append(0)
+            # The interpolated residual can be all-NaN in cases where the test
+            # position is too close to a (spatial) pixel for which we did not
+            # train a signal masking model. In this case, we simply ignore this
+            # test position (i.e., there will be a NaN in the `matches` array).
+            if np.isnan(interpolated_residual).any():
                 continue
 
-            # Split the residual into the part that should contain a planet
-            # signal and a part that should only contain residual noise
-            signal_residual = residuals[test_mask]
-            noise_residual = residuals[~test_mask]
+            # Get the signal mask that matches the current closest_signal_time
+            closest_signal_mask = get_signal_mask(
+                position=test_position,
+                parang=parang,
+                signal_time=closest_signal_time,
+                frame_size=frame_size,
+                psf_cropped=psf_cropped,
+            )
 
-            # This is the centerpiece of our consistency check: We define our
-            # criteria for counting a match:
-            # 1. Do the residuals have a bump at the expected position?
-            # 2. Is the mean of the (expected) signal part of the residual
-            #    greater than than of the (expected) noise part?
-            criterion_1 = has_bump(residuals, test_mask, test_time)
-            criterion_2 = np.mean(signal_residual) > np.mean(noise_residual)
+            # -----------------------------------------------------------------
+            # Check for a match based on the given metric_function
+            # -----------------------------------------------------------------
 
-            # Only if all criteria are True do we count the current test
-            # position as a match for the consistency check
-            if criterion_1 and criterion_2:
-                matches.append(1)
+            # The bump_height metric does not require a comparison with the
+            # expected planet signal, so we treat it as a special case
+            if metric_function == 'bump_height':
+
+                # Compute the bump height at the current test position
+                bump_height = get_bump_height(
+                    array=interpolated_residual,
+                    signal_time=closest_signal_time,
+                    signal_mask=closest_signal_mask,
+                )
+
+                # This metric is binary: either there is a bump or there is not
+                metric = float(bump_height > 0)
+
+            # For all other metric functions, we first need to compute the
+            # expected planet signal with which we compare the residual
             else:
-                matches.append(0)
 
-        # Finally, compute the match fraction for the current position
-        if matches:
-            match_fraction[position[0], position[1]] = np.mean(matches)
-        else:
-            match_fraction[position[0], position[1]] = 0
+                # Compute the expected time series with which we will compare
+                expected_time_series = get_time_series_for_position(
+                    position=position,
+                    signal_time=closest_signal_time,
+                    frame_size=frame_size,
+                    parang=parang,
+                    psf_cropped=psf_cropped,
+                )
 
-    return match_fraction
+                # Define shortcuts for the time series that we compare
+                x = expected_time_series[closest_signal_mask].reshape(1, -1)
+                y = interpolated_residual[closest_signal_mask].reshape(1, -1)
+
+                # Compute the desired target metric by comparing the residual
+                # with the expected planet signal
+                if metric_function == 'cosine_similarity':
+                    metric = cosine_similarity(x, y)
+                elif metric_function == 'correlation_coefficient':
+                    metric = fast_corrcoef(x.ravel(), y.ravel())
+                else:
+                    raise ValueError(
+                        'Invalid value for metric_function, must be one of '
+                        'the following: "bump_height", "cosine_similarity", '
+                        '"correlation_coefficient".'
+                    )
+
+            # Make sure that `metric` is in [0, 1]. Here, we can also clip the
+            # value of `metric` in case we use the bump height as the metric
+            # because we only check if there is a bump, and do not look for the
+            # "best" bump (unlike in the find_hypothesis() function).
+            metric = float(np.clip(metric, a_min=0, a_max=1))
+
+            # Store whether or not there is a bump at the test position
+            matches[i, position[0], position[1]] = metric
+
+    return matches
