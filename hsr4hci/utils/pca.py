@@ -196,7 +196,7 @@ def get_pca_signal_estimates(
 
     # Sort the list such that signal estimates are ordered by increasing
     # number of principal components, and convert to a numpy array
-    signal_estimates = sorted(signal_estimates, key=lambda _: _[0])
+    signal_estimates = sorted(signal_estimates, key=lambda _: int(_[0]))
     signal_estimates = np.array([_[1] for _ in signal_estimates])
 
     # Return the signal estimates and optionally also the principal components

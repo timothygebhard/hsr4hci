@@ -44,7 +44,7 @@ def test__save_fits(tmp_path_factory: TempPathFactory) -> None:
     # Catch astropy warnings about length of FITS keys
     assert len(record) == 3
     for i, key in enumerate(['FLOAT_KEY', 'ARRAY_KEY', 'NAN_ARRAY_KEY']):
-        assert record[i].message.args[0] == (
+        assert str(record.list[i].message) == (
             f"Keyword name '{key}' is greater than 8 characters or "
             f"contains characters not allowed by the FITS standard; a "
             f"HIERARCH card will be created."

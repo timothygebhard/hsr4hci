@@ -483,10 +483,12 @@ def zerocenter_plot(ax: Axes, which: str) -> None:
     """
 
     if which == 'x':
-        limit = abs(max(ax.get_xlim(), key=abs))
+        vmin, vmax = ax.get_xlim()
+        limit = max(np.abs(vmin), np.abs(vmax))
         ax.set_ylim(ymin=-limit, ymax=limit)
     elif which == 'y':
-        limit = abs(max(ax.get_ylim(), key=abs))
+        vmin, vmax = ax.get_ylim()
+        limit = max(np.abs(vmin), np.abs(vmax))
         ax.set_ylim(ymin=-limit, ymax=limit)
     else:
         raise ValueError('Parameter which must be "x" or "y"!')
