@@ -231,6 +231,9 @@ def get_signal_mask(
     Get the signal mask for a single spatio-temporal planet position
     given by the `position` and the `signal_time`.
 
+    This function only returns a single mask, corresponding to a single
+    hypothesis regarding the planet's trajectory!
+
     Args:
         position: A tuple `(x, y)` specifying the position at which the
             planet is assumed to be at time `signal_time`.
@@ -287,7 +290,12 @@ def get_signal_masks(
 ) -> List[Tuple[np.ndarray, int]]:
     """
     Generate the masks for training a series of models where different
-    possible planet positions are masked out during training.
+    possible signal times are masked out during training.
+
+    This function returns a *list of masks* (and signal times); one for
+    each signal time on the temporal grid that is used for training the
+    HSR models with signal masking! It is basically a wrapper around
+    `get_signal_mask()` that runs the loop over the `signal_times` grid.
 
     Similar to `get_signal_masks_analytically()`; however, this version
     makes use of `get_time_series_for_position()` to accurately model
