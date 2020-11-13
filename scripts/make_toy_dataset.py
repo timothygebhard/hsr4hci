@@ -68,7 +68,7 @@ if __name__ == '__main__':
     )
 
     # Crop the PSF template to desired size
-    print(f'Cropping PSF template...', end=' ', flush=True)
+    print('Cropping PSF template...', end=' ', flush=True)
     psf_cropped = crop_psf_template(
         psf_template=psf_template, psf_radius=Quantity(3, 'lambda_over_d')
     )

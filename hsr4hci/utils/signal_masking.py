@@ -341,10 +341,10 @@ def get_signal_masks(
 
     # Loop over all these time points to generate the corresponding indices
     for signal_time in signal_times:
-    
+
         # Make sure the signal time is an integer (we use it as an index)
         signal_time = int(signal_time)
-    
+
         # Compute the signal mask for this signal time
         signal_mask = get_signal_mask(
             position=position,
