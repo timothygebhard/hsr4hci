@@ -96,7 +96,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Select default model residuals (i.e., from models without signal masking)
-    default_residuals = results['baseline']['residuals']
+    default_residuals = results['default']['residuals']
 
     # Assemble signal masking residuals based on the hypotheses: for each
     # spatial position, we take the "best" residual according to the signal
