@@ -24,35 +24,39 @@ from hsr4hci.utils.signal_masking import get_signal_length
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def has_bump(
+def get_bump_height(
     array: np.ndarray,
-    signal_idx: np.ndarray,
+    signal_mask: np.ndarray,
     signal_time: int,
-) -> bool:
+) -> float:
     """
     Check if a given `array` (typically residuals) has a positive bump
-    in the region that is indicated by the given `idx`.
+    in the region that is indicated by the given `signal_mask`, and
+    return the `bump_height` (which defaults to 0 if there is no bump).
 
-    Currently, the used heuristic is extremely simple:
-    We split the search region into two parts, based on the given
-    `signal_time`, and fit both parts with a linear model.
+    To check if the selected region has a bump-like shape, we use a very
+    simple heuristic: We split the search region into two parts, based
+    on the given `signal_time`, and fit both parts with a linear model.
     If the first regression returns a positive slope, and the second
-    regression returns a negative slope, the function returns True.
+    regression returns a negative slope, we compute the bump height as
+    the median of the search region; otherwise, we return 0. We also
+    return 0 if the median of the search region is actually negative.
 
     Args:
         array: A 1D numpy array in which we search for a bump.
-        signal_idx: A 1D numpy array indicating the search region.
+        signal_mask: A 1D numpy array indicating the search region.
         signal_time: The index specifying the "exact" location
             where the peak of the bump should be located.
 
     Returns:
-        Whether or not the given `array` contains a positive bump in
-        the given search region.
+        The height of the bump (computed as the median of the part of
+        `array` selected by the `signal_mask`, or zero if the median is
+        negative), in case there is a positive bump; otherwise zero.
     """
 
-    # Get the start and end position of the signal_idx
+    # Get the start and end position of the signal_mask
     all_idx = np.arange(len(array))
-    signal_start, signal_end = all_idx[signal_idx][np.array([0, -1])]
+    signal_start, signal_end = all_idx[signal_mask][np.array([0, -1])]
 
     # Prepare predictors and targets for the two linear fits
     predictors_1 = np.arange(signal_start, signal_time).reshape(-1, 1)
@@ -60,8 +64,7 @@ def has_bump(
     targets_1 = array[signal_start:signal_time]
     targets_2 = array[signal_time:signal_end]
 
-    # Fit the two models to the two parts of the search region and get the
-    # slope of the model
+    # Fit regions with linear models and get slopes
     if len(predictors_1) > 2:
         model_1 = LinearRegression().fit(predictors_1, targets_1)
         slope_1 = model_1.coef_[0]
@@ -73,7 +76,17 @@ def has_bump(
     else:
         slope_2 = -1
 
-    return bool(slope_1 > 0 > slope_2)
+    # Define criteria for "is there a positive bump at the given signal time?"
+    criterion_1 = bool(slope_1 > 0 > slope_2)
+    criterion_2 = bool(
+        np.nanmedian(array[signal_mask]) > np.nanmedian(array[~signal_mask])
+    )
+
+    # If there is a bump, we return its height; otherwise we return 0
+    if criterion_1 and criterion_2:
+        bump_height = float(np.nanmedian(array[signal_mask]))
+        return max((0, bump_height))
+    return 0
 
 
 def get_consistency_check_data(
