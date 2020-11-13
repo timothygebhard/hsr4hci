@@ -21,8 +21,9 @@
     "subsample_predictors":    false
   },
   "signal_masking":{
-    "n_signal_times":          20,
-    "max_signal_length":       0.7
+    "n_signal_times":          50,
+    "max_signal_length":       0.7,
+    "metric_function":         "correlation_coefficient"
   },
   "n_splits": {
     "baseline":                3,
