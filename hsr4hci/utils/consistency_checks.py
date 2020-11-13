@@ -8,7 +8,7 @@ Utility functions for consistency checks and related tasks.
 
 from typing import List, Tuple
 
-from scipy.interpolate import RegularGridInterpolator
+from scipy.interpolate import interp1d, RegularGridInterpolator
 from sklearn.linear_model import LinearRegression
 
 from tqdm.auto import tqdm
@@ -90,82 +90,69 @@ def get_bump_height(
 
 
 def get_consistency_check_data(
-    position: Tuple[int, int],
-    signal_time: int,
+    position: Tuple[float, float],
+    signal_time: float,
     parang: np.ndarray,
     frame_size: Tuple[int, int],
-    psf_diameter: float,
     n_test_positions: int = 5,
-) -> List[Tuple[Tuple[int, int], int, np.ndarray]]:
+) -> List[Tuple[Tuple[float, float], float]]:
     """
-    Given a (spatial) `position` and a (temporal) `signal_time`,
-    construct the planet path that is implied by these values and
-    return `n_test_positions` new positions on that arc with the
-    respective expected temporal signal position at these positions.
+    Given a (spatial) `position` and a (temporal) `signal_time`, infer
+    the planet path that is implied by these values and return a list of
+    test positions that are on that arc, together with the respective
+    expected temporal signal position at these positions.
 
     Args:
-        position:
-        signal_time:
-        parang:
-        frame_size:
-        psf_diameter:
-        n_test_positions:
+        position: A tuple `(x, y)` indicating the position at which we
+            believe the planet is at the given `signal_time`.
+        signal_time: The time (in the form of a temporal index for the
+            `parang` array) at which we think there is a planet signal
+            at the given `position`.
+        parang: A numpy array of shape `(n_frames, )` that contains the
+            parallactic angles for each frame.
+        frame_size: A tuple of integers, `(width, height)`, indicating
+            the (spatial) size of the frames that we are working with.
+        n_test_positions: An integer specifying the desired number of
+            test positions along the planet trajectory that is implied
+            by the tuple `(position, signal_time)`.
 
     Returns:
-
+        A list of `n_test_positions` 2-tuples, where each tuple contains
+        one spatio-temporal test position: `(test_position, test_time)`.
     """
 
     # Define useful shortcuts
     n_frames = len(parang)
     center = (frame_size[0] / 2, frame_size[1] / 2)
 
+    # Create a (linear) interpolator for parang such that we can evaluate
+    # the parallactic angle at arbitrary times
+    interpolate_parang = interp1d(np.arange(n_frames), parang)
+
     # Assuming that the peak of the signal is at pixel `position` at the time
-    # t=`signal_time`, use our knowledge about the movement of the planet
-    # to compute the (spatial) position of the planet at point t=0.
+    # t = `signal_time`, use our knowledge about the movement of the planet to
+    # compute the (spatial) position of the planet at point t = 0.
     starting_position = rotate_position(
         position=position,
         center=center,
-        angle=-float(parang[signal_time] - parang[0]),
+        angle=-float(interpolate_parang(signal_time) - parang[0]),
     )
 
-    # Create `n_test_times` (uniformly distributed) points in time at which
-    # we check if the find a planet signal consistent with the above hypothesis
+    # Create `n_test_times` (uniformly distributed in time) points at which we
+    # check if the find a planet signal consistent with the above hypothesis
     test_times = np.linspace(0, n_frames - 1, n_test_positions)
-    test_times = test_times.astype(int)
 
-    # Loop over all test positions and get the expected position (both the peak
-    # position and temporal region that is covered by the signal) of the signal
-    results = list()
-    for test_time in test_times:
-
-        # Find the expected (spatial) position
-        test_position = rotate_position(
+    # Compute the positions that correspond to these times
+    test_positions = np.array(
+        rotate_position(
             position=starting_position,
             center=center,
-            angle=float(parang[test_time] - parang[0]),
+            angle=interpolate_parang(test_times) - parang[0],
         )
+    ).transpose()
 
-        # Round to the closest pixel position
-        test_position = (int(test_position[0]), int(test_position[1]))
-
-        # Get the expected signal length at this position
-        length_1, length_2 = get_signal_length(
-            position=test_position,
-            signal_time=test_time,
-            center=center,
-            parang=parang,
-            psf_diameter=psf_diameter,
-        )
-
-        # Initialize expected_mask as all False
-        test_mask = np.zeros(n_frames).astype(bool)
-
-        # Now add a block of 1s (that matches the expected signal length) to
-        # the apply_idx centered on the current signal position
-        time_1 = max(0, test_time - length_1)
-        time_2 = min(n_frames, test_time + length_2)
-        test_mask[time_1:test_time] = True
-        test_mask[test_time:time_2] = True
+    # Combine the test_positions and test_times into a list of tuples
+    return [((p[0], p[1]), t) for p, t in zip(test_positions, test_times)]
 
         # Collect and store result tuple
         result = (test_position, test_time, test_mask)
