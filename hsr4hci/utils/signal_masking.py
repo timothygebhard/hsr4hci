@@ -219,6 +219,63 @@ def get_signal_masks_analytically(
     return results
 
 
+def get_signal_mask(
+    position: Tuple[float, float],
+    parang: np.ndarray,
+    signal_time: int,
+    frame_size: Tuple[int, int],
+    psf_cropped: np.ndarray,
+    threshold: float = 0.2,
+) -> np.ndarray:
+    """
+    Get the signal mask for a single spatio-temporal planet position
+    given by the `position` and the `signal_time`.
+
+    Args:
+        position: A tuple `(x, y)` specifying the position at which the
+            planet is assumed to be at time `signal_time`.
+        parang: A 1D numpy array of shape `(n_frames, )` containing the
+            parallactic angles for each frame.
+        signal_time: An integer specifying the index of the frame in
+            which the planet is assumed to be at the given `position`.
+        frame_size: A tuple `(width, height)` specifying the size (in
+            pixels) of the frames that we are working with.
+        psf_cropped: A 2D numpy array containing a cropped version of
+            the unsaturated PSF template for the data set. In essence,
+            this defines the (spatial) size of the planet signal on the
+            sensor of the instrument.
+        threshold: The threshold that is used when binarizing the
+            expected planet signal into a mask. The exact value is
+            probably somewhat arbitrary. Smaller values give larger
+            masks, which means that more data are excluded during
+            training. Default is 0.2 = 20% of the maximum signal.
+
+    Returns:
+        A binary 1D numpy array of shape `(n_frames, )` that is True at
+        all times (indices) where the target pixel does contain planet
+        signal (under the hypothesis that the planet actually is a
+        `position`  at the given `signal_time`), and False elsewhere.
+    """
+
+    # Make sure the signal time is an integer (we use it as an index)
+    signal_time = int(signal_time)
+
+    # Compute the expected time series for given `position` under the
+    # assumption that a planet is there at the current `signal_time`
+    expected_signal = get_time_series_for_position(
+        position=position,
+        signal_time=signal_time,
+        frame_size=frame_size,
+        parang=parang,
+        psf_cropped=psf_cropped,
+    )
+
+    # Threshold the expected signal to create a binary mask
+    signal_mask = expected_signal > threshold
+
+    return signal_mask
+
+
 def get_signal_masks(
     position: Tuple[int, int],
     parang: np.ndarray,
