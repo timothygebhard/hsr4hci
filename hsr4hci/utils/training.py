@@ -13,7 +13,6 @@ from sklearn.preprocessing import StandardScaler
 
 import numpy as np
 
-from hsr4hci.utils.consistency_checks import has_bump
 from hsr4hci.utils.masking import get_selection_mask
 from hsr4hci.utils.signal_masking import get_signal_masks
 from hsr4hci.utils.splitting import TrainTestSplitter
@@ -193,22 +192,11 @@ def get_signal_masking_results(
     dilation_size = selection_mask_config['dilation_size']
 
     # -------------------------------------------------------------------------
-    # Initialize results, as well as metrics to find "best" signal_time
+    # Prepare train/test split and loop over splits to train models
     # -------------------------------------------------------------------------
 
     # Initialize results dictionary
     results: Dict[str, Dict[str, Union[np.ndarray, int]]] = dict()
-
-    # Initialize metrics for finding "best" split
-    best_mean = -np.infty
-    best_predictions = np.full(n_frames, np.nan)
-    best_residuals = np.full(n_frames, np.nan)
-    best_signal_mask = np.full(n_frames, np.nan)
-    best_signal_time = np.nan
-
-    # -------------------------------------------------------------------------
-    # Prepare train/test split and loop over splits to train models
-    # -------------------------------------------------------------------------
 
     # Create splitter for indices
     splitter = TrainTestSplitter(n_splits=n_splits, split_type='even_odd')
@@ -220,7 +208,7 @@ def get_signal_masking_results(
     # training data to find the "best" exclusion region, and thus the best
     # model, which (ideally) was trained only on the part of the time series
     # that does not contain any planet signal.
-    for i, signal_mask, signal_time in get_signal_masks(
+    for signal_mask, signal_time in get_signal_masks(
         position=position,
         parang=parang,
         n_signal_times=n_signal_times,
@@ -253,7 +241,7 @@ def get_signal_masking_results(
         full_predictors = np.hstack((full_predictors, obscon_array))
 
         # Add sub-dictionary in results
-        results[str(i)] = dict(
+        results[str(signal_time)] = dict(
             signal_mask=signal_mask, signal_time=signal_time
         )
 
@@ -318,31 +306,7 @@ def get_signal_masking_results(
         full_residuals = full_targets.ravel() - full_predictions.ravel()
 
         # Add predictions and residuals to results dictionary
-        results[str(i)]['predictions'] = full_predictions.ravel()
-        results[str(i)]['residuals'] = full_residuals
-
-        # Update our best guess for the planet position:
-        # Choose the "best" exclusion region based on the idea that the planet
-        # region, when not included in the training data, should have a higher
-        # average than the rest of the time series (it's a positive bump), and
-        # should exhibit a bump-like structure.
-        # We then simply pick the highest such bump here. This is by no means
-        # guaranteed to be ideal, but at least it is simple and fast...
-        current_mean = np.mean(full_residuals[signal_mask])
-        if current_mean > best_mean:
-            if has_bump(full_residuals, signal_mask, signal_time):
-                best_mean = current_mean
-                best_signal_mask = signal_mask
-                best_signal_time = signal_time
-                best_predictions = full_predictions
-                best_residuals = full_residuals
-
-    # Add the (final) best predictions and residuals to results dict
-    results['best'] = dict(
-        signal_mask=best_signal_mask,
-        signal_time=best_signal_time,
-        predictions=best_predictions,
-        residuals=best_residuals,
-    )
+        results[str(signal_time)]['predictions'] = full_predictions.ravel()
+        results[str(signal_time)]['residuals'] = full_residuals
 
     return results
