@@ -27,13 +27,15 @@ def test__save_fits(tmp_path_factory: TempPathFactory) -> None:
 
     # Define contents of FITS file
     array = np.arange(30).reshape((2, 3, 5))
-    header = dict(str_key='Test Name',
-                  int_key=5,
-                  float_key=8.2,
-                  list_key=['a', 'b', 'c'],
-                  nan_key=np.nan,
-                  array_key=np.array([1, 2, 3]),
-                  nan_array_key=np.array([1, 2, np.nan]))
+    header = dict(
+        str_key='Test Name',
+        int_key=5,
+        float_key=8.2,
+        list_key=['a', 'b', 'c'],
+        nan_key=np.nan,
+        array_key=np.array([1, 2, 3]),
+        nan_array_key=np.array([1, 2, np.nan]),
+    )
 
     # Save to FITS
     with pytest.warns(card.VerifyWarning) as record:
@@ -42,10 +44,11 @@ def test__save_fits(tmp_path_factory: TempPathFactory) -> None:
     # Catch astropy warnings about length of FITS keys
     assert len(record) == 3
     for i, key in enumerate(['FLOAT_KEY', 'ARRAY_KEY', 'NAN_ARRAY_KEY']):
-        assert record[i].message.args[0] == \
-               (f"Keyword name '{key}' is greater than 8 characters or "
-                f"contains characters not allowed by the FITS standard; a "
-                f"HIERARCH card will be created.")
+        assert record[i].message.args[0] == (
+            f"Keyword name '{key}' is greater than 8 characters or "
+            f"contains characters not allowed by the FITS standard; a "
+            f"HIERARCH card will be created."
+        )
 
 
 def test__read_fits(tmp_path_factory: TempPathFactory) -> None:
@@ -64,13 +67,15 @@ def test__read_fits(tmp_path_factory: TempPathFactory) -> None:
     # changes (e.g., serialization of values, capitalization of keys) that
     # are expected to happen when saving a header to a FITS file
     expected_array = np.arange(30).reshape((2, 3, 5))
-    expected_header = dict(STR_KEY='Test Name',
-                           INT_KEY=5,
-                           FLOAT_KEY=8.2,
-                           LIST_KEY='["a", "b", "c"]',
-                           NAN_KEY='NaN',
-                           ARRAY_KEY='[1, 2, 3]',
-                           NAN_ARRAY_KEY='[1.0, 2.0, NaN]')
+    expected_header = dict(
+        STR_KEY='Test Name',
+        INT_KEY=5,
+        FLOAT_KEY=8.2,
+        LIST_KEY='["a", "b", "c"]',
+        NAN_KEY='NaN',
+        ARRAY_KEY='[1, 2, 3]',
+        NAN_ARRAY_KEY='[1.0, 2.0, NaN]',
+    )
 
     for key, value in expected_header.items():
         assert header[key] == expected_header[key]
