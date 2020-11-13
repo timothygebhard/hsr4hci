@@ -134,9 +134,14 @@ def test__prestack_array() -> None:
 
 def test__rotate_position() -> None:
 
+    # Check for ValueError
+    with pytest.raises(ValueError) as error:
+        rotate_position(np.array([(1, 1), (0, 0)]), (0, 0), np.array([0, 1]))
+    assert 'position and angle cannot both be arrays!' in str(error)
+
+    # Run tests for the case where `position` is simply a tuple
     position = (10, 10)
     center = (0, 0)
-
     assert np.allclose(rotate_position(position, center, -90), (10, -10))
     assert np.allclose(rotate_position(position, center, 0), (10, 10))
     assert np.allclose(rotate_position(position, center, 45), (0, 14.14213562))
@@ -144,6 +149,17 @@ def test__rotate_position() -> None:
     assert np.allclose(rotate_position(position, center, 180), (-10, -10))
     assert np.allclose(rotate_position(position, center, 360), (10, 10))
     assert np.allclose(rotate_position(position, center, 720), (10, 10))
+
+    # Run tests for the case where `position` is an array
+    position = np.array([(10, 10), (0, 10), (10, 0)]).T
+    expected = np.array([(10, -10), (10, 0), (0, -10)]).T
+    assert np.allclose(rotate_position(position, center, -90), expected)
+
+    # Run tests for the case where `angle` is an array
+    position = (10, 10)
+    angle = np.array([0, 90, 180])
+    expected = np.array([(10, 10), (-10, 10), (-10, -10)]).T
+    assert np.allclose(rotate_position(position, center, angle), expected)
 
 
 def test__get_md5_checksum(tmp_path_factory: TempPathFactory) -> None:
