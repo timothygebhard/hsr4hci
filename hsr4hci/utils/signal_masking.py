@@ -283,7 +283,8 @@ def get_signal_masks(
     frame_size: Tuple[int, int],
     psf_cropped: np.ndarray,
     max_signal_length: float = 0.7,
-) -> List[Tuple[int, np.ndarray, int]]:
+    threshold: float = 0.2,
+) -> List[Tuple[np.ndarray, int]]:
     """
     Generate the masks for training a series of models where different
     possible planet positions are masked out during training.
@@ -312,11 +313,12 @@ def get_signal_masks(
             "mask out a potential signal region"-approach, because the
             potential signal region is too large to leave us with a
             reasonable amount of training data.
+        threshold: The threshold value that is passed to the
+            `get_signal_mask` function (see there for details).
 
     Returns:
         This function returns a list of up to `n_position` 3-tuples
-        of the following form:
-            `(signal_time_index, signal_mask, signal_time)`.
+        of the following form: `(signal_mask, signal_time)`.
     """
 
     # Define shortcuts
@@ -330,32 +332,28 @@ def get_signal_masks(
     signal_times = np.linspace(0, n_frames - 1, n_signal_times)
 
     # Loop over all these time points to generate the corresponding indices
-    for i, signal_time in enumerate(signal_times):
-
+    for signal_time in signal_times:
+    
         # Make sure the signal time is an integer (we use it as an index)
         signal_time = int(signal_time)
-
-        # Compute the expected time series for given `position` under the
-        # assumption that a planet is there at the current `signal_time`
-        expected_signal = get_time_series_for_position(
+    
+        # Compute the signal mask for this signal time
+        signal_mask = get_signal_mask(
             position=position,
+            parang=parang,
             signal_time=signal_time,
             frame_size=frame_size,
-            parang=parang,
             psf_cropped=psf_cropped,
+            threshold=threshold,
         )
-
-        # Threshold the expected signal to create a binary mask.
-        # The threshold value here is somewhat arbitrary (?)
-        signal_mask = expected_signal > 0.2
 
         # Check if the expected signal length is larger than the threshold.
         # In this case, we do not compute the noise and signal masks, but
         # skip this signal time.
-        if np.sum(signal_mask) / n_frames > max_signal_length:
+        if np.mean(signal_mask) > max_signal_length:
             continue
 
         # Store the current (signal_time_index, signal_mask, signal_time) tuple
-        results.append((i, signal_mask, signal_time))
+        results.append((signal_mask, signal_time))
 
     return results
