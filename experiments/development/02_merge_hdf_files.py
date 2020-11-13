@@ -50,7 +50,7 @@ if __name__ == '__main__':
     hdf_file_paths = [
         hdf_dir / hdf_file_name
         for hdf_file_name in filter(
-            lambda _: _.endswith('hdf'), os.listdir(hdf_dir.as_posix())
+            lambda _: _.endswith('hdf'), os.listdir(hdf_dir)
         )
     ]
     print('Done!', flush=True)
@@ -71,7 +71,7 @@ if __name__ == '__main__':
     for hdf_file_path in tqdm(sorted(hdf_file_paths), ncols=80):
 
         # Load the HDF to be merged
-        hdf_file = load_dict_from_hdf(file_path=hdf_file_path.as_posix())
+        hdf_file = load_dict_from_hdf(file_path=hdf_file_path)
 
         # Get the dimensions of stack-shaped quantities
         stack_shape = (
@@ -137,7 +137,7 @@ if __name__ == '__main__':
     # Save the final result
     print('\nSaving merged HDF file...', end=' ', flush=True)
     file_path = results_dir / 'results.hdf'
-    save_dict_to_hdf(dictionary=results, file_path=file_path.as_posix())
+    save_dict_to_hdf(dictionary=results, file_path=file_path)
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
