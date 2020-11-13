@@ -250,27 +250,35 @@ def set_in_nested_dict(
 
 
 def rotate_position(
-    position: Tuple[float, float],
+    position: Union[Tuple[float, float], np.ndarray],
     center: Tuple[float, float],
-    angle: float,
-) -> Tuple[float, float]:
+    angle: Union[float, np.ndarray],
+) -> Union[Tuple[float, float], np.ndarray]:
     """
     Take a `position` and rotate it around the given `center` for the
-    given `angle`.
+    given `angle`. Either the `position` or the `angle` can also be an
+    array (but not both).
 
     Args:
-        position: The initial position as a 2-tuple `(x, y)`.
+        position: The initial position as a 2-tuple `(x, y)`, or as a
+            numpy array of shape `(2, n_positions)`.
         center: The center of the rotation as a 2-tuple `(x_c, y_c)`.
-        angle: The rotation angle *in degrees* (not radian).
+        angle: The rotation angle *in degrees* (not radian); either as
+            a float or as a numpy array of shape `(n_angles, )`.
 
     Returns:
-        The rotated position, again as a 2-tuple.
+        The rotated position, either as a 2-tuple, or as a numpy array
+        of shape `(2, n_positions)`.
     """
+
+    # Make sure that not both `position` and `angle` are arrays
+    if isinstance(position, np.ndarray) and isinstance(angle, np.ndarray):
+        raise ValueError('position and angle cannot both be arrays!')
 
     # Convert angle from degree to radian for numpy
     phi = np.deg2rad(angle)
 
-    # Compute x- and y-coordinate of rotated position
+    # Compute x- and y-coordinate of rotated position(s)
     x = (
         center[1]
         + (position[0] - center[1]) * np.cos(phi)
@@ -282,6 +290,9 @@ def rotate_position(
         + (position[1] - center[0]) * np.cos(phi)
     )
 
+    # If we called the function on an array, we have to return an array
+    if isinstance(x, np.ndarray):
+        return np.vstack((x, y))
     return x, y
 
 
