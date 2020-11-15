@@ -241,10 +241,10 @@ if __name__ == '__main__':
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
-    # Create a submit file for computing the match fraction and add it to DAG
+    # Create a submit file for finding hypotheses and add it to DAG
     # -------------------------------------------------------------------------
 
-    name = '03_compute_match_fraction'
+    name = '03_find_hypotheses'
 
     # Create submit file and add job
     print(f'Creating {name}.sub...', end=' ', flush=True)
@@ -273,10 +273,42 @@ if __name__ == '__main__':
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
-    # Create a submit file for creating the residuals and add it to DAG
+    # Create a submit file for computing the match fraction and add it to DAG
     # -------------------------------------------------------------------------
 
-    name = '04_construct_residuals'
+    name = '04_compute_matches'
+
+    # Create submit file and add job
+    print(f'Creating {name}.sub...', end=' ', flush=True)
+    submit_file = SubmitFile(
+        clusterlogs_dir=clusterlogs_dir.as_posix(),
+        memory=expected_total_memory,
+        cpus=4,
+    )
+    submit_file.add_job(
+        name=name,
+        job_script=(experiment_dir / f'{name}.py').as_posix(),
+        arguments=dict(),
+        bid=bid,
+    )
+    file_path = htcondor_dir / f'{name}.sub'
+    submit_file.save(file_path=file_path)
+    print('Done!', flush=True)
+
+    # Add submit file to DAG
+    print(f'Adding {name}.sub to DAG file...', end=' ', flush=True)
+    dag_file.add_submit_file(
+        name=name,
+        attributes=dict(file_path=file_path.as_posix(), bid=bid),
+    )
+    dag_file.add_dependency('03_find_hypotheses', name)
+    print('Done!', flush=True)
+
+    # -------------------------------------------------------------------------
+    # Create a submit file for creating the signal estimates and add it to DAG
+    # -------------------------------------------------------------------------
+
+    name = '05_construct_signal_estimates'
 
     # Create submit file and add job
     print(f'Creating {name}.sub...', end=' ', flush=True)
@@ -299,14 +331,14 @@ if __name__ == '__main__':
         name=name,
         attributes=dict(file_path=file_path.as_posix(), bid=bid),
     )
-    dag_file.add_dependency('03_compute_match_fraction', name)
+    dag_file.add_dependency('04_compute_matches', name)
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
     # Create a submit file for computing the SNR and add it to DAG
     # -------------------------------------------------------------------------
 
-    name = '05_compute_snr'
+    name = '06_compute_snr'
 
     # Create submit file and add job
     print(f'Creating {name}.sub...', end=' ', flush=True)
@@ -329,7 +361,37 @@ if __name__ == '__main__':
         name=name,
         attributes=dict(file_path=file_path.as_posix(), bid=bid),
     )
-    dag_file.add_dependency('04_construct_residuals', name)
+    dag_file.add_dependency('05_construct_signal_estimates', name)
+    print('Done!', flush=True)
+
+    # -------------------------------------------------------------------------
+    # Create a submit file for computing the SNR and add it to DAG
+    # -------------------------------------------------------------------------
+
+    name = '07_compute_roc_curve'
+
+    # Create submit file and add job
+    print(f'Creating {name}.sub...', end=' ', flush=True)
+    submit_file = SubmitFile(
+        clusterlogs_dir=clusterlogs_dir.as_posix(), memory=8192, cpus=4
+    )
+    submit_file.add_job(
+        name=name,
+        job_script=(experiment_dir / f'{name}.py').as_posix(),
+        arguments={},
+        bid=bid,
+    )
+    file_path = htcondor_dir / f'{name}.sub'
+    submit_file.save(file_path=file_path)
+    print('Done!', flush=True)
+
+    # Add submit file to DAG
+    print(f'Adding {name}.sub to DAG file...', end=' ', flush=True)
+    dag_file.add_submit_file(
+        name=name,
+        attributes=dict(file_path=file_path.as_posix(), bid=bid),
+    )
+    dag_file.add_dependency('04_compute_matches', name)
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
