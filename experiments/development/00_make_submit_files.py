@@ -70,7 +70,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     script_start = time.time()
-    print('\nTRAIN HALF-SIBLING REGRESSION MODELS\n', flush=True)
+    print('\nMAKE SUBMIT FILES\n', flush=True)
 
     # -------------------------------------------------------------------------
     # Load config and data, get command line variables and define shortcuts
