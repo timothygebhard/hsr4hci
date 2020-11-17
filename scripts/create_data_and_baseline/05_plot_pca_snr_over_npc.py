@@ -8,6 +8,9 @@ components, using the figures_of_merit.csv results file created by
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from typing import Dict, List, Tuple
+
+import csv
 import json
 import time
 
@@ -52,6 +55,7 @@ if __name__ == '__main__':
     planet_keys = list(config['evaluation']['planets'].keys())
 
     # Shortcuts to other entries in the configuration
+    dit = float(config['metadata']['DIT'])
     plot_size = config['evaluation']['plot_size']
     min_n_components = config['pca']['min_n_components']
     max_n_components = config['pca']['max_n_components']
@@ -65,6 +69,11 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
     # Make plots for different stacking factors
     # -------------------------------------------------------------------------
+
+    # Store maximum SNR for each stacking factor (and each planet)
+    max_snrs: Dict[str, List[Tuple[int, float, float]]] = {
+        key: [] for key in planet_keys
+    }
 
     # Run for each stacking factor
     for stacking_factor in config['stacking_factors']:
@@ -100,13 +109,19 @@ if __name__ == '__main__':
             snr_values = dataframe[planet_key]['snr'].values
 
             # Get maximum SNR and draw it separately
+            max_snr = float(np.max(snr_values))
             max_snr_idx = int(np.argmax(snr_values))
             plt.plot(
                 pc_numbers[max_snr_idx],
-                snr_values[max_snr_idx],
+                max_snr,
                 color=adjust_luminosity(f'C{i}'),
                 marker='x',
                 ms=10,
+            )
+
+            # Store the maximum SNR
+            max_snrs[planet_key].append(
+                (stacking_factor, stacking_factor * dit, max_snr)
             )
 
             # Plot the SNR as a step function
@@ -122,7 +137,7 @@ if __name__ == '__main__':
             # Add a label for each data point
             for (n, snr) in zip(pc_numbers, snr_values):
                 plt.annotate(
-                    s=f'{snr:.2f}\n{n:d}',
+                    text=f'{snr:.2f}\n{n:d}',
                     xy=(n, snr),
                     ha='center',
                     va='center',
@@ -146,11 +161,74 @@ if __name__ == '__main__':
 
         # Save plot as a PDF
         file_path = result_dir / 'snr_over_npc.pdf'
-        plt.savefig(file_path, bbox_inches='tight', pad=0)
+        plt.savefig(file_path, bbox_inches='tight')
         plt.clf()
         plt.close()
 
         print('Done!', flush=True)
+
+    # -------------------------------------------------------------------------
+    # Store maximum SNR values for each planet as a CSV file
+    # -------------------------------------------------------------------------
+
+    # Create folder to store results
+    results_dir = baselines_dir / 'results'
+    results_dir.mkdir(exist_ok=True)
+
+    print(f'\nSaving SNRs to CSV file...', end=' ', flush=True)
+    for planet_key in planet_keys:
+        file_path = results_dir / f'snrs__{planet_key}.csv'
+        with open(file_path, 'w') as csv_file:
+            csv_writer = csv.writer(csv_file)
+            csv_writer.writerow(['Stacking factor', 'Effective DIT', 'SNR'])
+            csv_writer.writerows(max_snrs[planet_key])
+    print('Done!', flush=True)
+
+    # -------------------------------------------------------------------------
+    # Create plot of maximum SNR as a function of the stacking factor
+    # -------------------------------------------------------------------------
+
+    print(f'Plotting SNR over stacking factor...', end=' ', flush=True)
+
+    # Create a new figure
+    fig, ax1 = plt.subplots()
+
+    for i, planet_key in enumerate(planet_keys):
+
+        # Define shortcuts
+        color = f'C{i}'
+        planet_name = f'{config["metadata"]["TARGET_STAR"]} {planet_key}'
+
+        # Get stacking factors (x) and SNRs (y)
+        x, _, y = zip(*max_snrs[planet_key])
+
+        # Plot the SNR over the stacking factor
+        ax1.plot(x, y, color=color, alpha=0.3)
+        ax1.plot(x, y, 'x', color=color, label=planet_name)
+
+    # Add a secondary x-axis on top which converts the stacking factor to
+    # an effective integration time by multiplying the stacking factor with
+    # the DIT of a single frame (0.2 seconds for most L' band data sets)
+    ax2 = ax1.secondary_xaxis(
+        location='top', functions=(lambda x: dit * x, lambda x: x / dit)
+    )
+
+    # Add axes labels
+    ax1.set_xlabel('Stacking factor')
+    ax1.set_ylabel('Signal-to-noise ratio (SNR)')
+    ax2.set_xlabel('Effective Integration Time (s)')
+
+    # Set limits and other plotting options
+    ax1.set_xlim(0, None)
+    ax1.set_ylim(0, None)
+    plt.grid(color='lightgray', ls='--')
+    plt.legend(loc='best')
+    plt.tight_layout()
+
+    # Save the plot
+    plt.savefig(results_dir / 'snr_over_stacking_factor.pdf', dpi=300)
+
+    print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
     # Postliminaries
