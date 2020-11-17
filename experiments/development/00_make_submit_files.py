@@ -313,7 +313,9 @@ if __name__ == '__main__':
     # Create submit file and add job
     print(f'Creating {name}.sub...', end=' ', flush=True)
     submit_file = SubmitFile(
-        clusterlogs_dir=clusterlogs_dir.as_posix(), memory=65536, cpus=4
+        clusterlogs_dir=clusterlogs_dir.as_posix(),
+        memory=expected_total_memory,
+        cpus=4
     )
     submit_file.add_job(
         name=name,
