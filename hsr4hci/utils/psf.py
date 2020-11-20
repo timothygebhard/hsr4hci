@@ -30,7 +30,7 @@ def crop_psf_template(
 ) -> np.ndarray:
     """
     Take a raw unsaturated PSF template, and crop it to a circle of
-    radius `psf_radius` around it's center, which is determined by
+    radius `psf_radius` around its center, which is determined by
     fitting a 2D Gaussian to the template.
 
     Args:
