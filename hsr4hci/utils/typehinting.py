@@ -6,8 +6,7 @@ Additional custom types that can be used for type hinting.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Optional
-from typing_extensions import Protocol
+from typing import Optional, Protocol
 
 import numpy as np
 
