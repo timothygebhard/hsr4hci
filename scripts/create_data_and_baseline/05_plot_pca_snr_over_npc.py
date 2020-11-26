@@ -175,7 +175,7 @@ if __name__ == '__main__':
     results_dir = baselines_dir / 'results'
     results_dir.mkdir(exist_ok=True)
 
-    print(f'\nSaving SNRs to CSV file...', end=' ', flush=True)
+    print('\nSaving SNRs to CSV file...', end=' ', flush=True)
     for planet_key in planet_keys:
         file_path = results_dir / f'snrs__{planet_key}.csv'
         with open(file_path, 'w') as csv_file:
@@ -188,7 +188,7 @@ if __name__ == '__main__':
     # Create plot of maximum SNR as a function of the stacking factor
     # -------------------------------------------------------------------------
 
-    print(f'Plotting SNR over stacking factor...', end=' ', flush=True)
+    print('Plotting SNR over stacking factor...', end=' ', flush=True)
 
     # Create a new figure
     fig, ax1 = plt.subplots()
