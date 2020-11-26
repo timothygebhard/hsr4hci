@@ -268,3 +268,94 @@ def get_planet_paths(
     planet_paths_mask = np.max(stack, axis=0) > threshold
 
     return planet_paths_mask, all_planet_positions
+
+
+def add_fake_planet(
+    stack: np.ndarray,
+    parang: np.ndarray,
+    psf_template: np.ndarray,
+    position: Tuple[float, float],
+    magnitude: float,
+    extra_scaling: float,
+    dit_stack: float,
+    dit_psf_template: float,
+    return_planet_positions: bool = False,
+) -> Union[np.ndarray, Tuple[np.ndarray, List[Tuple[float, float]]]]:
+    """
+    Add a fake planet to the given `stack` which, when derotating and
+    merging the stack, will show up at the given `position`.
+
+    This function can also be used to *remove* planets from a stack by
+    setting the `psf_scaling` to a negative number.
+
+    Args:
+        stack: A 3D numpy array of shape `(n_frames, width, height)`
+            which contains the stack of images / frames into which we
+            want to inject a fake planet.
+        parang: A 1D numpy array of shape `(n_frames, )` that contains
+            the respective parallactic angle for every frame in `stack`.
+        psf_template: A 2D numpy array that contains the (centered) PSF
+            template which will be used for the fake planet.
+            This should *not* be normalized to (0, 1] if we want to work
+            with actual astrophysical magnitudes for the contrast.
+        position: A tuple `(x, y)` which specifies the position at which
+            the planet will show up after de-rotating with `parang`.
+        magnitude: The magnitude difference used to scale the PSF.
+            Note: This is the contrast ratio in *magnitudes*, meaning
+            that increasing this value by a factor of 5 will result in
+            a planet that is 100 times brighter. In case you want to
+            keep things linear, set this value to 0 and only use the
+            `psf_scaling` parameter.
+        extra_scaling: An additional scaling factor that is used for
+            the PSF template.
+            This number is simply multiplied with the PSF template,
+            meaning that it changes the brightness linearly, not on a
+            logarithmic scale. For example, you could use `-1` to add a
+            *negative* planet to remove an actual planet in the data.
+            This can also be used to incorporate an additional dimming
+            factor due to a
+        dit_stack: The detector integration time of the frames in the
+            `stack` (in seconds). Necessary to compute the correct
+            scaling factor for the planet that we inject.
+        dit_psf_template: The detector integration time of the
+            `psf_template` (in seconds). Necessary to compute the
+            correct scaling factor for the planet that we inject.
+        return_planet_positions:
+
+    Returns:
+        A 3D numpy array of shape `(n_frames, width, height)` which
+        contains the original `stack` into which a fake planet has been
+        injected, as well as a list of tuples `(x, y)` that, for each
+        frame, contain the position at which the fake planet has been
+        added.
+    """
+
+    # Define some shortcuts
+    frame_size = stack.shape[1:]
+
+    # Convert `magnitude` from logarithmic contrast to linear flux ratio
+    contrast_scaling = 10 ** (-magnitude / 2.5)
+
+    # Compute scaling factor that is due to the different integration times
+    # for the science images and the PSF template
+    dit_scaling = dit_stack / dit_psf_template
+
+    # Combine all scaling factors and scale the PSF template
+    scaling_factor = contrast_scaling * dit_scaling * extra_scaling
+    psf_scaled = scaling_factor * psf_template
+
+    # Compute a stack
+    planet_stack, planet_positions = compute_signal_stack(
+        position=position,
+        frame_size=frame_size,
+        parang=parang,
+        psf_template=psf_scaled,
+        return_planet_positions=True,
+    )
+
+    # Add the planet stack to the original input stack
+    output_stack = stack + planet_stack
+
+    if return_planet_positions:
+        return output_stack, planet_positions
+    return output_stack
