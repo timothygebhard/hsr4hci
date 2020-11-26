@@ -48,6 +48,13 @@ def add_array_with_interpolation(
         and `array_small`.
     """
 
+    # Add an additional offset of (-0.5, -0.5) to the position, which is
+    # necessary because the add_array() routine from astropy uses coordinate
+    # system that is slightly different from the one that the rest of the
+    # code base uses: basically, it only counts pixels but does not take into
+    # account that (0, 0) is actually the *center* of the bottom left pixel.
+    position = (position[0] - 0.5, position[1] - 0.5)
+
     # Split the position into its integer and its fractional parts
     fractional_position, integer_position = tuple(
         zip(*tuple(modf(x) for x in position))
