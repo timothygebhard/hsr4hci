@@ -26,13 +26,10 @@ def test__check_consistent_size() -> None:
     assert 'All arguments must be numpy arrays!' in str(type_error)
 
     # Case 1: Ensure the correct default case is accepted
-    assert check_consistent_size(np.empty((5, 2)), np.empty((5, 3))) is None
+    assert check_consistent_size(np.empty((5, 2)), np.empty((5, 3)))
 
     # Case 2: Ensure a correct non-default case is accepted
-    assert (
-        check_consistent_size(np.empty((5, 3)), np.empty((4, 3)), axis=1)
-        is None
-    )
+    assert check_consistent_size(np.empty((5, 3)), np.empty((4, 3)), axis=1)
 
     # Case 3: Consistency along first axis (default)
     with pytest.raises(ValueError) as value_error:

@@ -15,8 +15,7 @@ import numpy as np
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-
-def check_consistent_size(*arrays: np.ndarray, axis: int = 0) -> None:
+def check_consistent_size(*arrays: np.ndarray, axis: int = 0) -> bool:
     """
     Check that all `arrays` have a consistent size along the given
     `axis`. Can be used, for example, to ensure that a given `stack`
@@ -44,10 +43,10 @@ def check_consistent_size(*arrays: np.ndarray, axis: int = 0) -> None:
     if len(uniques) > 1:
         raise ValueError('At least two inputs have inconsistent sizes!')
 
-    return None
+    return True
 
 
-def check_frame_size(frame_size: Any) -> None:
+def check_frame_size(frame_size: Any) -> bool:
     """
     Check if a given `frame_size` tuple represents a valid frame size
     (i.e., is a 2-tuple of positive integers).
@@ -69,13 +68,13 @@ def check_frame_size(frame_size: Any) -> None:
     ):
         raise ValueError('frame_size is not a valid frame size!')
 
-    return None
+    return True
 
 
 def check_cartesian_position(
     position: Any,
     require_int: bool = False,
-) -> None:
+) -> bool:
     """
     Check if a given `position` represents a valid Cartesian position
     (i.e., is a 2-tuple of floats or integers).
@@ -103,4 +102,4 @@ def check_cartesian_position(
     if require_int and not all(isinstance(_, int) for _ in position):
         raise ValueError('Not all entries of position are integers!')
 
-    return None
+    return True
