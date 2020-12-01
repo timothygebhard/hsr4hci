@@ -6,16 +6,21 @@ Utility functions for performance evaluation (e.g., computing the SNR).
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Any, Dict, List, NoReturn, Optional, Tuple
+from typing import Any, Dict, NoReturn, Optional, Tuple
 
+from astropy.units import Quantity
 from contexttimer.timeout import timeout
-from photutils import aperture_photometry, CircularAperture
 from scipy.spatial.distance import euclidean
 from scipy.stats import t
 from scipy.optimize import minimize, brute
 
 import bottleneck as bn
 import numpy as np
+
+from hsr4hci.utils.apertures import (
+    get_aperture_flux,
+    get_reference_aperture_positions,
+)
 
 
 # -----------------------------------------------------------------------------
@@ -32,119 +37,18 @@ class TimeoutException(Exception):
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def get_reference_positions(
-    frame_size: Tuple[int, int],
-    position: Tuple[float, float],
-    aperture_radius: float,
-    ignore_neighbors: int = 1,
-) -> Dict[str, List[Tuple[float, float]]]:
+def timeout_handler(*_: Any, **__: Any) -> NoReturn:
     """
-    Compute the positions at which the reference apertures will be
-    placed that are needed to compute the SNR and FPF.
-
-    Args:
-        frame_size: A tuple (width, height) specifying the size of the
-            target frame.
-        position: A tuple (x, y) specifying the position at which the
-            signal aperture will be placed, that is, for example, the
-            suspected position of the planet.
-        aperture_radius: The radius (in pixel) of the apertures to be
-            used for measuring the signal and the noise. Usually, this
-            is chosen close to 0.5 * FWHM of the planet signal.
-        ignore_neighbors: The number of neighboring apertures that will
-            *not* be used as reference positions. Rationale: methods
-            like PCA often cause visible negative self-subtraction
-            "wings" left and right of the planet signal. As these do not
-            provide an unbiased estimate of the background noise, we
-            usually want to exclude them from the reference positions.
-
-    Returns:
-        A dictionary with keys {"reference", "ignored"}, each containing
-        a list of tuples (x, y) with the positions of the respective
-        apertures (both the true reference apertures, and the ones that
-        are ignored due to the `ignore_neighbors` parameter).
+    This function only serves as a callback for the @timeout decorator
+    to raise a TimeoutException when the optimization takes too long.
     """
-
-    # Compute the frame center and polar representation of initial position
-    center = (frame_size[0] / 2, frame_size[1] / 2)
-    radius = np.hypot((position[0] - center[0]), (position[1] - center[1]))
-
-    # Compute the number of apertures that can be placed at the separation of
-    # the given position. We use the *exact* solution here; a faster solution
-    # that also gives a good approximation is given in the original paper by
-    # Mawet et al. (2014): n_apertures = int(np.pi * radius / aperture_radius).
-    n_apertures = int(
-        np.pi / np.arccos(1 - aperture_radius ** 2 / (2 * radius ** 2))
-    )
-
-    # Define a little helper function to convert angles into positions
-    def _angles_to_positions(angles: np.ndarray) -> List[Tuple[float, float]]:
-        x = (
-            center[1]
-            + (position[0] - center[1]) * np.cos(angles)
-            - (position[1] - center[0]) * np.sin(angles)
-        )
-        y = (
-            center[0]
-            + (position[0] - center[1]) * np.sin(angles)
-            + (position[1] - center[0]) * np.cos(angles)
-        )
-        return list(zip(x, y))
-
-    # Compute the position angles at which to place the noise apertures
-    all_angles = np.linspace(0, 2 * np.pi, n_apertures, endpoint=False)[1:]
-
-    # Split angles into those that will be used and those that will be ignored
-    # because of the `ignore_neighbors` parameter
-    if ignore_neighbors > 0:
-
-        reference_angles = all_angles[ignore_neighbors:-ignore_neighbors]
-        ignored_angles = np.concatenate(
-            (all_angles[0:ignore_neighbors], all_angles[-ignore_neighbors:])
-        )
-
-        return {
-            'reference': _angles_to_positions(reference_angles),
-            'ignored': _angles_to_positions(ignored_angles),
-        }
-
-    return {'reference': _angles_to_positions(all_angles), 'ignored': []}
-
-
-def get_aperture_flux(
-    frame: np.ndarray,
-    position: Tuple[float, float],
-    aperture_radius: float,
-) -> float:
-    """
-    Get the (integrated) flux in an aperture with the given size (i.e.,
-    `aperture_radius`) at the given `position`.
-
-    Args:
-        frame: A 2D numpy array of shape (width, height) containing the
-            input frame (i.e., e.g., derotated and merged residuals).
-        position: A tuple (x, y) specifying the position at which the
-            aperture is placed on the `frame`.
-        aperture_radius: The radius (in pixel) of the apertures to be
-            used for measuring the signal and the noise. Usually, this
-            is chosen close to 0.5 * FWHM of the planet signal.
-
-    Returns:
-        The integrated flux (= sum of all pixels) in the aperture.
-    """
-
-    # Create an aperture, measure the flux, and cast the result to float
-    aperture = CircularAperture(position, aperture_radius)
-    photometry_table = aperture_photometry(frame, aperture, method='exact')
-    integrated_flux = float(photometry_table['aperture_sum'])
-
-    return integrated_flux
+    raise TimeoutException("Optimization timed out!")
 
 
 def compute_snr(
     frame: np.ndarray,
     position: Tuple[float, float],
-    aperture_radius: float,
+    aperture_radius: Quantity,
     ignore_neighbors: int,
 ) -> Tuple[float, float, float, float]:
     """
@@ -168,9 +72,8 @@ def compute_snr(
             input frame (i.e., e.g., derotated and merged residuals).
         position: A tuple (x, y) specifying the position at which to
             compute the SNR and related quantities.
-        aperture_radius: The radius (in pixel) of the apertures to be
-            used for measuring the signal and the noise. Usually, this
-            is chosen close to 0.5 * FWHM of the planet signal.
+        aperture_radius: The radius of the apertures to be used. This
+            value is commonly chosen as 0.5 * lambda / D.
         ignore_neighbors: The number of neighboring apertures that will
             *not* be used as reference positions. Rationale: methods
             like PCA often cause visible negative self-subtraction
@@ -195,13 +98,12 @@ def compute_snr(
 
     # Get the positions of the reference apertures, that is, the positions at
     # which we will measure the flux to estimate the noise level
-    aperture_positions = get_reference_positions(
+    reference_positions, _ = get_reference_aperture_positions(
         frame_size=frame.shape,
         position=position,
         aperture_radius=aperture_radius,
         ignore_neighbors=ignore_neighbors,
     )
-    reference_positions = aperture_positions['reference']
     n_apertures = len(reference_positions)
 
     # Make sure we have have enough reference positions to compute the FPF
@@ -212,11 +114,11 @@ def compute_snr(
         )
 
     # Get the integrated flux in all the reference apertures
-    reference_fluxes = np.full(n_apertures, np.nan)
-    for i, ref_position in enumerate(reference_positions):
-        reference_fluxes[i] = get_aperture_flux(
-            frame=frame, position=ref_position, aperture_radius=aperture_radius
-        )
+    reference_fluxes = get_aperture_flux(
+        frame=frame,
+        position=reference_positions,
+        aperture_radius=aperture_radius
+    )
 
     # Get the integrated flux in the signal aperture
     signal_flux = get_aperture_flux(
@@ -250,18 +152,10 @@ def compute_snr(
     return signal_flux, noise, snr, fpf
 
 
-def timeout_handler(*_: Any, **__: Any) -> NoReturn:
-    """
-    This function only serves as a callback for the @timeout decorator
-    to raise a TimeoutException when the optimization takes too long.
-    """
-    raise TimeoutException("Optimization timed out!")
-
-
 def compute_optimized_snr(
     frame: np.ndarray,
     position: Tuple[float, float],
-    aperture_radius: float,
+    aperture_radius: Quantity,
     ignore_neighbors: int = 0,
     target: Optional[str] = 'signal_flux',
     max_distance: Optional[float] = 1.0,
@@ -284,9 +178,8 @@ def compute_optimized_snr(
             compute the SNR and related quantities. If `optimize` is
             not `None`, this position is only used as the starting point
             for the optimization.
-        aperture_radius: The radius (in pixel) of the apertures to be
-            used for measuring the signal and the noise. Usually, this
-            is chosen close to 0.5 * FWHM of the planet signal.
+        aperture_radius: The radius of the apertures to be used. This
+            value is commonly chosen as 0.5 * lambda / D.
         ignore_neighbors: The number of neighboring apertures that will
             *not* be used as reference positions. Rationale: methods
             like PCA often cause visible negative self-subtraction
@@ -382,7 +275,7 @@ def compute_optimized_snr(
     def _compute_optimized_snr(
         frame: np.ndarray,
         position: Tuple[float, float],
-        aperture_radius: float,
+        aperture_radius: Quantity,
         ignore_neighbors: int = 1,
         target: Optional[str] = None,
         max_distance: float = 1.0,
