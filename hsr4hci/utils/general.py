@@ -392,3 +392,56 @@ def fast_corrcoef(
     tmp = var_x * var_y
 
     return float(cov / np.sqrt(tmp))
+
+
+def pad_array_to_shape(
+    array: np.ndarray,
+    shape: Tuple[int],
+    **kwargs: Any,
+) -> np.ndarray:
+    """
+    Pad a numpy array to a given target shape (unlike `np.pad`, which
+    adds a given amount of padding). By default, zero-padding is used.
+
+    Args:
+        array: An n-dimensional numpy array.
+        shape: The tuple of integers specifying the target shape to
+            which the `array` is padded. The length of this tuple must
+            match exactly the number of dimensions of `array`, i.e.,
+            this function will *not* automatically add new axes (use
+            `array.reshape()` to add a new dimension first for this).
+            Also, the new `shape` must be greater or equal to the
+            current `array.shape` for every axis, i.e., this function
+            cannot be used for negative padding (cropping).
+        kwargs: Additional keyword arguments that are passed to
+            `np.pad()`; for example `constant_values` to determine
+            the value with which the array is padded.
+
+    Returns:
+        A copy of the given `array` that has been padded to the given
+        `shape`.
+    """
+
+    # Make sure that `array` and `shape` have matching dimensions
+    if not array.ndim == len(shape):
+        raise ValueError('Dimensions of array and shape do not align!')
+
+    # Compute padding tuples
+    pad_width = []
+    for i in range(array.ndim):
+
+        # Compute difference between target size and current size and ensure
+        # that it is non-negative (this function does not handle cropping!)
+        difference = float(shape[i] - array.shape[i])
+        if difference < 0:
+            raise ValueError(
+                f'Target size {shape[i]} along axis {i} is smaller than '
+                f'current size {array.shape[i]}!'
+            )
+
+        # If the difference is non-negative, compute the left and right padding
+        padding = (int(difference // 2), int(difference // 2 + difference % 2))
+        pad_width.append(padding)
+
+    # Finally, call np.pad() with the pad_width values that we have computed
+    return np.pad(array=array, pad_width=pad_width, mode='constant', **kwargs)
