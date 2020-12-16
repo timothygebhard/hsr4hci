@@ -20,7 +20,6 @@ import numpy as np
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-
 def get_number_of_apertures(
     separation: Quantity,
     aperture_radius: Quantity,
@@ -45,8 +44,8 @@ def get_number_of_apertures(
 
     # Convert the separation and the aperture radius to units of pixels (any
     # unit is fine here actually, as long as it is the same for both)
-    big_r = separation.to('pixel').value
-    small_r = aperture_radius.to('pixel').value
+    big_r = round(separation.to('pixel').value, 3)
+    small_r = round(aperture_radius.to('pixel').value, 3)
 
     # Sanity check: for too small separations, there are no non-overlapping
     # apertures; hence, we raise a ValueError.
