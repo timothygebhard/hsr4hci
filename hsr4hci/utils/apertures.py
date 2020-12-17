@@ -44,8 +44,8 @@ def get_number_of_apertures(
 
     # Convert the separation and the aperture radius to units of pixels (any
     # unit is fine here actually, as long as it is the same for both)
-    big_r = round(separation.to('pixel').value, 3)
-    small_r = round(aperture_radius.to('pixel').value, 3)
+    big_r = separation.to('pixel').value
+    small_r = aperture_radius.to('pixel').value
 
     # Sanity check: for too small separations, there are no non-overlapping
     # apertures; hence, we raise a ValueError.
@@ -56,8 +56,11 @@ def get_number_of_apertures(
 
     # For the exact number of apertures at a given separation we need to use
     # the formula derived here: https://stackoverflow.com/a/56008236/4100721
+    # Note: The additional round() call is necessary to mitigate issues due to
+    # floating pointing precision. Without it, we sometimes get results like
+    # "5.999999999999 apertures", which gets floored to 5 without the round().
     if exact:
-        return int(math.floor(math.pi / math.asin(small_r / big_r)))
+        return int(math.floor(round(math.pi / math.asin(small_r / big_r), 3)))
 
     # Alternatively, we can use the following approximation from the Mawet et
     # al. (2014) paper, which is slightly faster to compute:
