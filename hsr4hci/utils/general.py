@@ -16,7 +16,7 @@ from typing import Any, Callable, List, Sequence, Tuple, Union
 import operator
 
 from astropy.nddata.utils import add_array
-from scipy import ndimage
+from scipy.ndimage import fourier_shift, shift
 
 import numpy as np
 
@@ -67,7 +67,7 @@ def add_array_with_interpolation(
 
     # Use scipy.ndimage.shift to shift the array to the exact
     # position, using bilinear interpolation
-    dummy = ndimage.shift(dummy, fractional_position, order=1)
+    dummy = shift(dummy, fractional_position, order=1)
 
     return array_large + dummy
 
@@ -396,7 +396,7 @@ def fast_corrcoef(
 
 def pad_array_to_shape(
     array: np.ndarray,
-    shape: Tuple[int],
+    shape: Tuple[int, ...],
     **kwargs: Any,
 ) -> np.ndarray:
     """
@@ -445,3 +445,79 @@ def pad_array_to_shape(
 
     # Finally, call np.pad() with the pad_width values that we have computed
     return np.pad(array=array, pad_width=pad_width, mode='constant', **kwargs)
+
+
+def crop_or_pad(array: np.ndarray, size: Tuple[int, ...]) -> np.ndarray:
+    """
+    Take an `array` and a target `size` and either crop or pad the
+    `array` to match the given size.
+
+    Args:
+        array: A numpy array.
+        size: A tuple of integers specifying the target size.
+
+    Returns:
+        The original `array`, cropped or padded to match the `size`.
+    """
+
+    # If all array dimensions are larger than the target, we crop the array
+    if all(array.shape[_] >= size[_] for _ in range(array.ndim)):
+        return crop_center(array, size)
+
+    # If all array dimensions are smaller than the target, we pad the array
+    if all(array.shape[_] <= size[_] for _ in range(array.ndim)):
+        return pad_array_to_shape(array, size)
+
+    # If some dimensions are larger and some are smaller, we raise an error
+    raise RuntimeError('Mixing of cropping and padding is not supported!')
+
+
+def shift_image(
+    image: np.ndarray,
+    offset: Tuple[float, float],
+    interpolation: str = 'bilinear',
+    mode: str = 'constant'
+) -> np.ndarray:
+    """
+    Function to shift a 2D array (i.e., an `image`) by a given `offset`.
+
+    This function is essentially a simplified port of the PynPoint
+    function of the same name (`pynpoint.util.image.shift_image()`).
+
+    Args:
+        image: A 2D numpy array containing the image to be shifted.
+        offset: A tuple of floats `(x_shift, y_shift)` containing the
+            amount (in pixels) how much the `image` should be shifted.
+        interpolation: The interpolation method to be used. Most be one
+            of the following: 'spline', 'bilinear', 'fft'. Default is
+            'bilinear' because it is flux-preserving.
+        mode: The mode parameter determines how the input array is
+            extended beyond its boundaries. See `scipy.ndimage.shift()`
+            for a full documentation.
+
+    Returns:
+        The `image` shifted by the amount specified in `offset`.
+    """
+
+    # Ensure that the image is really 2D
+    if image.ndim != 2:
+        raise ValueError('Input image must be 2D!')
+
+    # Call the respective scipy routine with the correct arguments.
+    # NOTE: We flip the order of `offset` here, because shift() operates on
+    # a numpy array, which uses the matrix-like indexing convention, unlike
+    # the rest of the code, which uses "intuitive" coordinates.
+    if interpolation == 'spline':
+        shifted_image = shift(image, offset[::-1], order=5, mode=mode)
+    elif interpolation == 'bilinear':
+        shifted_image = shift(image, offset[::-1], order=1, mode=mode)
+    elif interpolation == 'fft':
+        fft_shift = fourier_shift(np.fft.fftn(image), offset[::-1])
+        shifted_image = np.fft.ifftn(fft_shift).real
+    else:
+        raise ValueError(
+            'The value of interpolation must be one of the following: '
+            '"spline", "bilinear", "fft"'
+        )
+
+    return shifted_image
