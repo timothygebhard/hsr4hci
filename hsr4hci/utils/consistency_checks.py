@@ -341,7 +341,7 @@ def get_matches(
                     signal_time=closest_signal_time,
                     frame_size=frame_size,
                     parang=parang,
-                    psf_cropped=psf_cropped,
+                    psf_template=psf_cropped,
                 )
 
                 # Define shortcuts for the time series that we compare

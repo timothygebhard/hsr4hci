@@ -270,7 +270,7 @@ def get_signal_mask(
         signal_time=signal_time,
         frame_size=frame_size,
         parang=parang,
-        psf_cropped=psf_cropped,
+        psf_template=psf_cropped,
     )
 
     # Threshold the expected signal to create a binary mask

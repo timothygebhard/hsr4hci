@@ -117,7 +117,7 @@ def find_hypothesis(
                 signal_time=signal_time,
                 frame_size=frame_size,
                 parang=parang,
-                psf_cropped=psf_cropped,
+                psf_template=psf_cropped,
             )
 
             # Compute the desired target metric
