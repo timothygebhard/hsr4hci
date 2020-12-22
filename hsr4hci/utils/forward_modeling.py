@@ -149,12 +149,14 @@ def add_fake_planet(
     signal_stack = np.empty_like(stack)
 
     # For each frame, move the scaled PSF template to the correct position
+    # Note: We use mode='constant' instead of 'reflect' here (unlike PynPoint)
+    # because the latter just does not seem to make a lot of sense?
     for i in range(n_frames):
         signal_stack[i] = shift_image(
             image=psf_scaled,
             offset=(float(x_shift[i]), float(y_shift[i])),
             interpolation=interpolation,
-            mode='reflect',
+            mode='constant',
         )
 
     # Add the planet stack to the original input stack
