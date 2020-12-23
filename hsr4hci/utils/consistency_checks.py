@@ -266,7 +266,7 @@ def get_matches(
 
             # Find the closest signal_time for which we actually have trained
             # a model. TODO: Or we could also use interpolation here?
-            closest_signal_time = find_closest(signal_times, test_time)
+            _, closest_signal_time = find_closest(signal_times, test_time)
 
             # Set up an interpolator for the residuals of the model that was
             # trained assuming the signal was at `closest_signal_time`.
