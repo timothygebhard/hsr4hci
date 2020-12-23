@@ -333,17 +333,19 @@ def get_md5_checksum(
 
 def find_closest(sequence: Sequence, value: Any) -> Any:
     """
-    Given a sorted `sequence`, find the entry in it that is the closest
-    to the given `value`.
+    Given a sorted `sequence`, find the entry (and its index) in it
+    that is the closest to the given `value`.
 
-    Source: https://stackoverflow.com/a/12141511/4100721
+    Original source: https://stackoverflow.com/a/12141511/4100721
 
     Args:
         sequence: A sequence (basically: a list, tuple or array).
         value: A numeric value (i.e., usually an int or float).
 
     Returns:
-        The entry in `sequence` that is the closest to `value`.
+        A tuple `(index, value)` where `value` is the entry in
+        `sequence` that is the closest to `value`, and `index`
+        is its index: `sequence[index] == value`.
     """
 
     pos = bisect_left(sequence, value)
@@ -357,8 +359,8 @@ def find_closest(sequence: Sequence, value: Any) -> Any:
     after = sequence[pos]
 
     if after - value < value - before:
-        return after
-    return before
+        return pos, after
+    return pos - 1, before
 
 
 def fast_corrcoef(
