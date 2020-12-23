@@ -331,7 +331,7 @@ def get_md5_checksum(
     return str(md5_checksum.hexdigest())
 
 
-def find_closest(sequence: Sequence, value: Any) -> Any:
+def find_closest(sequence: Sequence, value: Any) -> Tuple[int, Any]:
     """
     Given a sorted `sequence`, find the entry (and its index) in it
     that is the closest to the given `value`.
@@ -351,9 +351,9 @@ def find_closest(sequence: Sequence, value: Any) -> Any:
     pos = bisect_left(sequence, value)
 
     if pos == 0:
-        return sequence[0]
+        return 0, sequence[0]
     if pos == len(sequence):
-        return sequence[-1]
+        return len(sequence) - 1, sequence[-1]
 
     before = sequence[pos - 1]
     after = sequence[pos]
