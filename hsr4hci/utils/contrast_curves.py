@@ -13,6 +13,7 @@ from astropy.units import Quantity
 import numpy as np
 
 from hsr4hci.utils.apertures import get_aperture_positions
+from hsr4hci.utils.general import find_closest
 
 
 # -----------------------------------------------------------------------------
@@ -122,10 +123,9 @@ def get_injection_and_reference_positions(
 
     # Find the index of the position whose angle is the closest to the "ideal"
     # angle for this azimuthal_id
-    injection_position_idx = np.searchsorted(
-        a=np.linspace(0, 360, len(positions), endpoint=False),
-        v=azimuth_id_to_angle(azimuth_id),
-        side='left',
+    injection_position_idx, _ = find_closest(
+        sequence=np.linspace(0, 360, len(positions), endpoint=False),
+        value=azimuth_id_to_angle(azimuth_id),
     )
 
     # Split the positions into the injection and reference position(s)
