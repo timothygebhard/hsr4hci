@@ -15,6 +15,8 @@ from photutils import aperture_photometry, CircularAperture
 
 import numpy as np
 
+from hsr4hci.utils.coordinates import get_center
+
 
 # -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
@@ -89,7 +91,7 @@ def get_aperture_positions(
     """
 
     # Compute frame center
-    center = (frame_size[0] / 2, frame_size[1] / 2)
+    center = get_center(frame_size=frame_size)
 
     # Get number of apertures
     n_apertures = get_number_of_apertures(
@@ -190,7 +192,7 @@ def get_reference_aperture_positions(
     """
 
     # Compute the frame center and polar representation of initial position
-    center = (frame_size[0] / 2, frame_size[1] / 2)
+    center = get_center(frame_size=frame_size)
     rho = math.sqrt(
         (position[0] - center[0]) ** 2 + (position[1] - center[1]) ** 2
     )
