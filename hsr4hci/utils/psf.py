@@ -14,7 +14,7 @@ from photutils import centroid_2dg, CircularAperture
 
 import numpy as np
 
-from hsr4hci.utils.fitting import fit_2d_function, moffat_2d
+from hsr4hci.utils.fitting import CircularGauss2D
 from hsr4hci.utils.general import crop_center
 from hsr4hci.utils.masking import get_circle_mask
 
@@ -77,11 +77,8 @@ def get_psf_diameter(
     lambda_over_d: Optional[float] = None,
 ) -> float:
     """
-    Fit a 2D Moffat function to the given PSF template to estimate
-    the diameter of the central "blob" in pixels.
-
-    The diameter is computed at the arithmetic mean of the FWHM in
-    x and y direction, as returned by the fit.
+    Fit a simple, symmetric 2D Gauss function to the given PSF template
+    to estimate the diameter of the central "blob" in pixels.
 
     Args:
         psf_template: A 2D numpy array containing the raw, unsaturated
@@ -101,19 +98,22 @@ def get_psf_diameter(
         # cause problems when fitting them with a 2D Moffat function
         psf_template = crop_center(psf_template, (33, 33))
 
-        # Define shortcuts
-        psf_center_x = float(psf_template.shape[0] / 2)
-        psf_center_y = float(psf_template.shape[1] / 2)
+        # Define the grid for the fit
+        x = np.arange(psf_template.shape[0])
+        y = np.arange(psf_template.shape[1])
+        meshgrid = (
+            np.array(np.meshgrid(x, y)[0]), np.array(np.meshgrid(x, y)[1])
+        )
 
-        # Define initial guess for parameters
-        p0 = (psf_center_x, psf_center_y, 1, 1, 1, 0, 0, 1)
+        # Set up a 2D Gaussian and fit it to the PSF template
+        model = CircularGauss2D(
+            mu_x=psf_template.shape[0] / 2 - 0.5,
+            mu_y=psf_template.shape[1] / 2 - 0.5
+        )
+        model.fit(meshgrid=meshgrid, target=psf_template)
 
-        # Fit the PSF template with a 2D Moffat function to get the FWHMs
-        params = fit_2d_function(frame=psf_template, function=moffat_2d, p0=p0)
-
-        # Compute the PSF diameter as the mean of the two FWHM values
-        fwhm_x, fwhm_y = params[2:4]
-        psf_diameter = float(0.5 * (fwhm_x + fwhm_y))
+        # Compute the PSF diameter simply as the FWHM of the fit result
+        psf_diameter = model.fwhm
 
     # Case 2: We do not have PSF template, but the PIXSCALE and LAMBDA_OVER_D
     elif (pixscale is not None) and (lambda_over_d is not None):
