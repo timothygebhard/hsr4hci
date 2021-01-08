@@ -94,9 +94,9 @@ def check_cartesian_position(
     if not (
         isinstance(position, (tuple, list, np.ndarray))
         and len(position) == 2
-        and all(isinstance(_, (int, float)) for _ in position)
+        and all(isinstance(_, (int, float, np.generic)) for _ in position)
     ):
-        raise ValueError('position is not a valid Cartesian position!')
+        raise ValueError(f'{position} is not a valid Cartesian position!')
 
     # If requested, make sure all entries of position are actually integers
     if require_int and not all(isinstance(_, int) for _ in position):
