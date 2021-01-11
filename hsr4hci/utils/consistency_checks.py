@@ -310,7 +310,7 @@ def get_matches(
                 parang=parang,
                 signal_time=closest_signal_time,
                 frame_size=frame_size,
-                psf_cropped=psf_cropped,
+                psf_template=psf_cropped,
             )
 
             # -----------------------------------------------------------------

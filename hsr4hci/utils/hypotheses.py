@@ -88,7 +88,7 @@ def find_hypothesis(
         parang=parang,
         n_signal_times=n_signal_times,
         frame_size=frame_size,
-        psf_cropped=psf_cropped,
+        psf_template=psf_cropped,
         max_signal_length=max_signal_length,
     ):
 
