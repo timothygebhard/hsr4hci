@@ -61,7 +61,7 @@ class ObservingConditions:
     def available_keys(self) -> List[str]:
         """
         Return a sorted list of the available observing conditions.
- 
+
         Returns:
             A a sorted list of the available observing conditions.
         """

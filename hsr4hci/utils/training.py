@@ -338,7 +338,7 @@ def train_models(
 
     # Initialize a dictionary for these reshaped results
     new_results = dict(signal_times=signal_times)
- 
+
     # Loop over the different result groups to reshape them
     for group_name, group in results.items():
 
