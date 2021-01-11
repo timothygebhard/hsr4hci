@@ -35,7 +35,7 @@ def get_hdf_file_paths(hdf_dir: Path) -> List[Path]:
     """
 
     # Get a list of the paths to all HDF files in the given HDF directory
-    hdf_file_names = filter(lambda _: _.endswith('hdf'), os.listdir(hdf_dir))
+    hdf_file_names = filter(lambda _: _.endswith('.hdf'), os.listdir(hdf_dir))
     hdf_file_paths = [hdf_dir / _ for _ in hdf_file_names]
 
     # Perform a quick sanity check: Does the number of HDF files we found
@@ -46,7 +46,7 @@ def get_hdf_file_paths(hdf_dir: Path) -> List[Path]:
     if expected_number != actual_number:
         warn(
             f'Naming convention suggests there should be {expected_number} '
-            f'HDF files, but only {actual_number} were found!'
+            f'HDF files, but {actual_number} were found!'
         )
 
     return hdf_file_paths
@@ -89,7 +89,6 @@ def merge_result_files(
             int(hdf_file['stack_shape'][1]),
             int(hdf_file['stack_shape'][2]),
         )
-        frame_shape = stack_shape[1:]
 
         # Loop over the contents of the file
         for key, value in hdf_file.items():
@@ -112,10 +111,10 @@ def merge_result_files(
                 # have to place the values (e.g., residual time series) from
                 # this group in this file.
                 # This mask is not file-global, because it might differ for
-                # the baseline and the signal masking-results: while the
-                # baseline exists for every pixel, the signal masking results
-                # are only available for pixels where the expected temporal
-                # length of the signal is below a certain threshold.
+                # the default and the signal masking-results: while the default
+                # exists for every pixel, the signal masking results are only
+                # available for pixels where the expected temporal length of
+                # the signal is below a certain threshold.
                 mask = value['mask']
 
                 # Loop over the second-level dict, which can either contain
@@ -131,17 +130,11 @@ def merge_result_files(
                     # For the first HDF file that we are merging, we need to
                     # initialize the correct shape of the result arrays
                     if name not in results[key].keys():
-                        if item.ndim == 1:
-                            results[key][name] = np.full(frame_shape, np.nan)
-                        else:
-                            results[key][name] = np.full(stack_shape, np.nan)
+                        results[key][name] = np.full(stack_shape, np.nan)
 
                     # Now we can use the mask to store the contents of the
                     # current HDF file at the right position in the overall
                     # results
-                    if item.ndim == 1:
-                        results[key][name][mask] = item
-                    else:
-                        results[key][name][:, mask] = item
+                    results[key][name][:, mask] = item
 
     return results
