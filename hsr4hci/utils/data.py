@@ -16,6 +16,7 @@ import numpy as np
 
 from hsr4hci.utils.config import get_data_dir
 from hsr4hci.utils.general import crop_center
+from hsr4hci.utils.observing_conditions import ObservingConditions
 from hsr4hci.utils.psf import get_artificial_psf
 
 
@@ -36,7 +37,7 @@ def load_data(
     np.ndarray,
     np.ndarray,
     np.ndarray,
-    Dict[str, np.ndarray],
+    ObservingConditions,
     Dict[str, Union[str, float]],
 ]:
     """
@@ -70,10 +71,11 @@ def load_data(
 
     Returns:
         A 5-tuple of the following form:
-            `(stack, parang, psf_template,  obs_con, metadata)`,
+            `(stack, parang, psf_template, obs_con, metadata)`,
         containing numpy arrays with the frames, the parallactic angles
-        and the unsaturated PSF template, as well as *dictionaries* with
-        the observing conditions and the metadata.
+        and the unsaturated PSF template, as well as the observing
+        conditions as a `ObservingConditions` object and the metadata
+        as a dictionary.
     """
 
     # Construct path to HDF file containing the data
@@ -98,12 +100,13 @@ def load_data(
         if psf_template.ndim == 3:
             psf_template = np.mean(psf_template, axis=0)
 
-        # Select the observing conditions
-        observing_conditions: Dict[str, np.ndarray] = dict()
+        # Collect the observing conditions in a ObservingConditions object
+        _observing_conditions = dict()
         for key in hdf_file['observing_conditions'].keys():
-            observing_conditions[key] = np.array(
+            _observing_conditions[key] = np.array(
                 hdf_file['observing_conditions'][key]
             )
+        observing_conditions = ObservingConditions(_observing_conditions)
 
         # Select the metadata
         metadata: Dict[str, Union[str, float]] = dict()
@@ -136,7 +139,7 @@ def load_default_data(
     np.ndarray,
     np.ndarray,
     np.ndarray,
-    Dict[str, np.ndarray],
+    ObservingConditions,
     Dict[str, Union[str, float]],
 ]:
     """
