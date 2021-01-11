@@ -4,7 +4,7 @@
     "target_name":             "Beta_Pictoris",
     "filter_name":             "Lp",
     "date":                    "2013-02-01",
-    "stacking_factor":         32
+    "stacking_factor":         50
   },
   "observing_conditions": {
     "selected_keys":           "all"
@@ -26,7 +26,7 @@
     "metric_function":         "cosine_similarity"
   },
   "n_splits": {
-    "baseline":                1,
+    "default":                 1,
     "signal_masking":          1
   },
   "base_model": {
