@@ -71,14 +71,14 @@ def crop_psf_template(
     return psf_masked
 
 
-def get_psf_diameter(
+def get_psf_radius(
     psf_template: np.ndarray,
     pixscale: Optional[float] = None,
     lambda_over_d: Optional[float] = None,
 ) -> float:
     """
     Fit a simple, symmetric 2D Gauss function to the given PSF template
-    to estimate the diameter of the central "blob" in pixels.
+    to estimate the radius of the central "blob" in pixels.
 
     Args:
         psf_template: A 2D numpy array containing the raw, unsaturated
@@ -87,16 +87,17 @@ def get_psf_diameter(
         lambda_over_d:
 
     Returns:
-        The diameter of the PSF template in pixels.
+        The radius of the PSF template in pixels.
     """
 
     # Case 1: We have been provided a suitable PSF template and can determine
-    # the size by fitting the PSF with a Moffat function
-    if psf_template.shape[0] >= 33 and psf_template.shape[1] >= 33:
+    # the size by fitting the PSF with a 2D Gauss function
+    if psf_template.shape != (0, 0):
 
         # Crop PSF template: too large templates (which are mostly zeros) can
-        # cause problems when fitting them with a 2D Moffat function
-        psf_template = crop_center(psf_template, (33, 33))
+        # cause problems when fitting them with a 2D Gauss function
+        if psf_template.shape[0] >= 33 and psf_template.shape[1] >= 33:
+            psf_template = crop_center(psf_template, (33, 33))
 
         # Define the grid for the fit
         x = np.arange(psf_template.shape[0])
@@ -112,22 +113,25 @@ def get_psf_diameter(
         )
         model.fit(meshgrid=meshgrid, target=psf_template)
 
-        # Compute the PSF diameter simply as the FWHM of the fit result
-        psf_diameter = model.fwhm
+        # "Compute" the PSF radius simply as the FWHM of the fit result
+        # TODO: It's currently not quite clear what is a good estimate here.
+        #       "Traditionally", one would divide the FWHM by 2, but that seems
+        #       to underestimate the PSF size in practice?
+        psf_radius = model.fwhm
 
     # Case 2: We do not have PSF template, but the PIXSCALE and LAMBDA_OVER_D
     elif (pixscale is not None) and (lambda_over_d is not None):
 
-        # In this case, we can approximately compute the expected PSF size.
+        # In this case, we can approximately compute the expected PSF radius.
         # The 1.144 is a magic number to get closer to the empirical estimate
         # from data sets where a PSF template is available.
-        psf_diameter = lambda_over_d / pixscale * 1.144
+        psf_radius = lambda_over_d / pixscale * 1.144
 
     # Case 3: In all other scenarios, we raise an error
     else:
-        raise RuntimeError('Could not determine PSF diameter')
+        raise RuntimeError('Could not determine PSF radius!')
 
-    return psf_diameter
+    return psf_radius
 
 
 def get_artificial_psf(
