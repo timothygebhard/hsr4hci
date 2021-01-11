@@ -340,7 +340,7 @@ def get_exclusion_mask(
     position: Tuple[float, float],
     parang: np.ndarray,
     signal_time: Optional[int],
-    psf_diameter: float,
+    psf_radius: float,
     dilation_size: Optional[int] = None,
     use_field_rotation: bool = True,
 ) -> np.ndarray:
@@ -352,7 +352,7 @@ def get_exclusion_mask(
         position:
         parang:
         signal_time:
-        psf_diameter:
+        psf_radius:
         dilation_size:
         use_field_rotation:
 
@@ -385,7 +385,7 @@ def get_exclusion_mask(
             signal_time=signal_time,
             center=center,
             parang=parang,
-            psf_diameter=psf_diameter,
+            psf_radius=psf_radius,
         )
         signal_length = int(length_1 + length_2)
 
@@ -403,16 +403,19 @@ def get_exclusion_mask(
         exclusion_angle_2 = 0
 
     # Get the two parts of the exclusion mask (clockwise / counter-clockwise)
+    # Note: We need to use twice the PSF radius because we are just operating
+    #   under the assumption that `position` contains planet signal, that is,
+    #   the planet is not necessarily centered on `position`.
     part_1 = get_sausage_mask(
         mask_size=mask_size,
         position=position,
-        radius=2 * psf_diameter,
+        radius=2 * psf_radius,
         angle=exclusion_angle_1,
     )
     part_2 = get_sausage_mask(
         mask_size=mask_size,
         position=position,
-        radius=2 * psf_diameter,
+        radius=2 * psf_radius,
         angle=exclusion_angle_2,
     )
 
@@ -440,7 +443,7 @@ def get_selection_mask(
     radius_position: units.Quantity,
     radius_mirror_position: units.Quantity,
     subsample_predictors: bool,
-    psf_diameter: float,
+    psf_radius: float,
     dilation_size: int,
     use_field_rotation: bool = True,
 ) -> np.ndarray:
@@ -465,7 +468,7 @@ def get_selection_mask(
         radius_mirror_position: The radius (as an astropy.units.Quantity
             that can be converted to pixels) of the circular region
             around the mirrored `position`.
-        psf_diameter:  FIXME
+        psf_radius:  FIXME
         subsample_predictors: A boolean indicating whether or not to
             subsample the predictor mask, i.e. only select every other
             predictor. Assuming that neighboring pixels are strongly
@@ -500,7 +503,7 @@ def get_selection_mask(
         position=position,
         parang=parang,
         signal_time=signal_time,
-        psf_diameter=psf_diameter,
+        psf_radius=psf_radius,
         dilation_size=dilation_size,
         use_field_rotation=use_field_rotation,
     )
