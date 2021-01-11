@@ -54,7 +54,7 @@ def get_signal_length(
     signal_time: int,
     center: Tuple[float, float],
     parang: np.ndarray,
-    psf_diameter: float,
+    psf_radius: float,
 ) -> Tuple[int, int]:
     """
     Get a simple analytical estimate of the length (in units of frames)
@@ -73,7 +73,7 @@ def get_signal_length(
         signal_time:
         center:
         parang:
-        psf_diameter:
+        psf_radius:
 
     Returns:
 
@@ -100,7 +100,7 @@ def get_signal_length(
     # Convert "effective pixel width + PSF diameter" to an angle at this radius
     # using the cosine theorem. First, compute the length of the side that we
     # want to convert into an angle:
-    side_length = effective_pixel_width + psf_diameter
+    side_length = effective_pixel_width + 2 * psf_radius
 
     # Degenerate case: for too small separations, if the center is ever on the
     # pixel, the pixel will *always* contain planet signal.
@@ -133,7 +133,7 @@ def get_signal_masks_analytically(
     parang: np.ndarray,
     n_signal_times: int,
     frame_size: Tuple[int, int],
-    psf_diameter: float,
+    psf_radius: float,
     max_signal_length: float = 0.7,
 ) -> List[Tuple[int, np.ndarray, int]]:
     """
@@ -160,7 +160,7 @@ def get_signal_masks_analytically(
             positions of the planet signal for which to return a mask.
         frame_size: A tuple `(width, height)` specifying the spatial
             size of the stack.
-        psf_diameter: The diameter of the PSF template (in pixels).
+        psf_radius: The radius of the PSF template (in pixels).
         max_signal_length: A value in [0.0, 1.0] which describes the
             maximum value of `expected_signal_length / n_frames`, which
             will determine for which pixels we do not want to use the
@@ -197,7 +197,7 @@ def get_signal_masks_analytically(
             signal_time=signal_time,
             center=center,
             parang=parang,
-            psf_diameter=psf_diameter,
+            psf_radius=psf_radius,
         )
 
         # Check if the expected signal length is larger than the threshold.
@@ -224,7 +224,7 @@ def get_signal_mask(
     parang: np.ndarray,
     signal_time: int,
     frame_size: Tuple[int, int],
-    psf_cropped: np.ndarray,
+    psf_template: np.ndarray,
     threshold: float = 0.2,
 ) -> np.ndarray:
     """
@@ -243,7 +243,7 @@ def get_signal_mask(
             which the planet is assumed to be at the given `position`.
         frame_size: A tuple `(width, height)` specifying the size (in
             pixels) of the frames that we are working with.
-        psf_cropped: A 2D numpy array containing a cropped version of
+        psf_template: A 2D numpy array containing a (cropped( version of
             the unsaturated PSF template for the data set. In essence,
             this defines the (spatial) size of the planet signal on the
             sensor of the instrument.
@@ -270,7 +270,7 @@ def get_signal_mask(
         signal_time=signal_time,
         frame_size=frame_size,
         parang=parang,
-        psf_template=psf_cropped,
+        psf_template=psf_template,
     )
 
     # Threshold the expected signal to create a binary mask
@@ -284,7 +284,7 @@ def get_signal_masks(
     parang: np.ndarray,
     n_signal_times: int,
     frame_size: Tuple[int, int],
-    psf_cropped: np.ndarray,
+    psf_template: np.ndarray,
     max_signal_length: float = 0.7,
     threshold: float = 0.2,
 ) -> List[Tuple[np.ndarray, int]]:
@@ -311,7 +311,7 @@ def get_signal_masks(
             positions of the planet signal for which to return a mask.
         frame_size: A tuple `(width, height)` specifying the spatial
             size of the stack.
-        psf_cropped: A 2D numpy array containing a (cropped) version of
+        psf_template: A 2D numpy array containing a (cropped) version of
             the PSF template. Typically, the PSF is cropped to a radius
             of 1 lambda over D (to only contain the central peak) or
             3 lambda over D (to also capture the secondary maxima).
@@ -351,7 +351,7 @@ def get_signal_masks(
             parang=parang,
             signal_time=signal_time,
             frame_size=frame_size,
-            psf_cropped=psf_cropped,
+            psf_template=psf_template,
             threshold=threshold,
         )
 
