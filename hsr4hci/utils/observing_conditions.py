@@ -16,7 +16,171 @@ import pandas as pd
 
 
 # -----------------------------------------------------------------------------
-# IMPORTS
+# CLASS DEFINITIONS
+# -----------------------------------------------------------------------------
+
+class ObservingConditions:
+    """
+    This class provides a wrapper around different representations of
+    the observing conditions (dictionary, numpy array and pandas data
+    frame), and provides the option to select a subset of them.
+
+    Args:
+        observing_conditions: The observing conditions in the form of
+             a dictionary where each key maps onto a 1D numpy array
+             that contains, for example, the wind speed.
+    """
+
+    def __init__(self, observing_conditions: Dict[str, np.ndarray]):
+        self.observing_conditions = observing_conditions
+
+    def _verify_selected_keys(
+        self, selected_keys: Union[List[str], str, None]
+    ) -> None:
+        """
+        Make sure that the `selected_keys` constitute a valid subset
+        of the available observing conditions.
+        """
+
+        # Check if `selected_keys` contains a valid subset selection
+        if (not selected_keys) or (selected_keys is None):
+            return
+        if selected_keys == 'all':
+            return
+        if isinstance(selected_keys, list) and all(
+            _ in self.available_keys for _ in selected_keys
+        ):
+            return
+
+        # Otherwise, raise an error
+        raise ValueError(
+            f'{selected_keys} is not a valid value for selected_keys!'
+        )
+
+    @property
+    def available_keys(self) -> List[str]:
+        """
+        Return a sorted list of the available observing conditions.
+ 
+        Returns:
+            A a sorted list of the available observing conditions.
+        """
+        return sorted(list(self.observing_conditions.keys()))
+
+    @property
+    def n_frames(self) -> int:
+        """
+        Get the number of frames from the observing conditions.
+
+        Returns:
+            An integer containing the number of frames.
+        """
+        return len(next(iter(self.observing_conditions.values())))
+
+    def as_dict(
+        self,
+        selected_keys: Union[List[str], str, None] = 'all',
+    ) -> Dict[str, np.ndarray]:
+        """
+        Return the subset of observing conditions selected by
+        `selected_keys` as a dictionary.
+
+        Args:
+            selected_keys: A valid specification of a subset of
+                observing conditions. Either None (to not select any
+                observing) conditions, or a list of keys, or "all" (to
+                select all available observing conditions).
+
+        Returns:
+            A dictionary containing the selected observing conditions.
+        """
+
+        # Make sure are selecting a valid subset
+        self._verify_selected_keys(selected_keys)
+
+        # If we do not select any keys, return an empty dictionary
+        if (not selected_keys) or (selected_keys is None):
+            return {}
+
+        # Resolve 'all' into a list of all available observing conditions
+        if selected_keys == 'all':
+            selected_keys = sorted(list(self.observing_conditions.keys()))
+
+        # Otherwise, return the selected subset of self.observing_conditions
+        return {
+            k: v
+            for k, v in self.observing_conditions.items()
+            if k in selected_keys
+        }
+
+    def as_array(
+        self,
+        selected_keys: Union[List[str], str, None] = 'all',
+    ) -> np.ndarray:
+        """
+        Return the subset of observing conditions selected by
+        `selected_keys` as a numpy array.
+
+        Args:
+            selected_keys: A valid specification of a subset of
+                observing conditions. Either None (to not select any
+                observing) conditions, or a list of keys, or "all" (to
+                select all available observing conditions).
+
+        Returns:
+            A 2D numpy array of shape `(n_frames, n_obscon)` containing
+            the selected observing conditions.
+        """
+
+        # Make sure are selecting a valid subset
+        self._verify_selected_keys(selected_keys)
+
+        # Get the selected observing conditions as a dictionary
+        observing_conditions = self.as_dict(selected_keys)
+
+        # If no keys were selected (i.e., selected_keys was either None or an
+        # empty list), we return an empty 2D array of shape `(n_frames, 0)`.
+        # In this form, it  can still be concatenated to the predictors of an
+        # HSR model, so we do not need to take special care of it later.
+        if not observing_conditions:
+            return np.empty((self.n_frames, 0))
+
+        # Otherwise, we can convert the dictionary to a 2D numpy array
+        return np.hstack(
+            [_.reshape(-1, 1) for _ in observing_conditions.values()]
+        )
+
+    def as_dataframe(
+        self,
+        selected_keys: Union[List[str], str, None] = 'all',
+    ) -> pd.DataFrame:
+        """
+        Return the subset of observing conditions selected by
+        `selected_keys` as a pandas data frame.
+
+        Args:
+            selected_keys: A valid specification of a subset of
+                observing conditions. Either None (to not select any
+                observing) conditions, or a list of keys, or "all" (to
+                select all available observing conditions).
+
+        Returns:
+            A pandas data frame containing the selected observing
+            conditions.
+        """
+
+        # Make sure are selecting a valid subset
+        self._verify_selected_keys(selected_keys)
+
+        # Get the selected observing conditions as a dictionary
+        observing_conditions = self.as_dict(selected_keys)
+
+        # Convert the observing conditions to a data frame and return them
+        return pd.DataFrame(observing_conditions)
+
+
+# -----------------------------------------------------------------------------
+# FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
 def get_key_map(
@@ -45,43 +209,54 @@ def get_key_map(
     key_map = dict()
 
     # Add keys that should always be available (regardless of the date)
-    key_map['air_mass'] = \
-        dict(start_key='HIERARCH ESO TEL AIRM START',
-             end_key='HIERARCH ESO TEL AIRM END')
-    key_map['air_pressure'] = \
-        dict(start_key='HIERARCH ESO TEL AMBI PRES START',
-             end_key='HIERARCH ESO TEL AMBI PRES END')
-    key_map['average_coherence_time'] = \
-        dict(start_key='HIERARCH ESO TEL AMBI TAU0',
-             end_key='HIERARCH ESO TEL AMBI TAU0')
-    key_map['m1_temperature'] = \
-        dict(start_key='HIERARCH ESO TEL TH M1 TEMP',
-             end_key='HIERARCH ESO TEL TH M1 TEMP')
-    key_map['observatory_temperature'] = \
-        dict(start_key='HIERARCH ESO TEL AMBI TEMP',
-             end_key='HIERARCH ESO TEL AMBI TEMP')
-    key_map['relative_humidity'] = \
-        dict(start_key='HIERARCH ESO TEL AMBI RHUM',
-             end_key='HIERARCH ESO TEL AMBI RHUM')
-    key_map['seeing'] = \
-        dict(start_key='HIERARCH ESO TEL AMBI FWHM START',
-             end_key='HIERARCH ESO TEL AMBI FWHM END')
-    key_map['wind_direction'] = \
-        dict(start_key='HIERARCH ESO TEL AMBI WINDDIR',
-             end_key='HIERARCH ESO TEL AMBI WINDDIR')
-    key_map['wind_speed'] = \
-        dict(start_key='HIERARCH ESO TEL AMBI WINDSP',
-             end_key='HIERARCH ESO TEL AMBI WINDSP')
+    key_map['air_mass'] = dict(
+        start_key='HIERARCH ESO TEL AIRM START',
+        end_key='HIERARCH ESO TEL AIRM END',
+    )
+    key_map['air_pressure'] = dict(
+        start_key='HIERARCH ESO TEL AMBI PRES START',
+        end_key='HIERARCH ESO TEL AMBI PRES END',
+    )
+    key_map['average_coherence_time'] = dict(
+        start_key='HIERARCH ESO TEL AMBI TAU0',
+        end_key='HIERARCH ESO TEL AMBI TAU0',
+    )
+    key_map['m1_temperature'] = dict(
+        start_key='HIERARCH ESO TEL TH M1 TEMP',
+        end_key='HIERARCH ESO TEL TH M1 TEMP',
+    )
+    key_map['observatory_temperature'] = dict(
+        start_key='HIERARCH ESO TEL AMBI TEMP',
+        end_key='HIERARCH ESO TEL AMBI TEMP',
+    )
+    key_map['relative_humidity'] = dict(
+        start_key='HIERARCH ESO TEL AMBI RHUM',
+        end_key='HIERARCH ESO TEL AMBI RHUM',
+    )
+    key_map['seeing'] = dict(
+        start_key='HIERARCH ESO TEL AMBI FWHM START',
+        end_key='HIERARCH ESO TEL AMBI FWHM END',
+    )
+    key_map['wind_direction'] = dict(
+        start_key='HIERARCH ESO TEL AMBI WINDDIR',
+        end_key='HIERARCH ESO TEL AMBI WINDDIR',
+    )
+    key_map['wind_speed'] = dict(
+        start_key='HIERARCH ESO TEL AMBI WINDSP',
+        end_key='HIERARCH ESO TEL AMBI WINDSP',
+    )
 
     # For data sets taken after 12:00 UTC on April 4, 2016, additional
     # parameters about the observing conditions are available
     if obs_date > datetime(2016, 4, 4, 12, 0, 0, 0, timezone.utc):
-        key_map['integrated_water_vapor'] = \
-            dict(start_key='HIERARCH ESO TEL AMBI IWV START',
-                 end_key='HIERARCH ESO TEL AMBI IWV END')
-        key_map['ir_sky_temperature'] = \
-            dict(start_key='HIERARCH ESO TEL AMBI IRSKY TEMP',
-                 end_key='HIERARCH ESO TEL AMBI IRSKY TEMP')
+        key_map['integrated_water_vapor'] = dict(
+            start_key='HIERARCH ESO TEL AMBI IWV START',
+            end_key='HIERARCH ESO TEL AMBI IWV END',
+        )
+        key_map['ir_sky_temperature'] = dict(
+            start_key='HIERARCH ESO TEL AMBI IRSKY TEMP',
+            end_key='HIERARCH ESO TEL AMBI IRSKY TEMP',
+        )
 
     # Make sure the dict is sorted. This only works for Python 3.7 and up!
     key_map = {k: key_map[k] for k in sorted(key_map)}
@@ -177,7 +352,7 @@ def get_description_and_unit(
             short='Wind speed',
             long='Observatory ambient wind speed',
             unit='m/s',
-        )
+        ),
     )
 
     # Make sure that `parameter` is always a list, so that we can loop over it
@@ -254,10 +429,12 @@ def load_observing_conditions(
 
     # Return sine and cosine of wind direction (instead of degrees)
     if 'wind_direction' in parameters and transform_wind_direction:
-        observing_conditions['cos_wind_direction'] = \
-            np.cos(np.deg2rad(observing_conditions['wind_direction']))
-        observing_conditions['sin_wind_direction'] = \
-            np.sin(np.deg2rad(observing_conditions['wind_direction']))
+        observing_conditions['cos_wind_direction'] = np.cos(
+            np.deg2rad(observing_conditions['wind_direction'])
+        )
+        observing_conditions['sin_wind_direction'] = np.sin(
+            np.deg2rad(observing_conditions['wind_direction'])
+        )
         del observing_conditions['wind_direction']
 
     # Convert average coherence time from seconds to milliseconds
@@ -268,57 +445,3 @@ def load_observing_conditions(
     if as_dataframe:
         return pd.DataFrame(observing_conditions)
     return observing_conditions
-
-
-def dict2array(
-    observing_conditions: Dict[str, np.ndarray],
-    n_frames: int,
-    selected_keys: Optional[Union[List[str], str]] = None,
-) -> np.ndarray:
-    """
-    Take a dictionary of observing conditions and return the selected
-    subset of it as a 2D numpy array, where each column is one feature
-    of the observing conditions (in the order of `selected_keys` if it
-    is a list of strings; otherwise alphabetically).
-
-    Args:
-        observing_conditions: A dictionary where each key (e.g,
-            "air_mass") maps to a numpy array containing the
-            values for this respective feature.
-        n_frames: The total number of frames in the stack.
-        selected_keys: The keys of the observing conditions to be
-            selected. If None or an empty list is given, an empty
-            array with shape (n_frames, 0) is returned. If "all"
-            is given, all available features are returned.
-
-    Returns:
-        A 2D numpy array of shape (n_frames, n_features), where each
-        column is one feature of the observing conditions.
-    """
-
-    # If no keys were selected (either None, or an empty list), we simply
-    # return an empty 2D array of shape (n_frames, 0). This can still be
-    # concatenated to the predictors of an HSR model, so we do not need to
-    # take special care of it later.
-    if (not selected_keys) or (selected_keys is None):
-        return np.empty((n_frames, 0))
-
-    # Otherwise, check the given selected_keys:
-    # First, resolve selected_keys == "all" to use all available features
-    if isinstance(selected_keys, str) and selected_keys == 'all':
-        selected_keys = sorted(list(observing_conditions.keys()))
-
-    # Now, make sure that the selected keys only contain existing keys
-    selected_keys = list(
-        filter(lambda _: _ in observing_conditions.keys(), selected_keys)
-    )
-
-    # Finally, construct a 2D numpy where each column corresponds to one
-    # selected key and double-check that it has the expected shape
-    result = np.hstack(
-        [observing_conditions[_].reshape(-1, 1) for _ in selected_keys]
-    )
-    assert (result.ndim == 2) and (result.shape[0] == n_frames), \
-        'Result has not the expected shape, aborting!'
-
-    return result
