@@ -25,7 +25,8 @@
   "metadata": {
     "CENTRAL_LAMBDA":       "3800 nm",
     "DATE":                 "2018-06-07",
-    "DIT":                  0.1082,
+    "DIT_PSF_TEMPLATE":     0.004256,
+    "DIT_STACK":            0.1082,
     "ESO_PROGRAM_ID":       "1101.C-0092(A)",
     "FILTER":               "L'",
     "INSTRUMENT":           "NACO",
