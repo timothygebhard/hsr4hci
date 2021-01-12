@@ -17,11 +17,11 @@ from astropy.convolution import AiryDisk2DKernel
 import numpy as np
 
 from hsr4hci.utils.config import load_dataset_config
+from hsr4hci.utils.coordinates import get_center, cartesian2polar
 from hsr4hci.utils.data import load_default_data
 from hsr4hci.utils.derotating import derotate_combine
 from hsr4hci.utils.fits import save_fits
-from hsr4hci.utils.forward_modeling import get_signal_stack
-from hsr4hci.utils.general import rotate_position
+from hsr4hci.utils.forward_modeling import add_fake_planet
 from hsr4hci.utils.psf import crop_psf_template
 
 
@@ -71,7 +71,7 @@ if __name__ == '__main__':
         pixscale = config['metadata']['PIXSCALE']
         lambda_over_d = config['metadata']['LAMBDA_OVER_D']
         x_size, y_size = config['frame_size']
-        center = (x_size / 2, y_size / 2)
+        center = get_center(frame_size=(x_size, y_size))
 
         # Load stack, parallactic angles and PSF template
         print('-- Loading data...', end=' ', flush=True)
@@ -119,21 +119,23 @@ if __name__ == '__main__':
         print('-- Computing forward models...', end=' ', flush=True)
         for key, values in config['evaluation']['planets'].items():
 
-            # Get final position of the planet
-            final_position = values['position'][::-1]
-
-            starting_position = rotate_position(
-                position=final_position,
-                center=center,
-                angle=parang[0],
+            # Get polar version of (final) planet position
+            polar_position = cartesian2polar(
+                position=values['position'],
+                frame_size=(x_size, y_size),
             )
 
             # Compute a forward model for this planet
-            planet_model, planet_positions = get_signal_stack(
-                position=starting_position,
-                frame_size=(x_size, y_size),
+            planet_model, planet_positions = add_fake_planet(
+                stack=np.zeros((len(parang), x_size, y_size)),
                 parang=parang,
-                psf_cropped=psf_cropped,
+                psf_template=psf_cropped,
+                polar_position=polar_position,
+                magnitude=0,
+                extra_scaling=1,
+                dit_stack=1,
+                dit_psf_template=1,
+                return_planet_positions=True,
             )
 
             # Add this to the existing forward model
