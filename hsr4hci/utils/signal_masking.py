@@ -7,7 +7,8 @@ Utility functions for signal masking and related tasks.
 # -----------------------------------------------------------------------------
 
 from cmath import polar
-from typing import List, Tuple
+from itertools import product
+from typing import Dict, List, Tuple, Union
 
 import numpy as np
 
@@ -17,6 +18,47 @@ from hsr4hci.utils.forward_modeling import get_time_series_for_position
 # -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
+
+def assemble_signal_masking_residuals(
+    hypotheses: np.ndarray,
+    results: Dict[str, Union[np.ndarray, Dict[str, np.ndarray]]],
+) -> np.ndarray:
+    """
+    Assemble the signal masking results based on the `hypotheses`, that
+    is, for each spatial pixel use the residual that was obtained when
+    assuming the signal time that equals the hypothesis for this pixel.
+
+    Args:
+        hypotheses: A 2D numpy array of shape `(width, height)`. Each
+            position contains an integers which represents the signal
+            time which appears to be the best hypothesis for this pixel
+            (i.e., "if there ever is a planet in this pixel, it should
+            be at this time").
+        results: The dictionary which contains the full results from
+            training both the "default" and the signal masking based
+            models.
+
+    Returns:
+        A 3D numpy array (whose shape matches the stack) containing the
+        "best" signal masking-based residuals given the `hypotheses`.
+    """
+
+    # Get stack shape from default residuals
+    n_frames, x_size, y_size = results['default']['residuals'].shape
+
+    # Initialize the signal masking residuals as all-NaN
+    signal_masking_residuals = np.full((n_frames, x_size, y_size), np.nan)
+
+    # Loop over all spatial positions and pick the signal masking-based
+    # residual based on the the respective hypothesis for the pixel
+    for x, y in product(range(x_size), range(y_size)):
+        if not np.isnan(signal_time := hypotheses[x, y]):
+            signal_masking_residuals[:, x, y] = np.array(
+                results[str(int(signal_time))]['residuals'][:, x, y]
+            )
+
+    return signal_masking_residuals
+
 
 def get_effective_pixel_width(
     position: Tuple[float, float],
