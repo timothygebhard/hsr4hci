@@ -74,7 +74,7 @@ def get_fom(
     result: Dict[str, Any] = compute_optimized_snr(
         frame=frame,
         position=position,
-        aperture_radius=aperture_radius,
+        aperture_radius=Quantity(aperture_radius, 'pixel'),
         ignore_neighbors=1,  # TODO: Can we really fix this to 1?
         target=target,
         method=method,
