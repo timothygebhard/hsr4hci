@@ -135,6 +135,10 @@ def find_hypothesis(
             :, position[0], position[1]
         ]
 
+        # If the residual is NaN, we can't compute the metric function
+        if np.isnan(residual).any():
+            continue
+
         # Get the value of the metric function at the target position:
         if metric_function == 'bump_height':
 
