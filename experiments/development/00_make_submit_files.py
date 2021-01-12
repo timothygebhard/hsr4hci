@@ -193,7 +193,7 @@ if __name__ == '__main__':
     submit_file.add_job(
         name='train',
         job_script=(experiment_dir / f'{name}.py').as_posix(),
-        arguments={'split': '$(Process)', 'n-splits': str(n_splits)},
+        arguments={'roi-split': '$(Process)', 'n-roi-splits': str(n_splits)},
         bid=bid,
         queue=int(n_splits),
     )
