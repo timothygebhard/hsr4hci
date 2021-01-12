@@ -10,18 +10,56 @@ position Y at time T").
 from typing import Dict, Tuple
 
 from sklearn.metrics.pairwise import cosine_similarity
+from tqdm.auto import tqdm
 
 import numpy as np
 
 from hsr4hci.utils.consistency_checks import get_bump_height
 from hsr4hci.utils.forward_modeling import get_time_series_for_position
 from hsr4hci.utils.general import fast_corrcoef
+from hsr4hci.utils.masking import get_positions_from_mask
 from hsr4hci.utils.signal_masking import get_signal_masks
 
 
 # -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
+
+def get_all_hypotheses(
+    roi_mask: np.ndarray,
+    results: Dict[str, np.ndarray],
+    parang: np.ndarray,
+    n_signal_times: int,
+    frame_size: Tuple[int, int],
+    psf_cropped: np.ndarray,
+    max_signal_length: float,
+    metric_function: str = 'cosine_similarity',
+) -> np.ndarray:
+    """
+    This is a convenience function which wraps the loop over the ROI
+    to call `find_hypothesis()` for every spatial pixel. See there for
+    a full documentation of all parameters.
+    """
+
+    # Initialize hypotheses array
+    hypotheses = np.full(frame_size, np.nan)
+
+    # Loop over all spatial positions and find the respective hypothesis
+    for position in tqdm(get_positions_from_mask(roi_mask), ncols=80):
+
+        hypotheses[position[0], position[1]] = find_hypothesis(
+            results=results,
+            position=position,
+            parang=parang,
+            n_signal_times=n_signal_times,
+            frame_size=frame_size,
+            psf_cropped=psf_cropped,
+            max_signal_length=max_signal_length,
+            metric_function=metric_function,
+        )
+
+    return hypotheses
+
 
 def find_hypothesis(
     results: Dict[str, np.ndarray],
