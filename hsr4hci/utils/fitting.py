@@ -204,8 +204,8 @@ class CircularGauss2D(Fittable2DModel):
     A circular (i.e., symmetric) 2D Gauss function.
 
     Args:
-        mu_x: The x-position of the center of the Moffat function.
-        mu_y: The y-position of the center of the Moffat function.
+        mu_x: The x-position of the center of the Gauss function.
+        mu_y: The y-position of the center of the Gauss function.
         sigma: The standard deviation of the Gauss function.
         amplitude: The (peak) amplitude of the Gauss function.
         offset: Global offset (e.g., the background flux level).
@@ -269,8 +269,8 @@ class EllipticalGauss2D(Fittable2DModel):
     An elliptical 2D Gauss function.
 
     Args:
-        mu_x: The x-position of the center of the Moffat function.
-        mu_y: The y-position of the center of the Moffat function.
+        mu_x: The x-position of the center of the Gauss function.
+        mu_y: The y-position of the center of the Gauss function.
         sigma_x: The standard deviation in x-direction.
         sigma_y: The standard deviation in y-direction.
         theta: Rotation angle (in radian), measured counter-clockwise.
