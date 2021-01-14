@@ -246,7 +246,7 @@ def get_time_series_for_position(
     # `position` and `signal_time`
     starting_position = rotate_position(
         position=position,
-        angle=(parang[signal_time] - parang[-1]),
+        angle=(-parang[signal_time] + parang[0]),
         center=center
     )
 
@@ -270,7 +270,7 @@ def get_time_series_for_position(
     # the planet positions because we are basically accessing a numpy array
     # here, and also reverse the temporal order because of the sign of the
     # parallactic angles.
-    time_series = interpolator(planet_positions[::-1, ::-1])
+    time_series = interpolator(planet_positions[::-1, ::-1])[::-1]
 
     # Make sure that the time series is normalized to a maximum of 1
     time_series /= np.nanmax(time_series)
