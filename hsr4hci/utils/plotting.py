@@ -15,6 +15,7 @@ import colorsys
 from astropy.units import Quantity
 from matplotlib.axes import Axes
 from matplotlib.cm import get_cmap as original_get_cmap
+from matplotlib.colorbar import Colorbar
 from matplotlib.colors import Colormap, LinearSegmentedColormap, ListedColormap
 from matplotlib.figure import Figure
 from matplotlib.image import AxesImage
@@ -97,7 +98,7 @@ def get_transparent_cmap(color: MatplotlibColor = 'red') -> ListedColormap:
 
 def add_colorbar_to_ax(
     img: AxesImage, fig: Figure, ax: Axes, where: str = 'right'
-) -> None:
+) -> Colorbar:
     """
     Add a "nice" colorbar to an imshow plot.
 
@@ -108,6 +109,9 @@ def add_colorbar_to_ax(
         fig: The figure that the plot is part of (e.g., `plt.gcf()`).
         ax: The ax which contains the plot (e.g., `plt.gca()`).
         where: Where to place the colorbar (left, right, top or bottom).
+
+    Returns:
+        The colorbar that was added to the axis.
     """
 
     if where in ('left', 'right'):
@@ -122,7 +126,9 @@ def add_colorbar_to_ax(
 
     divider = make_axes_locatable(ax)
     cax = divider.append_axes(where, size='5%', pad=0.05)
-    fig.colorbar(img, cax=cax, orientation=orientation)
+    cbar = fig.colorbar(img, cax=cax, orientation=orientation)
+
+    return cbar
 
 
 def adjust_luminosity(
