@@ -27,6 +27,7 @@ def get_signal_estimates_and_masks(
     signal_masking_residuals: np.ndarray,
     roi_mask: np.ndarray,
     filter_size: int = 0,
+    n_thresholds: int = 50,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     This function wraps the loop over different threshold values, the
@@ -51,6 +52,7 @@ def get_signal_estimates_and_masks(
         filter_size: Size parameter for the morphological opening filter
             that can be used to remove individual pixels in the masks
             that are obtained by thresholding the match fraction.
+        n_thresholds: Number of threshold values for which to run.
 
     Returns:
         A tuple of numpy arrays, consisting of:
@@ -58,7 +60,7 @@ def get_signal_estimates_and_masks(
     """
 
     # Define threshold values
-    thresholds = np.linspace(0, 1, 51)
+    thresholds = np.linspace(0, 1, n_thresholds + 1)
     thresholds = np.insert(thresholds, -1, [-1, 0, 1])
     thresholds = np.array(sorted(np.unique(thresholds)))
 
