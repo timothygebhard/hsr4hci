@@ -191,9 +191,9 @@ def get_time_series_for_position(
     using `get_signal_stack()` and selecting the position of interest.
 
     The idea behind this function is that we can get the time series of
-    interest (or a very good approximation of it) by creating a single
-    frame of all zeros, into which we place the PSF template at the
-    target `position`, and then sample this array along the implied
+    interest (or a reasonably good approximation of it) by creating a
+    single frame of all zeros, into which we place the PSF template at
+    the target `position`, and then sample this array along the implied
     path (determined by the fact that the signal is supposed to be at
     `position` at the `signal_time`) of the planet. This avoids the
     computationally expensive generation of the full stack (of which
@@ -214,7 +214,7 @@ def get_time_series_for_position(
         psf_template: A numpy array containing the cropped and masked
             PSF template, as it is returned by `crop_psf_template()`.
         interpolation: interpolation parameter that is passed to the
-            `shift_image()? function. Default is "bilinear".
+            `shift_image()` function. Default is "bilinear".
 
     Returns:
         The time series for `position` computed under the hypothesis for
@@ -232,9 +232,6 @@ def get_time_series_for_position(
     # pad the PSF template to the same shape as the `stack`.
     psf_template = crop_or_pad(psf_template, frame_size)
 
-    # Rotate the PSF template by 180 degrees
-    psf_template = np.rot90(psf_template, k=2)
-
     # Create array where we place the PSF template at the target `position`
     array = shift_image(
         image=psf_template,
@@ -246,7 +243,7 @@ def get_time_series_for_position(
     # `position` and `signal_time`
     starting_position = rotate_position(
         position=position,
-        angle=(-parang[signal_time] + parang[0]),
+        angle=-parang[signal_time],
         center=center
     )
 
@@ -254,7 +251,7 @@ def get_time_series_for_position(
     planet_positions = np.vstack(
         rotate_position(
             position=starting_position,
-            angle=(parang - parang[0]),
+            angle=parang,
             center=center,
         )
     ).T
@@ -267,10 +264,8 @@ def get_time_series_for_position(
 
     # The target time series is given by (interpolated) array values at the
     # positions along the planet path. Note that we need to flip the order of
-    # the planet positions because we are basically accessing a numpy array
-    # here, and also reverse the temporal order because of the sign of the
-    # parallactic angles.
-    time_series = interpolator(planet_positions[::-1, ::-1])[::-1]
+    # the planet positions because we are basically accessing a numpy array.
+    time_series = interpolator(planet_positions[:, ::-1])
 
     # Make sure that the time series is normalized to a maximum of 1
     time_series /= np.nanmax(time_series)
