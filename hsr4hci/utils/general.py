@@ -16,6 +16,7 @@ from typing import Any, Callable, List, Sequence, Tuple, Union
 import operator
 
 from astropy.nddata.utils import add_array
+from scipy.interpolate import RegularGridInterpolator
 from scipy.ndimage import fourier_shift, shift
 
 import numpy as np
@@ -472,6 +473,47 @@ def crop_or_pad(array: np.ndarray, size: Tuple[int, ...]) -> np.ndarray:
 
     # If some dimensions are larger and some are smaller, we raise an error
     raise RuntimeError('Mixing of cropping and padding is not supported!')
+
+
+def crop_around_position_with_interpolation(
+    array: np.ndarray,
+    position: Tuple[float, ...],
+    size: Tuple[int, ...]
+) -> np.ndarray:
+    """
+    Crop an n-dimensional `array` to the given `size` around a specified
+    `position`, which can also be an n-tuple of floats. In the latter
+    case, bilinear / bicubic / ... interpolation is used to "resample"
+    the original `array`.
+
+    Args:
+        array: An n-dimensional numpy array.
+        position: An n-tuple specifying a position inside the array.
+        size: An n-tuple of integers, specifying the target size of the
+            crop. Must be smaller or equal to `array.shape` in every
+            dimension.
+
+    Returns:
+        The original input `array`, cropped to the target `size` around
+        the specified `position` (using interpolation).
+    """
+
+    # Create interpolator for data
+    interpolator = RegularGridInterpolator(
+        points=tuple([np.arange(_) for _ in array.shape]), values=array
+    )
+
+    # Create a meshgrid of the positions at which we evaluate the interpolator
+    # and flatten it into array of n-tuples (necessary for interpolator)
+    meshgrid = np.meshgrid(
+        *[np.linspace(-_ / 2, _ / 2, _) + __ for _, __ in zip(size, position)]
+    )
+    positions = np.array([np.array(_).flatten() for _ in meshgrid])
+
+    # Evaluate interpolator and reshape to target size
+    result = interpolator(positions.T).reshape(*size)
+
+    return result
 
 
 def shift_image(
