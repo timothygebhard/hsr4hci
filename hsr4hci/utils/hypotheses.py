@@ -1,6 +1,6 @@
 """
-Utilities for finding hypotheses (in the sense: "there is a planet at
-position Y at time T").
+Utilities for finding hypotheses of the form (Y, T), that is, pixel Y
+seems to contain a planet signal at time T.
 """
 
 # -----------------------------------------------------------------------------
@@ -31,7 +31,7 @@ def get_all_hypotheses(
     parang: np.ndarray,
     n_signal_times: int,
     frame_size: Tuple[int, int],
-    psf_cropped: np.ndarray,
+    psf_template: np.ndarray,
     max_signal_length: float,
     metric_function: str = 'cosine_similarity',
 ) -> np.ndarray:
@@ -53,7 +53,7 @@ def get_all_hypotheses(
             parang=parang,
             n_signal_times=n_signal_times,
             frame_size=frame_size,
-            psf_cropped=psf_cropped,
+            psf_template=psf_template,
             max_signal_length=max_signal_length,
             metric_function=metric_function,
         )
@@ -67,7 +67,7 @@ def find_hypothesis(
     parang: np.ndarray,
     n_signal_times: int,
     frame_size: Tuple[int, int],
-    psf_cropped: np.ndarray,
+    psf_template: np.ndarray,
     max_signal_length: float,
     metric_function: str = 'cosine_similarity',
 ) -> float:
@@ -96,8 +96,8 @@ def find_hypothesis(
             was used during training.
         frame_size: A tuple `(width, height)` specifying the size (in
             pixels) of the frames that we are working with.
-        psf_cropped: A 2D numpy array containing a cropped version of
-            the unsaturated PSF template for the data set.
+        psf_template: A 2D numpy array containing the unsaturated PSF
+            template for the data set.
         max_signal_length: A value in [0.0, 1.0] which describes the
             maximum value of `expected_signal_length / n_frames`, which
             will determine for which pixels we do not want to use the
@@ -126,7 +126,7 @@ def find_hypothesis(
         parang=parang,
         n_signal_times=n_signal_times,
         frame_size=frame_size,
-        psf_template=psf_cropped,
+        psf_template=psf_template,
         max_signal_length=max_signal_length,
     ):
 
@@ -159,7 +159,7 @@ def find_hypothesis(
                 signal_time=signal_time,
                 frame_size=frame_size,
                 parang=parang,
-                psf_template=psf_cropped,
+                psf_template=psf_template,
             )
 
             # Compute the desired target metric
