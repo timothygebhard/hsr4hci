@@ -6,9 +6,8 @@ Utility functions for consistency checks and related tasks.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple
 
-from scipy.interpolate import interp1d, RegularGridInterpolator
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -16,10 +15,10 @@ from tqdm.auto import tqdm
 
 import numpy as np
 
-from hsr4hci.utils.forward_modeling import get_time_series_for_position
+from hsr4hci.utils.coordinates import get_center, cartesian2polar
+from hsr4hci.utils.forward_modeling import add_fake_planet
 from hsr4hci.utils.general import fast_corrcoef, find_closest, rotate_position
 from hsr4hci.utils.masking import get_positions_from_mask
-from hsr4hci.utils.signal_masking import get_signal_mask
 
 
 # -----------------------------------------------------------------------------
@@ -91,90 +90,36 @@ def get_bump_height(
     return 0
 
 
-def get_consistency_check_data(
-    position: Tuple[float, float],
-    signal_time: float,
-    parang: np.ndarray,
-    frame_size: Tuple[int, int],
-    n_test_positions: int = 5,
-) -> List[Tuple[Tuple[float, float], float]]:
-    """
-    Given a (spatial) `position` and a (temporal) `signal_time`, infer
-    the planet path that is implied by these values and return a list of
-    test positions that are on that arc, together with the respective
-    expected temporal signal position at these positions.
-
-    Args:
-        position: A tuple `(x, y)` indicating the position at which we
-            believe the planet is at the given `signal_time`.
-        signal_time: The time (in the form of a temporal index for the
-            `parang` array) at which we think there is a planet signal
-            at the given `position`.
-        parang: A numpy array of shape `(n_frames, )` that contains the
-            parallactic angles for each frame.
-        frame_size: A tuple of integers, `(width, height)`, indicating
-            the (spatial) size of the frames that we are working with.
-        n_test_positions: An integer specifying the desired number of
-            test positions along the planet trajectory that is implied
-            by the tuple `(position, signal_time)`.
-
-    Returns:
-        A list of `n_test_positions` 2-tuples, where each tuple contains
-        one spatio-temporal test position: `(test_position, test_time)`.
-    """
-
-    # Define useful shortcuts
-    n_frames = len(parang)
-    center = (frame_size[0] / 2, frame_size[1] / 2)
-
-    # Create a (linear) interpolator for parang such that we can evaluate
-    # the parallactic angle at arbitrary times
-    interpolate_parang = interp1d(np.arange(n_frames), parang)
-
-    # Assuming that the peak of the signal is at pixel `position` at the time
-    # t = `signal_time`, use our knowledge about the movement of the planet to
-    # compute the (spatial) position of the planet at point t = 0.
-    starting_position = rotate_position(
-        position=position,
-        center=center,
-        angle=-float(interpolate_parang(signal_time) - parang[0]),
-    )
-
-    # Create `n_test_times` (uniformly distributed in time) points at which we
-    # check if the find a planet signal consistent with the above hypothesis
-    test_times = np.linspace(0, n_frames - 1, n_test_positions)
-
-    # Compute the positions that correspond to these times
-    test_positions = np.array(
-        rotate_position(
-            position=starting_position,
-            center=center,
-            angle=interpolate_parang(test_times) - parang[0],
-        )
-    ).transpose()
-
-    # Combine the test_positions and test_times into a list of tuples
-    return [((p[0], p[1]), t) for p, t in zip(test_positions, test_times)]
-
-
-def get_matches(
-    results: Dict[str, np.ndarray],
+def get_match_fraction(
     hypotheses: np.ndarray,
+    results: Dict[str, np.ndarray],
     parang: np.ndarray,
-    psf_cropped: np.ndarray,
-    n_test_positions: int,
+    psf_template: np.ndarray,
     metric_function: str = 'cosine_similarity',
     verbose: bool = True,
-) -> np.ndarray:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
-    Construct the match_stack, that is, a 3D numpy array of shape:
-        `(n_test_positions, width, height)`
-    where each entry describes how well the corresponding test position
-    matched the original hypothesis for the respective spatial position.
-    All entries are from the interval [0, 1]; the simplest metric based
-    on the bump height will only give values from {0, 1}.
+    Loop over the `hypotheses` and compute, for each pixel, the match
+    fraction, that is, how consistent this hypothesis is with the rest
+    of the `results`.
+
+    The idea is the following: For each pixel Y, we have a hypothesis
+    of the form (Y, T). For this, we use the `add_fake_planet()` method
+    to compute the *full* expected signal stack under this hypothesis.
+    We then determine which spatial pixels should be affected by the
+    planet at which times (i.e., we compute the "sausage"-shaped trace
+    of the planet signal). For each of these affected pixels, we then
+    compute the similarity (= how well it matches) with the respective
+    signal masking residual in `results` (using the `metric_function`).
+    Finally, we compute the match fraction (mean and median) for Y as
+    the average of the similarity scores ("matches") of all affected
+    pixels.
 
     Args:
+        hypotheses: A 2D numpy array with shape `(x_size, y_size)` where
+            each pixel contains our hypothesis for when this pixel might
+            contain a planet signal (in the form of an integer denoting
+             a temporal index).
         results: A dictionary containing the full training results. In
             particular, we expect that for each signal time T on the
             temporal grid that was used during training, there is a key
@@ -183,36 +128,25 @@ def get_matches(
             residuals that were obtained when trained the signal masking
             models under the hypothesis that there is a planet at T (for
             each spatial position).
-        hypotheses: A 2D numpy array of shape `(width, height)`, where
-            each entry contains the `signal_time` (as an integer that
-            can be used as a temporal index) indicating our hypothesis
-            for this spatial position (found by the `find_hypothesis()`
-            function), that is, basically saying "if there is a planet
-            signal at this spatial position, it peaks at this time".
-        parang: A numpy array of shape `(n_frames, )` that contains the
-            parallactic angles for each frame.
-        psf_cropped: A 2D numpy array containing a cropped version of
-            the unsaturated PSF template for the data set. This is
-            needed to compute the expected signal shape with which we
-            compare to determine a match.
-        n_test_positions: An integer specifying the desired number of
-            test positions along the planet trajectory that is implied
-            by the tuple `(position, signal_time)`.
-        metric_function: A string defining the metric function that is
-            used to determine a match. Must be one of the following:
-                - "bump_height"
-                - "correlation_coefficient"
-                - "cosine_similarity"
-            This function is used to check whether at the test positions
-            we find a signal that is compatible with the planet path
-            hypothesis from the `hypotheses` array.
-        verbose: Whether or not to print a progress bar.
+        parang: A 1D numpy array of shape `(n_frames, )` containing the
+            parallactic angle.
+        psf_template: A 2D numpy array containing the PSF template.
+        metric_function: A string containing the metric that is used to
+            measure the similarity between an expected signal and the
+            observed residual. Must be one of the following:
+                "cosine_similarity" (default), "bump_height",
+                "correlation_coefficient"
+        verbose: Whether or not to show a progress bar.
 
     Returns:
-        A 3D numpy array of shape `(n_test_positions, width, height)`,
-        which for each spatial position contains the result of the
-        consistency check at the `n_test_positions` test position (i.e.,
-        a number in [0, 1] or {0, 1}, depending on `metric_function`).
+        match_fraction__mean: A 2D numpy array containing the match
+            fraction for every pixel computed as the mean.
+        match_fraction__median: A 2D numpy array containing the match
+            fraction for every pixel computed as the median.
+        affected_pixels A 4D numpy array of shape `(x_size, y_size,
+            x_size, y_size)` which, for each pixel, contains a 2D
+            numpy array indicating the pixels that would, under the
+            hypothesis for this pixel, be affected by the signal.
     """
 
     # Define some useful shortcuts
@@ -221,22 +155,28 @@ def get_matches(
         list(map(int, filter(lambda _: _.isdigit(), results.keys())))
     )
     frame_size = hypotheses.shape
+    center = get_center(frame_size)
 
     # Define ROI mask: all positions for which we actually have a hypothesis
     roi_mask = np.logical_not(np.isnan(hypotheses))
 
-    # Prepare a grid for the RegularGridInterpolator() below
-    t_grid = np.arange(n_frames)
-    x_grid = np.arange(frame_size[0])
-    y_grid = np.arange(frame_size[1])
-
-    # Initialize array in which we keep track of the test positions which are
-    # (not) consistent with the best signal masking-model for each pixel
-    matches = np.full((n_test_positions,) + frame_size, np.nan)
+    # Make sure that the PSF template is normalized to maximum of 1. This is
+    # necessary because we later determine the affected pixels by thresholding
+    # the expected signal stack.
+    psf_template -= np.nanmin(psf_template)
+    psf_template /= np.nanmax(psf_template)
 
     # -------------------------------------------------------------------------
-    # Loop over all spatial positions in the ROI and count matches
+    # Loop over all spatial positions in the ROI and compute match fraction
     # -------------------------------------------------------------------------
+
+    # Define result arrays: mean and median match fraction
+    match_fraction__mean = np.full(frame_size, np.nan)
+    match_fraction__median = np.full(frame_size, np.nan)
+
+    # Define an array in which we keep track of the "affected pixels" (i.e.,
+    # the planet traces for every hypothesis) for debugging purposes
+    affected_pixels = np.full(frame_size + frame_size, np.nan)
 
     # Get a list of all spatial positions in the ROI; add progress bar
     positions = get_positions_from_mask(roi_mask)
@@ -249,125 +189,94 @@ def get_matches(
         # Get the signal time-hypothesis for the current position
         signal_time = hypotheses[position[0], position[1]]
 
-        # Get the test positions for the current hypothesis
-        consistency_check_data = get_consistency_check_data(
-            position=position,
-            signal_time=signal_time,
-            parang=parang,
-            frame_size=frame_size,
-            n_test_positions=n_test_positions,
+        # Compute the expect final position based on the hypothesis that the
+        # signal is at `position` at time `signal_time`
+        final_position = rotate_position(
+            position=position[::-1],  # position is in numpy coordinates
+            center=center,
+            angle=float(parang[int(signal_time)]),
         )
 
-        # ---------------------------------------------------------------------
-        # Loop over test positions and check if they match or not
-        # ---------------------------------------------------------------------
+        # Compute the *full* expected signal stack under this hypothesis
+        expected_stack = add_fake_planet(
+            stack=np.zeros((n_frames, ) + frame_size),
+            parang=parang,
+            psf_template=psf_template,
+            polar_position=cartesian2polar(
+                position=final_position, frame_size=frame_size,
+            ),
+            magnitude=0,
+            extra_scaling=1,
+            dit_stack=1,
+            dit_psf_template=1,
+            return_planet_positions=False,
+            interpolation='bilinear',
+        )
+        expected_stack = np.array(expected_stack)
 
-        for i, (test_position, test_time) in enumerate(consistency_check_data):
+        # Find mask of all pixels that are affected by the planet trace, i.e.,
+        # all pixels that at some point in time contain planet signal.
+        # The threshold value of 0.2 is a bit of a magic number: it serves to
+        # pick only those pixels affected by the central peak of the signal,
+        # and not the secondary maxima.
+        affected_mask = np.max(expected_stack, axis=0).astype(float) > 0.2
 
-            # Find the closest signal_time for which we actually have trained
-            # a model. TODO: Or we could also use interpolation here?
-            _, closest_signal_time = find_closest(signal_times, test_time)
+        # Keep track of the matches (similarity scores) for affected positions
+        matches = []
 
-            # Set up an interpolator for the residuals of the model that was
-            # trained assuming the signal was at `closest_signal_time`.
-            # Rationale: Most `test_positions` will not exactly match one of
-            # the spatial positions for which we have trained a model and
-            # computed residuals. If we simply round the `test_position` to
-            # the closest integer position, we will likely get duplicates for
-            # higher values of `n_test_positions`, which might introduce a bias
-            # to the match fraction. Setting up this interpolator circumvents
-            # this because it allows us to get the value of the the residuals
-            # at *arbitrary* spatio-temporal positions, thus removing the need
-            # to round the `test_position` to the closest integer position.
-            interpolator = RegularGridInterpolator(
-                points=(t_grid, x_grid, y_grid),
-                values=results[str(closest_signal_time)]['residuals'],
-            )
+        # Loop over all affected positions and check how well the residuals
+        # match the expected signals
+        for (x, y) in get_positions_from_mask(affected_mask):
 
-            # Define the spatio-temporal positions at which we want to retrieve
-            # the residual values. By taking only integer values for the first
-            # (= temporal) dimension, we are effectively only interpolating the
-            # residuals spatially, but not temporally. In other words, for each
-            # point in time, we get the residual value by interpolating it from
-            # the four closest residual values, using bilinear interpolation.
-            residual_positions = np.array(
-                [(_,) + test_position for _ in np.arange(n_frames)]
-            )
-
-            # Select the interpolated residuals for the current `test_position`
-            interpolated_residual = interpolator(residual_positions)
-
-            # The interpolated residual can be all-NaN in cases where the test
-            # position is too close to a (spatial) pixel for which we did not
-            # train a signal masking model. In this case, we simply ignore this
-            # test position (i.e., there will be a NaN in the `matches` array).
-            if np.isnan(interpolated_residual).any():
+            # Skip the hypothesis itself: We know that is is a match, because
+            # otherwise it would not be our hypothesis
+            if (x, y) == position:
                 continue
 
-            # Get the signal mask that matches the current closest_signal_time
-            closest_signal_mask = get_signal_mask(
-                position=test_position,
-                parang=parang,
-                signal_time=closest_signal_time,
-                frame_size=frame_size,
-                psf_template=psf_cropped,
-            )
+            # Find the time at which this pixel is affected the most
+            peak_time = int(np.argmax(expected_stack[:, x, y]))
+            _, peak_time = find_closest(signal_times, peak_time)
+            affected_pixels[position[0], position[1], x, y] = peak_time
 
-            # -----------------------------------------------------------------
-            # Check for a match based on the given metric_function
-            # -----------------------------------------------------------------
+            # Define shortcuts for the time series that we compare
+            a = expected_stack[:, x, y]
+            b = results[str(peak_time)]['residuals'][:, x, y]
 
-            # The bump_height metric does not require a comparison with the
-            # expected planet signal, so we treat it as a special case
+            # In case we do not have a signal masking residual for the
+            # current affected position, we skip it
+            if np.isnan(b).any():
+                continue
+
+            # Compute the desired target metric by comparing the residual
+            # with the expected planet signal
             if metric_function == 'bump_height':
-
-                # Compute the bump height at the current test position
-                bump_height = get_bump_height(
-                    array=interpolated_residual,
-                    signal_time=closest_signal_time,
-                    signal_mask=closest_signal_mask,
-                )
-
-                # This metric is binary: either there is a bump or there is not
-                metric = float(bump_height > 0)
-
-            # For all other metric functions, we first need to compute the
-            # expected planet signal with which we compare the residual
+                signal_mask = b > 0.2
+                metric = get_bump_height(b, signal_mask, peak_time)
+            elif metric_function == 'cosine_similarity':
+                metric = cosine_similarity(a.reshape(1, -1), b.reshape(1, -1))
+            elif metric_function == 'correlation_coefficient':
+                metric = fast_corrcoef(a, b)
             else:
-
-                # Compute the expected time series with which we will compare
-                expected_time_series = get_time_series_for_position(
-                    position=position,
-                    signal_time=closest_signal_time,
-                    frame_size=frame_size,
-                    parang=parang,
-                    psf_template=psf_cropped,
+                raise ValueError(
+                    'Invalid value for metric_function, must be one of '
+                    'the following: "bump_height", "cosine_similarity", '
+                    '"correlation_coefficient".'
                 )
-
-                # Define shortcuts for the time series that we compare
-                x = expected_time_series[closest_signal_mask].reshape(1, -1)
-                y = interpolated_residual[closest_signal_mask].reshape(1, -1)
-
-                # Compute the desired target metric by comparing the residual
-                # with the expected planet signal
-                if metric_function == 'cosine_similarity':
-                    metric = cosine_similarity(x, y)
-                elif metric_function == 'correlation_coefficient':
-                    metric = fast_corrcoef(x.ravel(), y.ravel())
-                else:
-                    raise ValueError(
-                        'Invalid value for metric_function, must be one of '
-                        'the following: "bump_height", "cosine_similarity", '
-                        '"correlation_coefficient".'
-                    )
 
             # Make sure that `metric` is in [0, 1]. Here, we can also clip the
             # value of `metric` in case we use the bump height as the metric
-            # because we only check if there is a bump, and do not look for the
-            # "best" bump (unlike in the find_hypothesis() function).
+            # because we only check if there is a bump, and do not look for
+            # the "best" bump (unlike in the find_hypothesis() function).
             metric = float(np.clip(metric, a_min=0, a_max=1))
+            matches.append(metric)
 
-            # Store whether or not there is a bump at the test position
-            matches[i, position[0], position[1]] = metric
+        # Compute "correction factor" to down-weigh those pixels where not
+        # all affected pixels could be checked for a match
+        # TODO: Discuss if this factor makes sense / is fair
+        factor = np.sqrt(len(matches) / (np.nansum(affected_mask) - 1))
 
-    return matches
+        # Compute mean and median match fraction for current position
+        match_fraction__mean[position] = factor
+        match_fraction__median[position] = np.nanmedian(matches) * factor
+
+    return match_fraction__mean, match_fraction__median, affected_pixels
