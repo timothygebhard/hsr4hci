@@ -225,7 +225,7 @@ def get_signal_masks_analytically(
 
     # Generate `n_signal_times` different possible points in time (distributed
     # uniformly over the observation) at which we planet signal could be
-    signal_times = np.linspace(0, n_frames - 1, n_signal_times)
+    signal_times = get_signal_times(n_frames, n_signal_times)
 
     # Loop over all these time points to generate the corresponding indices
     for i, signal_time in enumerate(signal_times):
@@ -324,7 +324,7 @@ def get_signal_mask(
 def get_signal_masks(
     position: Tuple[int, int],
     parang: np.ndarray,
-    n_signal_times: int,
+    signal_times: np.ndarray,
     frame_size: Tuple[int, int],
     psf_template: np.ndarray,
     max_signal_length: float = 0.7,
@@ -349,8 +349,8 @@ def get_signal_masks(
             position of the pixel for which we are computing the masks.
         parang: A numpy array of shape `(n_frames, )` containing the
             parallactic angles.
-        n_signal_times: The number of different possible temporal
-            positions of the planet signal for which to return a mask.
+        signal_times: A 1D numpy array containing the temporal grid
+            of possible signal times for which to return a mask.
         frame_size: A tuple `(width, height)` specifying the spatial
             size of the stack.
         psf_template: A 2D numpy array containing a (cropped) version of
@@ -371,15 +371,8 @@ def get_signal_masks(
         of the following form: `(signal_mask, signal_time)`.
     """
 
-    # Define shortcuts
-    n_frames = len(parang)
-
     # Initialize lists in which we store the results
     results = list()
-
-    # Generate `n_signal_times` different possible points in time (distributed
-    # uniformly over the observation) at which we planet signal could be
-    signal_times = np.linspace(0, n_frames - 1, n_signal_times)
 
     # Loop over all these time points to generate the corresponding indices
     for signal_time in signal_times:
@@ -407,3 +400,23 @@ def get_signal_masks(
         results.append((signal_mask, signal_time))
 
     return results
+
+
+def get_signal_times(n_frames: int, n_signal_times: int) -> np.ndarray:
+    """
+    Simple function to generate a temporal grid of signal times; mostly
+    to ensure consistency everywhere.
+
+    Args:
+        n_frames: The total number of frames in the stack.
+        n_signal_times: The number of positions on the temporal grid
+            that we create.
+
+    Returns:
+        A 1D numpy array of shape `(n_signal_times, )` containing the
+        temporal grid (i.e., signal times) as integers.
+    """
+
+    # Generate `n_signal_times` different possible points in time (distributed
+    # uniformly over the observation) at which we planet signal could be
+    return np.linspace(0, n_frames - 1, n_signal_times).astype(int)
