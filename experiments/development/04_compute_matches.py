@@ -13,14 +13,11 @@ import time
 
 from astropy.units import Quantity
 
-import bottleneck as bn
-
 from hsr4hci.utils.config import load_config
-from hsr4hci.utils.consistency_checks import get_matches
+from hsr4hci.utils.consistency_checks import get_match_fraction
 from hsr4hci.utils.data import load_data
 from hsr4hci.utils.fits import read_fits, save_fits
 from hsr4hci.utils.hdf import load_dict_from_hdf
-from hsr4hci.utils.psf import crop_psf_template
 from hsr4hci.utils.units import set_units_for_instrument
 
 
@@ -52,11 +49,6 @@ if __name__ == '__main__':
     config = load_config(file_path=file_path)
     print('Done!', flush=True)
 
-    # Define shortcuts for entries in the experiment config
-    filter_size = config['consistency_checks']['filter_size']
-    metric_function = config['signal_masking']['metric_function']
-    n_test_positions = config['consistency_checks']['n_test_positions']
-
     # -------------------------------------------------------------------------
     # Load data set and results, define shortcuts
     # -------------------------------------------------------------------------
@@ -76,7 +68,7 @@ if __name__ == '__main__':
 
     # Load hypotheses from FITS file
     print('Loading hypotheses file...', end=' ', flush=True)
-    file_path = hypotheses_dir / f'hypotheses__{metric_function}.fits'
+    file_path = hypotheses_dir / 'hypotheses.fits'
     hypotheses = read_fits(file_path=file_path)
     print('Done!', flush=True)
 
@@ -97,16 +89,6 @@ if __name__ == '__main__':
     )
 
     # -------------------------------------------------------------------------
-    # Crop the PSF template to a region with radius 1 lambda / D
-    # -------------------------------------------------------------------------
-
-    print('Cropping PSF template...', end=' ', flush=True)
-    psf_cropped = crop_psf_template(
-        psf_template=psf_template, psf_radius=Quantity(1.0, 'lambda_over_d')
-    )
-    print('Done!\n', flush=True)
-
-    # -------------------------------------------------------------------------
     # Compute the consistency checks and get the matches for each pixel
     # -------------------------------------------------------------------------
 
@@ -114,40 +96,38 @@ if __name__ == '__main__':
     matches_dir = results_dir / 'matches'
     matches_dir.mkdir(exist_ok=True)
 
-    # Compute matches: loop over all spatial pixels, compute the planet path
-    # that is implied by the respective entry in the `hypotheses` array, and
-    # check for `n_test_positions` along that trajectory if the residuals are
-    # consistent with the hypothesis. The resulting `matches` array has shape
-    # `(n_test_positions, width, height)`.
-    print('Computing matches:', flush=True)
-    matches = get_matches(
+    print('Computing match fraction:', flush=True)
+    (
+        match_fraction__mean,
+        match_fraction__median,
+        affected_pixels,
+    ) = get_match_fraction(
         results=results,
         hypotheses=hypotheses,
         parang=parang,
-        psf_cropped=psf_cropped,
-        n_test_positions=n_test_positions,
-        metric_function=metric_function,
+        psf_template=psf_template,
+        metric_function=config['signal_masking']['metric_function'],
+        verbose=True,
     )
-    print('')
-
-    # Save matches to FITS file
-    print('Saving matches to FITS...', end=' ', flush=True)
-    file_path = matches_dir / f'matches__{metric_function}.fits'
-    save_fits(array=matches, file_path=file_path)
-    print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
     # Compute the match fraction and save it as a FITS file
     # -------------------------------------------------------------------------
 
-    # Compute match fraction by averaging along the test positions axis
-    # TODO: Should we use the mean or median here?
-    match_fraction = bn.nanmean(matches, axis=0)
-
-    # Save match fraction as FITS file
     print('\nSaving match fraction to FITS...', end=' ', flush=True)
-    file_path = matches_dir / f'match_fraction__{metric_function}.fits'
-    save_fits(array=match_fraction, file_path=file_path)
+
+    # Save mean match fraction
+    file_path = matches_dir / 'match_fraction__mean.fits'
+    save_fits(array=match_fraction__mean, file_path=file_path)
+
+    # Save median match fraction
+    file_path = matches_dir / 'match_fraction__median.fits'
+    save_fits(array=match_fraction__median, file_path=file_path)
+
+    # Save affected pixels
+    file_path = matches_dir / 'affected_pixels.fits'
+    save_fits(array=affected_pixels, file_path=file_path)
+
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
