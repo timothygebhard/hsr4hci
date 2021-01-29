@@ -8,6 +8,8 @@ Utility functions for working with point spread functions.
 
 from typing import Optional
 
+import math
+
 from astropy.convolution import AiryDisk2DKernel
 from astropy.units import Quantity
 from photutils import centroid_2dg, CircularAperture
@@ -115,8 +117,8 @@ def get_psf_radius(
 
         # "Compute" the PSF radius simply as the FWHM of the fit result
         # TODO: It's currently not quite clear what is a good estimate here.
-        #       "Traditionally", one would divide the FWHM by 2, but that seems
-        #       to underestimate the PSF size in practice?
+        #       "Traditionally", one would divide the FWHM by 2, but that
+        #       seems to underestimate the PSF size in practice?
         psf_radius = model.fwhm
 
     # Case 2: We do not have PSF template, but the PIXSCALE and LAMBDA_OVER_D
@@ -131,7 +133,8 @@ def get_psf_radius(
     else:
         raise RuntimeError('Could not determine PSF radius!')
 
-    return psf_radius
+    # Make sure the returned PSF radius is positive
+    return math.fabs(psf_radius)
 
 
 def get_artificial_psf(
