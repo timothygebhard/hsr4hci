@@ -21,6 +21,9 @@ from hsr4hci.utils.typehinting import RegressorModel
 # -----------------------------------------------------------------------------
 
 class BaseModelCreator:
+    """
+    Wrapper class for creating new base model instances.
+    """
 
     def __init__(self, **base_model_config: Any) -> None:
 
@@ -48,7 +51,7 @@ class BaseModelCreator:
         # Augment the model parameters:
         # For RidgeCV models, we have to parse the `alphas` parameter (i.e.,
         # the regularization strengths) into a geometrically spaced array
-        if self.class_name == 'RidgeCV':
+        if self.class_name in ('RidgeCV', 'LassoCV'):
             model_parameters['alphas'] = np.geomspace(
                 *model_parameters['alphas']
             )
