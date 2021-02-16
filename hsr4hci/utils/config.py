@@ -98,3 +98,14 @@ def get_data_dir() -> Path:
         raise RuntimeError('Value of HSR4HCI_DATA_DIR is not a directory!')
 
     return data_dir
+
+
+def get_hsr4hci_dir() -> Path:
+    """
+    Get path to directory of the hsr4hci package.
+
+    Returns:
+        Path to the hsr4hci package directory.
+    """
+
+    return Path(hsr4hci.__file__).parent.parent
