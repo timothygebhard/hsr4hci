@@ -15,121 +15,70 @@ import numpy as np
 # CLASS DEFINITIONS
 # -----------------------------------------------------------------------------
 
-class TrainTestSplitter:
+class AlternatingSplit:
     """
-    A class that can be used for splitting a data set into train / test.
+    Alternating split cross-validator.
 
-    Args:
-        n_splits: Number of splits, essentially the "k" in k-fold cross
-            validation (see also documentation of split() method).
-        split_type: The split type, which must be either 'k_fold' or
-            'even_odd'.
-        shuffle: Whether or not to shuffle the data before splitting.
-        random_seed: Seed for the random number generator used when
-            `shuffle` is set to True.
+    Provides train / test indices to split data in train / test sets.
+
+    The split is performed in an "alternating" way:
+    Assume that `n_splits=3`. In this case, the samples / data points
+    are labeled: A B C A B C A B C ... In the first split, all points
+    labeled A or B constitute the training set, and C is the test (or
+    hold-out) set. In the second split, all points labeled A or C are
+    used for training and B is the test split. In the final split, A
+    is held out and training is performed on B and C.
+
+    In the special case of `n_splits=2`, this is "even-odd splitting",
+    that is, in the first split the points with even indices (in the
+    data matrix X) are used for training (and odd indices are used for
+    testing), and vice versa in the second split.
+
+    This splitting scheme is useful for HCI/ADI data, because it means
+    that the effective field rotation in all splits is the same (using
+    standard k-fold splitting would---for k=2---cut the field rotation
+    in the training data in half).
     """
 
-    def __init__(self,
-                 n_splits: int = 2,
-                 split_type: str = 'k_fold',
-                 shuffle: bool = False,
-                 random_seed: int = 42):
+    def __init__(self, n_splits: int) -> None:
 
-        # ---------------------------------------------------------------------
-        # Perform some basic sanity checks
-        # ---------------------------------------------------------------------
-
-        if n_splits < 1:
-            raise ValueError('n_splits must be greater or equal than 1!')
-
-        if split_type not in ('k_fold', 'even_odd'):
-            raise ValueError(f'split_type must be either "k_fold" or '
-                             f'"even_odd", but is "{split_type}"!')
-
-        # ---------------------------------------------------------------------
-        # Save constructor arguments
-        # ---------------------------------------------------------------------
-
+        # Sanity check: we cannot have less than 1 split
+        assert n_splits >= 1, 'n_splits must be a positive integer!'
         self.n_splits = n_splits
-        self.split_type = split_type
-        self.shuffle = shuffle
-        self.random_seed = random_seed
 
-    def split(self,
-              n_samples: int) -> Iterator[Tuple[np.ndarray, np.ndarray]]:
+    def split(self, X: np.ndarray) -> Iterator[Tuple[np.ndarray, np.ndarray]]:
         """
-        Take the number of samples and return the indices for the split.
-
-        Note that this function does not return, but instead yield its
-        results such that we can loop over the results, as we would
-        like to do, for example, for cross-validation.
-        Example: Assume we are doing a two-fold split where we split our
-        data into two parts A and B. In the first round, A will be the
-        training set and B the testing set. In the second round, the
-        roles are reversed and B is returned as the training set, while
-        A is used as the testing set.
+        Generate indices to split data into training and test set.
 
         Args:
-            n_samples: The number of samples in the data set we want to
-                split into training and test.
+            X: A 2D numpy array of shape (n_samples, n_features) that
+                contains the training data.
 
-        Returns:
-            A generator of tuples (train_indices, test_indices) which
-            can be used to split the data set in the desired way.
+        Yields:
+            train_idx: A 1D numpy array containing the training set
+                indices for that split.
+            test_idx: A 1D numpy array containing the testing set
+                indices for that split.
         """
 
-        # ---------------------------------------------------------------------
-        # Initialize indices
-        # ---------------------------------------------------------------------
+        # Get the number of samples (= number of rows in X)
+        n_samples = X.shape[0]
 
         # Initialize the array of indices that gets split into train / test
         indices = np.arange(n_samples)
 
-        # If desired, shuffle the indices
-        if self.shuffle:
-            rng = np.random.RandomState(seed=self.random_seed)
-            rng.shuffle(indices)
-
-        # ---------------------------------------------------------------------
-        # Special case: n_splits = 1
-        # ---------------------------------------------------------------------
-
         # If n_splits = 1, we do not need to split. Instead, we simply return
-        # the indices right away such that train_idx == test_idx.
+        # the indices right away such that train_idx == test_idx. (This is for
+        # compatibility reasons in cases where we do not really want to split
+        # the data into training and test.)
         if self.n_splits == 1:
             yield indices, indices
             return
 
-        # ---------------------------------------------------------------------
-        # Generate indices for k-fold splitting scheme
-        # ---------------------------------------------------------------------
+        # Otherwise, generate indices for alternating splitting scheme
+        for i in range(self.n_splits):
 
-        if self.split_type == 'k_fold':
+            test_idx = indices[i::self.n_splits]
+            train_idx = np.setdiff1d(indices, test_idx, assume_unique=True)
 
-            # Create a dummy array containing the size of every fold
-            fold_sizes = np.full(self.n_splits, n_samples // self.n_splits,
-                                 dtype=np.int)
-            fold_sizes[:n_samples % self.n_splits] += 1
-
-            current = 0
-            for fold_size in fold_sizes:
-
-                test_idx = indices[current:(current + fold_size)]
-                train_idx = np.setdiff1d(indices, test_idx, assume_unique=True)
-
-                yield train_idx, test_idx
-
-                current += fold_size
-
-        # ---------------------------------------------------------------------
-        # Generate indices for even / odd splitting scheme
-        # ---------------------------------------------------------------------
-
-        else:
-
-            for i in range(self.n_splits):
-
-                test_idx = indices[i::self.n_splits]
-                train_idx = np.setdiff1d(indices, test_idx, assume_unique=True)
-
-                yield train_idx, test_idx
+            yield train_idx, test_idx
