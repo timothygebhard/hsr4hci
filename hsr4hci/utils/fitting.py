@@ -10,6 +10,7 @@ from pprint import pformat
 from typing import Any, Dict, Tuple
 
 import math
+import warnings
 
 from scipy.optimize import curve_fit
 
@@ -149,13 +150,13 @@ class Fittable2DModel:
             return self.evaluate_without_offset(*args, **kwargs).ravel()
 
         # Fit the target using the initial parameter guess
-        with np.warnings.catch_warnings():
+        with warnings.catch_warnings():
 
             # Ignore some numpy warnings here that can happen if the minimizer
             # explores a particularly bad parameter range
-            np.warnings.filterwarnings('ignore', r'invalid value encountered')
-            np.warnings.filterwarnings('ignore', r'overflow encountered in')
-            np.warnings.filterwarnings('ignore', r'Covariance of the')
+            warnings.filterwarnings('ignore', r'invalid value encountered')
+            warnings.filterwarnings('ignore', r'overflow encountered in')
+            warnings.filterwarnings('ignore', r'Covariance of the')
 
             # Actually fit the given target using our target function
             parameters, _ = curve_fit(
@@ -258,7 +259,7 @@ class CircularGauss2D(Fittable2DModel):
         inner = (x_diff ** 2 + y_diff ** 2) / (2 * sigma ** 2)
 
         # Combine all parts into the final function
-        return amplitude * np.exp(-inner) + offset
+        return np.asarray(amplitude * np.exp(-inner) + offset)
 
     def __repr__(self) -> str:
         return pformat({**self.named_parameters, **{'fwhm': self.fwhm}})
@@ -355,7 +356,7 @@ class EllipticalGauss2D(Fittable2DModel):
         inner = (a * x_diff ** 2) + (b * x_diff * y_diff) + (c * y_diff ** 2)
 
         # Combine all parts into the final function
-        return amplitude * np.exp(-inner) + offset
+        return np.asarray(amplitude * np.exp(-inner) + offset)
 
     def __repr__(self) -> str:
         return pformat(
@@ -431,7 +432,7 @@ class CircularMoffat2D(Fittable2DModel):
         y_diff = yy_grid - mu_y
 
         # Combine all parts into the final function
-        return (
+        return np.asarray(
             amplitude
             / (1 + (x_diff ** 2 + y_diff ** 2) / (alpha ** 2)) ** beta
             + offset
@@ -544,7 +545,7 @@ class EllipticalMoffat2D(Fittable2DModel):
         )
 
         # Combine all parts into the final function
-        return (
+        return np.asarray(
             amplitude
             / (
                 1

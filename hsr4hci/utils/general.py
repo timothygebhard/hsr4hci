@@ -70,7 +70,7 @@ def add_array_with_interpolation(
     # position, using bilinear interpolation
     dummy = shift(dummy, fractional_position, order=1)
 
-    return array_large + dummy
+    return np.asarray(array_large + dummy)
 
 
 def crop_center(
@@ -112,13 +112,10 @@ def crop_center(
         # Create a slice object for axis
         slices.append(slice(start, end))
 
-    return array[tuple(slices)]
+    return np.asarray(array[tuple(slices)])
 
 
-def split_into_n_chunks(
-    sequence: Sequence,
-    n_chunks: int,
-) -> List[Sequence]:
+def split_into_n_chunks(sequence: Sequence, n_chunks: int) -> List[Sequence]:
     """
     Split a given `sequence` (list, numpy array, ...) into `n_chunks`
     "chunks" (sub-sequences) of approximately equal length, which are
@@ -148,7 +145,7 @@ def split_into_n_chunks(
 
     # Split the sequence into n chunks of (approximately) size k
     return [
-        sequence[i * k + min(i, m):(i + 1) * k + min(i + 1, m)]
+        sequence[i * k + min(i, m) : (i + 1) * k + min(i + 1, m)]
         for i in range(n_chunks)
     ]
 
@@ -364,10 +361,7 @@ def find_closest(sequence: Sequence, value: Any) -> Tuple[int, Any]:
     return pos - 1, before
 
 
-def fast_corrcoef(
-    x: np.ndarray,
-    y: np.ndarray,
-) -> float:
+def fast_corrcoef(x: np.ndarray, y: np.ndarray) -> float:
     """
     A fast(er) way to compute the correlation coefficient between
     the variables `x` and `y`, based on `numpy.einsum()`.
@@ -447,7 +441,9 @@ def pad_array_to_shape(
         pad_width.append(padding)
 
     # Finally, call np.pad() with the pad_width values that we have computed
-    return np.pad(array=array, pad_width=pad_width, mode='constant', **kwargs)
+    return np.asarray(
+        np.pad(array=array, pad_width=pad_width, mode='constant', **kwargs)
+    )
 
 
 def crop_or_pad(array: np.ndarray, size: Tuple[int, ...]) -> np.ndarray:
@@ -476,9 +472,7 @@ def crop_or_pad(array: np.ndarray, size: Tuple[int, ...]) -> np.ndarray:
 
 
 def crop_around_position_with_interpolation(
-    array: np.ndarray,
-    position: Tuple[float, ...],
-    size: Tuple[int, ...]
+    array: np.ndarray, position: Tuple[float, ...], size: Tuple[int, ...]
 ) -> np.ndarray:
     """
     Crop an n-dimensional `array` to the given `size` around a specified
@@ -513,14 +507,14 @@ def crop_around_position_with_interpolation(
     # Evaluate interpolator and reshape to target size
     result = interpolator(positions.T).reshape(*size)
 
-    return result
+    return np.asarray(result)
 
 
 def shift_image(
     image: np.ndarray,
     offset: Tuple[float, float],
     interpolation: str = 'bilinear',
-    mode: str = 'constant'
+    mode: str = 'constant',
 ) -> np.ndarray:
     """
     Function to shift a 2D array (i.e., an `image`) by a given `offset`.
@@ -564,4 +558,4 @@ def shift_image(
             '"spline", "bilinear", "fft"'
         )
 
-    return shifted_image
+    return np.asarray(shifted_image)

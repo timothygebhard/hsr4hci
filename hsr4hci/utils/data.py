@@ -98,7 +98,7 @@ def load_data(
         # Select the unsaturated PSF template and ensure it is 2D
         psf_template = np.array(hdf_file['psf_template']).squeeze()
         if psf_template.ndim == 3:
-            psf_template = np.mean(psf_template, axis=0)
+            psf_template = np.asarray(np.mean(psf_template, axis=0))
 
         # Collect the observing conditions in a ObservingConditions object
         _observing_conditions = dict()

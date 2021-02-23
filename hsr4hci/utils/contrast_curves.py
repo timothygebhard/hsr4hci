@@ -34,7 +34,9 @@ def flux_ratio_to_magnitudes(
         The contrast(s) in magnitudes.
     """
 
-    return -2.5 * np.log10(flux_ratio)
+    if isinstance(flux_ratio, np.ndarray):
+        return np.asarray(-2.5 * np.log10(flux_ratio))
+    return -2.5 * float(np.log10(flux_ratio))
 
 
 def magnitude_to_flux_ratio(
@@ -124,7 +126,7 @@ def get_injection_and_reference_positions(
     # Find the index of the position whose angle is the closest to the "ideal"
     # angle for this azimuthal_id
     injection_position_idx, _ = find_closest(
-        sequence=np.linspace(0, 360, len(positions), endpoint=False),
+        sequence=list(np.linspace(0, 360, len(positions), endpoint=False)),
         value=azimuth_id_to_angle(azimuth_id),
     )
 

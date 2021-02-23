@@ -118,7 +118,7 @@ def add_fake_planet(
     check_consistent_size(stack, parang)
 
     # Define shortcut for the number of frames and the frame_size
-    n_frames, frame_size = stack.shape[0], stack.shape[1:]
+    n_frames, frame_size = stack.shape[0], (stack.shape[1], stack.shape[2])
 
     # Split the target planet position into separation and angles, convert
     # the quantities to pixels / convert to mathematical polar coordinates
@@ -170,7 +170,7 @@ def add_fake_planet(
             (x_shift + center[0], y_shift + center[1])
         )
         return output_stack, planet_positions
-    return output_stack
+    return np.array(output_stack)
 
 
 def get_time_series_for_position(
@@ -242,13 +242,11 @@ def get_time_series_for_position(
     # Find the starting position of the planet under the hypothesis given by
     # `position` and `signal_time`
     starting_position = rotate_position(
-        position=position,
-        angle=-parang[signal_time],
-        center=center
+        position=position, angle=-parang[signal_time], center=center
     )
 
     # Compute the full array of all planet positions (at all times)
-    planet_positions = np.vstack(
+    planet_positions = np.array(
         rotate_position(
             position=starting_position,
             angle=parang,
@@ -265,7 +263,7 @@ def get_time_series_for_position(
     # The target time series is given by (interpolated) array values at the
     # positions along the planet path. Note that we need to flip the order of
     # the planet positions because we are basically accessing a numpy array.
-    time_series = interpolator(planet_positions[:, ::-1])
+    time_series = np.array(interpolator(planet_positions[:, ::-1]))
 
     # Make sure that the time series is normalized to a maximum of 1
     time_series /= np.nanmax(time_series)
@@ -307,7 +305,8 @@ def get_time_series_for_position__full_stack(
         position=position, angle=parang[signal_time], center=center
     )
     final_position_polar = cartesian2polar(
-        position=final_position_cartesian, frame_size=frame_size,
+        position=(final_position_cartesian[0], final_position_cartesian[1]),
+        frame_size=frame_size,
     )
 
     # Compute the full signal stack
@@ -337,7 +336,7 @@ def get_time_series_for_position__full_stack(
     # Note that we need to flip the order of position because we are basically
     # accessing a numpy array here.
     dummy = np.array([[t, position[1], position[0]] for t in t_range])
-    time_series = interpolator(dummy)
+    time_series = np.array(interpolator(dummy))
 
     # Make sure that the time series is normalized to a maximum of 1
     time_series /= np.nanmax(time_series)

@@ -51,7 +51,6 @@ MatplotlibColor = Union[
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-
 def get_cmap(
     cmap_name: str = 'RdBu_r', bad_color: str = '#212121'
 ) -> Union[Colormap, LinearSegmentedColormap, ListedColormap]:
@@ -282,9 +281,11 @@ def plot_frame(
             # If we have multiple apertures, we need to still take the maximum
             # over them; otherwise, we can directly use the value from the fit
             if isinstance(fit_results, list):
-                limit = np.around(1.1 * max(_[0] for _ in fit_results), 1)
+                limit = float(
+                    np.around(1.1 * max(_[0] for _ in fit_results), 1)
+                )
             else:
-                limit = np.around(1.1 * fit_results[0], 1)
+                limit = float(np.around(1.1 * fit_results[0], 1))
 
     # If the limit is still None at this point (i.e., if no apertures were
     # given, and there are also no explicit plot limits), just compute the
@@ -295,11 +296,16 @@ def plot_frame(
     # Prepare norm for the
     if use_logscale:
         norm = mc.SymLogNorm(
-            linthresh=0.1 * limit, vmin=-1 * limit, vmax=limit, base=10,
+            linthresh=0.1 * limit,
+            vmin=-1 * limit,
+            vmax=limit,
+            base=10,
         )
     else:
         norm = mc.PowerNorm(
-            gamma=1, vmin=-1 * limit, vmax=limit,
+            gamma=1,
+            vmin=-1 * limit,
+            vmax=limit,
         )
 
     # Prepare grid for the pcolormesh()
@@ -412,7 +418,7 @@ def plot_frame(
             width="18%",
             height="2%",
             loc='lower right',
-            borderpad=2
+            borderpad=2,
         )
 
         # Set up the rest of the colorbar options

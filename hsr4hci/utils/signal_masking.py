@@ -316,7 +316,7 @@ def get_signal_mask(
     )
 
     # Threshold the expected signal to create a binary mask
-    signal_mask = expected_signal > threshold
+    signal_mask = np.asarray(expected_signal > threshold)
 
     return signal_mask
 

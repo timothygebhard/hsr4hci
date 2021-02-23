@@ -57,7 +57,9 @@ def crop_psf_template(
     psf_clipped = np.clip(a=psf_rescaled, a_min=epsilon, a_max=None)
 
     # Create a mask for the centering process
-    mask = get_circle_mask(mask_size=psf_clipped.shape, radius=5)
+    mask = get_circle_mask(
+        mask_size=(psf_clipped.shape[0], psf_clipped.shape[1]), radius=5
+    )
 
     # Fit the center of the clipped PSF template
     psf_clipped_center = centroid_2dg(data=psf_clipped, mask=~mask)
@@ -70,7 +72,7 @@ def crop_psf_template(
     circular_mask = circular_aperture.to_mask(method='exact')
     psf_masked = circular_mask.multiply(psf_clipped)
 
-    return psf_masked
+    return np.asarray(psf_masked)
 
 
 def get_psf_radius(
@@ -105,13 +107,14 @@ def get_psf_radius(
         x = np.arange(psf_template.shape[0])
         y = np.arange(psf_template.shape[1])
         meshgrid = (
-            np.array(np.meshgrid(x, y)[0]), np.array(np.meshgrid(x, y)[1])
+            np.array(np.meshgrid(x, y)[0]),
+            np.array(np.meshgrid(x, y)[1]),
         )
 
         # Set up a 2D Gaussian and fit it to the PSF template
         model = CircularGauss2D(
             mu_x=psf_template.shape[0] / 2 - 0.5,
-            mu_y=psf_template.shape[1] / 2 - 0.5
+            mu_y=psf_template.shape[1] / 2 - 0.5,
         )
         model.fit(meshgrid=meshgrid, target=psf_template)
 
@@ -161,6 +164,8 @@ def get_artificial_psf(
     # known) against the output of the AiryDisk2DKernel() function, and
     # adjusting the radius of the latter by a factor to minimize the
     # difference between the real and the fake PSF.
-    return AiryDisk2DKernel(
-        radius=1.383 * (lambda_over_d / pixscale).to('pixel').value,
-    ).array
+    return np.asarray(
+        AiryDisk2DKernel(
+            radius=1.383 * (lambda_over_d / pixscale).to('pixel').value,
+        ).array
+    )

@@ -52,7 +52,9 @@ def derotate_frames(
     # Define a helper function that defines the rotation for a single frame;
     # this is only a partial function application of scipy.ndimage.rotate()
     def rotate_frame(frame: np.ndarray, angle: float) -> np.ndarray:
-        return rotate(input=frame, angle=angle, reshape=False, order=order)
+        return np.asarray(
+            rotate(input=frame, angle=angle, reshape=False, order=order)
+        )
 
     # Either derotate frames in parallel using joblib...
     if n_processes > 1:
@@ -76,7 +78,7 @@ def derotate_frames(
     if mask is not None:
         derotated[:, mask] = np.nan
 
-    return derotated
+    return np.asarray(derotated)
 
 
 def derotate_combine(
@@ -132,7 +134,10 @@ def derotate_combine(
 
     # De-rotate all frames by their respective parallactic angles
     residual_frames = derotate_frames(
-        stack=subtracted, parang=parang, order=order, n_processes=n_processes,
+        stack=subtracted,
+        parang=parang,
+        order=order,
+        n_processes=n_processes,
     )
 
     # Combine derotated frames either by taking the mean or median
@@ -147,4 +152,4 @@ def derotate_combine(
     if mask is not None:
         result[mask] = np.nan
 
-    return result
+    return np.asarray(result)

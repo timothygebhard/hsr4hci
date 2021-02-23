@@ -73,7 +73,7 @@ def get_pca_noise_estimate(
     noise_estimate = pca.inverse_transform(transformed_stack)
     noise_estimate = noise_estimate.reshape(stack.shape)
 
-    return noise_estimate
+    return np.asarray(noise_estimate)
 
 
 def get_pca_signal_estimates(
@@ -150,7 +150,8 @@ def get_pca_signal_estimates(
 
     # Define helper function to get signal estimate for a given n_components
     def get_signal_estimate(
-        n_components: int, pca: PCA,
+        n_components: int,
+        pca: PCA,
     ) -> Tuple[int, np.ndarray]:
 
         # Only keep the first `n_components` PCs
@@ -172,7 +173,9 @@ def get_pca_signal_estimates(
         # Do not use multiprocessing here, because nested multiprocessing is
         # probably a bad idea.
         signal_estimate = derotate_combine(
-            stack=residual_stack, parang=parang, n_processes=1,
+            stack=residual_stack,
+            parang=parang,
+            n_processes=1,
         )
 
         return n_components, signal_estimate
@@ -202,4 +205,4 @@ def get_pca_signal_estimates(
     # Return the signal estimates and optionally also the principal components
     if return_components:
         return signal_estimates, components
-    return signal_estimates
+    return np.asarray(signal_estimates)

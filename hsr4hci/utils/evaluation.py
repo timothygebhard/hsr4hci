@@ -99,7 +99,7 @@ def compute_snr(
     # Get the positions of the reference apertures, that is, the positions at
     # which we will measure the flux to estimate the noise level
     reference_positions, _ = get_reference_aperture_positions(
-        frame_size=frame.shape,
+        frame_size=(frame.shape[0], frame.shape[1]),
         position=position,
         aperture_radius=aperture_radius,
         ignore_neighbors=ignore_neighbors,
@@ -117,12 +117,14 @@ def compute_snr(
     reference_fluxes = get_aperture_flux(
         frame=frame,
         position=reference_positions,
-        aperture_radius=aperture_radius
+        aperture_radius=aperture_radius,
     )
 
     # Get the integrated flux in the signal aperture
-    signal_flux = get_aperture_flux(
-        frame=frame, position=position, aperture_radius=aperture_radius
+    signal_flux = float(
+        get_aperture_flux(
+            frame=frame, position=position, aperture_radius=aperture_radius
+        )
     )
 
     # Compute the "signal", that is, the numerator of the signal-to-noise
@@ -332,10 +334,12 @@ def compute_optimized_snr(
                     # to compute than the SNR)
                     if target == 'signal_flux':
 
-                        signal_flux = get_aperture_flux(
-                            frame=frame,
-                            position=candidate_position,
-                            aperture_radius=aperture_radius,
+                        signal_flux = float(
+                            get_aperture_flux(
+                                frame=frame,
+                                position=candidate_position,
+                                aperture_radius=aperture_radius,
+                            )
                         )
 
                     else:
