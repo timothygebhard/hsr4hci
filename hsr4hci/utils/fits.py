@@ -116,6 +116,27 @@ def save_fits(
     fits.HDUList([hdu]).writeto(file_path.as_posix(), overwrite=overwrite)
 
 
+def get_fits_header(file_path: Union[Path, str]) -> dict:
+    """
+    Open a FITS file and return only its header as a dictionary.
+
+    Args:
+        file_path: Path of the FITS file to be read in.
+
+    Returns:
+        A dictionary containing the header of the FITS file.
+    """
+
+    # Make sure that file_path is a proper Path
+    file_path = Path(file_path)
+
+    # Open the FITS file and read the contents as well as the header
+    with fits.open(file_path.as_posix()) as hdulist:
+        header = dict(hdulist[0].header)
+
+    return header
+
+
 def get_fits_header_value(
     file_path: Union[Path, str],
     key: str,
