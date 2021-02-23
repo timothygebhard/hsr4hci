@@ -60,37 +60,6 @@ def assemble_signal_masking_residuals(
     return signal_masking_residuals
 
 
-def get_effective_pixel_width(
-    position: Tuple[float, float],
-    center: Tuple[float, float],
-) -> float:
-    """
-    Compute the "effective" width of a pixel, that is, the the length of
-    the path of a planet that crosses the center of the given pixel.
-
-    This value will be between 1 and sqrt(2), depending on the position
-    of the pixel (namely, it is a function of the polar angle).
-
-    Args:
-        position: A tuple (x, y) specifying the position of a pixel.
-        center: A tuple (c_x, c_y) specifying the frame center.
-
-    Returns:
-        A value from [0, sqrt(2)] that is the "effective" pixel width.
-    """
-
-    # Get polar angle and make sure it is in [0, pi / 2], so that we do not
-    # have to distinguish between different quadrants
-    _, phi = polar(complex(position[1] - center[1], position[0] - center[0]))
-    _, phi = divmod(phi, np.pi / 2)
-
-    # Compute the effective pixel width, which is effectively either the
-    # secans (= 1/cos) or cosecans (= 1/sin) of the polar angle
-    effective_pixel_width = min(float(1 / np.cos(phi)), float(1 / np.sin(phi)))
-
-    return effective_pixel_width
-
-
 def get_signal_length(
     position: Tuple[float, float],
     signal_time: int,
