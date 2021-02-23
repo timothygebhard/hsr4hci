@@ -58,7 +58,9 @@ def test__read_fits(tmp_path_factory: TempPathFactory) -> None:
     file_path = test_dir / 'test.fits'
 
     # Read the test FITS file
-    array_no_header = read_fits(file_path=str(file_path), return_header=False)
+    array_no_header = np.asarray(
+        read_fits(file_path=str(file_path), return_header=False)
+    )
     array, header = read_fits(file_path=str(file_path), return_header=True)
 
     assert np.array_equal(array_no_header, array)

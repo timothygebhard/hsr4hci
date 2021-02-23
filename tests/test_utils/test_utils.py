@@ -16,13 +16,12 @@ from hsr4hci.utils.utils import check_consistent_size, check_frame_size
 # TEST CASES
 # -----------------------------------------------------------------------------
 
-
 def test__check_consistent_size() -> None:
 
     # Check that only numpy arrays are accepted
     with pytest.raises(TypeError) as type_error:
         # noinspection PyTypeChecker
-        check_consistent_size(None)
+        check_consistent_size(None)  # type: ignore
     assert 'All arguments must be numpy arrays!' in str(type_error)
 
     # Case 1: Ensure the correct default case is accepted

@@ -19,7 +19,7 @@ from hsr4hci.utils.general import (
     prestack_array,
     rotate_position,
     set_in_nested_dict,
-    split_into_n_chunks
+    split_into_n_chunks,
 )
 
 
@@ -71,9 +71,9 @@ def test__crop_center() -> None:
     # Test case 6: 2D, (odd, odd)-array length, (odd, odd)-size
     array = np.arange(1, 26).reshape(5, 5)
     result = crop_center(array=array, size=(3, 3))
-    assert np.array_equal(result, np.array([[7, 8, 9],
-                                            [12, 13, 14],
-                                            [17, 18, 19]]))
+    assert np.array_equal(
+        result, np.array([[7, 8, 9], [12, 13, 14], [17, 18, 19]])
+    )
 
 
 def test__get_from_nested_dict() -> None:
@@ -140,20 +140,24 @@ def test__rotate_position() -> None:
     assert 'position and angle cannot both be arrays!' in str(error)
 
     # Run tests for the case where `position` is simply a tuple
-    position = (10, 10)
+    position_tuple = (10, 10)
     center = (0, 0)
-    assert np.allclose(rotate_position(position, center, -90), (10, -10))
-    assert np.allclose(rotate_position(position, center, 0), (10, 10))
-    assert np.allclose(rotate_position(position, center, 45), (0, 14.14213562))
-    assert np.allclose(rotate_position(position, center, 90), (-10, 10))
-    assert np.allclose(rotate_position(position, center, 180), (-10, -10))
-    assert np.allclose(rotate_position(position, center, 360), (10, 10))
-    assert np.allclose(rotate_position(position, center, 720), (10, 10))
+    assert np.allclose(rotate_position(position_tuple, center, -90), (10, -10))
+    assert np.allclose(rotate_position(position_tuple, center, 0), (10, 10))
+    assert np.allclose(
+        rotate_position(position_tuple, center, 45), (0, 14.14213562)
+    )
+    assert np.allclose(rotate_position(position_tuple, center, 90), (-10, 10))
+    assert np.allclose(
+        rotate_position(position_tuple, center, 180), (-10, -10)
+    )
+    assert np.allclose(rotate_position(position_tuple, center, 360), (10, 10))
+    assert np.allclose(rotate_position(position_tuple, center, 720), (10, 10))
 
     # Run tests for the case where `position` is an array
-    position = np.array([(10, 10), (0, 10), (10, 0)]).T
+    position_array = np.array([(10, 10), (0, 10), (10, 0)]).T
     expected = np.array([(10, -10), (10, 0), (0, -10)]).T
-    assert np.allclose(rotate_position(position, center, -90), expected)
+    assert np.allclose(rotate_position(position_array, center, -90), expected)
 
     # Run tests for the case where `angle` is an array
     position = (10, 10)
@@ -204,5 +208,5 @@ def test__split_into_n_chunks() -> None:
     # Test case 1: np.ndarray, len(sequence) mod n_chunks == 0
     sequence_3 = np.array(['a', 'b', 'c', 'd'])
     target_3 = [np.array(['a', 'b']), np.array(['c', 'd'])]
-    output_3 = split_into_n_chunks(sequence=sequence_3, n_chunks=2)
+    output_3 = split_into_n_chunks(sequence=list(sequence_3), n_chunks=2)
     assert not DeepDiff(output_3, target_3)
