@@ -7,7 +7,7 @@ Utility functions for merging partial result files (HDF files).
 # -----------------------------------------------------------------------------
 
 from pathlib import Path
-from typing import Dict, List, Sequence, Union
+from typing import cast, Dict, List, Sequence, Union
 from warnings import warn
 
 import os
@@ -129,7 +129,7 @@ def merge_result_files(
 
                     # For the first HDF file that we are merging, we need to
                     # initialize the correct shape of the result arrays
-                    if name not in results[key].keys():
+                    if name not in cast(dict, results[key]).keys():
                         results[key][name] = np.full(stack_shape, np.nan)
 
                     # Now we can use the mask to store the contents of the
