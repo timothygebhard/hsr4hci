@@ -7,18 +7,16 @@ seems to contain a planet signal at time T.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Union
 
 from sklearn.metrics.pairwise import cosine_similarity
 from tqdm.auto import tqdm
 
 import numpy as np
 
-from hsr4hci.utils.consistency_checks import get_bump_height
 from hsr4hci.utils.forward_modeling import get_time_series_for_position
-from hsr4hci.utils.general import fast_corrcoef
 from hsr4hci.utils.masking import get_positions_from_mask
-from hsr4hci.utils.signal_masking import get_signal_masks
+from hsr4hci.utils.signal_masking import get_signal_times
 
 
 # -----------------------------------------------------------------------------
@@ -27,13 +25,11 @@ from hsr4hci.utils.signal_masking import get_signal_masks
 
 def get_all_hypotheses(
     roi_mask: np.ndarray,
-    results: Dict[str, np.ndarray],
+    results: Dict[str, Union[np.ndarray, Dict[str, np.ndarray]]],
     parang: np.ndarray,
     n_signal_times: int,
     frame_size: Tuple[int, int],
     psf_template: np.ndarray,
-    max_signal_length: float,
-    metric_function: str = 'cosine_similarity',
 ) -> np.ndarray:
     """
     This is a convenience function which wraps the loop over the ROI
@@ -54,22 +50,18 @@ def get_all_hypotheses(
             n_signal_times=n_signal_times,
             frame_size=frame_size,
             psf_template=psf_template,
-            max_signal_length=max_signal_length,
-            metric_function=metric_function,
         )
 
     return hypotheses
 
 
 def find_hypothesis(
-    results: Dict[str, np.ndarray],
+    results: Dict[str, Union[np.ndarray, Dict[str, np.ndarray]]],
     position: Tuple[int, int],
     parang: np.ndarray,
     n_signal_times: int,
     frame_size: Tuple[int, int],
     psf_template: np.ndarray,
-    max_signal_length: float,
-    metric_function: str = 'cosine_similarity',
 ) -> float:
     """
     Take the dictionary containing the full training results and find,
@@ -98,17 +90,6 @@ def find_hypothesis(
             pixels) of the frames that we are working with.
         psf_template: A 2D numpy array containing the unsaturated PSF
             template for the data set.
-        max_signal_length: A value in [0.0, 1.0] which describes the
-            maximum value of `expected_signal_length / n_frames`, which
-            will determine for which pixels we do not want to use the
-            "mask out a potential signal region"-approach, because the
-            potential signal region is too large to leave us with a
-            reasonable amount of training data.
-        metric_function: A string specifying the metric function that is
-            used to find the best hypothesis. Options are:
-                - "bump_height"
-                - "correlation_coefficient"
-                - "cosine_similarity"
 
     Returns:
         Either a time T, which is the best guess for the `signal_time`
@@ -121,72 +102,42 @@ def find_hypothesis(
     best_metric = 0.0
 
     # Loop over the temporal grid to find the best hypothesis
-    for signal_mask, signal_time in get_signal_masks(
-        position=position,
-        parang=parang,
-        n_signal_times=n_signal_times,
-        frame_size=frame_size,
-        psf_template=psf_template,
-        max_signal_length=max_signal_length,
+    for signal_time in get_signal_times(
+        n_frames=len(parang), n_signal_times=n_signal_times
     ):
 
         # Select residual for this position
-        residual = results[str(signal_time)]['residuals'][
-            :, position[0], position[1]
-        ]
+        signal_time_residuals = results[str(signal_time)]['residuals']
+        residual = signal_time_residuals[:, position[0], position[1]]
 
         # If the residual is NaN, we can't compute the metric function
         if np.isnan(residual).any():
             continue
 
-        # Get the value of the metric function at the target position:
-        if metric_function == 'bump_height':
+        # Compute the expected signal time series
+        expected_time_series = get_time_series_for_position(
+            position=position,
+            signal_time=signal_time,
+            frame_size=frame_size,
+            parang=parang,
+            psf_template=psf_template,
+        )
 
-            # The bump height metric can be computed directly, because it does
-            # not require us to compare the residual with the expected signal
-            metric = get_bump_height(
-                array=residual,
-                signal_time=signal_time,
-                signal_mask=signal_mask,
-            )
+        # Compute the cosine similarity, which serves as a metric for how
+        # well the expected time series and the residual match
+        metric = cosine_similarity(
+            expected_time_series.reshape(1, -1),
+            residual.reshape(1, -1),
+        )
 
-        else:
-
-            # For all other metrics, we first need to compute the expected
-            # signal time series to compare it with the residual time series
-            expected_time_series = get_time_series_for_position(
-                position=position,
-                signal_time=signal_time,
-                frame_size=frame_size,
-                parang=parang,
-                psf_template=psf_template,
-            )
-
-            # Compute the desired target metric
-            if metric_function == 'cosine_similarity':
-                metric = cosine_similarity(
-                    expected_time_series[signal_mask].reshape(1, -1),
-                    residual[signal_mask].reshape(1, -1),
-                )
-            elif metric_function == 'correlation_coefficient':
-                metric = fast_corrcoef(
-                    expected_time_series[signal_mask].ravel(),
-                    residual[signal_mask].ravel(),
-                )
-            else:
-                raise ValueError(
-                    'Invalid value for metric_function, must be one of the '
-                    'following: "bump_height", "cosine_similarity", '
-                    '"correlation_coefficient".'
-                )
-
-            # Make sure that `metric` is in [0, 1]. This must NOT be used for
-            # the bump_height metric, otherwise we get the wrong maxima!
-            metric = np.clip(metric, a_min=0, a_max=1)
+        # Clip the metric to [0, 1] (a signal time that leads to a negative
+        # cosine similarity should never become a hypothesis)
+        metric = float(np.clip(metric, a_min=0, a_max=1))
 
         # Store the current metric if it is better than the optimum so far
-        if (metric := float(metric)) > best_metric:
+        if metric > best_metric:
             best_metric = metric
             best_signal_time = signal_time
 
+    # Return type must be float, because it can also be NaN
     return float(best_signal_time)
