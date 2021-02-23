@@ -37,7 +37,7 @@ def get_center(frame_size: Tuple[int, int]) -> Tuple[float, float]:
         position of the center of the image.
     """
 
-    return frame_size[0] / 2 - 0.5, frame_size[0] / 2 - 0.5
+    return frame_size[0] / 2 - 0.5, frame_size[1] / 2 - 0.5
 
 
 def polar2cartesian(
@@ -110,7 +110,7 @@ def cartesian2polar(
 
     # Compute separation and the angle
     separation = math.sqrt(
-        (position[0] - center[0])**2 + (position[1] - center[1])**2
+        (position[0] - center[0]) ** 2 + (position[1] - center[1]) ** 2
     )
     angle = math.atan2(position[1] - center[1], position[0] - center[0])
 
