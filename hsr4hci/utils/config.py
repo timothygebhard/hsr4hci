@@ -19,7 +19,6 @@ import hsr4hci
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-
 def load_config(file_path: Union[str, Path]) -> Dict[str, Any]:
     """
     Load and augment an experiment configuration.
