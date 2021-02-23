@@ -51,7 +51,8 @@ def assemble_signal_masking_residuals(
     # Loop over all spatial positions and pick the signal masking-based
     # residual based on the the respective hypothesis for the pixel
     for x, y in product(range(x_size), range(y_size)):
-        if not np.isnan(signal_time := hypotheses[x, y]):
+        signal_time = hypotheses[x, y]
+        if not np.isnan(signal_time):
             signal_masking_residuals[:, x, y] = np.array(
                 results[str(int(signal_time))]['residuals'][:, x, y]
             )
