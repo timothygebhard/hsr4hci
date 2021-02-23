@@ -10,11 +10,16 @@ from cmath import polar
 from math import sin, cos, degrees, radians
 from typing import List, Optional, Tuple
 
-from astropy import units
-from scipy.ndimage import binary_dilation
+from astropy.units import Quantity
+from skimage.morphology import binary_dilation, disk
 
 import numpy as np
 
+from hsr4hci.utils.coordinates import (
+    get_center,
+    cartesian2polar,
+    polar2cartesian
+)
 from hsr4hci.utils.signal_masking import get_signal_length
 
 
@@ -30,12 +35,14 @@ def get_circle_mask(
     """
     Create a circle mask.
 
+    Note: This function uses the numpy convention for coordinates!
+
     Args:
-        mask_size: A tuple `(width, height)` containing the size of the
+        mask_size: A tuple `(x_size, y_size)` containing the size of the
             mask (in pixels) to be created.
-        radius: Radius of the disk in pixels.
+        radius: Radius of the disk (in pixels).
         center: A tuple `(x, y)` containing the center of the circle.
-            If None is given the circle will be centered within the
+            If None is given, the circle will be centered within the
             mask (this is the default).
 
     Returns:
@@ -45,18 +52,25 @@ def get_circle_mask(
     """
 
     x, y = np.ogrid[:mask_size[0], :mask_size[1]]
+
     if center is None:
-        center = (int(mask_size[0] / 2), int(mask_size[1] / 2))
-    return (x - center[0]) ** 2 + (y - center[1]) ** 2 < radius ** 2
+        center = get_center(mask_size)
+
+    return np.asarray(
+        (x - center[0]) ** 2 + (y - center[1]) ** 2 < radius ** 2
+    )
 
 
 def get_annulus_mask(
     mask_size: Tuple[int, int],
     inner_radius: float,
     outer_radius: float,
+    center: Optional[Tuple[float, float]] = None,
 ) -> np.ndarray:
     """
     Create an annulus-shaped mask.
+
+    Note: This function uses the numpy convention for coordinates!
 
     Args:
         mask_size: A tuple (width, height) containing the size of the
@@ -64,169 +78,31 @@ def get_annulus_mask(
             the array which is masked.
         inner_radius: Inner radius (in pixels) of the annulus mask.
         outer_radius: Outer radius (in pixels) of the annulus mask.
+        center: A tuple `(x, y)` containing the center of the annulus.
+            If None is given, the annulus will be centered within the
+            mask (this is the default).
 
     Returns:
         A 2D numpy array of size `mask_size` which masks an annulus
         with a given `inner_radius` and `outer_radius`.
     """
 
-    return np.logical_xor(
-        get_circle_mask(mask_size=mask_size, radius=inner_radius),
-        get_circle_mask(mask_size=mask_size, radius=outer_radius),
+    return np.asarray(
+        np.logical_xor(
+            get_circle_mask(mask_size, inner_radius, center),
+            get_circle_mask(mask_size, outer_radius, center),
+        )
     )
-
-
-def get_wedge_mask(
-    mask_size: Tuple[int, int],
-    orientation_angle: float,
-    opening_angle: float,
-) -> np.ndarray:
-    """
-    Create a wedge-shaped (i.e., a circle sector) mask of a given size.
-    The wedge is always centered at the center of the mask.
-
-    Args:
-        mask_size: A tuple (width, height) specifying the size of the
-            mask to be created.
-        orientation_angle: The angle which defines the orientation of
-            the wedge (in degrees). The orientation is given by the
-            angle bisector (see below).
-        opening_angle: The opening angle (in degrees); the wedge will
-            mask all pixels in the sector:
-                [orientation_angle - opening_angle / 2,
-                 orientation_angle + opening_angle / 2]
-
-    Returns:
-        A numpy array containing a wedge-shaped binary mask.
-    """
-
-    # Convert angles from degree to radian (and use shorter names)
-    theta = radians(orientation_angle % 360)
-    phi = radians(opening_angle % 360)
-
-    # Create a suitable grid
-    x_, y_ = np.ogrid[: mask_size[0], : mask_size[1]]
-    x = x_ - mask_size[0] / 2
-    y = y_ - mask_size[1] / 2
-
-    # Catch two quick corner cases: All pixels or no pixels
-    if opening_angle == 0:
-        return np.zeros(mask_size)
-    if opening_angle == 360:
-        return np.ones(mask_size)
-
-    # The wedge is defined by two straight lines. To see if a point on the
-    # grid belongs to the wedge, we need to know on which side of the lines
-    # it falls, which we can find out by taking the scalar product with the
-    # normal vector of said straight lines.
-    scalarproduct_v = x * cos(theta + phi / 2) - y * sin(theta + phi / 2)
-    scalarproduct_w = x * cos(theta - phi / 2) - y * sin(theta - phi / 2)
-
-    # Ultimately, we only need to combine the two sets (i.e., half planes).
-    # The way we do this depends whether the opening angle is smaller or
-    # greater than 180 degrees.
-    if opening_angle < 180:
-        wedge_mask = np.logical_and(scalarproduct_v <= 0, scalarproduct_w >= 0)
-    else:
-        wedge_mask = np.logical_or(scalarproduct_v <= 0, scalarproduct_w >= 0)
-
-    return wedge_mask
-
-
-def get_sausage_mask(
-    mask_size: Tuple[int, int],
-    position: Tuple[float, float],
-    radius: float,
-    angle: float,
-) -> np.ndarray:
-    """
-    Get a "sausage"-shaped mask, which corresponds to the shape you get
-    if you place a circle with the given `radius` at `position` and then
-    slide it along an arc (around the center) with the given `angle`.
-    The sign of the angle defines the direction (clockwise or counter-
-    clockwise) of the sausage shape.
-
-    Args:
-        mask_size: A tuple `(width, height)` specifying the size of the
-            mask to be created.
-        position: A tuple `(x, y)` specifying the position which defines
-            the starting position of the sausage mask.
-        radius: The radius (in pixels) of the "sausage".
-        angle: The angle (in degrees) which defines the length and
-            orientation of the "sausage".
-
-    Returns:
-        A numpy array containing a "sausage"-shaped binary mask.
-    """
-
-    # Compute the center of the mask
-    center = (mask_size[0] / 2, mask_size[1] / 2)
-
-    # Convert the given position to polar coordinates
-    r, phi = polar(complex(position[1] - center[1], position[0] - center[0]))
-
-    # Get the end position in cartesian coordinates
-    end_position = (
-        center[0] + r * sin(phi + radians(angle)),
-        center[1] + r * cos(phi + radians(angle)),
-    )
-
-    # Get the annulus mask
-    annulus_mask = get_annulus_mask(
-        mask_size=mask_size,
-        inner_radius=(r - radius),
-        outer_radius=(r + radius),
-    )
-
-    # Get the wedge mask
-    wedge_mask = get_wedge_mask(
-        mask_size=mask_size,
-        orientation_angle=(degrees(phi) + angle / 2),
-        opening_angle=angle,
-    )
-
-    # Get "end cap" masks
-    end_cap_mask_1 = get_circle_mask(
-        mask_size=mask_size, radius=radius, center=position
-    )
-    end_cap_mask_2 = get_circle_mask(
-        mask_size=mask_size, radius=radius, center=end_position
-    )
-
-    # Compute the final mask by intersecting the annulus mask with the wedge
-    # mask and then adding the "end cap" masks.
-    return np.logical_or(
-        np.logical_and(annulus_mask, wedge_mask),
-        np.logical_or(end_cap_mask_1, end_cap_mask_2),
-    )
-
-
-def get_checkerboard_mask(mask_size: Tuple[int, ...]) -> np.ndarray:
-    """
-    Create a checkerboard mask, i.e. a mask where every other pixel
-    is selected (in a checkerboard pattern).
-
-    Source: https://stackoverflow.com/a/51715491/4100721
-
-    Args:
-        mask_size: A tuple containing the size of the mask to be
-            created. This works in arbitrarily many dimensions.
-
-    Returns:
-        A n-dimensional numpy array containing a checkerboard mask.
-    """
-    return np.indices(mask_size).sum(axis=0) % 2
 
 
 # -----------------------------------------------------------------------------
 # DERIVED MASKS (INPUT PARAMETERS IN PHYSICAL UNITS)
 # -----------------------------------------------------------------------------
 
-
 def get_roi_mask(
     mask_size: Tuple[int, int],
-    inner_radius: units.Quantity,
-    outer_radius: units.Quantity,
+    inner_radius: Quantity,
+    outer_radius: Quantity,
 ) -> np.ndarray:
     """
     Get a numpy array masking the pixels within the region of interest.
@@ -254,9 +130,9 @@ def get_roi_mask(
 def get_predictor_mask(
     mask_size: Tuple[int, int],
     position: Tuple[int, int],
-    annulus_width: units.Quantity,
-    radius_position: units.Quantity,
-    radius_mirror_position: units.Quantity,
+    annulus_width: Quantity,
+    radius_position: Quantity,
+    radius_mirror_position: Quantity,
 ) -> np.ndarray:
     """
     Create a mask that selects the potential predictors for a position.
@@ -297,7 +173,7 @@ def get_predictor_mask(
     """
 
     # Compute mask center and separation of `position` from the center
-    center = (mask_size[0] / 2, mask_size[1] / 2)
+    center = get_center(mask_size)
     separation = np.hypot((position[0] - center[0]), (position[1] - center[1]))
 
     # Initialize an empty mask of the desired size
@@ -439,10 +315,10 @@ def get_selection_mask(
     position: Tuple[int, int],
     signal_time: Optional[int],
     parang: np.ndarray,
-    annulus_width: units.Quantity,
-    radius_position: units.Quantity,
-    radius_mirror_position: units.Quantity,
-    subsample_predictors: bool,
+    annulus_width: Quantity,
+    radius_position: Quantity,
+    radius_mirror_position: Quantity,
+    psf_template: np.ndarray,
     psf_radius: float,
     dilation_size: int,
     use_field_rotation: bool = True,
@@ -468,12 +344,8 @@ def get_selection_mask(
         radius_mirror_position: The radius (as an astropy.units.Quantity
             that can be converted to pixels) of the circular region
             around the mirrored `position`.
-        psf_radius:  FIXME
-        subsample_predictors: A boolean indicating whether or not to
-            subsample the predictor mask, i.e. only select every other
-            predictor. Assuming that neighboring pixels are strongly
-            correlated, this may be a simple way to reduce the number
-            of predictors (and improve the training speed).
+        psf_template:  FIXME
+        psf_radius: FIXME
         dilation_size: FIXME
         use_field_rotation: A boolean indicating whether or not to use
             the field rotation when determining the exclusion region.
@@ -514,7 +386,7 @@ def get_selection_mask(
         np.logical_not(exclusion_mask), predictor_mask
     )
 
-    return selection_mask
+    return np.asarray(selection_mask)
 
 
 # -----------------------------------------------------------------------------
