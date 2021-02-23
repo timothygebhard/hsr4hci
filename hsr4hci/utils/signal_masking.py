@@ -7,7 +7,7 @@ Utility functions for signal masking and related tasks.
 # -----------------------------------------------------------------------------
 
 from itertools import product
-from typing import Dict, List, Tuple, Union
+from typing import Dict, Tuple, Union
 
 import numpy as np
 
@@ -175,87 +175,6 @@ def get_signal_mask(
     signal_mask = np.asarray(expected_signal > threshold)
 
     return signal_mask
-
-
-def get_signal_masks(
-    position: Tuple[int, int],
-    parang: np.ndarray,
-    signal_times: np.ndarray,
-    frame_size: Tuple[int, int],
-    psf_template: np.ndarray,
-    max_signal_length: float = 0.7,
-    threshold: float = 0.2,
-) -> List[Tuple[np.ndarray, int]]:
-    """
-    Generate the masks for training a series of models where different
-    possible signal times are masked out during training.
-
-    This function returns a *list of masks* (and signal times); one for
-    each signal time on the temporal grid that is used for training the
-    HSR models with signal masking! It is basically a wrapper around
-    `get_signal_mask()` that runs the loop over the `signal_times` grid.
-
-    Similar to `get_signal_masks_analytically()`; however, this version
-    makes use of `get_time_series_for_position()` to accurately model
-    the expected shape of the planet signal at the given `position`, and
-    determines the signal mask by thresholding this expected signal.
-
-    Args:
-        position: An integer tuple `(x, y)` specifying the spatial
-            position of the pixel for which we are computing the masks.
-        parang: A numpy array of shape `(n_frames, )` containing the
-            parallactic angles.
-        signal_times: A 1D numpy array containing the temporal grid
-            of possible signal times for which to return a mask.
-        frame_size: A tuple `(width, height)` specifying the spatial
-            size of the stack.
-        psf_template: A 2D numpy array containing a (cropped) version of
-            the PSF template. Typically, the PSF is cropped to a radius
-            of 1 lambda over D (to only contain the central peak) or
-            3 lambda over D (to also capture the secondary maxima).
-        max_signal_length: A value in [0.0, 1.0] which describes the
-            maximum value of `expected_signal_length / n_frames`, which
-            will determine for which pixels we do not want to use the
-            "mask out a potential signal region"-approach, because the
-            potential signal region is too large to leave us with a
-            reasonable amount of training data.
-        threshold: The threshold value that is passed to the
-            `get_signal_mask` function (see there for details).
-
-    Returns:
-        This function returns a list of up to `n_position` 3-tuples
-        of the following form: `(signal_mask, signal_time)`.
-    """
-
-    # Initialize lists in which we store the results
-    results = list()
-
-    # Loop over all these time points to generate the corresponding indices
-    for signal_time in signal_times:
-
-        # Make sure the signal time is an integer (we use it as an index)
-        signal_time = int(signal_time)
-
-        # Compute the signal mask for this signal time
-        signal_mask = get_signal_mask(
-            position=position,
-            parang=parang,
-            signal_time=signal_time,
-            frame_size=frame_size,
-            psf_template=psf_template,
-            threshold=threshold,
-        )
-
-        # Check if the expected signal length is larger than the threshold.
-        # In this case, we do not compute the noise and signal masks, but
-        # skip this signal time.
-        if np.mean(signal_mask) > max_signal_length:
-            continue
-
-        # Store the current (signal_time_index, signal_mask, signal_time) tuple
-        results.append((signal_mask, signal_time))
-
-    return results
 
 
 def get_signal_times(n_frames: int, n_signal_times: int) -> np.ndarray:
