@@ -11,7 +11,7 @@ from functools import reduce
 from hashlib import md5
 from math import modf
 from pathlib import Path
-from typing import Any, Callable, List, Sequence, Tuple, Union
+from typing import Any, Callable, List, Sequence, Tuple, Union, TypeVar
 
 import operator
 
@@ -20,6 +20,12 @@ from scipy.interpolate import RegularGridInterpolator
 from scipy.ndimage import fourier_shift, shift
 
 import numpy as np
+
+# -----------------------------------------------------------------------------
+# TYPE VARS
+# -----------------------------------------------------------------------------
+
+T = TypeVar('T', np.ndarray, Sequence)
 
 
 # -----------------------------------------------------------------------------
@@ -115,7 +121,7 @@ def crop_center(
     return np.asarray(array[tuple(slices)])
 
 
-def split_into_n_chunks(sequence: Sequence, n_chunks: int) -> List[Sequence]:
+def split_into_n_chunks(sequence: T, n_chunks: int) -> List[T]:
     """
     Split a given `sequence` (list, numpy array, ...) into `n_chunks`
     "chunks" (sub-sequences) of approximately equal length, which are

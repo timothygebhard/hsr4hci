@@ -205,8 +205,8 @@ def test__split_into_n_chunks() -> None:
     output_2 = split_into_n_chunks(sequence=sequence_2, n_chunks=3)
     assert not DeepDiff(output_2, target_2)
 
-    # Test case 1: np.ndarray, len(sequence) mod n_chunks == 0
+    # Test case 3: np.ndarray, len(sequence) mod n_chunks == 0
     sequence_3 = np.array(['a', 'b', 'c', 'd'])
     target_3 = [np.array(['a', 'b']), np.array(['c', 'd'])]
-    output_3 = split_into_n_chunks(sequence=list(sequence_3), n_chunks=2)
+    output_3 = split_into_n_chunks(sequence=sequence_3, n_chunks=2)
     assert not DeepDiff(output_3, target_3)
