@@ -28,12 +28,8 @@ H5PY_SUPPORTED_TYPES = (
     complex,
     float,
     int,
-    np.complex,
-    np.float,
     np.generic,
-    np.int,
     np.ndarray,
-    np.str,
     str,
 )
 
@@ -42,9 +38,7 @@ H5PY_SUPPORTED_TYPES = (
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def is_hdf_file(
-    file_path: Union[Path, str],
-) -> bool:
+def is_hdf_file(file_path: Union[Path, str]) -> bool:
     """
     Check the ending of a file_path to determine if it is an HDF file.
 
@@ -178,7 +172,8 @@ def recursively_load_dict_contents_from_group(
         elif isinstance(item, h5py.Group):
             new_path = f'{path}/{key}'
             results[key] = recursively_load_dict_contents_from_group(
-                hdf_object=hdf_object, path=new_path,
+                hdf_object=hdf_object,
+                path=new_path,
             )
 
     return results
