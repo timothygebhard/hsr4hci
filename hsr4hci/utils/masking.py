@@ -6,8 +6,6 @@ Utility functions for creating and working with (binary) masks.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from cmath import polar
-from math import sin, cos, degrees, radians
 from typing import List, Optional, Tuple
 
 from astropy.units import Quantity
@@ -216,6 +214,7 @@ def get_exclusion_mask(
     position: Tuple[float, float],
     parang: np.ndarray,
     signal_time: Optional[int],
+    psf_template: np.ndarray,
     psf_radius: float,
     dilation_size: Optional[int] = None,
     use_field_rotation: bool = True,
@@ -228,6 +227,7 @@ def get_exclusion_mask(
         position:
         parang:
         signal_time:
+        psf_template:
         psf_radius:
         dilation_size:
         use_field_rotation:
@@ -244,8 +244,10 @@ def get_exclusion_mask(
         )
 
     # Defines shortcuts
-    center = (mask_size[0] / 2, mask_size[1] / 2)
     n_frames = len(parang)
+
+    # Get polar representation of the current position
+    rho, phi = cartesian2polar(position, mask_size)
 
     # In case we use the field rotation (e.g., for signal masking models), we
     # need to compute the size of it based on the expected signal length at
@@ -254,58 +256,56 @@ def get_exclusion_mask(
     # signal bump in the pixel at the current `position`.
     if use_field_rotation and signal_time is not None:
 
+        if signal_time < 0:
+            raise ValueError('Negative signal times are not allowed!')
+
         # Get expected total signal length at the current (spatio-temporal)
         # position; this is a quantity in units of "number of frames"
         length_1, length_2 = get_signal_length(
             position=position,
             signal_time=signal_time,
-            center=center,
             parang=parang,
-            psf_radius=psf_radius,
+            frame_size=mask_size,
+            psf_template=psf_template,
         )
         signal_length = int(length_1 + length_2)
 
         # Compute the exclusion angle in forward and backward direction
-        upper = min(n_frames - 1, signal_time + signal_length)
         lower = max(0, signal_time - signal_length)
-        exclusion_angle_1 = parang[signal_time] - parang[upper]
-        exclusion_angle_2 = parang[signal_time] - parang[lower]
+        upper = min(n_frames - 1, signal_time + signal_length)
+        angle_1 = parang[signal_time] - parang[lower]
+        angle_2 = parang[signal_time] - parang[upper]
+
+        angles = np.linspace(
+            phi.to('degree').value + angle_1,
+            phi.to('degree').value + angle_2,
+            n_frames
+        )
 
     # In case we do not use the field rotation to compute the exclusion region,
     # as it is the case for the "baseline" models, we simply set the exclusion
     # angles to zero; this will result in a circular exclusion mask
     else:
-        exclusion_angle_1 = 0
-        exclusion_angle_2 = 0
+        angles = np.array([phi.to('degree').value])
 
-    # Get the two parts of the exclusion mask (clockwise / counter-clockwise)
-    # Note: We need to use twice the PSF radius because we are just operating
-    #   under the assumption that `position` contains planet signal, that is,
-    #   the planet is not necessarily centered on `position`.
-    part_1 = get_sausage_mask(
-        mask_size=mask_size,
-        position=position,
-        radius=2 * psf_radius,
-        angle=exclusion_angle_1,
-    )
-    part_2 = get_sausage_mask(
-        mask_size=mask_size,
-        position=position,
-        radius=2 * psf_radius,
-        angle=exclusion_angle_2,
-    )
+    # Initialize the exclusion mask
+    exclusion_mask = np.zeros(mask_size)
 
-    # Combine the two parts to get the full exclusion mask
-    exclusion_mask = np.logical_or(part_1, part_2)
+    # Compute an arc
+    for angle in angles:
+        x, y = polar2cartesian(
+            separation=rho,
+            angle=Quantity(angle, 'degree'),
+            frame_size=mask_size
+        )
+        exclusion_mask[int(x), int(y)] = 1
 
-    # If desired, apply a binary dilation to the exclusion mask
     if dilation_size is not None:
-        dilation_kernel = get_circle_mask(
-            mask_size=(dilation_size, dilation_size), radius=dilation_size / 2
-        )
-        exclusion_mask = binary_dilation(
-            input=exclusion_mask, structure=dilation_kernel
-        )
+        selem = disk(radius=int(np.ceil(2 * psf_radius + dilation_size)))
+    else:
+        selem = disk(radius=int(np.ceil(2 * psf_radius)))
+
+    exclusion_mask = binary_dilation(image=exclusion_mask, selem=selem)
 
     return exclusion_mask
 
@@ -364,17 +364,13 @@ def get_selection_mask(
         radius_mirror_position=radius_mirror_position,
     )
 
-    # If desired, subsample the predictor mask
-    if subsample_predictors:
-        subsampling_mask = get_checkerboard_mask(mask_size=mask_size)
-        predictor_mask = np.logical_and(predictor_mask, subsampling_mask)
-
     # Get exclusion mask (i.e., pixels we must not use as predictors)
     exclusion_mask = get_exclusion_mask(
         mask_size=mask_size,
         position=position,
         parang=parang,
         signal_time=signal_time,
+        psf_template=psf_template,
         psf_radius=psf_radius,
         dilation_size=dilation_size,
         use_field_rotation=use_field_rotation,
