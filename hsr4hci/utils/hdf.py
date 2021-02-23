@@ -164,7 +164,8 @@ def recursively_load_dict_contents_from_group(
         # If the current item is a dataset, load its value. h5py will
         # automatically convert it to a numpy type.
         if isinstance(item, h5py.Dataset):
-            if isinstance(value := item[()], bytes):
+            value = item[()]
+            if isinstance(value, bytes):
                 value = value.decode('utf-8')
             results[key] = value
 
