@@ -6,13 +6,12 @@ Utilities for extending the abilities of PynPoint.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from warnings import warn
 
 import time
 
-from astropy.time import Time
-
+import dateutil.parser
 import numpy as np
 
 from pynpoint.core.processing import ProcessingModule
@@ -73,7 +72,7 @@ class TimestampModule(ProcessingModule):
         # at which the exposure was started. (This behaviour is configured
         # in the PynPoint_config.ini file.)
         # The value string for the date uses the restricted ISO 8601 format,
-        # that is, 'YYYY-MM-DDThh:mm:ss.sss'. Unless there is an additional
+        # that is, 'YYYY-MM-DDThh:mm:ss.ssss'. Unless there is an additional
         # 'TIMESYS' field in the FITS header specifying specifying another
         # time system, the time zone can be assumed to be UTC.
         # Check out the "ESO Data Interface Control Document" for details.
@@ -92,23 +91,18 @@ class TimestampModule(ProcessingModule):
             progress(
                 current=i,
                 total=len(steps),
-                message='Calculating datetimes...',
+                message='Calculating timestamps...',
                 start_time=loop_start,
             )
 
-            # Get the start time of the current cube: use astropy to parse the
-            # FITS data format, and then convert to a regular datetime object
-            cube_start = Time(
-                val=cube_start_times[i].decode('utf-8'),
-                format='fits',
-                scale='utc',
-            ).to_datetime(timezone=timezone.utc)
+            # Get the time stamp for the start of the current cube
+            cube_start = datetime.timestamp(
+                dateutil.parser.parse(cube_start_times[i].decode('utf-8'))
+            )
 
             # Compute timestamp for each frame in the cube
             for j in range(n_frames_in_cube):
-                frame_datetime = cube_start + timedelta(seconds=(j * dit))
-                frame_timestamp = datetime.timestamp(frame_datetime)
-                all_timestamps.append(frame_timestamp)
+                all_timestamps.append(cube_start + j * dit)
 
         # Write the final result (i.e., the timestamps for all frames in all
         # cubes) to the PynPoint database
