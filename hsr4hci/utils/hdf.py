@@ -109,7 +109,7 @@ def recursively_save_dict_contents_to_group(
 
         # If the current `item` contains data, create a dataset to store them
         elif isinstance(item, H5PY_SUPPORTED_TYPES):
-            hdf_object[path] = item
+            hdf_object[path][...] = item
 
         # If the type of `item` is not supported, raise a TypeError
         else:
