@@ -1,5 +1,5 @@
 """
-Utility methods for queues used for multiprocessing.
+Utility methods for queues used for parallelization.
 
 The ThreadSafeCounter class is strongly inspired by this blog post:
     http://eli.thegreenplace.net/2012/01/04/shared-counter-with-pythons-multiprocessing/
