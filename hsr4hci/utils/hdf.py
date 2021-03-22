@@ -55,7 +55,12 @@ def is_hdf_file(file_path: Union[Path, str]) -> bool:
     return endswith_hdf or endswith_hdf5
 
 
-def save_dict_to_hdf(dictionary: dict, file_path: Union[Path, str]) -> None:
+def save_dict_to_hdf(
+    dictionary: dict,
+    file_path: Union[Path, str],
+    mode: str = 'a',
+    prefix: str = '',
+) -> None:
     """
     Save the given `dictionary` as an HDF file at the given `file_path`.
     If the `dictionary` is nested, the HDF file will replicate this
@@ -65,17 +70,22 @@ def save_dict_to_hdf(dictionary: dict, file_path: Union[Path, str]) -> None:
         dictionary: A (possibly nested) dictionary to be saved.
         file_path: The path to the target file (including name and
             file ending).
+        mode: The mode (e.g., "w" or "a") that is used when opening
+            the HDF file for writing.
+        prefix: Prefix to use when writing to the HDF file. This can
+            be used, for example, to write the dictionary into its own
+            group inside the HDF file.
     """
 
     # Make sure that file_path is a proper Path
     file_path = Path(file_path)
 
     # Open an HDF file at the given location
-    with h5py.File(file_path, 'w') as hdf_file:
+    with h5py.File(file_path, mode=mode) as hdf_file:
 
         # Recursively loop over the given dictionary and store its contents
         recursively_save_dict_contents_to_group(
-            hdf_object=hdf_file, prefix='/', dictionary=dictionary
+            hdf_object=hdf_file, prefix=prefix, dictionary=dictionary
         )
 
 
