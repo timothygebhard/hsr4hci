@@ -24,7 +24,7 @@ from hsr4hci.utils.config import load_config, load_dataset_config
 from hsr4hci.utils.evaluation import compute_optimized_snr
 from hsr4hci.utils.fits import read_fits
 from hsr4hci.utils.plotting import adjust_luminosity, plot_frame
-from hsr4hci.utils.queue import Queue, get_available_cpu_count
+from hsr4hci.utils.parallelization import Queue, get_available_cpu_count
 from hsr4hci.utils.units import set_units_for_instrument
 
 

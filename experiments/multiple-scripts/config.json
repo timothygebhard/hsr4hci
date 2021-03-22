@@ -21,8 +21,8 @@
     "subsample_predictors":    false
   },
   "signal_masking":{
-    "n_signal_times":          50,
-    "max_signal_length":       0.7,
+    "n_signal_times":          30,
+    "max_signal_length":       0.5,
     "metric_function":         "cosine_similarity"
   },
   "n_splits": {
@@ -34,11 +34,10 @@
     "class":                   "RidgeCV",
     "parameters": {
       "fit_intercept":         true,
-      "alphas":                [1e1, 1e6, 21]
+      "alphas":                [1e1, 1e3, 11]
     }
   },
   "consistency_checks": {
-    "n_test_positions":        50,
     "filter_size":             2
   }
 }
