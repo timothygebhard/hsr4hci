@@ -111,9 +111,16 @@ def crop_center(
     slices = list()
     for old_len, new_len in zip(array.shape, size):
 
-        # Compute start and end position for axis
-        start = old_len // 2 - new_len // 2 if new_len != -1 else None
-        end = start + new_len if start is not None else None
+        # Compute start and end position for axis: if the new length is
+        # greater the the current one, we do not crop.
+        if new_len > old_len:
+            start = None
+            end = None
+
+        # Otherwise we crop the same amount on both sides
+        else:
+            start = old_len // 2 - new_len // 2 if new_len != -1 else None
+            end = start + new_len if start is not None else None
 
         # Create a slice object for axis
         slices.append(slice(start, end))
