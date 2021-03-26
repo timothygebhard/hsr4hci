@@ -18,7 +18,7 @@ from hsr4hci.utils.forward_modeling import get_time_series_for_position
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def assemble_signal_masking_residuals(
+def assemble_residuals_from_hypotheses(
     hypotheses: np.ndarray,
     results: Dict[str, Union[np.ndarray, Dict[str, np.ndarray]]],
 ) -> np.ndarray:
