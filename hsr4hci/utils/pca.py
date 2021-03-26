@@ -7,7 +7,7 @@ Utility functions for performing principal component analysis (PCA).
 # -----------------------------------------------------------------------------
 
 from copy import deepcopy
-from typing import Iterable, Tuple, Union
+from typing import cast, Iterable, Tuple, Union
 
 from joblib import delayed, Parallel
 from sklearn.decomposition import PCA
@@ -122,6 +122,11 @@ def get_pca_signal_estimates(
         if verbose:
             print(string, end=end, flush=True)
 
+    def add_progressbar(iterator: Iterable) -> Iterable:
+        if verbose:
+            return cast(Iterable, tqdm(iterator, ncols=80))
+        return iterator
+
     # Convert pca_numbers into a sorted list
     pca_numbers = sorted(list(pca_numbers), reverse=True)
 
@@ -194,7 +199,7 @@ def get_pca_signal_estimates(
     else:
         vprint('Computing signal estimates (serially):')
         signal_estimates = list()
-        for n_components in tqdm(pca_numbers, ncols=80):
+        for n_components in add_progressbar(pca_numbers):
             signal_estimates.append(get_signal_estimate(n_components, pca))
 
     # Sort the list such that signal estimates are ordered by increasing
