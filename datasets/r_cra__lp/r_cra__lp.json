@@ -1,0 +1,37 @@
+{
+  "input_data": {
+    "stack": {
+      "file_name":       "RCrA_AE.hdf5",
+      "key":             "science"
+    },
+    "parang": {
+      "file_name":       "RCrA_AE.hdf5",
+      "key":             "header_science/PARANG"
+    },
+    "psf_template": {
+      "file_name":       "RCrA_AE.hdf5",
+      "key":             "unsat_photometry"
+    }
+  },
+  "metadata": {
+    "CENTRAL_LAMBDA":    "3800 nm",
+    "CORONAGRAPH":       "AGPM",
+    "DATE":              "2018-06-07",
+    "DIT_PSF_TEMPLATE":  0.004256,
+    "DIT_STACK":         0.1082,
+    "ESO_PROGRAM_ID":    "1101.C-0092(A)",
+    "FILTER":            "L'",
+    "INSTRUMENT":        "NACO",
+    "LAMBDA_OVER_D":     0.0956,
+    "ND_FILTER":         1.0,
+    "PIXSCALE":          0.0271,
+    "TARGET_STAR":       "R CrA"
+  },
+  "planets": {
+    "b": {
+      "separation":      0.1867,
+      "position_angle":  132.0,
+      "contrast":        6.48
+    }
+  }
+}
