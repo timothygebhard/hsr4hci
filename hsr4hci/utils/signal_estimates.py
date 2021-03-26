@@ -7,7 +7,9 @@ Utility functions for creating signal estimates.
 # -----------------------------------------------------------------------------
 
 from typing import List, Tuple
+from warnings import warn
 
+from skimage.filters import threshold_minimum
 from skimage.morphology import disk, opening
 from tqdm.auto import tqdm
 
@@ -19,6 +21,64 @@ from hsr4hci.utils.derotating import derotate_combine
 # -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
+
+def get_signal_estimate(
+    parang: np.ndarray,
+    match_fraction: np.ndarray,
+    default_residuals: np.ndarray,
+    non_default_residuals: np.ndarray,
+    roi_mask: np.ndarray,
+    filter_size: int = 0,
+) -> Tuple[np.ndarray, np.ndarray, float]:
+    """
+    Threshold the given `match_fraction` and use the resulting mask to
+    construct a signal estimate from the given residuals.
+
+    Args:
+        parang:
+        match_fraction:
+        default_residuals:
+        non_default_residuals:
+        roi_mask:
+        filter_size:
+
+    Returns:
+        A 3-tuple consisting of the `signal_estimate`, the mask that was
+        used to create it, and the threshold that was used to obtain the
+        mask.
+    """
+
+    # Determine the "optimal" threshold for the match fraction
+    threshold = threshold_minimum(np.nan_to_num(match_fraction[roi_mask]))
+
+    # Apply threshold to match fraction to get a mask
+    mask = match_fraction >= threshold
+
+    # If the mask selects "too many" pixels (i.e., more than can reasonably
+    # be affected by planet signals), fall back to the default. This is a
+    # somewhat crude way to incorporate our knowledge that a real planet
+    # signal must be spatially sparse.
+    if np.mean(mask[roi_mask]) > 0.2:
+        mask = np.full(mask.shape, False)
+        warn('Threshold allows too many pixels, falling back to default mask!')
+
+    # Define a structure element and apply a morphological filter (more
+    # precisely, an opening filter) to remove small regions in the mask.
+    structure_element = disk(filter_size)
+    filtered_mask = np.logical_and(opening(mask, structure_element), mask)
+
+    # Use the filtered mask to decide for which pixels the "default" model
+    # is used, and for which the planet-based model is used.
+    residuals = np.copy(default_residuals)
+    residuals[:, filtered_mask] = np.array(
+        non_default_residuals[:, filtered_mask]
+    )
+
+    # Compute signal estimate and store it
+    signal_estimate = derotate_combine(residuals, parang, mask=roi_mask)
+
+    return signal_estimate, filtered_mask, threshold
+
 
 def get_signal_estimates_and_masks(
     parang: np.ndarray,
