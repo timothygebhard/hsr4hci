@@ -1,0 +1,37 @@
+{
+  "input_data": {
+    "stack": {
+      "file_name":       "betapic_naco_mp_full.hdf5",
+      "key":             "betapic_naco_mp"
+    },
+    "parang": {
+      "file_name":       "betapic_naco_mp_full.hdf5",
+      "key":             "header_betapic_naco_mp/PARANG"
+    },
+    "psf_template": {
+      "file_name":       "betapic_naco_mp.hdf5",
+      "key":             "flux"
+    }
+  },
+  "metadata": {
+    "CENTRAL_LAMBDA":    "4780 nm",
+    "CORONAGRAPH":       "",
+    "DATE":              "2012-11-26",
+    "DIT__PSF_TEMPLATE": 0.1,
+    "DIT__STACK":        0.065,
+    "ESO_PROGRAM_ID":    "090.C-0653(D)",
+    "FILTER":            "M'",
+    "INSTRUMENT":        "NACO",
+    "LAMBDA_OVER_D":     0.1202,
+    "ND_FILTER":         0.0233,
+    "PIXSCALE":          0.0271,
+    "TARGET_STAR":       "Beta Pictoris"
+  },
+  "planets": {
+    "b": {
+      "separation":      0.45842,
+      "position_angle":  211.39,
+      "contrast":        7.64
+    }
+  }
+}
