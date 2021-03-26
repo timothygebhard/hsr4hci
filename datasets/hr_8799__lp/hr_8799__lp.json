@@ -1,0 +1,52 @@
+{
+  "input_data": {
+    "stack": {
+      "file_name":       "hr8799_naco_lp.hdf5",
+      "key":             "science"
+    },
+    "parang": {
+      "file_name":       "hr8799_naco_lp.hdf5",
+      "key":             "header_science/PARANG"
+    },
+    "psf_template": {
+      "file_name":       "hr_8799__lp__psf_template.hdf",
+      "key":             "psf_template"
+    }
+  },
+  "metadata": {
+    "CENTRAL_LAMBDA":    "3800 nm",
+    "CORONAGRAPH":       "AGPM",
+    "DATE":              "2011-09-01",
+    "DIT__PSF_TEMPLATE": 0.2,
+    "DIT__STACK":        0.2,
+    "ESO_PROGRAM_ID":    "087.C-0450(B)",
+    "FILTER":            "L'",
+    "INSTRUMENT":        "NACO",
+    "LAMBDA_OVER_D":     0.0956,
+    "ND_FILTER":         0.0221,
+    "PIXSCALE":          0.0271,
+    "TARGET_STAR":       "HR 8799"
+  },
+  "planets": {
+    "b": {
+      "separation":      1.7125,
+      "position_angle":  62.99,
+      "contrast":        -1
+    },
+    "c": {
+      "separation":      0.9452,
+      "position_angle":  320.47,
+      "contrast":        -1
+    },
+    "d": {
+      "separation":      0.6448,
+      "position_angle":  207.00,
+      "contrast":        -1
+    },
+    "e": {
+      "separation":      0.3996,
+      "position_angle":  249.35,
+      "contrast":        -1
+    }
+  }
+}
