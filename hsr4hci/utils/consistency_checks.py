@@ -117,6 +117,13 @@ def get_match_fraction(
         # Get the signal time-hypothesis for the current position
         signal_time = hypotheses[position[0], position[1]]
 
+        # If we do not have a hypothesis for the current position, we can
+        # directly return the match fraction as 0
+        if np.isnan(signal_time):
+            match_fraction__mean[position] = 0
+            match_fraction__median[position] = 0
+            continue
+
         # Compute the expect final position based on the hypothesis that the
         # signal is at `position` at time `signal_time`
         final_position = rotate_position(
@@ -147,7 +154,8 @@ def get_match_fraction(
         # all pixels that at some point in time contain planet signal.
         # The threshold value of 0.2 is a bit of a magic number: it serves to
         # pick only those pixels affected by the central peak of the signal,
-        # and not the secondary maxima.
+        # and not the secondary maxima, which are often too low to be picked
+        # up by the HSR, and including them would lower the match fraction.
         affected_mask = np.max(expected_stack, axis=0).astype(float) > 0.2
 
         # Keep track of the matches (similarity scores) for affected positions
@@ -178,22 +186,20 @@ def get_match_fraction(
 
             # Compute the similarity between the expected signal and the
             # actual "best" residual (and make sure it is between 0 and 1)
-            metric = float(
+            similarity = float(
                 np.clip(
                     cosine_similarity(X=a.reshape(1, -1), Y=b.reshape(1, -1)),
                     a_min=0,
                     a_max=1,
                 )
             )
-            matches.append(metric)
+            matches.append(similarity)
 
-        # Compute "correction factor" to down-weigh those pixels where not
-        # all affected pixels could be checked for a match
-        # TODO: Discuss if this factor makes sense / is fair
-        factor = np.sqrt(len(matches) / (np.nansum(affected_mask) - 1))
+        # TODO: Maybe add a correction factor for pixels where not all pixels
+        #       could be checked? (These should perhaps be down-weighted.)
 
         # Compute mean and median match fraction for current position
-        match_fraction__mean[position] = factor
-        match_fraction__median[position] = np.nanmedian(matches) * factor
+        match_fraction__mean[position] = np.nanmean(matches)
+        match_fraction__median[position] = np.nanmedian(matches)
 
     return match_fraction__mean, match_fraction__median, affected_pixels
