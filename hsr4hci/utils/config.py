@@ -48,35 +48,6 @@ def load_config(file_path: Union[str, Path]) -> Dict[str, Any]:
     return config
 
 
-def load_dataset_config(target_name: str, filter_name: str) -> Dict[str, Any]:
-    """
-
-    Args:
-        target_name:
-        filter_name:
-
-    Returns:
-
-    """
-
-    # Construct full path to the JSON file containing the configuration
-    # of the target data set
-    file_name = f'{target_name}__{filter_name}.json'.lower()
-    file_path = Path(hsr4hci.__file__).parent.parent / 'datasets' / file_name
-
-    # Double-check that the target file exists
-    if not file_path.exists():
-        raise FileNotFoundError(
-            f'No data set configuration file found for target "{target_name}" '
-            f'and filter "{filter_name}"!'
-        )
-
-    # Otherwise, read in the JSON file, parse it to a dict, and return it
-    with open(file_path, 'r') as json_file:
-        dataset_config: Dict[str, Any] = json.load(json_file)
-    return dataset_config
-
-
 def get_datasets_dir() -> Path:
     """
     Get the Path of the datasets directory.
