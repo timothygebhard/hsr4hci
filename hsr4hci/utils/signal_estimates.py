@@ -75,7 +75,7 @@ def get_signal_estimate(
     )
 
     # Compute signal estimate and store it
-    signal_estimate = derotate_combine(residuals, parang, mask=roi_mask)
+    signal_estimate = derotate_combine(residuals, parang, mask=~roi_mask)
 
     return signal_estimate, filtered_mask, threshold
 
