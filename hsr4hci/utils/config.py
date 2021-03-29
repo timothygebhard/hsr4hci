@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Any, Dict, Union
 
 import json
-import os
 
 import hsr4hci
 
@@ -78,25 +77,15 @@ def load_dataset_config(target_name: str, filter_name: str) -> Dict[str, Any]:
     return dataset_config
 
 
-def get_data_dir() -> Path:
+def get_datasets_dir() -> Path:
     """
-    Get the Path of the data directory from an environment variable.
+    Get the Path of the datasets directory.
 
     Returns:
-        Path to the data directory.
+        Path to the datasets directory.
     """
 
-    # Check if the HSR4HCI_DATA_DIR environment variable is set
-    if 'HSR4HCI_DATA_DIR' in os.environ.keys():
-        data_dir = Path(os.environ['HSR4HCI_DATA_DIR'])
-    else:
-        raise RuntimeError('Environment variable HSR4HCI_DATA_DIR not set!')
-
-    # Check if the value it contains is a valid directory
-    if not data_dir.is_dir():
-        raise RuntimeError('Value of HSR4HCI_DATA_DIR is not a directory!')
-
-    return data_dir
+    return get_hsr4hci_dir() / 'datasets'
 
 
 def get_hsr4hci_dir() -> Path:
