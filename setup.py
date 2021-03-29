@@ -6,16 +6,22 @@ Setup script to install hsr4hci as a Python package.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from setuptools import setup
+from os.path import join, dirname
+from setuptools import find_packages, setup
 
 
 # -----------------------------------------------------------------------------
 # RUN setup() FUNCTION
 # -----------------------------------------------------------------------------
 
+# Get version from VERSION file
+with open(join(dirname(__file__), "hsr4hci/VERSION")) as version_file:
+    version = version_file.read().strip()
+
+# Run setup()
 setup(
     name='hsr4hci',
-    version='epsilon',
+    version=version,
     description='hsr4hci: Half-Sibling Regression for High-Contrast Imaging',
     url='https://github.com/timothygebhard/hsr4hci',
     install_requires=[
