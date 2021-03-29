@@ -43,16 +43,15 @@ def convert_to_quantity(
     value = get_from_nested_dict(nested_dict=config, location=key_tuple)
 
     # Write the converted value back to the configuration dictionary
-    set_in_nested_dict(nested_dict=config,
-                       location=key_tuple,
-                       value=units.Quantity(*value))
+    set_in_nested_dict(
+        nested_dict=config, location=key_tuple, value=units.Quantity(*value)
+    )
 
     return config
 
 
 @units.quantity_input(
-    pixscale=units.Unit('arcsec / pixel'),
-    lambda_over_d=units.Unit('arcsec')
+    pixscale=units.Unit('arcsec / pixel'), lambda_over_d=units.Unit('arcsec')
 )
 def set_units_for_instrument(
     pixscale: units.Quantity,
@@ -83,8 +82,10 @@ def set_units_for_instrument(
     """
 
     # Construct a new Unit for lambda_over_d and add it to the unit registry.
-    lod_unit = units.def_unit(s=['lod', 'lambda_over_d'],
-                              represents=lambda_over_d.value * units.arcsec)
+    lod_unit = units.def_unit(
+        s=['lod', 'lambda_over_d'],
+        represents=lambda_over_d.value * units.arcsec,
+    )
     try:
         units.add_enabled_units(units=lod_unit)
     except ValueError:
@@ -106,9 +107,7 @@ def set_units_for_instrument(
         print('  LAMBDA_OVER_D =', lambda_over_d, '\n')
 
 
-def to_pixel(
-    quantity: units.Quantity,
-) -> float:
+def to_pixel(quantity: units.Quantity) -> float:
     """
     Convert a given quantity to pixels and return the value as a float.
 

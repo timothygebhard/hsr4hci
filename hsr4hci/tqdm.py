@@ -36,16 +36,14 @@ def tqdm_joblib(tqdm_object: tqdm.std.tqdm) -> Iterator[None]:
         New tqdm callback that is invoked upon batch completion.
         """
 
-        def __init__(self,
-                     _: Any,
-                     index: int,
-                     parallel: joblib.parallel.Parallel):
+        def __init__(
+            self, _: Any, index: int, parallel: joblib.parallel.Parallel
+        ):
 
             self.index = index
             self.parallel = parallel
 
-        def __call__(self,
-                     index: int) -> None:
+        def __call__(self, index: int) -> None:
 
             tqdm_object.update()
 

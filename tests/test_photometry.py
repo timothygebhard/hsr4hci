@@ -22,7 +22,10 @@ def test__get_statistic() -> None:
 
     # Create a 2D Gaussian blob
     gaussian_blob = Gaussian2DKernel(
-        x_stddev=2, y_stddev=2, x_size=15, y_size=15,
+        x_stddev=2,
+        y_stddev=2,
+        x_size=15,
+        y_size=15,
     ).array
     gaussian_blob /= np.max(gaussian_blob)
     gaussian_blob *= 13
@@ -66,7 +69,10 @@ def test__fit_2d_gaussian() -> None:
 
     # Create a 2D Gaussian blob
     gaussian_blob = Gaussian2DKernel(
-        x_stddev=2, y_stddev=2, x_size=15, y_size=15,
+        x_stddev=2,
+        y_stddev=2,
+        x_size=15,
+        y_size=15,
     ).array
 
     # Construct test data by adding the blob into an all-zero frame

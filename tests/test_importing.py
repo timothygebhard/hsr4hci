@@ -15,8 +15,8 @@ from hsr4hci.importing import get_member_by_name
 # TEST CASES
 # -----------------------------------------------------------------------------
 
+
 def test__get_member_by_name() -> None:
 
-    member = get_member_by_name(module_name='pathlib',
-                                member_name='Path')
+    member = get_member_by_name(module_name='pathlib', member_name='Path')
     assert member is Path

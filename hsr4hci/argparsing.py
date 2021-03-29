@@ -16,9 +16,7 @@ import os
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def get_base_directory(
-    required: bool = True,
-) -> Path:
+def get_base_directory(required: bool = True) -> Path:
     """
     Parse command line arguments given to the script and return value
     of the --base-directory flag as a string.
@@ -42,7 +40,7 @@ def get_base_directory(
         help=(
             'Path to the base directory containing the config.json which '
             'specifies the data set and how it should be pre-processed.'
-        )
+        ),
     )
 
     # Parse the arguments and return the base_directory

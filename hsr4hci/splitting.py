@@ -78,7 +78,7 @@ class AlternatingSplit:
         # Otherwise, generate indices for alternating splitting scheme
         for i in range(self.n_splits):
 
-            test_idx = indices[i::self.n_splits]
+            test_idx = indices[i :: self.n_splits]
             train_idx = np.setdiff1d(indices, test_idx, assume_unique=True)
 
             yield train_idx, test_idx

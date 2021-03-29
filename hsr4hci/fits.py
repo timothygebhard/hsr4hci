@@ -21,9 +21,7 @@ import numpy as np
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def is_fits_file(
-    file_path: Union[Path, str],
-) -> bool:
+def is_fits_file(file_path: Union[Path, str]) -> bool:
     """
     Check the ending of a file_path to determine if it is a FITS file.
 

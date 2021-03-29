@@ -143,7 +143,7 @@ class CustomCircularAperture(CircularAperture):
             # (5, 5) -- hence the correction by -0.5.
             center = (
                 cropped_data.shape[0] / 2 - 0.5,
-                cropped_data.shape[1] / 2 - 0.5
+                cropped_data.shape[1] / 2 - 0.5,
             )
 
             # Get the indices of positions inside the aperture
@@ -157,10 +157,9 @@ class CustomCircularAperture(CircularAperture):
             def gauss2d(
                 x: Tuple[float, float], amplitude: float, sigma: float
             ) -> np.ndarray:
-                inner = (
-                    (x[0] - center[0])**2 / (2 * sigma)**2 +
-                    (x[1] - center[1])**2 / (2 * sigma)**2
-                )
+                inner = (x[0] - center[0]) ** 2 / (2 * sigma) ** 2 + (
+                    x[1] - center[1]
+                ) ** 2 / (2 * sigma) ** 2
                 return np.asarray(amplitude * np.exp(-inner))
 
             # Define the bounds and the initial values for the fit

@@ -32,11 +32,11 @@ class ThreadSafeCounter:
         n: The initial value of the counter (usually 0).
     """
 
-    def __init__(self, n: int = 0,) -> None:
+    def __init__(self, n: int = 0) -> None:
 
         self.count = multiprocessing.Value('i', n)
 
-    def increment(self, n: int = 1,) -> None:
+    def increment(self, n: int = 1) -> None:
         """
         Increment the counter by n (default = 1)
         """
@@ -64,7 +64,7 @@ class Queue(BaseQueue):
     is added to or removed from the queue.
     """
 
-    def __init__(self, *args: Any, **kwargs: Any,) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
 
         # Set up a new multiprocessing context: ctx will contain a context
         # object which has the same attributes as the multiprocessing module.

@@ -45,8 +45,7 @@ def test__set_units_for_instrument() -> None:
     lambda_over_d = units.Quantity(0.0531, 'arcsec')
     with pytest.raises(RuntimeError) as error:
         set_units_for_instrument(
-            pixscale=pixscale,
-            lambda_over_d=lambda_over_d
+            pixscale=pixscale, lambda_over_d=lambda_over_d
         )
     assert 'Overwriting units is currently not possible!' in str(error)
 

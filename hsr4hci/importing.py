@@ -15,8 +15,7 @@ import importlib
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def get_member_by_name(module_name: str,
-                       member_name: str) -> Any:
+def get_member_by_name(module_name: str, member_name: str) -> Any:
     """
     Take the name of a module (e.g., 'sklearn.linear_model') and the
     name of a member (e.g., a class or a function from that module;

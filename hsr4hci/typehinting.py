@@ -28,13 +28,15 @@ class RegressorModel(Protocol):
         self,
         X: np.ndarray,
         y: np.ndarray,
-    ) -> 'RegressorModel': ...
+    ) -> 'RegressorModel':
+        ...
 
     # pylint: disable=missing-function-docstring
     def predict(
         self,
         X: np.ndarray,
-    ) -> np.ndarray: ...
+    ) -> np.ndarray:
+        ...
 
 
 class BaseLinearModel(RegressorModel):
@@ -43,6 +45,7 @@ class BaseLinearModel(RegressorModel):
     are characterized by the fact that they have a coefficient vector
     coef_ and an intercept term intercept_.
     """
+
     coef_: np.ndarray
     intercept_: float
 
@@ -54,6 +57,7 @@ class BaseLinearModelCV(BaseLinearModel):
     that they have an alpha_ attribute which stores the value of the
     regularization parameter chosen by the cross-validation.
     """
+
     alpha_: np.ndarray
 
 
@@ -67,23 +71,27 @@ class Scaler(Protocol):
         self,
         X: np.ndarray,
         y: Optional[np.ndarray] = None,
-    ) -> None: ...
+    ) -> None:
+        ...
 
     # pylint: disable=missing-function-docstring
     def fit_transform(
         self,
         X: np.ndarray,
         y: Optional[np.ndarray] = None,
-    ) -> np.ndarray: ...
+    ) -> np.ndarray:
+        ...
 
     # pylint: disable=missing-function-docstring
     def transform(
         self,
         X: np.ndarray,
-    ) -> np.ndarray: ...
+    ) -> np.ndarray:
+        ...
 
     # pylint: disable=missing-function-docstring
     def inverse_transform(
         self,
         X: np.ndarray,
-    ) -> np.ndarray: ...
+    ) -> np.ndarray:
+        ...
