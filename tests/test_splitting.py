@@ -9,7 +9,7 @@ Tests for splitting.py
 import numpy as np
 import pytest
 
-from hsr4hci.utils.splitting import AlternatingSplit
+from hsr4hci.splitting import AlternatingSplit
 
 
 # -----------------------------------------------------------------------------

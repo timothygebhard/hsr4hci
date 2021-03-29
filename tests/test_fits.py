@@ -12,7 +12,7 @@ import astropy.io.fits.card as card
 import numpy as np
 import pytest
 
-from hsr4hci.utils.fits import read_fits, save_fits
+from hsr4hci.fits import read_fits, save_fits
 
 
 # -----------------------------------------------------------------------------

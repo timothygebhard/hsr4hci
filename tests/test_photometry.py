@@ -10,8 +10,8 @@ from astropy.convolution import Gaussian2DKernel
 
 import numpy as np
 
-from hsr4hci.utils.general import add_array_with_interpolation
-from hsr4hci.utils.photometry import CustomCircularAperture
+from hsr4hci.general import add_array_with_interpolation
+from hsr4hci.photometry import CustomCircularAperture
 
 
 # -----------------------------------------------------------------------------

@@ -12,7 +12,7 @@ from deepdiff import DeepDiff
 import numpy as np
 import pytest
 
-from hsr4hci.utils.general import (
+from hsr4hci.general import (
     crop_center,
     get_from_nested_dict,
     get_md5_checksum,

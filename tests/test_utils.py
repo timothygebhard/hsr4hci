@@ -9,7 +9,7 @@ Tests for splitting.py
 import numpy as np
 import pytest
 
-from hsr4hci.utils.utils import check_consistent_size, check_frame_size
+from hsr4hci.utils import check_consistent_size, check_frame_size
 
 
 # -----------------------------------------------------------------------------

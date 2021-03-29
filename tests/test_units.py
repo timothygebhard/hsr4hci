@@ -10,7 +10,7 @@ from astropy import units
 
 import pytest
 
-from hsr4hci.utils.units import convert_to_quantity, set_units_for_instrument
+from hsr4hci.units import convert_to_quantity, set_units_for_instrument
 
 
 # -----------------------------------------------------------------------------

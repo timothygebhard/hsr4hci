@@ -11,7 +11,7 @@ from deepdiff import DeepDiff
 
 import numpy as np
 
-from hsr4hci.utils.hdf import save_dict_to_hdf, load_dict_from_hdf
+from hsr4hci.hdf import save_dict_to_hdf, load_dict_from_hdf
 
 
 # -----------------------------------------------------------------------------

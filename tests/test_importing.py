@@ -8,7 +8,7 @@ Tests for importing.py
 
 from pathlib import Path
 
-from hsr4hci.utils.importing import get_member_by_name
+from hsr4hci.importing import get_member_by_name
 
 
 # -----------------------------------------------------------------------------

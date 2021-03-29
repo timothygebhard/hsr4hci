@@ -8,7 +8,7 @@ Tests for evaluation.py
 
 import pytest
 
-from hsr4hci.utils.evaluation import TimeoutException, timeout_handler
+from hsr4hci.evaluation import TimeoutException, timeout_handler
 
 
 # -----------------------------------------------------------------------------
