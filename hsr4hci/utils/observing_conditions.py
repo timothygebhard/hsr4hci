@@ -7,12 +7,22 @@ Utility functions related to dealing with observing conditions.
 # -----------------------------------------------------------------------------
 
 from datetime import datetime, timezone
-from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
-import h5py
+import io
+import math
+
+from scipy.interpolate import interp1d, CubicSpline
+from scipy.signal import convolve
+
 import numpy as np
 import pandas as pd
+import requests
+
+from hsr4hci.utils.time_conversion import (
+    timestamp_to_date_string,
+    timestamp_to_datetime,
+)
 
 
 # -----------------------------------------------------------------------------
@@ -183,265 +193,454 @@ class ObservingConditions:
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def get_key_map(
-    obs_date: datetime = datetime(2000, 1, 1, 0, 0, 0, 0, timezone.utc),
-) -> Dict[str, Dict[str, str]]:
+def query_archive(
+    start_date: str,
+    end_date: str,
+    archive: str,
+    parameter_key: str,
+) -> pd.DataFrame:
     """
-    Return a dictionary that maps the "intuitive" names of relevant
-    observing condition parameters to the respective keys used in the
-    headers of ESO/VLT FITS files.
+    Send a request to one of ESO's ambient condition query forms [1] to
+    retrieve the values of a particular observing condition.
+
+    [1]: http://archive.eso.org/cms/eso-data/ambient-conditions/paranal-ambient-query-forms.html
 
     Args:
-        obs_date: A `datetime` object containing the observation date of
-            the data set. This is necessary because ESO upgraded their
-            astronomical site monitoring (ASM) systems on April 4, 2016,
-            meaning that data sets taken after this data have additional
-            parameters available. The default value for the `obs_date`
-            is January 1, 2000, meaning that by default, only the "old"
-            parameters are returned.
+        start_date: The start datetime (in UTC) as a string in ISO 8061
+            format. Example: "2012-12-20T20:00:00.0000".
+        end_date: The end datetime (in UTC) as a string in ISO 8061
+            format. Example: "2012-12-21T10:00:00.0000".
+        archive: The name of the archive to which to send the query.
+            Currently, the following archives are supported:
+                - "meteo"
+                - "dimm_old"
+                - "dimm_new"
+                - "mass"
+                - "lhatpro"
+                - "lhatpro_irt"
+            See [1] for more information about these archives.
+        parameter_key: The key under which a parameter is available from
+            the respective archive. These keys can be reverse-engineered
+            from the source code of the respective archive. For example,
+            "press" will get you the air pressure, or more precisely,
+            the "temporal (1 minute) mean of observatory site ambient
+            barometric air pressure measured at ground during
+            measurement period [hPa]."
+            For the default parameters, `resolve_parameter_name()` will
+            resolve "intuitive" parameter names (like "air_pressure") to
+            the correct, archive-specific keys.
 
     Returns:
-        A dictionary mapping intuitive parameter names to the ones used
-        in the header of a FITS file.
+        A data frame with the datetime and timestamp, the integration
+        time (in seconds) and the value of the requested parameter
+        averaged over the integration time.
     """
 
-    # Initialize the key map
-    key_map = dict()
+    # Define the payload for the query
+    data = {
+        'wdbo': 'csv/download',
+        'max_rows_returned': 10_000_000,
+        'start_date': f'{start_date}..{end_date}',
+        'tab_integration': 'on',
+        f'tab_{parameter_key}': 'on',
+        'order': 'start_date',
+    }
 
-    # Add keys that should always be available (regardless of the date)
-    key_map['air_mass'] = dict(
-        start_key='HIERARCH ESO TEL AIRM START',
-        end_key='HIERARCH ESO TEL AIRM END',
-    )
-    key_map['air_pressure'] = dict(
-        start_key='HIERARCH ESO TEL AMBI PRES START',
-        end_key='HIERARCH ESO TEL AMBI PRES END',
-    )
-    key_map['average_coherence_time'] = dict(
-        start_key='HIERARCH ESO TEL AMBI TAU0',
-        end_key='HIERARCH ESO TEL AMBI TAU0',
-    )
-    key_map['m1_temperature'] = dict(
-        start_key='HIERARCH ESO TEL TH M1 TEMP',
-        end_key='HIERARCH ESO TEL TH M1 TEMP',
-    )
-    key_map['observatory_temperature'] = dict(
-        start_key='HIERARCH ESO TEL AMBI TEMP',
-        end_key='HIERARCH ESO TEL AMBI TEMP',
-    )
-    key_map['relative_humidity'] = dict(
-        start_key='HIERARCH ESO TEL AMBI RHUM',
-        end_key='HIERARCH ESO TEL AMBI RHUM',
-    )
-    key_map['seeing'] = dict(
-        start_key='HIERARCH ESO TEL AMBI FWHM START',
-        end_key='HIERARCH ESO TEL AMBI FWHM END',
-    )
-    key_map['wind_direction'] = dict(
-        start_key='HIERARCH ESO TEL AMBI WINDDIR',
-        end_key='HIERARCH ESO TEL AMBI WINDDIR',
-    )
-    key_map['wind_speed'] = dict(
-        start_key='HIERARCH ESO TEL AMBI WINDSP',
-        end_key='HIERARCH ESO TEL AMBI WINDSP',
+    # Define the URL for query based on the archive
+    if archive == 'meteo':
+        url = 'https://archive.eso.org/wdb/wdb/asm/meteo_paranal/query'
+    elif archive == 'dimm_old':
+        url = 'https://archive.eso.org/wdb/wdb/asm/historical_ambient_paranal/query'
+    elif archive == 'dimm_new':
+        url = 'https://archive.eso.org/wdb/wdb/asm/dimm_paranal/query'
+    elif archive == 'mass':
+        url = 'https://archive.eso.org/wdb/wdb/asm/mass_paranal/query'
+    elif archive == 'lhatpro':
+        url = 'https://archive.eso.org/wdb/wdb/asm/lhatpro_paranal/query'
+    elif archive == 'lhatpro_irt':
+        url = 'https://archive.eso.org/wdb/wdb/asm/lhatpro_irt_paranal/query'
+    else:
+        raise ValueError(f'Invalid archive: "{archive}"!')
+
+    # Send a POST request to the "Meteorology Query Form"; raise error
+    # if the return code is 4XX or 5XX.
+    response = requests.post(url=url, data=data)
+    response.raise_for_status()
+
+    # Parse response (which is a CSV) to a pandas data frame
+    df = pd.read_csv(
+        filepath_or_buffer=io.StringIO(response.content.decode('utf-8')),
+        names=['datetime', 'integration_time', parameter_key],
+        header=0,
+        parse_dates=['datetime'],
+        date_parser=pd.to_datetime,
+        comment='#',
     )
 
-    # For data sets taken after 12:00 UTC on April 4, 2016, additional
-    # parameters about the observing conditions are available
+    # Add a column to the data frame for the timestamp
+    df['timestamp'] = df.datetime.values.astype(np.int64) // 10 ** 9
+    df.sort_values(by='timestamp', inplace=True)
+
+    return df
+
+
+def interpolate_observing_conditions(
+    timestamps: np.ndarray,
+    df: pd.DataFrame,
+    parameter_key: str,
+    method: str = 'spline',
+) -> np.ndarray:
+    """
+    Take the values of the observing conditions in the data frame `df`
+    and apply a special interpolation algorithm so that we can apply
+    them at the given frame `timestamps`.
+
+    Args:
+        timestamps: A 1D numpy array of floats, containing the UTC
+            timestamps of the frames in the stack.
+        df: A data frame containing the result from querying one of
+            the ESO archives (e.g., `query_meteo`).
+        parameter_key: The key under which a parameter is available from
+            the respective archive. (See also `query_archive()`).
+        method: Which interpolation method to use. The options are
+            "spline", for an interpolation based on Cubic splines (see
+            https://stats.stackexchange.com/a/511394 for the idea), or
+            "rymes-myers" to use the algorithm described in Rymes and
+            Myers (2001); see below for full reference.
+            The two methods generally give very similar results, but
+            the spline interpolation is *much* faster, and due to its
+            simplicity, it is also less likely to contain a bug :)
+
+    Returns:
+        A 1D numpy array (of length `n_frames`) which contains an
+        interpolated value of the target parameter for every frame.
+    """
+
+    # -------------------------------------------------------------------------
+    # Spline interpolation
+    # -------------------------------------------------------------------------
+
+    if method == 'spline':
+
+        # Define shortcuts
+        avg = df[parameter_key].values
+        x = df['timestamp'].values
+
+        # Remove NaNs, because they break the spline interpolation
+        nan_idx = np.isnan(avg)
+        avg = avg[~nan_idx]
+        x = x[~nan_idx]
+
+        # Compute y, which is essentially the cumulative sum of the parameter
+        y = np.zeros(len(x))
+        for i in range(1, len(x)):
+            y[i] = y[i - 1] + avg[i - 1] * (x[i] - x[i - 1])
+
+        # Set up an interpolation using splines. We use the first derivative
+        # here, because the cumulative sum above is basically an integral.
+        interpolator = CubicSpline(x, y).derivative(1)
+
+        # Evaluate the interpolator at the time of each frame
+        return interpolator(timestamps)
+
+    # -------------------------------------------------------------------------
+    # Rymes-Myers interpolation (more complicated and much slower!)
+    # -------------------------------------------------------------------------
+
+    if method == 'rymes-myers':
+
+        # Get the start and end date for the query (as strings). We need an
+        # offset of the observation duration both before and after the first
+        # and last frame for interpolation purposes (see below).
+        duration = int(math.ceil(max(timestamps) - min(timestamps)))
+
+        # Find the intervals limits: by default, the ESO archive only returns
+        # the average over a 60 second interval for a parameter. Here, we
+        # compute the start and end timestamp for each of these intervals.
+        interval_limits = np.column_stack(
+            [
+                (df['timestamp'] - df['integration_time']).values[1:],
+                df['timestamp'].values[1:],
+            ]
+        ).astype(int)
+
+        # Create an "upsampled" version of the time series of the parameter of
+        # interest: the upsampled version has a temporal resolution of 1 second
+        # all points within one interval (see above) have the same value.
+        upsampler = interp1d(
+            x=df['timestamp'].values,
+            y=df[parameter_key].values,
+            kind='previous',
+        )
+        upsampled_timestamps = np.arange(
+            min(df['timestamp']), max(df['timestamp']) + 1
+        )
+        upsampled_values = upsampler(upsampled_timestamps)
+
+        # Determine the offset that is required to convert between timestamps
+        # and array indices
+        offset = int(upsampled_timestamps[0])
+
+        # In the following, we apply the mean-preserving interpolation
+        # algorithm from:
+        #
+        #   Rymes, M. D., & Myers, D. R. (2001). "Mean preserving algorithm
+        #       for smoothly interpolating averaged data." Solar Energy,
+        #       71(4), p. 225–231. DOI:10.1016/s0038-092x(01)00052-4.
+        #
+        # Essentially, what this algorithm does is to iteratively take the
+        # rolling average of the upsampled date, and then at each iteration
+        # correct the mean in every interval to the original value.
+        # This procedure is not particularly sophisticated and will probably
+        # not give us the true parameter values, but the result is reasonably
+        # smooth and if we do take the interval-wise average, we get back the
+        # original time series from the ESO archive.
+
+        # Prepare the kernel for the rolling average, and the array that we
+        # will iteratively convolve with the kernel
+        kernel = np.ones(3) / 3
+        interpolated = np.copy(upsampled_values)
+
+        # We have to repeat the procedure N times, where N is the number of
+        # time steps in the target time series
+        for i in range(int(duration)):
+
+            # Compute the rolling average
+            interpolated = convolve(interpolated, kernel, mode='same')
+
+            # Loop over the intervals and adjust their mean. Note that the
+            # original publication seems to have a sign error in the last
+            # step (they subtract C_k where they should add it).
+            for a, b in interval_limits:
+                avg_k = float(upsampled_values[int((a + b) / 2) - offset])
+                mean_k = float(
+                    np.mean(interpolated[(a - offset) : (b - offset)])
+                )
+                interpolated[(a - offset) : (b - offset)] += avg_k - mean_k
+
+        # Set up another interpolator that allows us the compute the value of
+        # the target parameter at an arbitrary time between the start and end
+        # of the observation.
+        # Note that this interpolator does, in principle, return values for
+        # the interval [start - duration, end + duration]. However, the ranges
+        # [start - duration, start] and [end, end + duration] must NOT be used
+        # as they contain unphysical values: basically, because of the use of
+        # `mode='same'`, these values get convolved with a lot of zeros from
+        # the (implicit) padding of the np.convolve() command.
+        interpolator = interp1d(upsampled_timestamps, interpolated)
+
+        # Evaluate the interpolator at the time of each frame
+        return interpolator(timestamps)
+
+    # -------------------------------------------------------------------------
+    # Value error for invalid methods
+    # -------------------------------------------------------------------------
+
+    raise ValueError(f'Invalid method: "{method}"!')
+
+
+def get_observing_conditions(
+    parameter_name: str,
+    timestamps: np.ndarray,
+) -> Tuple[np.ndarray, Dict[str, np.ndarray]]:
+    """
+    This is a convenience wrapper to query the ESO ambient condition
+    archives for a given parameter, interpolate the results, and
+    evaluate them at the requested `timestamps`.
+
+    Args:
+        parameter_name: Name of the parameter to retrieve from the
+            archive. This needs to be resolvable into a parameter key
+            and archive by `resolve_parameter_name()`.
+        timestamps: A 1D numpy array of floats, containing the UTC
+            timestamps of the frames in the stack.
+
+    Returns:
+        A 1D numpy array (of length `n_frames`) which contains an
+        interpolated value of the target parameter for every frame.
+    """
+
+    # Get the start and end date for the query (as strings). We need an
+    # offset of the observation duration both before and after the first
+    # and last frame for interpolation purposes (see below).
+    duration = int(math.ceil(max(timestamps) - min(timestamps)))
+    start_timestamp = math.floor(min(timestamps) - duration - 60)
+    end_timestamp = math.ceil(max(timestamps) + duration + 60)
+
+    # Resolve the parameter name
+    archive, key, _ = resolve_parameter_name(
+        parameter_name=parameter_name,
+        obs_date=timestamp_to_datetime(start_timestamp),
+    )
+
+    # Query the archive to get data frame with parameter of interest
+    df = query_archive(
+        start_date=timestamp_to_date_string(start_timestamp),
+        end_date=timestamp_to_date_string(end_timestamp),
+        parameter_key=key,
+        archive=archive,
+    )
+
+    # Convert the data frame to a dictionary (for storing them in the HDF file)
+    query_results = dict(
+        timestamp=df['timestamp'].values,
+        integration_time=df['integration_time'].values,
+        parameter=df[key].values,
+    )
+
+    # Interpolate the observing conditions for each frame
+    interpolated = interpolate_observing_conditions(timestamps, df, key)
+
+    return interpolated, query_results
+
+
+def resolve_parameter_name(
+    parameter_name: str,
+    obs_date: datetime,
+) -> Tuple[str, str, str]:
+    """
+    Resolves a `parameter_name` into a dictionary that contains
+    information about which archive the parameter can be obtained
+    from, using which parameter_key.
+
+    Args:
+        parameter_name: Name of a parameter (e.g., 'air_pressure').
+        obs_date: Date at which the data set was observed.
+
+    Returns:
+        A tuple `archive`, `parameter_key`, `description` which tells
+        us from which ESO ambient server we can retrieve the parameter
+        and which key we have to use for the query.
+    """
+
+    # -------------------------------------------------------------------------
+    # Preliminaries
+    # -------------------------------------------------------------------------
+
+    # For non-meteorological parameters, the archive depends on the observation
+    # date, as the Astronomical Site Monitoring (ASM) was updated in April 2016
     if obs_date > datetime(2016, 4, 4, 12, 0, 0, 0, timezone.utc):
-        key_map['integrated_water_vapor'] = dict(
-            start_key='HIERARCH ESO TEL AMBI IWV START',
-            end_key='HIERARCH ESO TEL AMBI IWV END',
+        archive_version = 'new'
+    else:
+        archive_version = 'old'
+
+    # Initialize default values
+    archive = ''
+    parameter_key = ''
+    description = ''
+
+    # -------------------------------------------------------------------------
+    # Resolve the parameter name
+    # -------------------------------------------------------------------------
+
+    # Air pressure
+    if parameter_name == 'air_pressure':
+        archive = 'meteo'
+        parameter_key = 'press'
+        description = (
+            'Temporal (1 minute) mean of observatory site ambient barometric '
+            'air pressure measured at ground during measurement period [hPa].'
         )
-        key_map['ir_sky_temperature'] = dict(
-            start_key='HIERARCH ESO TEL AMBI IRSKY TEMP',
-            end_key='HIERARCH ESO TEL AMBI IRSKY TEMP',
+
+    # Coherence time (tau_0)
+    elif parameter_name == 'coherence_time':
+        if archive_version == 'old':
+            archive = 'dimm_old'
+            parameter_key = 'tau'
+            description = 'Coherence time [s].'
+        if archive_version == 'new':
+            archive = 'mass'
+            parameter_key = 'tau'
+            description = (
+                'Coherence time (weights method) from MASS stand-alone [s].'
+            )
+
+    # Isoplanatic angle (theta_0)
+    elif parameter_name == 'isoplanatic_angle':
+        if archive_version == 'old':
+            archive = 'dimm_old'
+            parameter_key = 'tet'
+            description = 'Isoplanatic angle [arcsec].'
+        if archive_version == 'new':
+            archive = 'mass'
+            parameter_key = 'tet'
+            description = (
+                'Isoplanatic angle from MASS-DIMM integrated profile [J1:J6] '
+                '[arcsec].'
+            )
+
+    # Observatory temperature
+    elif parameter_name == 'observatory_temperature':
+        archive = 'meteo'
+        parameter_key = 'temp2'
+        description = (
+            'Temporal (1 minute) mean of site ambient temperature measured '
+            'at 2m [deg Celsius].'
         )
 
-    # Make sure the dict is sorted. This only works for Python 3.7 and up!
-    key_map = {k: key_map[k] for k in sorted(key_map)}
-
-    return key_map
-
-
-def get_description_and_unit(
-    parameter: Union[str, Sequence[str]],
-    long_description: bool = False,
-) -> Union[Tuple[str, Optional[str]], List[Tuple[str, Optional[str]]]]:
-    """
-    Get the description and unit (as strings) for a given parameter,
-    or a sequence of parameters.
-
-    Args:
-        parameter: A string (or a sequence of strings) containing the
-            name(s) of the observing conditions parameter(s) whose
-            description and unit we want to retrieve.
-        long_description: If `True`, a longer version of the description
-            is returned.
-
-    Returns:
-        A tuple `(description, unit)`, or a list of such tuples, which
-        contains the description and unit of the target parameter as
-        strings. For dimensionless parameters such as the relative air
-        mass, `None` is returned as the unit.
-    """
-
-    # Define the look-up table for all descriptions and units
-    descriptions_and_units: Dict[str, dict] = dict(
-        air_mass=dict(
-            short='Air mass',
-            long='Air mass (relative to zenith)',
-            unit=None,
-        ),
-        air_pressure=dict(
-            short='Air pressure',
-            long='Observatory ambient air pressure',
-            unit='hPa',
-        ),
-        average_coherence_time=dict(
-            short='Average coherence time',
-            long='Average coherence time',
-            unit='s',
-        ),
-        cos_wind_direction=dict(
-            short='cos(wind direction)',
-            long='Cosine of observatory ambient wind direction',
-            unit=None,
-        ),
-        integrated_water_vapor=dict(
-            short='Integrated Water Vapor',
-            long='Integrated Water Vapor',
-            unit='mm',
-        ),
-        ir_sky_temperature=dict(
-            short='IR sky temperature',
-            long='Temperature of the IR sky',
-            unit='°C',
-        ),
-        m1_temperature=dict(
-            short='M1 Temperature',
-            long='Superficial temperature of mirror M1',
-            unit='°C',
-        ),
-        observatory_temperature=dict(
-            short='Observatory temperature',
-            long='Observatory ambient temperature',
-            unit='°C',
-        ),
-        relative_humidity=dict(
-            short='Relative humidity',
-            long='Observatory ambient relative humidity',
-            unit='%',
-        ),
-        seeing=dict(
-            short='Observatory seeing',
-            long='Observatory seeing (before AO corrections)',
-            unit='arcsec',
-        ),
-        sin_wind_direction=dict(
-            short='sin(wind direction)',
-            long='Sine of observatory ambient wind direction',
-            unit=None,
-        ),
-        wind_direction=dict(
-            short='Wind direction',
-            long='Observatory ambient wind direction',
-            unit='°',
-        ),
-        wind_speed=dict(
-            short='Wind speed',
-            long='Observatory ambient wind speed',
-            unit='m/s',
-        ),
-    )
-
-    # Make sure that `parameter` is always a list, so that we can loop over it
-    if isinstance(parameter, str):
-        parameter = [parameter]
-
-    # Initialize list of results
-    results: List[Tuple[str, Optional[str]]] = list()
-
-    # Define the key for accessing the right description type
-    description_key = 'long' if long_description else 'short'
-
-    # Loop over all requested parameters and resolve them
-    for param in parameter:
-        description: str = descriptions_and_units[param][description_key]
-        unit: Optional[str] = descriptions_and_units[param]['unit']
-        results.append((description, unit))
-
-    # Return either a single tuple (if only one parameter was requested), or
-    # a list of tuples (if multiple parameters where requested)
-    if len(results) == 1:
-        return results[0]
-    return results
-
-
-def load_observing_conditions(
-    file_path: Union[Path, str],
-    parameters: Optional[Iterable[str]] = 'all',
-    transform_wind_direction: bool = True,
-    coherence_time_in_ms: bool = True,
-    as_dataframe: bool = False,
-) -> Optional[Union[Dict[str, np.ndarray], pd.DataFrame]]:
-    """
-    Convenience wrapper for loading observing conditions from HDF files.
-
-    Args:
-        file_path: Path to the HDF file containing the observing
-            conditions.
-        parameters: An iterable of strings, containing the names of the
-            parameters to be loaded. If "all" is given, all available
-            parameters are loaded. If `None` is given, an empty dict or
-            DataFrame is returned.
-        transform_wind_direction: If True, do not return the values for
-            `wind_direction` directly, but instead return the cosine and
-            sine (useful if you want to use the wind direction as a
-            predictor in an ML model, because, for example, 1 degree
-            and 359 degree should be "close").
-        coherence_time_in_ms: Whether or not to convert the average
-            coherence time (tau_0) from seconds to milliseconds.
-        as_dataframe: If True, the data is returned as a pandas
-            DataFrame instead of a simple dictionary.
-
-    Returns:
-        Either a dictionary or a pandas DataFrame containing the values
-        of the requested `parameters` from the given file of observing
-        conditions. May be empty, if parameter is None.
-    """
-
-    # Initialize dictionary to hold observing conditions
-    observing_conditions: Dict[str, np.ndarray] = dict()
-
-    # Load observing conditions from HDF file
-    with h5py.File(file_path, 'r') as hdf_file:
-
-        # If no list of parameters was given, use all available parameters
-        if parameters == 'all':
-            parameters = sorted(list(hdf_file.keys()))
-        elif parameters is None:
-            parameters = list()
-
-        # Loop over parameter and load them from the HDF file
-        for key in parameters:
-            observing_conditions[key] = np.array(hdf_file[key])
-
-    # Return sine and cosine of wind direction (instead of degrees)
-    if 'wind_direction' in parameters and transform_wind_direction:
-        observing_conditions['cos_wind_direction'] = np.cos(
-            np.deg2rad(observing_conditions['wind_direction'])
+    # Relative humidity
+    elif parameter_name == 'relative_humidity':
+        archive = 'meteo'
+        parameter_key = 'rhum1'
+        description = (
+            'Temporal (1 minute) mean of observatory site ambient relative '
+            'humidity measured at sensor position 30m above ground during '
+            'measurement period [%].'
         )
-        observing_conditions['sin_wind_direction'] = np.sin(
-            np.deg2rad(observing_conditions['wind_direction'])
+
+    # Seeing
+    elif parameter_name == 'seeing':
+        if archive_version == 'old':
+            archive = 'dimm_old'
+            parameter_key = 'fwhm'
+            description = (
+                'Reference observatory site seeing measured by the ASM-DIMM '
+                'telescope, Full Width Half Maximum at 500nm [arcsec].'
+            )
+        if archive_version == 'new':
+            archive = 'dimm_new'
+            parameter_key = 'fwhm'
+            description = (
+                'The total seeing calculated with DIMM telescope [arcsec]. '
+                'The value is calculated using the following formula: '
+                'FWHM = 2E(+7) Cn2**(0.6).'
+            )
+
+    # Wind speed (U component)
+    elif parameter_name == 'wind_speed_u':
+        archive = 'meteo'
+        parameter_key = 'wind_speedu'
+        description = (
+            'Temporal (1 minute) mean of observatory site ambient wind '
+            'speed U vector component, where U is horizontal and points '
+            'to 330 degree measured at sensor position 20m during '
+            'measurement period [m/s].'
         )
-        del observing_conditions['wind_direction']
 
-    # Convert average coherence time from seconds to milliseconds
-    if 'average_coherence_time' in parameters and coherence_time_in_ms:
-        observing_conditions['average_coherence_time'] *= 1000
+    # Wind speed (V component)
+    elif parameter_name == 'wind_speed_v':
+        archive = 'meteo'
+        parameter_key = 'wind_speedv'
+        description = (
+            'Temporal (1 minute) mean of observatory site ambient wind '
+            'speed V vector component, where V is horizontal and points '
+            'to 240 degree measured at sensor position 20m during '
+            'measurement period [m/s].'
+        )
 
-    # Return observing conditions either as a data frame or as a dictionary
-    if as_dataframe:
-        return pd.DataFrame(observing_conditions)
-    return observing_conditions
+    # Wind speed (W component)
+    elif parameter_name == 'wind_speed_w':
+        archive = 'meteo'
+        parameter_key = 'wind_speedw'
+        description = (
+            'Temporal (1 minute) mean of observatory site ambient wind '
+            'speed W vector component, where W is vertically pointing '
+            'upwards, measured at sensor position 20m during measurement '
+            'period [m/s]. '
+        )
+
+    # For all other parameter names, raise an error
+    else:
+        raise ValueError(f'Invalid parameter_name: "{parameter_name}"!')
+
+    return archive, parameter_key, description
