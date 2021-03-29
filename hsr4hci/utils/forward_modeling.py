@@ -201,6 +201,8 @@ def get_time_series_for_position(
     this version depends on the number of frames, but is typically on
     the order of a factor of 10^2 to 10^3.
 
+    Note: This function uses the *numpy convention* for `position`!
+
     Args:
         position: A tuple `(x, y)` for which we want to compute the
             time series under a given planet path hypothesis.
@@ -246,7 +248,7 @@ def get_time_series_for_position(
     )
 
     # Compute the full array of all planet positions (at all times)
-    planet_positions = np.array(
+    planet_positions = np.asarray(
         rotate_position(
             position=starting_position,
             angle=parang,
