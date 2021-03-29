@@ -132,7 +132,8 @@ def get_match_fraction(
             angle=float(parang[int(signal_time)]),
         )
 
-        # Compute the *full* expected signal stack under this hypothesis
+        # Compute the *full* expected signal stack under this hypothesis and
+        # normalize it (so that the thresholding below works more reliably!)
         expected_stack = add_fake_planet(
             stack=np.zeros((n_frames,) + frame_size),
             parang=parang,
@@ -148,7 +149,7 @@ def get_match_fraction(
             return_planet_positions=False,
             interpolation='bilinear',
         )
-        expected_stack = np.array(expected_stack)
+        expected_stack = np.array(expected_stack) / np.max(expected_stack)
 
         # Find mask of all pixels that are affected by the planet trace, i.e.,
         # all pixels that at some point in time contain planet signal.
@@ -199,7 +200,11 @@ def get_match_fraction(
         #       could be checked? (These should perhaps be down-weighted.)
 
         # Compute mean and median match fraction for current position
-        match_fraction__mean[position] = np.nanmean(matches)
-        match_fraction__median[position] = np.nanmedian(matches)
+        if matches:
+            match_fraction__mean[position] = np.nanmean(matches)
+            match_fraction__median[position] = np.nanmedian(matches)
+        else:
+            match_fraction__mean[position] = 0
+            match_fraction__median[position] = 0
 
     return match_fraction__mean, match_fraction__median, affected_pixels
