@@ -18,7 +18,6 @@ import numpy as np
 from hsr4hci.utils.base_models import BaseModelCreator
 from hsr4hci.utils.forward_modeling import get_time_series_for_position
 from hsr4hci.utils.masking import get_selection_mask, get_positions_from_mask
-from hsr4hci.utils.psf import get_psf_radius
 from hsr4hci.utils.signal_masking import get_signal_times
 from hsr4hci.utils.splitting import AlternatingSplit
 
@@ -232,8 +231,8 @@ def train_all_models(
     # Convert ROI mask into a list of positions
     roi_positions = get_positions_from_mask(roi_mask)
 
-    # Loop over the subset of positions in the ROI that is defined by the
-    # `roi_split` and `n_roi_splits` parameters
+    # Loop over the subset of positions in the ROI (or a subset of the ROI).
+    # Note: The coordinates `position` will be in the numpy convention.
     for position in tqdm(roi_positions[roi_split::n_roi_splits], ncols=80):
 
         # ---------------------------------------------------------------------
@@ -468,25 +467,21 @@ def train_model(
     radius_mirror_position = Quantity(
         *selection_mask_config['radius_mirror_position']
     )
-    dilation_size = selection_mask_config['dilation_size']
-
-    # If the signal_time is not None, we train with signal masking, and
-    # therefore, we need to use the field rotation for the mask
-    use_field_rotation = signal_time is not None
 
     # Define the selection mask
+    # Note: get_selection_mask() expects the position to be in the astropy
+    # coordinate convention, but `position` (since it is usually produced by
+    # get_positions_from_mask()) is in numpy coordinates; therefore we need
+    # to flip it.
     selection_mask = get_selection_mask(
         mask_size=frame_size,
-        position=position,
+        position=position[::-1],
         signal_time=signal_time,
         parang=parang,
         annulus_width=annulus_width,
         radius_position=radius_position,
         radius_mirror_position=radius_mirror_position,
         psf_template=psf_template,
-        psf_radius=get_psf_radius(psf_template),
-        dilation_size=dilation_size,
-        use_field_rotation=use_field_rotation,
     )
 
     # Compute the number of predictor *pixels* (since we might still add the
@@ -537,7 +532,9 @@ def train_model(
         # when fitting the model.
         if mode == 'signal_masking':
 
-            # The value of 0.2 as a threshold is of course somewhat arbitrary
+            # The value of 0.2 as a threshold is of course somewhat arbitrary.
+            # We have to use "<" because we want the mask to be True for all
+            # frames that do NOT contain signal (= can be used for training).
             signal_mask = expected_signal < 0.2
 
             # Check if the signal mask excludes more than 50% of the training
