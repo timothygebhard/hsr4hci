@@ -33,7 +33,7 @@ def get_circle_mask(
     """
     Create a circle mask.
 
-    Note: This function uses the numpy convention for coordinates!
+    Note: This function uses the *numpy convention* for coordinates!
 
     Args:
         mask_size: A tuple `(x_size, y_size)` containing the size of the
@@ -68,7 +68,7 @@ def get_annulus_mask(
     """
     Create an annulus-shaped mask.
 
-    Note: This function uses the numpy convention for coordinates!
+    Note: This function uses the *numpy convention* for coordinates!
 
     Args:
         mask_size: A tuple (width, height) containing the size of the
@@ -104,6 +104,8 @@ def get_roi_mask(
 ) -> np.ndarray:
     """
     Get a numpy array masking the pixels within the region of interest.
+
+    Note: This function uses the *numpy convention* for coordinates!
 
     Args:
         mask_size: A tuple (width, height) containing the spatial size
@@ -146,6 +148,8 @@ def get_predictor_mask(
     selection mask, that is, the mask that actually selects the pixels
     to be used as predictors for a given position.
 
+    Note: This function uses the *astropy convention* for coordinates!
+
     Args:
         mask_size: A tuple (width, height) that specifies the size of
             the mask to be created in pixels.
@@ -178,17 +182,20 @@ def get_predictor_mask(
     mask = np.full(mask_size, False)
 
     # Add circular selection mask at position (x, y)
+    # We need to flip the `position` because get_circle_mask() uses the numpy
+    # convention whereas `position` is assumed to be in the astropy convention
     circular_mask = get_circle_mask(
         mask_size=mask_size,
         radius=radius_position.to('pixel').value,
-        center=position,
+        center=position[::-1],
     )
     mask = np.logical_or(mask, circular_mask)
 
     # Add circular selection mask at mirror position (-x, -y)
+    # We also need to flip the coordinates here to get to the numpy convention
     mirror_position = (
-        2 * center[0] - position[0],
         2 * center[1] - position[1],
+        2 * center[0] - position[0],
     )
     circular_mask = get_circle_mask(
         mask_size=mask_size,
@@ -326,6 +333,8 @@ def get_selection_mask(
     """
     Get the mask that selects the predictor pixels for a given position.
 
+    Note: This function uses the *astropy convention* for coordinates!
+
     Args:
         mask_size: A tuple (width, height) that specifies the size of
             the mask to be created in pixels.
@@ -386,12 +395,14 @@ def get_selection_mask(
 
 
 # -----------------------------------------------------------------------------
-# OTHER FUNCTIONS
+# OTHER MASKING-RELATED FUNCTIONS
 # -----------------------------------------------------------------------------
 
 def get_positions_from_mask(mask: np.ndarray) -> List[Tuple[int, int]]:
     """
     Convert a numpy mask into a list of positions selected by that mask.
+
+    Note: The returned positions follow the numpy convention!
 
     Args:
         mask: A numpy array containing only boolean values (or values
