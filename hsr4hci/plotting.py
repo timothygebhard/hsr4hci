@@ -29,7 +29,7 @@ import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import numpy as np
 
-from hsr4hci.utils.photometry import CustomCircularAperture
+from hsr4hci.photometry import CustomCircularAperture
 
 
 # -----------------------------------------------------------------------------

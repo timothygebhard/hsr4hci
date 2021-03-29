@@ -16,7 +16,7 @@ from tqdm.auto import tqdm
 
 import numpy as np
 
-from hsr4hci.utils.hdf import load_dict_from_hdf
+from hsr4hci.hdf import load_dict_from_hdf
 
 
 # -----------------------------------------------------------------------------

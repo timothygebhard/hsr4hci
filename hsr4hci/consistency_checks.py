@@ -14,10 +14,10 @@ from tqdm.auto import tqdm
 
 import numpy as np
 
-from hsr4hci.utils.coordinates import get_center, cartesian2polar
-from hsr4hci.utils.forward_modeling import add_fake_planet
-from hsr4hci.utils.general import find_closest, rotate_position
-from hsr4hci.utils.masking import get_positions_from_mask
+from hsr4hci.coordinates import get_center, cartesian2polar
+from hsr4hci.forward_modeling import add_fake_planet
+from hsr4hci.general import find_closest, rotate_position
+from hsr4hci.masking import get_positions_from_mask
 
 
 # -----------------------------------------------------------------------------

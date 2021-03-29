@@ -15,7 +15,7 @@ from photutils import aperture_photometry, CircularAperture
 
 import numpy as np
 
-from hsr4hci.utils.coordinates import get_center
+from hsr4hci.coordinates import get_center
 
 
 # -----------------------------------------------------------------------------

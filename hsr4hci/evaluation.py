@@ -17,7 +17,7 @@ from scipy.optimize import minimize, brute
 import bottleneck as bn
 import numpy as np
 
-from hsr4hci.utils.apertures import (
+from hsr4hci.apertures import (
     get_aperture_flux,
     get_reference_aperture_positions,
 )

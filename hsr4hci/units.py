@@ -10,7 +10,7 @@ from typing import Any, Dict, Tuple
 
 from astropy import units
 
-from hsr4hci.utils.general import get_from_nested_dict, set_in_nested_dict
+from hsr4hci.general import get_from_nested_dict, set_in_nested_dict
 
 
 # -----------------------------------------------------------------------------

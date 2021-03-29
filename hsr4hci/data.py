@@ -11,9 +11,9 @@ from typing import Any, Dict, Optional, Tuple, Union
 import h5py
 import numpy as np
 
-from hsr4hci.utils.config import get_datasets_dir
-from hsr4hci.utils.general import crop_center, prestack_array
-from hsr4hci.utils.observing_conditions import ObservingConditions
+from hsr4hci.config import get_datasets_dir
+from hsr4hci.general import crop_center, prestack_array
+from hsr4hci.observing_conditions import ObservingConditions
 
 
 # -----------------------------------------------------------------------------

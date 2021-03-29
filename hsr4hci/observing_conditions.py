@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 import requests
 
-from hsr4hci.utils.time_conversion import (
+from hsr4hci.time_conversion import (
     timestamp_to_date_string,
     timestamp_to_datetime,
 )

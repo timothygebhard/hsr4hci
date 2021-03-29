@@ -16,9 +16,9 @@ from photutils import centroid_2dg, CircularAperture
 
 import numpy as np
 
-from hsr4hci.utils.fitting import CircularGauss2D
-from hsr4hci.utils.general import crop_center
-from hsr4hci.utils.masking import get_circle_mask
+from hsr4hci.fitting import CircularGauss2D
+from hsr4hci.general import crop_center
+from hsr4hci.masking import get_circle_mask
 
 
 # -----------------------------------------------------------------------------

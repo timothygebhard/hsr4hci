@@ -15,11 +15,11 @@ from tqdm.auto import tqdm
 
 import numpy as np
 
-from hsr4hci.utils.base_models import BaseModelCreator
-from hsr4hci.utils.forward_modeling import get_time_series_for_position
-from hsr4hci.utils.masking import get_selection_mask, get_positions_from_mask
-from hsr4hci.utils.signal_masking import get_signal_times
-from hsr4hci.utils.splitting import AlternatingSplit
+from hsr4hci.base_models import BaseModelCreator
+from hsr4hci.forward_modeling import get_time_series_for_position
+from hsr4hci.masking import get_selection_mask, get_positions_from_mask
+from hsr4hci.signal_masking import get_signal_times
+from hsr4hci.splitting import AlternatingSplit
 
 
 # -----------------------------------------------------------------------------

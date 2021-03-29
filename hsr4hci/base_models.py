@@ -12,8 +12,8 @@ from typing import Any
 
 import numpy as np
 
-from hsr4hci.utils.importing import get_member_by_name
-from hsr4hci.utils.typehinting import RegressorModel
+from hsr4hci.importing import get_member_by_name
+from hsr4hci.typehinting import RegressorModel
 
 
 # -----------------------------------------------------------------------------

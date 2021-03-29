@@ -12,8 +12,8 @@ from astropy.units import Quantity
 
 import numpy as np
 
-from hsr4hci.utils.apertures import get_aperture_positions
-from hsr4hci.utils.general import find_closest
+from hsr4hci.apertures import get_aperture_positions
+from hsr4hci.general import find_closest
 
 
 # -----------------------------------------------------------------------------

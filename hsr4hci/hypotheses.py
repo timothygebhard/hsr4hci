@@ -14,9 +14,9 @@ from tqdm.auto import tqdm
 
 import numpy as np
 
-from hsr4hci.utils.forward_modeling import get_time_series_for_position
-from hsr4hci.utils.masking import get_positions_from_mask
-from hsr4hci.utils.signal_masking import get_signal_times
+from hsr4hci.forward_modeling import get_time_series_for_position
+from hsr4hci.masking import get_positions_from_mask
+from hsr4hci.signal_masking import get_signal_times
 
 
 # -----------------------------------------------------------------------------

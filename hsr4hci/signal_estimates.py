@@ -15,7 +15,7 @@ from tqdm.auto import tqdm
 
 import numpy as np
 
-from hsr4hci.utils.derotating import derotate_combine
+from hsr4hci.derotating import derotate_combine
 
 
 # -----------------------------------------------------------------------------

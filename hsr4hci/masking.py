@@ -13,9 +13,9 @@ from skimage.morphology import binary_dilation, disk
 
 import numpy as np
 
-from hsr4hci.utils.coordinates import cartesian2polar, get_center
-from hsr4hci.utils.general import crop_or_pad, rotate_position, shift_image
-from hsr4hci.utils.forward_modeling import add_fake_planet
+from hsr4hci.coordinates import cartesian2polar, get_center
+from hsr4hci.general import crop_or_pad, rotate_position, shift_image
+from hsr4hci.forward_modeling import add_fake_planet
 
 
 # -----------------------------------------------------------------------------

@@ -11,7 +11,7 @@ from typing import Dict, Tuple, Union
 
 import numpy as np
 
-from hsr4hci.utils.forward_modeling import get_time_series_for_position
+from hsr4hci.forward_modeling import get_time_series_for_position
 
 
 # -----------------------------------------------------------------------------
