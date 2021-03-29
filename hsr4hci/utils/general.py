@@ -166,7 +166,7 @@ def split_into_n_chunks(sequence: T, n_chunks: int) -> List[T]:
 def prestack_array(
     array: np.ndarray,
     stacking_factor: int,
-    stacking_function: Callable = np.median,
+    stacking_function: Callable = np.mean,
     axis: int = 0,
 ) -> np.ndarray:
     """
@@ -179,7 +179,7 @@ def prestack_array(
     given stacking factor.
 
     Example use case: Replace each block of 50 raw frames by their
-        median to reduce the size of the ADI stack.
+        mean to reduce the size of the ADI stack.
 
     Args:
         array: A numpy array containing the input array.
