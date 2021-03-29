@@ -1,38 +1,29 @@
 """
-Utility functions for loading data.
+Utility functions for loading data sets.
 """
 
 # -----------------------------------------------------------------------------
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Union
-
-from astropy.units import Quantity
 
 import h5py
 import numpy as np
 
-from hsr4hci.utils.config import get_data_dir
-from hsr4hci.utils.general import crop_center
+from hsr4hci.utils.config import get_datasets_dir
+from hsr4hci.utils.general import crop_center, prestack_array
 from hsr4hci.utils.observing_conditions import ObservingConditions
-from hsr4hci.utils.psf import get_artificial_psf
 
 
 # -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def load_data(
-    target_name: str,
-    filter_name: str,
-    date: str,
-    stacking_factor: int,
+def load_dataset(
+    name: str,
+    binning_factor: int = 1,
     frame_size: Optional[Tuple[int, int]] = None,
-    presubtract: Optional[str] = None,
-    subsample: int = 1,
-    add_artificial_psf_template: bool = True,
 ) -> Tuple[
     np.ndarray,
     np.ndarray,
@@ -41,33 +32,17 @@ def load_data(
     Dict[str, Union[str, float]],
 ]:
     """
-    Load a data set specified by the target and filter name, date and
-    stacking factor, and optionally apply some pre-processing.
-
-    Note: This function only works with HDF files that follow the
-        specific assumptions regarding the file structure that are
-        built into the script in the `create_data_and_baseline`
-        directory in the `scripts` folder.
+    Load the data set with the given `name`, optionally cropping and
+    temporally binning the data.
 
     Args:
-        target_name: Name of the target of the observation, that is, the
-            name of the host star; e.g., "Beta_Pictoris".
-        filter_name: Name of the filter that was used, e.g., "Lp".
-        date: The date of the observation in format "YYYY-MM-DD".
-        stacking_factor: The number of (raw) frames that were merged
-            during the pre-processing of the data set.
+        name: Name of the data set (e.g., "beta_pictoris__lp").
+        binning_factor: Number of frames that should be temporally
+            binned ("pre-stacked") using a block-wise mean.
         frame_size: A tuple (width, height) of integers specifying the
             spatial size (in pixels) to which the stack will be cropped
             around the center. Dimensions should be odd numbers.
             If `None` is given, the frames are not cropped (default).
-        presubtract: If this parameter is set to "mean" or "median",
-            the mean (or median) along the time axis is subtracted from
-            the stack before returning it.
-        subsample: An integer specifying the subsampling factor for the
-            stack. If set to n, only every n-th frame is kept. By
-            default, all frames are kept (i.e., subsample=1).
-        add_artificial_psf_template: Add an artificial PSF template if
-            no real PSF  template is found. Default is True.
 
     Returns:
         A 5-tuple of the following form:
@@ -78,171 +53,77 @@ def load_data(
         as a dictionary.
     """
 
-    # Construct path to HDF file containing the data
-    file_path = Path(
-        get_data_dir(),
-        target_name,
-        filter_name,
-        date,
-        'processed',
-        f'stacked__{stacking_factor}.hdf',
-    )
+    # -------------------------------------------------------------------------
+    # Read in data set from HDF file
+    # -------------------------------------------------------------------------
 
-    # Read in the dataset from the HDf file
+    # Construct path to HDF file containing the data set
+    file_path = get_datasets_dir() / name / 'output' / f'{name}.hdf'
+
+    # Read in the data set from the HDF file
     with h5py.File(file_path, 'r') as hdf_file:
 
-        # Select stack and parallactic angles and subsample as desired
-        stack = np.array(hdf_file['stack'][::subsample, ...])
-        parang = np.array(hdf_file['parang'][::subsample, ...])
+        # Select stack, parallactic angles and PSF template
+        stack = np.array(hdf_file['stack']).astype(float)
+        parang = np.array(hdf_file['parang']).astype(float)
+        psf_template = np.array(hdf_file['psf_template']).astype(float)
 
-        # Select the unsaturated PSF template and ensure it is 2D
-        psf_template = np.array(hdf_file['psf_template']).squeeze()
-        if psf_template.ndim == 3:
-            psf_template = np.asarray(np.mean(psf_template, axis=0))
-
-        # Collect the observing conditions in a ObservingConditions object
+        # Collect the observing conditions into a (temporary) dictionary
         _observing_conditions = dict()
-        for key in hdf_file['observing_conditions'].keys():
+        for key in hdf_file['observing_conditions']['interpolated'].keys():
             _observing_conditions[key] = np.array(
-                hdf_file['observing_conditions'][key]
-            )
-        observing_conditions = ObservingConditions(_observing_conditions)
+                hdf_file['observing_conditions']['interpolated'][key]
+            ).astype(float)
 
-        # Select the metadata
+        # Read the metadata into a dictionary
         metadata: Dict[str, Union[str, float]] = dict()
-        for key in hdf_file.attrs.keys():
-            metadata[key] = hdf_file.attrs[key]
+        for key in hdf_file['metadata'].keys():
+            value = hdf_file['metadata'][key][()]
+            if isinstance(value, bytes):
+                value = value.decode('utf-8')
+            metadata[key] = value
+
+    # -------------------------------------------------------------------------
+    # Spatially crop the stack and apply temporal binning
+    # -------------------------------------------------------------------------
 
     # Spatially crop the stack around the center to the desired frame size
     if frame_size is not None:
         stack = crop_center(stack, (-1, frame_size[0], frame_size[1]))
 
-    # If desired, pre-subtract mean or median from the stack
-    if presubtract == 'median':
-        stack -= np.nanmedian(stack, axis=0)
-    elif presubtract == 'mean':
-        stack -= np.nanmean(stack, axis=0)
-
-    # If necessary, create an artificial PSF
-    if psf_template.shape[0] == 0 and add_artificial_psf_template:
-        psf_template = get_artificial_psf(
-            pixscale=Quantity(metadata['PIXSCALE'], 'arcsec / pixel'),
-            lambda_over_d=Quantity(metadata['LAMBDA_OVER_D'], 'arcsec'),
+    # Apply temporal binning to stack, parang and observing conditions
+    stack = prestack_array(array=stack, stacking_factor=binning_factor)
+    parang = prestack_array(array=parang, stacking_factor=binning_factor)
+    for key in _observing_conditions.keys():
+        _observing_conditions[key] = prestack_array(
+            array=_observing_conditions[key], stacking_factor=binning_factor
         )
+
+    # Convert the observing conditions into an ObservingConditions object
+    observing_conditions = ObservingConditions(_observing_conditions)
 
     return stack, parang, psf_template, observing_conditions, metadata
 
 
-def load_default_data(
-    planet: str, stacking_factor: int = 50
-) -> Tuple[
-    np.ndarray,
-    np.ndarray,
-    np.ndarray,
-    ObservingConditions,
-    Dict[str, Union[str, float]],
-]:
+def load_parang(name: str, binning_factor: int = 1, **_: Any) -> np.ndarray:
     """
-    This function is a convenience wrapper around ``load_data``, which
-    allows to load our most common data sets with default settings.
+    Load (only) the parallactic angles for the given data set.
 
     Args:
-        planet: The name of the planet, given as "Planet_Name__Filter".
-        stacking_factor: The pre-stacking factor of the data set. In
-            general, this must be in (1, 5, 10, 25, 50, 100); the exact
-            value depends on the data set.
-
-    Returns:
-        numpy arrays containing both the stack and the parallactic
-        angles of the the requested data set.
-    """
-
-    # Hard-code some information about our most common data sets
-    if planet == '51_Eridani__K1':
-        target_name = '51_Eridani'
-        filter_name = 'K1'
-        date = '2015-09-25'
-    elif planet == 'Beta_Pictoris__Lp':
-        target_name = 'Beta_Pictoris'
-        filter_name = 'Lp'
-        date = '2013-02-01'
-    elif planet == 'Beta_Pictoris__Mp':
-        target_name = 'Beta_Pictoris'
-        filter_name = 'Mp'
-        date = '2012-11-26'
-    elif planet == 'HIP_65426__Lp':
-        target_name = 'HIP_65426'
-        filter_name = 'Lp'
-        date = '2017-05-19'
-    elif planet == 'HR_8799__J':
-        target_name = 'HR_8799'
-        filter_name = 'J'
-        date = '2014-08-14'
-    elif planet == 'HR_8799__Lp':
-        target_name = 'HR_8799'
-        filter_name = 'Lp'
-        date = '2011-09-01'
-    elif planet == 'PZ_Telescopii__Lp':
-        target_name = 'PZ_Telescopii'
-        filter_name = 'Lp'
-        date = '2010-09-27'
-    elif planet == 'R_CrA__Lp':
-        target_name = 'R_CrA'
-        filter_name = 'Lp'
-        date = '2018-06-07'
-    else:
-        raise ValueError(f'{planet} is not a valid planet name!')
-
-    # Load the data and return them
-    return load_data(
-        target_name=target_name,
-        filter_name=filter_name,
-        date=date,
-        stacking_factor=stacking_factor,
-    )
-
-
-def load_parang(
-    target_name: str,
-    filter_name: str,
-    date: str,
-    stacking_factor: int,
-    **_: Any,
-) -> np.ndarray:
-    """
-    Load the parallactic angles from the data set specified by the
-    target and filter name, date and stacking factor.
-
-    This is essentially just a subset of the `load_data()` function for
-    cases where we do not want to load the entire stack into memory to
-    get the parallactic angles.
-
-    Args:
-        target_name: Name of the target of the observation, that is, the
-            name of the host star; e.g., "Beta_Pictoris".
-        filter_name: Name of the filter that was used, e.g., "Lp".
-        date: The date of the observation in format "YYYY-MM-DD".
-        stacking_factor: The number of (raw) frames that were merged
-            during the pre-processing of the data set.
+        name: Name of the data set (e.g., "beta_pictoris__lp").
+        binning_factor: Number of frames that should be temporally
+            binned ("pre-stacked") using a block-wise mean.
 
     Returns:
         A numpy array containing the parallactic angles.
     """
 
-    # Construct path to HDF file containing the data
-    file_path = Path(
-        get_data_dir(),
-        target_name,
-        filter_name,
-        date,
-        'processed',
-        f'stacked__{stacking_factor}.hdf',
-    )
-
-    # Read in the dataset from the HDf file
+    # Read in the data set from the HDF file
+    file_path = get_datasets_dir() / name / 'output' / f'{name}.hdf'
     with h5py.File(file_path, 'r') as hdf_file:
+        parang = np.array(hdf_file['parang']).astype(float)
 
-        # Select stack and parallactic angles and subsample as desired
-        parang = np.array(hdf_file['parang'])
+    # Temporally bin the parallactic angles
+    parang = prestack_array(array=parang, stacking_factor=binning_factor)
 
     return parang
