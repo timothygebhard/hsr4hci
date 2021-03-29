@@ -117,12 +117,13 @@ def recursively_save_dict_contents_to_group(
                 hdf_object=hdf_object, prefix=path, dictionary=item
             )
 
-        # If the current `item` contains data, create a dataset to store them
+        # If the current `item` contains data, create a dataset to store them.
+        # If the data set already exists, delete it (overwriting existing data
+        # sets is not possible otherwise).
         elif isinstance(item, H5PY_SUPPORTED_TYPES):
             if path in hdf_object:
-                hdf_object[path][...] = item
-            else:
-                hdf_object.create_dataset(name=path, data=item)
+                del hdf_object[path]
+            hdf_object.create_dataset(name=path, data=item)
 
         # If the type of `item` is not supported, raise a TypeError
         else:
