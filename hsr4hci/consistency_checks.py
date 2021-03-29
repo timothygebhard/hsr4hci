@@ -149,7 +149,7 @@ def get_match_fraction(
             return_planet_positions=False,
             interpolation='bilinear',
         )
-        expected_stack = np.array(expected_stack) / np.max(expected_stack)
+        expected_stack = np.asarray(expected_stack / np.max(expected_stack))
 
         # Find mask of all pixels that are affected by the planet trace, i.e.,
         # all pixels that at some point in time contain planet signal.
