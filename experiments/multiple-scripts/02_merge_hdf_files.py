@@ -12,8 +12,8 @@ from pathlib import Path
 import os
 import time
 
-from hsr4hci.utils.hdf import save_dict_to_hdf
-from hsr4hci.utils.merging import get_hdf_file_paths, merge_result_files
+from hsr4hci.hdf import save_dict_to_hdf
+from hsr4hci.merging import get_hdf_file_paths, merge_result_files
 
 
 # -----------------------------------------------------------------------------

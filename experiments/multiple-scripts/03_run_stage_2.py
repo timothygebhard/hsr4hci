@@ -8,6 +8,7 @@ Run stage 2 of the pipeline (find hypotheses, compute MF, ...)
 
 from pathlib import Path
 
+import json
 import os
 import time
 
@@ -15,16 +16,19 @@ from astropy.units import Quantity
 
 import numpy as np
 
-from hsr4hci.utils.config import load_config
-from hsr4hci.utils.consistency_checks import get_match_fraction
-from hsr4hci.utils.data import load_data
-from hsr4hci.utils.fits import save_fits
-from hsr4hci.utils.hdf import load_dict_from_hdf
-from hsr4hci.utils.hypotheses import get_all_hypotheses
-from hsr4hci.utils.masking import get_roi_mask
-from hsr4hci.utils.signal_estimates import get_signal_estimate
-from hsr4hci.utils.signal_masking import assemble_residuals_from_hypotheses
-from hsr4hci.utils.units import set_units_for_instrument
+from hsr4hci.config import load_config, get_datasets_dir
+from hsr4hci.coordinates import polar2cartesian
+from hsr4hci.consistency_checks import get_match_fraction
+from hsr4hci.data import load_dataset
+from hsr4hci.evaluation import compute_snr
+from hsr4hci.fits import save_fits
+from hsr4hci.hdf import load_dict_from_hdf
+from hsr4hci.hypotheses import get_all_hypotheses
+from hsr4hci.masking import get_roi_mask
+from hsr4hci.psf import get_psf_radius
+from hsr4hci.signal_estimates import get_signal_estimate
+from hsr4hci.signal_masking import assemble_residuals_from_hypotheses
+from hsr4hci.units import set_units_for_instrument
 
 
 # -----------------------------------------------------------------------------
@@ -56,7 +60,7 @@ if __name__ == '__main__':
 
     # Load frames, parallactic angles, etc. from HDF file
     print('Loading data set...', end=' ', flush=True)
-    stack, parang, psf_template, observing_conditions, metadata = load_data(
+    stack, parang, psf_template, observing_conditions, metadata = load_dataset(
         **config['dataset']
     )
     print('Done!', flush=True)
@@ -189,6 +193,44 @@ if __name__ == '__main__':
     file_path = results_dir / 'signal_estimate.fits'
     save_fits(array=array, file_path=file_path)
     print('Done!', flush=True)
+
+
+    # -------------------------------------------------------------------------
+    # STEP 5: Compute signal-to-noise ratio
+    # -------------------------------------------------------------------------
+
+    # Estimate PSF radius
+    psf_radius = get_psf_radius(psf_template)
+
+    # Load the "planets" part of the dataset configuration
+    dataset_name = config['dataset']['name']
+    file_path = get_datasets_dir() / dataset_name / f'{dataset_name}.json'
+    with open(file_path, 'r') as json_file:
+        planets = json.load(json_file)['planets']
+
+    # Loop over all planets in the data set
+    print('\n\nSIGNAL-TO-NOISE RATIO:\n')
+    for name, parameters in planets.items():
+
+        # Compute the expected planet position in Cartesian coordinates
+        planet_position = polar2cartesian(
+            separation=Quantity(parameters['separation'], 'arcsec'),
+            angle=Quantity(parameters['position_angle'], 'degree'),
+            frame_size=frame_size,
+        )
+
+        # Compute the SNR and FPF
+        signal, noise, snr, fpf = compute_snr(
+            frame=signal_estimate,
+            position=planet_position,
+            aperture_radius=Quantity(psf_radius, 'pixel'),
+            ignore_neighbors=1,
+        )
+
+        print(
+            f'  {name}: SNR = {snr:.3f} (FPF = {fpf:.3e} | '
+            f'signal = {signal:.3e}) | noise = {noise:.3e})'
+        )
 
     # -------------------------------------------------------------------------
     # Postliminaries

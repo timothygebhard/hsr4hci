@@ -14,13 +14,13 @@ import time
 
 from astropy.units import Quantity
 
-from hsr4hci.utils.base_models import BaseModelCreator
-from hsr4hci.utils.config import load_config
-from hsr4hci.utils.data import load_data
-from hsr4hci.utils.hdf import save_dict_to_hdf
-from hsr4hci.utils.masking import get_roi_mask
-from hsr4hci.utils.training import train_models
-from hsr4hci.utils.units import set_units_for_instrument
+from hsr4hci.base_models import BaseModelCreator
+from hsr4hci.config import load_config
+from hsr4hci.data import load_dataset
+from hsr4hci.hdf import save_dict_to_hdf
+from hsr4hci.masking import get_roi_mask
+from hsr4hci.training import train_all_models
+from hsr4hci.units import set_units_for_instrument
 
 
 # -----------------------------------------------------------------------------
@@ -52,7 +52,7 @@ if __name__ == '__main__':
 
     # Load frames, parallactic angles, etc. from HDF file
     print('Loading data set...', end=' ', flush=True)
-    stack, parang, psf_template, observing_conditions, metadata = load_data(
+    stack, parang, psf_template, observing_conditions, metadata = load_dataset(
         **config['dataset']
     )
     print('Done!', flush=True)
@@ -104,7 +104,7 @@ if __name__ == '__main__':
     )
 
     print('\nTraining models:', flush=True)
-    results = train_models(
+    results = train_all_models(
         roi_mask=roi_mask,
         stack=stack,
         parang=parang,
@@ -112,9 +112,9 @@ if __name__ == '__main__':
         obscon_array=observing_conditions.as_array(selected_keys),
         selection_mask_config=config['selection_mask'],
         base_model_creator=base_model_creator,
-        n_signal_times=config['signal_masking']['n_signal_times'],
         n_splits=config['n_splits'],
-        max_signal_length=config['signal_masking']['max_signal_length'],
+        mode=config['mode'],
+        n_signal_times=config['n_signal_times'],
         n_roi_splits=n_roi_splits,
         roi_split=roi_split,
         return_format='partial',

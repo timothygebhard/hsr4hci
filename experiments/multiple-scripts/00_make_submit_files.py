@@ -17,11 +17,11 @@ from astropy.units import Quantity
 
 import numpy as np
 
-from hsr4hci.utils.config import load_config
-from hsr4hci.utils.data import load_data
-from hsr4hci.utils.htcondor import SubmitFile, DAGFile
-from hsr4hci.utils.masking import get_roi_mask
-from hsr4hci.utils.units import set_units_for_instrument
+from hsr4hci.config import load_config
+from hsr4hci.data import load_dataset
+from hsr4hci.htcondor import SubmitFile, DAGFile
+from hsr4hci.masking import get_roi_mask
+from hsr4hci.units import set_units_for_instrument
 
 
 # -----------------------------------------------------------------------------
@@ -88,7 +88,7 @@ if __name__ == '__main__':
 
     # Load frames, parallactic angles, etc. from HDF file
     print('Loading data set...', end=' ', flush=True)
-    stack, parang, psf_template, observing_conditions, metadata = load_data(
+    stack, parang, psf_template, observing_conditions, metadata = load_dataset(
         **config['dataset']
     )
     print('Done!', flush=True)
@@ -142,7 +142,7 @@ if __name__ == '__main__':
     array_memory = getsizeof(np.ones((n_frames, n_pixels_per_job)))
 
     # Count the number of stack-shaped arrays that we need to keep in memory
-    n_arrays = 2 + 3 * (config['signal_masking']['n_signal_times'] + 1)
+    n_arrays = 2 + 3 * (config['n_signal_times'] + 1)
 
     # Compute the expected amount of memory that we need per job (in MB)
     expected_job_memory = 4 * dataset_memory + n_arrays * array_memory
@@ -152,17 +152,21 @@ if __name__ == '__main__':
 
     # Compute the expected total memory needed for merging the HDF files
     expected_total_memory = n_arrays * getsizeof(stack)
-    expected_total_memory /= 1024**2
+    expected_total_memory /= 1024 ** 2
     expected_total_memory *= 4
     expected_total_memory = int(expected_total_memory)
 
     print('')
-    print(f'Pixels per job: {np.sum(roi_mask)} / {n_splits} <= '
-          f'{n_pixels_per_job}')
+    print(
+        f'Pixels per job: {np.sum(roi_mask)} / {n_splits} <= '
+        f'{n_pixels_per_job}'
+    )
     print('')
     print(f'Data set memory: {int(dataset_memory / 1024 ** 2):6d} MB')
-    print(f'Expected memory: {expected_job_memory:6d} MB per job\n'
-          f'                 {expected_total_memory:6d} MB in total')
+    print(
+        f'Expected memory: {expected_job_memory:6d} MB per job\n'
+        f'                 {expected_total_memory:6d} MB in total'
+    )
     print('')
 
     # Round up (it doesn't make sense to ask for less than 1 GB on the cluster)
@@ -241,10 +245,10 @@ if __name__ == '__main__':
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
-    # Create a submit file for finding hypotheses and add it to DAG
+    # Create a submit file for stage 2 (find hypothesis, compute MF, ...)
     # -------------------------------------------------------------------------
 
-    name = '03_find_hypotheses'
+    name = '03_run_stage_2'
 
     # Create submit file and add job
     print(f'Creating {name}.sub...', end=' ', flush=True)
@@ -270,130 +274,6 @@ if __name__ == '__main__':
         attributes=dict(file_path=file_path.as_posix(), bid=bid),
     )
     dag_file.add_dependency('02_merge_hdf_files', name)
-    print('Done!', flush=True)
-
-    # -------------------------------------------------------------------------
-    # Create a submit file for computing the match fraction and add it to DAG
-    # -------------------------------------------------------------------------
-
-    name = '04_compute_matches'
-
-    # Create submit file and add job
-    print(f'Creating {name}.sub...', end=' ', flush=True)
-    submit_file = SubmitFile(
-        clusterlogs_dir=clusterlogs_dir.as_posix(),
-        memory=expected_total_memory,
-        cpus=4,
-    )
-    submit_file.add_job(
-        name=name,
-        job_script=(experiment_dir / f'{name}.py').as_posix(),
-        arguments=dict(),
-        bid=bid,
-    )
-    file_path = htcondor_dir / f'{name}.sub'
-    submit_file.save(file_path=file_path)
-    print('Done!', flush=True)
-
-    # Add submit file to DAG
-    print(f'Adding {name}.sub to DAG file...', end=' ', flush=True)
-    dag_file.add_submit_file(
-        name=name,
-        attributes=dict(file_path=file_path.as_posix(), bid=bid),
-    )
-    dag_file.add_dependency('03_find_hypotheses', name)
-    print('Done!', flush=True)
-
-    # -------------------------------------------------------------------------
-    # Create a submit file for creating the signal estimates and add it to DAG
-    # -------------------------------------------------------------------------
-
-    name = '05_construct_signal_estimates'
-
-    # Create submit file and add job
-    print(f'Creating {name}.sub...', end=' ', flush=True)
-    submit_file = SubmitFile(
-        clusterlogs_dir=clusterlogs_dir.as_posix(),
-        memory=expected_total_memory,
-        cpus=4
-    )
-    submit_file.add_job(
-        name=name,
-        job_script=(experiment_dir / f'{name}.py').as_posix(),
-        arguments={},
-        bid=bid,
-    )
-    file_path = htcondor_dir / f'{name}.sub'
-    submit_file.save(file_path=file_path)
-    print('Done!', flush=True)
-
-    # Add submit file to DAG
-    print(f'Adding {name}.sub to DAG file...', end=' ', flush=True)
-    dag_file.add_submit_file(
-        name=name,
-        attributes=dict(file_path=file_path.as_posix(), bid=bid),
-    )
-    dag_file.add_dependency('04_compute_matches', name)
-    print('Done!', flush=True)
-
-    # -------------------------------------------------------------------------
-    # Create a submit file for computing the SNR and add it to DAG
-    # -------------------------------------------------------------------------
-
-    name = '06_compute_snr'
-
-    # Create submit file and add job
-    print(f'Creating {name}.sub...', end=' ', flush=True)
-    submit_file = SubmitFile(
-        clusterlogs_dir=clusterlogs_dir.as_posix(), memory=8192, cpus=4
-    )
-    submit_file.add_job(
-        name=name,
-        job_script=(experiment_dir / f'{name}.py').as_posix(),
-        arguments={},
-        bid=bid,
-    )
-    file_path = htcondor_dir / f'{name}.sub'
-    submit_file.save(file_path=file_path)
-    print('Done!', flush=True)
-
-    # Add submit file to DAG
-    print(f'Adding {name}.sub to DAG file...', end=' ', flush=True)
-    dag_file.add_submit_file(
-        name=name,
-        attributes=dict(file_path=file_path.as_posix(), bid=bid),
-    )
-    dag_file.add_dependency('05_construct_signal_estimates', name)
-    print('Done!', flush=True)
-
-    # -------------------------------------------------------------------------
-    # Create a submit file for computing the SNR and add it to DAG
-    # -------------------------------------------------------------------------
-
-    name = '07_compute_roc_curve'
-
-    # Create submit file and add job
-    print(f'Creating {name}.sub...', end=' ', flush=True)
-    submit_file = SubmitFile(
-        clusterlogs_dir=clusterlogs_dir.as_posix(), memory=8192, cpus=4
-    )
-    submit_file.add_job(
-        name=name,
-        job_script=(experiment_dir / f'{name}.py').as_posix(),
-        arguments={},
-        bid=bid,
-    )
-    file_path = htcondor_dir / f'{name}.sub'
-    submit_file.save(file_path=file_path)
-    print('Done!', flush=True)
-
-    # Add submit file to DAG
-    print(f'Adding {name}.sub to DAG file...', end=' ', flush=True)
-    dag_file.add_submit_file(
-        name=name,
-        attributes=dict(file_path=file_path.as_posix(), bid=bid),
-    )
-    dag_file.add_dependency('04_compute_matches', name)
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
