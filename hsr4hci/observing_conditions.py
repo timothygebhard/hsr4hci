@@ -341,7 +341,7 @@ def interpolate_observing_conditions(
         interpolator = CubicSpline(x, y).derivative(1)
 
         # Evaluate the interpolator at the time of each frame
-        return interpolator(timestamps)
+        return np.asarray(interpolator(timestamps))
 
     # -------------------------------------------------------------------------
     # Rymes-Myers interpolation (more complicated and much slower!)
@@ -430,7 +430,7 @@ def interpolate_observing_conditions(
         interpolator = interp1d(upsampled_timestamps, interpolated)
 
         # Evaluate the interpolator at the time of each frame
-        return interpolator(timestamps)
+        return np.asarray(interpolator(timestamps))
 
     # -------------------------------------------------------------------------
     # Value error for invalid methods

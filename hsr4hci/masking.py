@@ -343,7 +343,7 @@ def get_exclusion_mask(
             parang=parang_resampled,
             psf_template=psf_template,
             polar_position=cartesian2polar(
-                position=final_position,
+                position=(final_position[0], final_position[1]),
                 frame_size=mask_size,
             ),
             magnitude=1,
@@ -352,7 +352,7 @@ def get_exclusion_mask(
             dit_psf_template=1,
             return_planet_positions=False,
         )
-        signal_stack /= np.max(signal_stack)
+        signal_stack = np.asarray(signal_stack) / np.max(signal_stack)
 
         # Get the time series for the position
         target = signal_stack[:, int(position[1]), int(position[0])]
