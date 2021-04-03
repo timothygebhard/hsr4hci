@@ -203,7 +203,7 @@ def query_archive(
     Send a request to one of ESO's ambient condition query forms [1] to
     retrieve the values of a particular observing condition.
 
-    [1]: http://archive.eso.org/cms/eso-data/ambient-conditions/paranal-ambient-query-forms.html
+    [1]: https://archive.eso.org/cms/eso-data/ambient-conditions/paranal-ambient-query-forms.html
 
     Args:
         start_date: The start datetime (in UTC) as a string in ISO 8061
@@ -325,6 +325,7 @@ def interpolate_observing_conditions(
         # Define shortcuts
         avg = df[parameter_key].values
         x = df['timestamp'].values
+        dx = x[1] - x[0]
 
         # Remove NaNs, because they break the spline interpolation
         nan_idx = np.isnan(avg)
@@ -340,8 +341,10 @@ def interpolate_observing_conditions(
         # here, because the cumulative sum above is basically an integral.
         interpolator = CubicSpline(x, y).derivative(1)
 
-        # Evaluate the interpolator at the time of each frame
-        return np.asarray(interpolator(timestamps))
+        # Evaluate the interpolator at the time of each frame. The additional
+        # "+ dx" seems necessary based on visual comparison of the original
+        # and the interpolated time series?
+        return np.asarray(interpolator(timestamps + dx))
 
     # -------------------------------------------------------------------------
     # Rymes-Myers interpolation (more complicated and much slower!)
@@ -463,9 +466,8 @@ def get_observing_conditions(
     # Get the start and end date for the query (as strings). We need an
     # offset of the observation duration both before and after the first
     # and last frame for interpolation purposes (see below).
-    duration = int(math.ceil(max(timestamps) - min(timestamps)))
-    start_timestamp = math.floor(min(timestamps) - duration - 60)
-    end_timestamp = math.ceil(max(timestamps) + duration + 60)
+    start_timestamp = math.floor(min(timestamps) - 120)
+    end_timestamp = math.ceil(max(timestamps) + 120)
 
     # Resolve the parameter name
     archive, key, _ = resolve_parameter_name(
