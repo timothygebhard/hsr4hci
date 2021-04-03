@@ -43,7 +43,7 @@ import seaborn as sns
 
 from hsr4hci.coordinates import get_center, polar2cartesian
 from hsr4hci.general import prestack_array
-from hsr4hci.hdf import save_dict_to_hdf
+from hsr4hci.hdf import save_dict_to_hdf, save_data_to_hdf
 from hsr4hci.observing_conditions import get_observing_conditions
 from hsr4hci.pca import get_pca_signal_estimates
 from hsr4hci.plotting import zerocenter_imshow, disable_ticks
@@ -211,11 +211,13 @@ if __name__ == '__main__':
     # Add the full FITS headers to the output HDF file
     print('Storing FITS headers in HDF file...', end=' ', flush=True)
     with h5py.File(output_file_path, 'a') as output_file:
-        group = output_file.require_group(name='fits_headers')
-        for key, values in headers.to_dict(orient='list').items():
-            if key in group:
-                del group[key]
-            group.create_dataset(name=key, data=values)
+        for key in headers.keys():
+            save_data_to_hdf(
+                hdf_file=output_file,
+                location='fits_headers',
+                name=key,
+                data=headers[key].values,
+            )
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
@@ -337,16 +339,6 @@ if __name__ == '__main__':
 
     with h5py.File(output_file_path, 'a') as output_file:
 
-        # Ensure that there exists a group in the output file for the observing
-        # conditions: both for the interpolated values and the raw results of
-        # our queries to the archive (to allow more sanity checks later)
-        interpolated_group = output_file.require_group(
-            name='observing_conditions/interpolated'
-        )
-        query_results_group = output_file.require_group(
-            name='observing_conditions/query_results'
-        )
-
         # Get the start and end times of all cubes as datetime objects:
         # We will add the time spans of the cubes to the plots of the
         # parameters as an additional sanity check
@@ -379,20 +371,22 @@ if __name__ == '__main__':
             # Store interpolated observing conditions in data frame
             observing_conditions_df[parameter_name] = interpolated
 
-            # Store interpolated  observing conditions in the output HDF file
-            if parameter_name in interpolated_group:
-                del interpolated_group[parameter_name]
-            interpolated_group.create_dataset(
-                name=parameter_name, data=interpolated
+            # Store interpolated observing conditions in the output HDF file
+            save_data_to_hdf(
+                hdf_file=output_file,
+                location='observing_conditions/interpolated',
+                name=parameter_name,
+                data=interpolated,
             )
 
             # Store the query results in the output HDF file
-            if parameter_name in query_results_group:
-                del query_results_group[parameter_name]
-            query_results_group.create_group(name=parameter_name)
+            location = f'observing_conditions/query_results/{parameter_name}'
             for key, value in query_results.items():
-                query_results_group[parameter_name].create_dataset(
-                    name=key, data=value
+                save_data_to_hdf(
+                    hdf_file=output_file,
+                    location=location,
+                    name=key,
+                    data=value,
                 )
 
             print('Done!', flush=True)
@@ -406,19 +400,6 @@ if __name__ == '__main__':
     # FITS files of the observations.
 
     with h5py.File(output_file_path, 'a') as output_file:
-
-        # We will store these additional observing conditions in the same
-        # group as the interpolated ones from the ambient archives
-        interpolated_group = output_file.require_group(
-            name='observing_conditions/interpolated'
-        )
-
-        # Additionally, there is another group for those parameters that are
-        # only stored for debugging purposes (namely, to allow a comparison
-        # between the values from the ambient archives with the FITS headers)
-        debugging_group = output_file.require_group(
-            name='observing_conditions/debugging'
-        )
 
         # Loop over the different parameters that are only available from
         # the FITS headers. For some values (e.g., air mass), there is a
@@ -525,21 +506,23 @@ if __name__ == '__main__':
             # Convert parameter values to array and store in data frame
             # (unless it is a debugging parameter)
             parameter_values = np.array(parameter_values)
+
+            # Store the parameter values in the output HDF file and the data
+            # frame (parameters ending in '__fits' are only for debugging)
             if not parameter_name.endswith('__fits'):
                 observing_conditions_df[parameter_name] = parameter_values
-
-            # Store the parameter values in the output HDF file
-            if not parameter_name.endswith('__fits'):
-                if parameter_name in interpolated_group:
-                    del interpolated_group[parameter_name]
-                interpolated_group.create_dataset(
-                    name=parameter_name, data=parameter_values
+                save_data_to_hdf(
+                    hdf_file=output_file,
+                    location='observing_conditions/interpolated',
+                    name=parameter_name,
+                    data=parameter_values,
                 )
             else:
-                if parameter_name in debugging_group:
-                    del debugging_group[parameter_name]
-                debugging_group.create_dataset(
-                    name=parameter_name, data=parameter_values
+                save_data_to_hdf(
+                    hdf_file=output_file,
+                    location='observing_conditions/debugging',
+                    name=parameter_name,
+                    data=parameter_values,
                 )
 
             print('Done!', flush=True)
