@@ -10,7 +10,7 @@ Parts of the code in the module are based on:
 # -----------------------------------------------------------------------------
 
 from pathlib import Path
-from typing import Union
+from typing import Any, Union
 
 import h5py
 import numpy as np
@@ -53,6 +53,50 @@ def is_hdf_file(file_path: Union[Path, str]) -> bool:
     endswith_hdf5 = Path(file_path).name.endswith('.hdf5')
 
     return endswith_hdf or endswith_hdf5
+
+
+def save_data_to_hdf(
+    hdf_file: h5py.File,
+    location: str,
+    name: str,
+    data: Any,
+    overwrite: bool = True,
+) -> None:
+    """
+    Auxiliary function to write data to an open HDF file that provides
+    automatic overwriting (which requires deleting and re-creating data
+    sets that already exist).
+
+    Args:
+        hdf_file: An open HDF file (in write mode).
+        location: The path ("group_1/group_2/.../group_n") at which to
+            create the new data set in the HDF file. Can be empty.
+        name: The name of the data set.
+        data: The data to be written to the data set.
+        overwrite: Whether or not to overwrite a data set of the same
+            name that already exists in the given location.
+    """
+
+    # Ensure that we only try to save supported types
+    if not isinstance(data, H5PY_SUPPORTED_TYPES):
+        raise ValueError(f'Type "{type(data)}" not supported by HDF format!')
+
+    # Check if the data set already exists
+    if (location in hdf_file) and (name in hdf_file[location]):
+
+        # If overwrite is True, we delete the data set and create it again
+        # below (there is no direct overwrite)
+        if overwrite:
+            del hdf_file[location][name]
+
+        # Otherwise, we raise an error
+        else:
+            raise KeyError(f'Data set with name "{name}" already exists!')
+
+    # Finally, we create the full path and store it. Groups are automatically
+    # created as needed by h5py.
+    full_path = location.strip('/') + '/' + name.strip('/')
+    hdf_file.create_dataset(name=full_path, data=data)
 
 
 def save_dict_to_hdf(
