@@ -8,6 +8,7 @@ Create submit files to run experiment on an HTCondor-based cluster.
 
 from sys import getsizeof
 from pathlib import Path
+from typing import Any
 
 import argparse
 import time
@@ -57,6 +58,16 @@ def get_arguments() -> argparse.Namespace:
     )
 
     return parser.parse_args()
+
+
+def get_size(_object: Any) -> int:
+    """
+    Auxiliary function to determine the size (in memory) of an object.
+    """
+
+    if isinstance(_object, np.ndarray):
+        return int(_object.nbytes)
+    return getsizeof(_object)
 
 
 # -----------------------------------------------------------------------------
@@ -130,44 +141,49 @@ if __name__ == '__main__':
     # Compute the size of the full data set which we will be loading
     dataset_memory = sum(
         [
-            getsizeof(stack),
-            getsizeof(parang),
-            getsizeof(psf_template),
-            getsizeof(observing_conditions),
-            getsizeof(metadata),
+            get_size(stack),
+            get_size(parang),
+            get_size(psf_template),
+            get_size(observing_conditions),
+            get_size(metadata),
         ]
     )
 
-    # Compute the size of a single stack-shaped variable
-    array_memory = getsizeof(np.ones((n_frames, n_pixels_per_job)))
+    print('\nMemory consumption:')
+    print(f'-- stack:        {int(get_size(stack) / 1024**2):>4d} MB')
+    print(f'-- parang:       {int(get_size(parang) / 1024):>4d} KB')
+    print(f'-- psf_template: {int(get_size(psf_template) / 1024):>4d} KB')
+    print(f'-- obs_con:      {int(get_size(observing_conditions)):>4d} B')
+    print(f'-- metadata:     {int(get_size(metadata)):>4d} B')
 
-    # Count the number of stack-shaped arrays that we need to keep in memory
+    # Compute the size of a single "ROI subset" variable
+    array_memory = get_size(np.ones((n_frames, n_pixels_per_job)))
+
+    # Count the number of such variables that we need to keep in memory and
+    # write out to the (partial) HDF files
     n_arrays = 2 + 3 * (config['n_signal_times'] + 1)
 
     # Compute the expected amount of memory that we need per job (in MB)
     expected_job_memory = 4 * dataset_memory + n_arrays * array_memory
     expected_job_memory /= 1024 ** 2
-    expected_job_memory *= 2
+    expected_job_memory *= 2.2
     expected_job_memory = int(expected_job_memory)
 
     # Compute the expected total memory needed for merging the HDF files
-    expected_total_memory = n_arrays * getsizeof(stack)
+    expected_total_memory = n_arrays * array_memory * n_splits
     expected_total_memory /= 1024 ** 2
-    expected_total_memory *= 4
+    expected_total_memory *= 2
     expected_total_memory = int(expected_total_memory)
 
-    print('')
     print(
-        f'Pixels per job: {np.sum(roi_mask)} / {n_splits} <= '
-        f'{n_pixels_per_job}'
+        f'\nPixels per job: {np.sum(roi_mask)} / {n_splits} <= '
+        f'{n_pixels_per_job}\n'
     )
-    print('')
     print(f'Data set memory: {int(dataset_memory / 1024 ** 2):6d} MB')
     print(
         f'Expected memory: {expected_job_memory:6d} MB per job\n'
-        f'                 {expected_total_memory:6d} MB in total'
+        f'                 {expected_total_memory:6d} MB in total\n'
     )
-    print('')
 
     # Round up (it doesn't make sense to ask for less than 1 GB on the cluster)
     expected_job_memory = max(expected_job_memory, 1024)
@@ -195,7 +211,7 @@ if __name__ == '__main__':
         cpus=8,
     )
     submit_file.add_job(
-        name='train',
+        name=name,
         job_script=(experiment_dir / f'{name}.py').as_posix(),
         arguments={'roi-split': '$(Process)', 'n-roi-splits': str(n_splits)},
         bid=bid,
@@ -223,7 +239,7 @@ if __name__ == '__main__':
     submit_file = SubmitFile(
         clusterlogs_dir=clusterlogs_dir.as_posix(),
         memory=expected_total_memory,
-        cpus=4,
+        cpus=1,
     )
     submit_file.add_job(
         name=name,
