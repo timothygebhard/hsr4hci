@@ -29,37 +29,6 @@ from hsr4hci.units import set_units_for_instrument
 # FUNCTIONS DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def get_arguments() -> argparse.Namespace:
-    """
-    Parse command line arguments that are passed to the script.
-
-    Returns:
-        The command line arguments as a Namespace object.
-    """
-
-    # Set up parser
-    parser = argparse.ArgumentParser()
-
-    # Add arguments
-    parser.add_argument(
-        '--bid',
-        type=int,
-        default=50,
-        help='Amount of cluster dollars to bid for each job.',
-    )
-    parser.add_argument(
-        '--n-splits',
-        type=int,
-        default=1,
-        help=(
-            'Number of splits into which the training data is divided to '
-            'parallelize the training.'
-        ),
-    )
-
-    return parser.parse_args()
-
-
 def get_size(_object: Any) -> int:
     """
     Auxiliary function to determine the size (in memory) of an object.
@@ -84,13 +53,50 @@ if __name__ == '__main__':
     print('\nMAKE SUBMIT FILES\n', flush=True)
 
     # -------------------------------------------------------------------------
+    # Set up parser to get command line arguments
+    # -------------------------------------------------------------------------
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--experiment-dir',
+        type=str,
+        required=True,
+        metavar='PATH',
+        help='Path to experiment directory.',
+    )
+    parser.add_argument(
+        '--bid',
+        type=int,
+        default=20,
+        help='Amount of cluster dollars to bid for each job.',
+    )
+    parser.add_argument(
+        '--n-splits',
+        type=int,
+        default=1,
+        help=(
+            'Number of splits into which the training data is divided to '
+            'parallelize the training.'
+        ),
+    )
+    args = parser.parse_args()
+
+    # -------------------------------------------------------------------------
     # Load config and data, get command line variables and define shortcuts
     # -------------------------------------------------------------------------
 
+    # Get experiment directory
+    experiment_dir = Path(os.path.realpath(args.experiment_dir))
+    if not experiment_dir.exists():
+        raise NotADirectoryError(f'{experiment_dir} does not exist!')
+
     # Define a couple of path variables
-    experiment_dir = Path(os.path.dirname(os.path.realpath(__file__)))
     htcondor_dir = experiment_dir / 'htcondor'
     clusterlogs_dir = htcondor_dir / 'clusterlogs'
+
+    # Define shortcuts to remaining command line arguments
+    bid = args.bid
+    n_splits = args.n_splits
 
     # Load experiment config from JSON
     print('Loading experiment configuration...', end=' ', flush=True)
@@ -103,11 +109,6 @@ if __name__ == '__main__':
         **config['dataset']
     )
     print('Done!', flush=True)
-
-    # Parse command line arguments and add shortcuts
-    args = get_arguments()
-    bid = args.bid
-    n_splits = args.n_splits
 
     # -------------------------------------------------------------------------
     # Shortcuts, activate unit conversions, get ROI mask

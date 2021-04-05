@@ -37,11 +37,39 @@ if __name__ == '__main__':
     print('\nTRAIN HALF-SIBLING REGRESSION MODELS\n', flush=True)
 
     # -------------------------------------------------------------------------
-    # Load experiment configuration and data; parse command line arguments
+    # Set up parser to get command line arguments
     # -------------------------------------------------------------------------
 
-    # Define paths for experiment folder and results folder
-    experiment_dir = Path(os.path.realpath(__file__)).parent
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--experiment-dir',
+        type=str,
+        required=True,
+        metavar='PATH',
+        help='Path to experiment directory.',
+    )
+    parser.add_argument(
+        '--roi-split',
+        type=int,
+        default=0,
+    )
+    parser.add_argument(
+        '--n-roi-splits',
+        type=int,
+        default=1,
+    )
+    args = parser.parse_args()
+
+    # -------------------------------------------------------------------------
+    # Load experiment configuration and data
+    # -------------------------------------------------------------------------
+
+    # Get experiment directory
+    experiment_dir = Path(os.path.realpath(args.experiment_dir))
+    if not experiment_dir.exists():
+        raise NotADirectoryError(f'{experiment_dir} does not exist!')
+
+    # Get path to results directory
     results_dir = experiment_dir / 'results'
     results_dir.mkdir(exist_ok=True)
 
@@ -55,14 +83,6 @@ if __name__ == '__main__':
     stack, parang, psf_template, observing_conditions, metadata = load_dataset(
         **config['dataset']
     )
-    print('Done!', flush=True)
-
-    # Get command line arguments
-    print('Parsing command line arguments...', end=' ', flush=True)
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--roi-split', type=int, default=0)
-    parser.add_argument('--n-roi-splits', type=int, default=1)
-    args = parser.parse_args()
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------

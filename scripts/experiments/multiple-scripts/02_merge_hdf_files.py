@@ -9,6 +9,7 @@ a single HDF file.
 
 from pathlib import Path
 
+import argparse
 import os
 import time
 
@@ -30,10 +31,29 @@ if __name__ == '__main__':
     print('\nMERGE HDF RESULT FILES\n', flush=True)
 
     # -------------------------------------------------------------------------
+    # Set up parser to get command line arguments
+    # -------------------------------------------------------------------------
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--experiment-dir',
+        type=str,
+        required=True,
+        metavar='PATH',
+        help='Path to experiment directory.',
+    )
+    args = parser.parse_args()
+
+    # -------------------------------------------------------------------------
     # Define various variables
     # -------------------------------------------------------------------------
 
-    experiment_dir = Path(os.path.dirname(os.path.realpath(__file__)))
+    # Get experiment directory
+    experiment_dir = Path(os.path.realpath(args.experiment_dir))
+    if not experiment_dir.exists():
+        raise NotADirectoryError(f'{experiment_dir} does not exist!')
+
+    # Get paths to results and HDF directory
     results_dir = experiment_dir / 'results'
     hdf_dir = results_dir / 'hdf'
 

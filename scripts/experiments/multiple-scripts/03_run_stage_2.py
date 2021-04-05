@@ -8,6 +8,7 @@ Run stage 2 of the pipeline (find hypotheses, compute MF, ...)
 
 from pathlib import Path
 
+import argparse
 import json
 import os
 import time
@@ -45,11 +46,29 @@ if __name__ == '__main__':
     print('\nRUN STAGE 2: FIND HYPOTHESES, COMPUTE MF, ...\n', flush=True)
 
     # -------------------------------------------------------------------------
-    # Load experiment configuration and data; parse command line arguments
+    # Set up parser to get command line arguments
     # -------------------------------------------------------------------------
 
-    # Define paths for experiment folder and results folder
-    experiment_dir = Path(os.path.realpath(__file__)).parent
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--experiment-dir',
+        type=str,
+        required=True,
+        metavar='PATH',
+        help='Path to experiment directory.',
+    )
+    args = parser.parse_args()
+
+    # -------------------------------------------------------------------------
+    # Load experiment configuration and data
+    # -------------------------------------------------------------------------
+
+    # Get experiment directory
+    experiment_dir = Path(os.path.realpath(args.experiment_dir))
+    if not experiment_dir.exists():
+        raise NotADirectoryError(f'{experiment_dir} does not exist!')
+
+    # Get path to results directory
     results_dir = experiment_dir / 'results'
     results_dir.mkdir(exist_ok=True)
 
