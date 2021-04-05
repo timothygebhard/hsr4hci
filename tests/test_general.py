@@ -30,7 +30,7 @@ from hsr4hci.general import (
 def test__crop_center() -> None:
 
     # Test case 0: Check what happens in dimensions don't match
-    with pytest.raises(AssertionError) as error:
+    with pytest.raises(RuntimeError) as error:
         array = np.array([1, 2, 3, 4, 5, 6, 7])
         crop_center(array=array, size=(1, 2, 3))
     assert 'Length of size must match number of dimensions' in str(error)
