@@ -16,7 +16,7 @@
     "radius_position":         [10.0, "pixel"],
     "radius_mirror_position":  [10.0, "pixel"]
   },
-  "mode":                      "signal_masking",
+  "mode":                      "signal_fitting",
   "n_signal_times":            30,
   "n_splits":                  3,
   "base_model": {
