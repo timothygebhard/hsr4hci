@@ -12,7 +12,7 @@ import h5py
 import numpy as np
 
 from hsr4hci.config import get_datasets_dir
-from hsr4hci.general import crop_center, prestack_array
+from hsr4hci.general import prestack_array
 from hsr4hci.observing_conditions import ObservingConditions
 
 
@@ -63,8 +63,31 @@ def load_dataset(
     # Read in the data set from the HDF file
     with h5py.File(file_path, 'r') as hdf_file:
 
+        # Get shape of the stack in the HDF file
+        stack_shape = hdf_file['stack'].shape
+
+        # Define target shape (= stack shape after spatial cropping)
+        if frame_size is not None:
+            target_shape = (-1, frame_size[0], frame_size[1])
+        else:
+            target_shape = (-1, -1, -1)
+
+        # Compute slices that can be used to select a cropped version of the
+        # stack directly (this is much faster than loading the entire stack
+        # into memory to crop it there). The code here is basically the same
+        # as the one in `hsr4hci.general.crop_center()`.
+        slices = list()
+        for old_len, new_len in zip(stack_shape, target_shape):
+            if new_len > old_len:
+                start = None
+                end = None
+            else:
+                start = old_len // 2 - new_len // 2 if new_len != -1 else None
+                end = start + new_len if start is not None else None
+            slices.append(slice(start, end))
+
         # Select stack, parallactic angles and PSF template
-        stack = np.array(hdf_file['stack']).astype(float)
+        stack = np.array(hdf_file['stack'][tuple(slices)]).astype(float)
         parang = np.array(hdf_file['parang']).astype(float)
         psf_template = np.array(hdf_file['psf_template']).astype(float)
 
@@ -84,12 +107,8 @@ def load_dataset(
             metadata[key] = value
 
     # -------------------------------------------------------------------------
-    # Spatially crop the stack and apply temporal binning
+    # Apply temporal binning to the stack
     # -------------------------------------------------------------------------
-
-    # Spatially crop the stack around the center to the desired frame size
-    if frame_size is not None:
-        stack = crop_center(stack, (-1, frame_size[0], frame_size[1]))
 
     # Apply temporal binning to stack, parang and observing conditions
     stack = prestack_array(array=stack, stacking_factor=binning_factor)
