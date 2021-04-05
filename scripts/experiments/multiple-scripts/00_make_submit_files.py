@@ -18,7 +18,7 @@ from astropy.units import Quantity
 
 import numpy as np
 
-from hsr4hci.config import load_config
+from hsr4hci.config import load_config, get_hsr4hci_dir
 from hsr4hci.data import load_dataset
 from hsr4hci.htcondor import SubmitFile, DAGFile
 from hsr4hci.masking import get_roi_mask
@@ -97,6 +97,11 @@ if __name__ == '__main__':
     # Define shortcuts to remaining command line arguments
     bid = args.bid
     n_splits = args.n_splits
+
+    # Define directory in which this script (and subsequent ones) are located
+    scripts_dir = (
+        get_hsr4hci_dir() / 'scripts' / 'experiments' / 'multiple-scripts'
+    )
 
     # Load experiment config from JSON
     print('Loading experiment configuration...', end=' ', flush=True)
@@ -213,8 +218,12 @@ if __name__ == '__main__':
     )
     submit_file.add_job(
         name=name,
-        job_script=(experiment_dir / f'{name}.py').as_posix(),
-        arguments={'roi-split': '$(Process)', 'n-roi-splits': str(n_splits)},
+        job_script=(scripts_dir / f'{name}.py').as_posix(),
+        arguments={
+            'experiment-dir': experiment_dir.as_posix(),
+            'roi-split': '$(Process)',
+            'n-roi-splits': str(n_splits),
+        },
         bid=bid,
         queue=int(n_splits),
     )
@@ -244,8 +253,10 @@ if __name__ == '__main__':
     )
     submit_file.add_job(
         name=name,
-        job_script=(experiment_dir / f'{name}.py').as_posix(),
-        arguments=dict(),
+        job_script=(scripts_dir / f'{name}.py').as_posix(),
+        arguments={
+            'experiment-dir': experiment_dir.as_posix(),
+        },
         bid=bid,
     )
     file_path = htcondor_dir / f'{name}.sub'
@@ -276,8 +287,10 @@ if __name__ == '__main__':
     )
     submit_file.add_job(
         name=name,
-        job_script=(experiment_dir / f'{name}.py').as_posix(),
-        arguments=dict(),
+        job_script=(scripts_dir / f'{name}.py').as_posix(),
+        arguments={
+            'experiment-dir': experiment_dir.as_posix(),
+        },
         bid=bid,
     )
     file_path = htcondor_dir / f'{name}.sub'
