@@ -108,9 +108,9 @@ def compute_snr(
 
     # Make sure we have have enough reference positions to compute the FPF
     if n_apertures < 2:
-        ValueError(
+        raise ValueError(
             f'Number of reference apertures is too small to calculate '
-            f'the FPF! (n={n_apertures})'
+            f'the FPF! (n = {n_apertures})'
         )
 
     # Get the integrated flux in all the reference apertures
