@@ -7,7 +7,7 @@ Utility functions for performing principal component analysis (PCA).
 # -----------------------------------------------------------------------------
 
 from copy import deepcopy
-from typing import cast, Iterable, Tuple, Union
+from typing import cast, Iterable, Optional, Tuple, Union
 
 from joblib import delayed, Parallel
 from sklearn.decomposition import PCA
@@ -80,6 +80,7 @@ def get_pca_signal_estimates(
     stack: np.ndarray,
     parang: np.ndarray,
     pca_numbers: Iterable[int],
+    roi_mask: Optional[np.ndarray] = None,
     return_components: bool = True,
     n_processes: int = 4,
     verbose: bool = False,
@@ -101,6 +102,10 @@ def get_pca_signal_estimates(
             derotating the stack).
         pca_numbers: An iterable of integers, containing the values for
             the numbers of principal components for which to run PCA.
+        roi_mask: A 2D binary mask of shape `(width, height)` that can
+            be used to select the region of interest. If a ROI mask is
+            given, only the pixels inside the ROI will be used to find
+            the PCA basis.
         return_components: Whether or not to return the principal
             components of the PCA.
         n_processes: Number of parallel processes to be used to process
@@ -134,9 +139,13 @@ def get_pca_signal_estimates(
     # higher than the number of frames in the stack!
     max_pca_number = min(len(stack), max(pca_numbers))
 
-    # Reshape stack from 3D to 2D: each frame is turned into a single long
-    # vector of length width * height
-    reshaped_stack = stack.reshape(stack.shape[0], -1)
+    # Reshape stack from 3D to 2D (each frame is turned into a single 1D
+    # vector). If a ROI mask is given, only the pixels inside the ROI are
+    # used; otherwise, all pixels are used.
+    if roi_mask is not None:
+        reshaped_stack = stack[:, roi_mask]
+    else:
+        reshaped_stack = stack.reshape(stack.shape[0], -1)
 
     # Instantiate new PCA with maximum number of principal components, and fit
     # it to the reshaped stack
@@ -148,8 +157,14 @@ def get_pca_signal_estimates(
     # If desired, create an array with the principal components reshaped to
     # proper eigenimages / frames
     if return_components:
-        components = deepcopy(pca.components_)
-        components = components.reshape(-1, stack.shape[1], stack.shape[2])
+        if roi_mask is not None:
+            components = np.full(
+                (len(pca_numbers), stack.shape[1], stack.shape[2]), np.nan
+            )
+            components[:, roi_mask] = pca.components_
+        else:
+            components = deepcopy(pca.components_)
+            components = components.reshape(-1, stack.shape[1], stack.shape[2])
     else:
         components = None
 
@@ -168,8 +183,12 @@ def get_pca_signal_estimates(
 
         # Use inverse transform to map the dimensionality-reduced frame vectors
         # back into the original space so that we can interpret them as frames
-        noise_estimate = truncated_pca.inverse_transform(transformed_stack)
-        noise_estimate = noise_estimate.reshape(stack.shape)
+        noise_estimate_ = truncated_pca.inverse_transform(transformed_stack)
+        if roi_mask is not None:
+            noise_estimate = np.full(stack.shape, np.nan)
+            noise_estimate[:, roi_mask] = noise_estimate_
+        else:
+            noise_estimate = noise_estimate_.reshape(stack.shape)
 
         # Compute the residual stack
         residual_stack = stack - noise_estimate
@@ -178,10 +197,14 @@ def get_pca_signal_estimates(
         # Do not use multiprocessing here, because nested multiprocessing is
         # probably a bad idea.
         signal_estimate = derotate_combine(
-            stack=residual_stack,
+            stack=np.nan_to_num(residual_stack),
             parang=parang,
             n_processes=1,
         )
+
+        # Restore ROI mask (if applicable)
+        if roi_mask is not None:
+            signal_estimate[~roi_mask] = np.nan
 
         return n_components, signal_estimate
 
