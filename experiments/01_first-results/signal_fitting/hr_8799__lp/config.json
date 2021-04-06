@@ -17,7 +17,7 @@
     "radius_mirror_position":  [10.0, "pixel"]
   },
   "mode":                      "signal_fitting",
-  "n_signal_times":            64,
+  "n_signal_times":            30,
   "n_splits":                  3,
   "base_model": {
     "module":                  "sklearn.linear_model",
