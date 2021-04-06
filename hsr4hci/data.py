@@ -146,3 +146,48 @@ def load_parang(name: str, binning_factor: int = 1, **_: Any) -> np.ndarray:
     parang = prestack_array(array=parang, stacking_factor=binning_factor)
 
     return parang
+
+
+def load_psf_template(name: str, **_: Any) -> np.ndarray:
+    """
+    Load (only) the unsaturated PSF template for the given data set.
+
+    Args:
+        name: Name of the data set (e.g., "beta_pictoris__lp").
+
+    Returns:
+        A numpy array containing the unsaturated PSF template.
+    """
+
+    # Read in the data set from the HDF file
+    file_path = get_datasets_dir() / name / 'output' / f'{name}.hdf'
+    with h5py.File(file_path, 'r') as hdf_file:
+        psf_template = np.array(hdf_file['psf_template']).astype(float)
+
+    return psf_template
+
+
+def load_metadata(name: str, **_: Any) -> dict:
+    """
+    Load (only) the metadata for the given data set.
+
+    Args:
+        name: Name of the data set (e.g., "beta_pictoris__lp").
+
+    Returns:
+        A dictionary containing the metadata.
+    """
+
+    # Initialize metadata
+    metadata: Dict[str, Union[str, float]] = dict()
+
+    # Read in the data set from the HDF file
+    file_path = get_datasets_dir() / name / 'output' / f'{name}.hdf'
+    with h5py.File(file_path, 'r') as hdf_file:
+        for key in hdf_file['metadata'].keys():
+            value = hdf_file['metadata'][key][()]
+            if isinstance(value, bytes):
+                value = value.decode('utf-8')
+            metadata[key] = value
+
+    return metadata
