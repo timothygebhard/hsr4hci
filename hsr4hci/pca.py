@@ -156,6 +156,7 @@ def get_pca_signal_estimates(
 
     # If desired, create an array with the principal components reshaped to
     # proper eigenimages / frames
+    components: Optional[np.ndarray] = None
     if return_components:
         if roi_mask is not None:
             components = np.full(
@@ -164,9 +165,9 @@ def get_pca_signal_estimates(
             components[:, roi_mask] = pca.components_
         else:
             components = deepcopy(pca.components_)
-            components = components.reshape(-1, stack.shape[1], stack.shape[2])
-    else:
-        components = None
+            components = components.reshape(
+                (-1, stack.shape[1], stack.shape[2])
+            )
 
     # Define helper function to get signal estimate for a given n_components
     def get_signal_estimate(
