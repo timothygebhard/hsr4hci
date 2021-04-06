@@ -155,8 +155,10 @@ def get_pca_signal_estimates(
     vprint('Done!')
 
     # If desired, create an array with the principal components reshaped to
-    # proper eigenimages / frames
-    components: Optional[np.ndarray] = None
+    # proper eigenimages / frames. (We need to initialize it as an empty array
+    # so that the linter does not complain about potentially referencing a
+    # variable before assignment.)
+    components = np.empty(())
     if return_components:
         if roi_mask is not None:
             components = np.full(
