@@ -1,0 +1,33 @@
+{
+  "dataset": {
+    "name":                    "beta_pictoris__mp",
+    "binning_factor":          1,
+    "frame_size":              [65, 65]
+  },
+  "observing_conditions": {
+    "selected_keys":           null
+  },
+  "roi_mask": {
+    "inner_radius":            [0.00, "arcsec"],
+    "outer_radius":            [0.65, "arcsec"]
+  },
+  "selection_mask": {
+    "annulus_width":           [ 0.0, "pixel"],
+    "radius_position":         [10.0, "pixel"],
+    "radius_mirror_position":  [10.0, "pixel"]
+  },
+  "mode":                      "signal_masking",
+  "n_signal_times":            30,
+  "n_splits":                  3,
+  "base_model": {
+    "module":                  "sklearn.linear_model",
+    "class":                   "RidgeCV",
+    "parameters": {
+      "fit_intercept":         true,
+      "alphas":                [1e0, 1e6, 51]
+    }
+  },
+  "consistency_checks": {
+    "filter_size":             1
+  }
+}
