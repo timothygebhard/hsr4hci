@@ -75,7 +75,7 @@ if __name__ == '__main__':
 
     # Load the PSF template and estimate its radius
     print('Loading PSF template...', end=' ', flush=True)
-    psf_template = load_psf_template(**config['dataset'])
+    psf_template = load_psf_template(**config['dataset']).squeeze()
     psf_radius = round(abs(get_psf_radius(psf_template)), 2)
     print(f'Done! (psf_radius = {psf_radius})', flush=True)
 
@@ -92,7 +92,7 @@ if __name__ == '__main__':
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
-    # STEP 1: Load signal estimate from FITS and compute SNRs
+    # Load signal estimate from FITS and compute SNRs
     # -------------------------------------------------------------------------
 
     # Load signal estimate
@@ -120,13 +120,25 @@ if __name__ == '__main__':
             frame_size=frame_size,
         )
 
-        # Compute the SNR and FPF
-        results_dict = compute_optimized_snr(
-            frame=signal_estimate,
-            position=planet_position,
-            aperture_radius=Quantity(psf_radius, 'pixel'),
-            ignore_neighbors=1,
-        )
+        # Compute the figures of merit. The try/except is required for planets
+        # that are so close to the star that we cannot drop any neighboring
+        # apertures when computing the reference values for the noise.
+        try:
+            ignore_neighbors = 1
+            results_dict = compute_optimized_snr(
+                frame=signal_estimate,
+                position=planet_position,
+                aperture_radius=Quantity(psf_radius, 'pixel'),
+                ignore_neighbors=ignore_neighbors,
+            )
+        except ValueError:
+            ignore_neighbors = 0
+            results_dict = compute_optimized_snr(
+                frame=signal_estimate,
+                position=planet_position,
+                aperture_radius=Quantity(psf_radius, 'pixel'),
+                ignore_neighbors=ignore_neighbors,
+            )
 
         # Store relevant subset of the results dict
         results[name] = dict(
@@ -139,6 +151,7 @@ if __name__ == '__main__':
             ),
             new_position=results_dict['new_position'],
             success=results_dict['success'],
+            ignore_neighbors=ignore_neighbors,
         )
 
     print('Done!\n', flush=True)
@@ -155,7 +168,7 @@ if __name__ == '__main__':
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
-    # STEP 1: Load signal estimate from FITS and compute SNRs
+    # Create plot of signal estimate
     # -------------------------------------------------------------------------
 
     # Ensure that there exists a plots directory in the results folder
