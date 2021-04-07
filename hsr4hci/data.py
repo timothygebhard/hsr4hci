@@ -87,16 +87,23 @@ def load_dataset(
             slices.append(slice(start, end))
 
         # Select stack, parallactic angles and PSF template
-        stack = np.array(hdf_file['stack'][tuple(slices)]).astype(float)
-        parang = np.array(hdf_file['parang']).astype(float)
-        psf_template = np.array(hdf_file['psf_template']).astype(float)
+        stack = np.array(hdf_file['stack'][tuple(slices)])
+        parang = np.array(hdf_file['parang'])
+        psf_template = np.array(hdf_file['psf_template']).squeeze()
+
+        # Ensure that the PSF template is two-dimensional now; otherwise this
+        # can result in weird errors that are hard to debug
+        if psf_template.ndim != 2:
+            raise RuntimeError(
+                f'psf_template is not 2D! (shape = {psf_template.shape}'
+            )
 
         # Collect the observing conditions into a (temporary) dictionary
         _observing_conditions = dict()
         for key in hdf_file['observing_conditions']['interpolated'].keys():
             _observing_conditions[key] = np.array(
                 hdf_file['observing_conditions']['interpolated'][key]
-            ).astype(float)
+            )
 
         # Read the metadata into a dictionary
         metadata: Dict[str, Union[str, float]] = dict()
