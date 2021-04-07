@@ -20,14 +20,14 @@ import hsr4hci
 
 def load_config(file_path: Union[str, Path]) -> Dict[str, Any]:
     """
-    Load and augment an experiment configuration.
+    Load and augment a (JSON) configuration file.
 
     Args:
         file_path: Path to the JSON file containing the
             configuration to be loaded.
 
     Returns:
-        A dictionary containing the augmented configuration.
+        A dictionary containing configuration.
     """
 
     # Make sure that the file_path is an instance of Path
@@ -41,9 +41,6 @@ def load_config(file_path: Union[str, Path]) -> Dict[str, Any]:
     # Load the config file into a dict
     with open(file_path, 'r') as json_file:
         config: Dict[str, Any] = json.load(json_file)
-
-    # Add the path to the experiments folder to the config dict
-    config['experiment_dir'] = file_path.parent or '.'
 
     return config
 
