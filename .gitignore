@@ -4,6 +4,7 @@
 
 # Ignore results, models, ... folders in experiment directories
 experiments/playground
+experiments/**/htcondor
 experiments/**/results
 experiments/**/clusterlogs
 experiments/**/*.sub
