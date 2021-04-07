@@ -198,3 +198,31 @@ def load_metadata(name: str, **_: Any) -> dict:
             metadata[key] = value
 
     return metadata
+
+
+def load_planets(name: str, **_: Any) -> dict:
+    """
+    Load the information about the planets in the data set (i.e.,
+    positions and contrasts).
+
+    Args:
+        name: Name of the data set (e.g., "beta_pictoris__lp").
+
+    Returns:
+        A dictionary containing the planet information.
+    """
+
+    # Initialize metadata
+    planets: Dict[str, Dict[str, float]] = dict()
+
+    # Read in the data set from the HDF file
+    file_path = get_datasets_dir() / name / 'output' / f'{name}.hdf'
+    with h5py.File(file_path, 'r') as hdf_file:
+        for key in hdf_file['planets'].keys():
+            planets[key] = dict(
+                separation=hdf_file['planets'][key]['separation'][()],
+                position_angle=hdf_file['planets'][key]['position_angle'][()],
+                contrast=hdf_file['planets'][key]['contrast'][()],
+            )
+
+    return planets
