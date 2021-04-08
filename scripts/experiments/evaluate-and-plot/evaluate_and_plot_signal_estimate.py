@@ -9,7 +9,6 @@ Evaluate (compute SNR) and plot signal estimate.
 from pathlib import Path
 
 import argparse
-import json
 import os
 import time
 
@@ -18,9 +17,9 @@ from astropy.units import Quantity
 import numpy as np
 import pandas as pd
 
-from hsr4hci.config import load_config, get_datasets_dir
+from hsr4hci.config import load_config
 from hsr4hci.coordinates import polar2cartesian
-from hsr4hci.data import load_psf_template, load_metadata
+from hsr4hci.data import load_psf_template, load_metadata, load_planets
 from hsr4hci.evaluation import compute_optimized_snr
 from hsr4hci.fits import read_fits
 from hsr4hci.plotting import plot_frame
@@ -51,7 +50,7 @@ if __name__ == '__main__':
         type=str,
         required=True,
         metavar='PATH',
-        help='Path to experiment directory.',
+        help='(Absolute) path to experiment directory.',
     )
     args = parser.parse_args()
 
@@ -60,7 +59,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Get experiment directory
-    experiment_dir = Path(os.path.realpath(args.experiment_dir))
+    experiment_dir = Path(os.path.expanduser(args.experiment_dir))
     if not experiment_dir.exists():
         raise NotADirectoryError(f'{experiment_dir} does not exist!')
 
@@ -102,11 +101,8 @@ if __name__ == '__main__':
     frame_size = signal_estimate.shape
     print('Done!', flush=True)
 
-    # Load the "planets" part of the dataset configuration
-    dataset_name = config['dataset']['name']
-    file_path = get_datasets_dir() / dataset_name / f'{dataset_name}.json'
-    with open(file_path, 'r') as json_file:
-        planets = json.load(json_file)['planets']
+    # Load information about the planets in the dataset
+    planets = load_planets(**config['dataset'])
 
     # Loop over all planets in the data set
     print('Computing (optimized) SNR...', end=' ', flush=True)
@@ -171,8 +167,8 @@ if __name__ == '__main__':
     # Create plot of signal estimate
     # -------------------------------------------------------------------------
 
-    # Ensure that there exists a plots directory in the results folder
-    plots_dir = results_dir / 'plots'
+    # Ensure that there exists a plots directory in the experiment directory
+    plots_dir = experiment_dir / 'plots'
     plots_dir.mkdir(exist_ok=True)
 
     # Create plot (including SNR etc.)
