@@ -62,12 +62,12 @@ if __name__ == '__main__':
         type=str,
         required=True,
         metavar='PATH',
-        help='Path to experiment directory.',
+        help='(Absolute) path to experiment directory.',
     )
     parser.add_argument(
         '--bid',
         type=int,
-        default=20,
+        default=10,
         help='Amount of cluster dollars to bid for each job.',
     )
     parser.add_argument(
@@ -86,7 +86,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Get experiment directory
-    experiment_dir = Path(os.path.realpath(args.experiment_dir))
+    experiment_dir = Path(os.path.expanduser(args.experiment_dir))
     if not experiment_dir.exists():
         raise NotADirectoryError(f'{experiment_dir} does not exist!')
 

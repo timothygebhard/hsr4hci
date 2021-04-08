@@ -46,7 +46,7 @@ if __name__ == '__main__':
         type=str,
         required=True,
         metavar='PATH',
-        help='Path to experiment directory.',
+        help='(Absolute) path to experiment directory.',
     )
     parser.add_argument(
         '--roi-split',
@@ -65,7 +65,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Get experiment directory
-    experiment_dir = Path(os.path.realpath(args.experiment_dir))
+    experiment_dir = Path(os.path.expanduser(args.experiment_dir))
     if not experiment_dir.exists():
         raise NotADirectoryError(f'{experiment_dir} does not exist!')
 
@@ -145,13 +145,32 @@ if __name__ == '__main__':
     # Save results to an HDF file
     # -------------------------------------------------------------------------
 
-    # Make sure that the HDF directory (for partial result files) exists
-    hdf_dir = results_dir / 'hdf'
-    hdf_dir.mkdir(exist_ok=True)
+    # Now we need to create a directory for storing the HDF files (both the
+    # partial ones and the merged version), which, due to storage limitations,
+    # should not be created in the /home directory, but rather on /work, with
+    # a symlink connecting it to the rest of the experiment directory.
 
-    # Save results to HDF
+    # First, recreate the structure of the experiment directory in /work
+    work_dir = Path(experiment_dir.as_posix().replace('/home/', '/work/'))
+    work_dir.mkdir(exist_ok=True, parents=True)
+
+    # Now, create a HDF directory on /work
+    work_hdf_dir = work_dir / 'hdf'
+    work_hdf_dir.mkdir(exist_ok=True)
+
+    # Then, create a symlink from /home to /work
+    home_hdf_dir = experiment_dir / 'hdf'
+    home_hdf_dir.symlink_to(work_hdf_dir, target_is_directory=True)
+
+    # Create a directory for the partial result files (on /work)
+    partial_dir = work_hdf_dir / 'partial'
+    partial_dir.mkdir(exist_ok=True, parents=True)
+
+    # Finally, save results to HDF (in the partial directory)
     print('Saving results...', end=' ', flush=True)
-    file_path = hdf_dir / f'results_{roi_split + 1:03d}-{n_roi_splits:03d}.hdf'
+    file_path = (
+        partial_dir / f'results_{roi_split + 1:03d}-{n_roi_splits:03d}.hdf'
+    )
     save_dict_to_hdf(dictionary=results, file_path=file_path)
     print('Done!', flush=True)
 

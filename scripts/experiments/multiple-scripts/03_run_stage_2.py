@@ -9,7 +9,6 @@ Run stage 2 of the pipeline (find hypotheses, compute MF, ...)
 from pathlib import Path
 
 import argparse
-import json
 import os
 import time
 
@@ -17,16 +16,13 @@ from astropy.units import Quantity
 
 import numpy as np
 
-from hsr4hci.config import load_config, get_datasets_dir
-from hsr4hci.coordinates import polar2cartesian
+from hsr4hci.config import load_config
 from hsr4hci.consistency_checks import get_match_fraction
 from hsr4hci.data import load_dataset
-from hsr4hci.evaluation import compute_snr
 from hsr4hci.fits import save_fits
 from hsr4hci.hdf import load_dict_from_hdf
 from hsr4hci.hypotheses import get_all_hypotheses
 from hsr4hci.masking import get_roi_mask
-from hsr4hci.psf import get_psf_radius
 from hsr4hci.signal_estimates import get_signal_estimate
 from hsr4hci.signal_masking import assemble_residuals_from_hypotheses
 from hsr4hci.units import set_units_for_instrument
@@ -55,7 +51,7 @@ if __name__ == '__main__':
         type=str,
         required=True,
         metavar='PATH',
-        help='Path to experiment directory.',
+        help='(Absolute) path to experiment directory.',
     )
     args = parser.parse_args()
 
@@ -64,13 +60,9 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Get experiment directory
-    experiment_dir = Path(os.path.realpath(args.experiment_dir))
+    experiment_dir = Path(os.path.expanduser(args.experiment_dir))
     if not experiment_dir.exists():
         raise NotADirectoryError(f'{experiment_dir} does not exist!')
-
-    # Get path to results directory
-    results_dir = experiment_dir / 'results'
-    results_dir.mkdir(exist_ok=True)
 
     # Load experiment config from JSON
     print('Loading experiment configuration...', end=' ', flush=True)
@@ -117,7 +109,7 @@ if __name__ == '__main__':
     # STEP 1: Load results after (parallel) training
     # -------------------------------------------------------------------------
 
-    file_path = results_dir / 'results.hdf'
+    file_path = experiment_dir / 'hdf' / 'results.hdf'
     results = load_dict_from_hdf(file_path=file_path)
 
     # -------------------------------------------------------------------------
@@ -136,7 +128,7 @@ if __name__ == '__main__':
     )
 
     # Create directory for hypothesis
-    hypotheses_dir = results_dir / 'hypotheses'
+    hypotheses_dir = experiment_dir / 'hypotheses'
     hypotheses_dir.mkdir(exist_ok=True)
 
     # Save hypotheses as a FITS file
@@ -165,7 +157,7 @@ if __name__ == '__main__':
     )
 
     # Create matches directory
-    matches_dir = results_dir / 'matches'
+    matches_dir = experiment_dir / 'matches'
     matches_dir.mkdir(exist_ok=True)
 
     # Save match fraction(s) as FITS file
@@ -179,6 +171,10 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
     # STEP 4: Threshold match fraction and construct signal estimate
     # -------------------------------------------------------------------------
+
+    # Create main results directory
+    results_dir = experiment_dir / 'results'
+    results_dir.mkdir(exist_ok=True)
 
     # Select residuals for default case and for signal masking / fitting
     print('\nAssembling residuals...', end=' ', flush=True)
@@ -212,44 +208,6 @@ if __name__ == '__main__':
     file_path = results_dir / 'signal_estimate.fits'
     save_fits(array=array, file_path=file_path)
     print('Done!', flush=True)
-
-
-    # -------------------------------------------------------------------------
-    # STEP 5: Compute signal-to-noise ratio
-    # -------------------------------------------------------------------------
-
-    # Estimate PSF radius
-    psf_radius = get_psf_radius(psf_template)
-
-    # Load the "planets" part of the dataset configuration
-    dataset_name = config['dataset']['name']
-    file_path = get_datasets_dir() / dataset_name / f'{dataset_name}.json'
-    with open(file_path, 'r') as json_file:
-        planets = json.load(json_file)['planets']
-
-    # Loop over all planets in the data set
-    print('\n\nSIGNAL-TO-NOISE RATIO:\n')
-    for name, parameters in planets.items():
-
-        # Compute the expected planet position in Cartesian coordinates
-        planet_position = polar2cartesian(
-            separation=Quantity(parameters['separation'], 'arcsec'),
-            angle=Quantity(parameters['position_angle'], 'degree'),
-            frame_size=frame_size,
-        )
-
-        # Compute the SNR and FPF
-        signal, noise, snr, fpf = compute_snr(
-            frame=signal_estimate,
-            position=planet_position,
-            aperture_radius=Quantity(psf_radius, 'pixel'),
-            ignore_neighbors=1,
-        )
-
-        print(
-            f'  {name}: SNR = {snr:.3f} (FPF = {fpf:.3e} | '
-            f'signal = {signal:.3e}) | noise = {noise:.3e})'
-        )
 
     # -------------------------------------------------------------------------
     # Postliminaries

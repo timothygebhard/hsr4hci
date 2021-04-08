@@ -40,7 +40,7 @@ if __name__ == '__main__':
         type=str,
         required=True,
         metavar='PATH',
-        help='Path to experiment directory.',
+        help='(Absolute) path to experiment directory.',
     )
     args = parser.parse_args()
 
@@ -49,13 +49,13 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Get experiment directory
-    experiment_dir = Path(os.path.realpath(args.experiment_dir))
+    experiment_dir = Path(os.path.expanduser(args.experiment_dir))
     if not experiment_dir.exists():
         raise NotADirectoryError(f'{experiment_dir} does not exist!')
 
     # Get paths to results and HDF directory
-    results_dir = experiment_dir / 'results'
-    hdf_dir = results_dir / 'hdf'
+    hdf_dir = experiment_dir / 'hdf'
+    partial_dir = hdf_dir / 'partial'
 
     # -------------------------------------------------------------------------
     # Collect file list, merge HDF files, and save the result
@@ -63,7 +63,7 @@ if __name__ == '__main__':
 
     # Get a list of all HDF files in the HDF directory
     print('Collecting HDF files to be merged...', end=' ', flush=True)
-    hdf_file_paths = get_hdf_file_paths(hdf_dir=hdf_dir)
+    hdf_file_paths = get_hdf_file_paths(hdf_dir=partial_dir)
     print('Done!', flush=True)
 
     # Merge the partial HDF files
@@ -73,7 +73,7 @@ if __name__ == '__main__':
 
     # Save the final result
     print('\nSaving merged HDF file...', end=' ', flush=True)
-    file_path = results_dir / 'results.hdf'
+    file_path = hdf_dir / 'results.hdf'
     save_dict_to_hdf(dictionary=results, file_path=file_path)
     print('Done!', flush=True)
 
