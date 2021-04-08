@@ -19,7 +19,7 @@ from astropy.units import Quantity
 import numpy as np
 
 from hsr4hci.config import load_config, get_hsr4hci_dir
-from hsr4hci.data import load_dataset
+from hsr4hci.data import load_parang, load_metadata
 from hsr4hci.htcondor import SubmitFile, DAGFile
 from hsr4hci.masking import get_roi_mask
 from hsr4hci.units import set_units_for_instrument
@@ -28,6 +28,7 @@ from hsr4hci.units import set_units_for_instrument
 # -----------------------------------------------------------------------------
 # FUNCTIONS DEFINITIONS
 # -----------------------------------------------------------------------------
+
 
 def get_size(_object: Any) -> int:
     """
@@ -108,11 +109,10 @@ if __name__ == '__main__':
     config = load_config(experiment_dir / 'config.json')
     print('Done!', flush=True)
 
-    # Load frames, parallactic angles, etc. from HDF file
-    print('Loading data set...', end=' ', flush=True)
-    stack, parang, psf_template, observing_conditions, metadata = load_dataset(
-        **config['dataset']
-    )
+    # Load parallactic angles
+    print('Loading parallactic angles and metadata...', end=' ', flush=True)
+    parang = load_parang(**config['dataset'])
+    metadata = load_metadata(**config['dataset'])
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
@@ -120,10 +120,12 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Metadata of the data set
-    n_frames = len(stack)
+    n_frames = len(parang)
+    frame_size = config['dataset']['frame_size']
     pixscale = float(metadata['PIXSCALE'])
     lambda_over_d = float(metadata['LAMBDA_OVER_D'])
 
+    # Enable unit conversions
     set_units_for_instrument(
         pixscale=Quantity(pixscale, 'arcsec / pixel'),
         lambda_over_d=Quantity(lambda_over_d, 'arcsec'),
@@ -132,7 +134,7 @@ if __name__ == '__main__':
 
     # Define a mask for the ROI
     roi_mask = get_roi_mask(
-        mask_size=stack.shape[1:],
+        mask_size=frame_size,
         inner_radius=Quantity(*config['roi_mask']['inner_radius']),
         outer_radius=Quantity(*config['roi_mask']['outer_radius']),
     )
@@ -144,56 +146,40 @@ if __name__ == '__main__':
     # Compute the expected memory consumption of a training job
     # -------------------------------------------------------------------------
 
-    # Compute the size of the full data set which we will be loading
-    dataset_memory = sum(
-        [
-            get_size(stack),
-            get_size(parang),
-            get_size(psf_template),
-            get_size(observing_conditions),
-            get_size(metadata),
-        ]
-    )
+    # Compute the memory required for loading the full stack (in bytes)
+    stack_memory = n_frames * frame_size[0] * frame_size[1] * 8
 
-    print('\nMemory consumption:')
-    print(f'-- stack:        {int(get_size(stack) / 1024**2):>4d} MB')
-    print(f'-- parang:       {int(get_size(parang) / 1024):>4d} KB')
-    print(f'-- psf_template: {int(get_size(psf_template) / 1024):>4d} KB')
-    print(f'-- obs_con:      {int(get_size(observing_conditions)):>4d} B')
-    print(f'-- metadata:     {int(get_size(metadata)):>4d} B')
-
-    # Compute the size of a single "ROI subset" variable
-    array_memory = get_size(np.ones((n_frames, n_pixels_per_job)))
+    # Compute the size of a single "ROI subset" variable (in bytes)
+    array_memory = n_frames * n_pixels_per_job * 8
 
     # Count the number of such variables that we need to keep in memory and
     # write out to the (partial) HDF files
     n_arrays = 2 + 3 * (config['n_signal_times'] + 1)
 
     # Compute the expected amount of memory that we need per job (in MB)
-    expected_job_memory = 4 * dataset_memory + n_arrays * array_memory
+    expected_job_memory = stack_memory + (n_arrays * array_memory)
     expected_job_memory /= 1024 ** 2
-    expected_job_memory *= 2.2
-    expected_job_memory = int(expected_job_memory)
+    expected_job_memory = 2 * int(expected_job_memory)
 
-    # Compute the expected total memory needed for merging the HDF files
+    # Compute the expected total memory for merging the HDF files (in MB)
     expected_total_memory = n_arrays * array_memory * n_splits
     expected_total_memory /= 1024 ** 2
     expected_total_memory *= 2
     expected_total_memory = int(expected_total_memory)
 
+    # Round up (it never makes sense to ask for less than 1 GB on the cluster)
+    expected_job_memory = max(expected_job_memory, 1024)
+    expected_total_memory = max(expected_total_memory, 1024)
+
     print(
         f'\nPixels per job: {np.sum(roi_mask)} / {n_splits} <= '
         f'{n_pixels_per_job}\n'
     )
-    print(f'Data set memory: {int(dataset_memory / 1024 ** 2):6d} MB')
+    print(f'Stack memory:  {int(stack_memory / 1024 ** 2):>10d} MB')
     print(
-        f'Expected memory: {expected_job_memory:6d} MB per job\n'
-        f'                 {expected_total_memory:6d} MB in total\n'
+        f'Expected memory: {expected_job_memory:>8d} MB per job\n'
+        f'                 {expected_total_memory:>8d} MB in total\n'
     )
-
-    # Round up (it doesn't make sense to ask for less than 1 GB on the cluster)
-    expected_job_memory = max(expected_job_memory, 1024)
-    expected_total_memory = max(expected_total_memory, 1024)
 
     # -------------------------------------------------------------------------
     # Instantiate a new DAG file
