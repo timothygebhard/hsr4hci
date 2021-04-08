@@ -53,7 +53,7 @@ if __name__ == '__main__':
         type=str,
         required=True,
         metavar='PATH',
-        help='Path to experiment directory.',
+        help='(Absolute) path to experiment directory.',
     )
     parser.add_argument(
         '--patch-size',
@@ -69,7 +69,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Get experiment directory
-    experiment_dir = Path(os.path.realpath(args.experiment_dir))
+    experiment_dir = Path(os.path.expanduser(args.experiment_dir))
     if not experiment_dir.exists():
         raise NotADirectoryError(f'{experiment_dir} does not exist!')
     results_dir = experiment_dir / 'results'
@@ -117,13 +117,13 @@ if __name__ == '__main__':
 
         # Load hypotheses from FITS
         print('Loading hypotheses from FITS...', end=' ', flush=True)
-        file_path = results_dir / 'hypotheses' / 'hypotheses.fits'
+        file_path = experiment_dir / 'hypotheses' / 'hypotheses.fits'
         hypotheses = np.asarray(read_fits(file_path))
         print('Done!', flush=True)
 
         # Load residuals from HDF (based on hypotheses and selection mask)
         print('Constructing residuals...', end=' ', flush=True)
-        file_path = results_dir / 'results.hdf'
+        file_path = experiment_dir / 'hdf' / 'results.hdf'
         with h5py.File(file_path, 'r') as hdf_file:
 
             # Initialize everything to the default residuals
@@ -176,7 +176,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Create a directory where we store the results
-    psf_dir = results_dir / 'psf'
+    psf_dir = experiment_dir / 'psf'
     psf_dir.mkdir(exist_ok=True)
 
     # Loop over planets
