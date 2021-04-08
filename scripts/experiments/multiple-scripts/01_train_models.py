@@ -160,7 +160,8 @@ if __name__ == '__main__':
 
     # Then, create a symlink from /home to /work
     home_hdf_dir = experiment_dir / 'hdf'
-    home_hdf_dir.symlink_to(work_hdf_dir, target_is_directory=True)
+    if not home_hdf_dir.exists():
+        home_hdf_dir.symlink_to(work_hdf_dir, target_is_directory=True)
 
     # Create a directory for the partial result files (on /work)
     partial_dir = work_hdf_dir / 'partial'
