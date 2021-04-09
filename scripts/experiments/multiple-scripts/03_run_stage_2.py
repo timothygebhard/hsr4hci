@@ -1,5 +1,5 @@
 """
-Run stage 2 of the pipeline (find hypotheses, compute MF, ...)
+Run stage 2 of the pipeline (find hypotheses, compute match fractions).
 """
 
 # -----------------------------------------------------------------------------
@@ -14,17 +14,12 @@ import time
 
 from astropy.units import Quantity
 
-import numpy as np
-
 from hsr4hci.config import load_config
-from hsr4hci.consistency_checks import get_match_fraction
+from hsr4hci.consistency_checks import get_all_match_fractions
 from hsr4hci.data import load_dataset
 from hsr4hci.fits import save_fits
-from hsr4hci.hdf import load_dict_from_hdf
 from hsr4hci.hypotheses import get_all_hypotheses
 from hsr4hci.masking import get_roi_mask
-from hsr4hci.signal_estimates import get_signal_estimate
-from hsr4hci.signal_masking import assemble_residuals_from_hypotheses
 from hsr4hci.units import set_units_for_instrument
 
 
@@ -39,7 +34,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     script_start = time.time()
-    print('\nRUN STAGE 2: FIND HYPOTHESES, COMPUTE MF, ...\n', flush=True)
+    print('\nRUN STAGE 2: FIND HYPOTHESES AND COMPUTE MFs\n', flush=True)
 
     # -------------------------------------------------------------------------
     # Set up parser to get command line arguments
@@ -52,6 +47,16 @@ if __name__ == '__main__':
         required=True,
         metavar='PATH',
         help='(Absolute) path to experiment directory.',
+    )
+    parser.add_argument(
+        '--roi-split',
+        type=int,
+        default=0,
+    )
+    parser.add_argument(
+        '--n-roi-splits',
+        type=int,
+        default=1,
     )
     args = parser.parse_args()
 
@@ -90,6 +95,8 @@ if __name__ == '__main__':
 
     # Other shortcuts
     n_signal_times = config['n_signal_times']
+    roi_split = args.roi_split
+    n_roi_splits = args.n_roi_splits
 
     # Activate the unit conversions for this instrument
     set_units_for_instrument(
@@ -106,107 +113,81 @@ if __name__ == '__main__':
     )
 
     # -------------------------------------------------------------------------
-    # STEP 1: Load results after (parallel) training
+    # STEP 1: Find hypotheses
     # -------------------------------------------------------------------------
 
-    file_path = experiment_dir / 'hdf' / 'results.hdf'
-    results = load_dict_from_hdf(file_path=file_path)
+    # Define path to the HDF file holding the training results (= residuals)
+    results_file_path = experiment_dir / 'hdf' / 'results.hdf'
 
-    # -------------------------------------------------------------------------
-    # STEP 2: Find hypotheses
-    # -------------------------------------------------------------------------
-
-    # Find best hypothesis for every pixel
+    # Find best hypothesis (for specified subset of ROI)
     print('\nFinding best hypothesis for each spatial pixel:', flush=True)
     hypotheses, similarities = get_all_hypotheses(
         roi_mask=roi_mask,
-        results=results,
+        dict_or_path=results_file_path,
         parang=parang,
         n_signal_times=n_signal_times,
         frame_size=frame_size,
         psf_template=psf_template,
+        n_roi_splits=n_roi_splits,
+        roi_split=roi_split,
     )
 
-    # Create directory for hypothesis
-    hypotheses_dir = experiment_dir / 'hypotheses'
-    hypotheses_dir.mkdir(exist_ok=True)
+    # Create (partial) directory for hypotheses
+    hypotheses_dir = experiment_dir / 'hypotheses' / 'partial'
+    hypotheses_dir.mkdir(exist_ok=True, parents=True)
 
     # Save hypotheses as a FITS file
     print('\nSaving hypotheses to FITS...', end=' ', flush=True)
-    file_path = hypotheses_dir / 'hypotheses.fits'
+    file_path = (
+        hypotheses_dir
+        / f'hypotheses_{roi_split + 1:04d}-{n_roi_splits:04d}.fits'
+    )
     save_fits(array=hypotheses, file_path=file_path)
     print('Done!', flush=True)
 
     # Save cosine similarities (of hypotheses) as a FITS file
     print('Saving similarities to FITS...', end=' ', flush=True)
-    file_path = hypotheses_dir / 'similarities.fits'
+    file_path = (
+        hypotheses_dir
+        / f'similarities_{roi_split + 1:04d}-{n_roi_splits:04d}.fits'
+    )
     save_fits(array=similarities, file_path=file_path)
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
-    # STEP 3: Compute match fractions
+    # STEP 3: Compute match fractions and save them to FITS
     # -------------------------------------------------------------------------
 
-    # Compute matches for every pixel
-    print('\nComputing matches:', flush=True)
-    match_fraction__mean, match_fraction__median, _ = get_match_fraction(
-        results=results,
+    # Compute match fraction (for specified subset of ROI)
+    print('\nComputing match fractions:', flush=True)
+    mean_mf, median_mf, _ = get_all_match_fractions(
+        dict_or_path=results_file_path,
+        roi_mask=roi_mask,
         hypotheses=hypotheses,
         parang=parang,
         psf_template=psf_template,
+        frame_size=frame_size,
+        n_roi_splits=n_roi_splits,
+        roi_split=roi_split,
     )
 
-    # Create matches directory
-    matches_dir = experiment_dir / 'matches'
-    matches_dir.mkdir(exist_ok=True)
+    # Create (partial) matches directory
+    partial_dir = experiment_dir / 'match_fractions' / 'partial'
+    partial_dir.mkdir(exist_ok=True, parents=True)
 
     # Save match fraction(s) as FITS file
-    print('Saving match fraction to FITS...', end=' ', flush=True)
-    file_path = matches_dir / 'match_fraction__mean.fits'
-    save_fits(array=match_fraction__mean, file_path=file_path)
-    file_path = matches_dir / 'match_fraction__median.fits'
-    save_fits(array=match_fraction__median, file_path=file_path)
-    print('Done!', flush=True)
-
-    # -------------------------------------------------------------------------
-    # STEP 4: Threshold match fraction and construct signal estimate
-    # -------------------------------------------------------------------------
-
-    # Create main results directory
-    results_dir = experiment_dir / 'results'
-    results_dir.mkdir(exist_ok=True)
-
-    # Select residuals for default case and for signal masking / fitting
-    print('\nAssembling residuals...', end=' ', flush=True)
-    default_residuals = results['default']['residuals']
-    non_default_residuals = assemble_residuals_from_hypotheses(
-        hypotheses=hypotheses, results=results
+    print('Saving mean match fractions to FITS...', end=' ', flush=True)
+    file_path = (
+        partial_dir / f'mean_mf_{roi_split + 1:04d}-{n_roi_splits:04d}.fits'
     )
+    save_fits(array=mean_mf, file_path=file_path)
     print('Done!', flush=True)
 
-    # Threshold the match fraction, apply morphological filter, and use the
-    # resulting mask to construct the final signal estimate
-    print('\nComputing signal estimates...', end=' ', flush=True)
-    signal_estimate, selection_mask, threshold = get_signal_estimate(
-        parang=parang,
-        match_fraction=match_fraction__median,
-        default_residuals=default_residuals,
-        non_default_residuals=non_default_residuals,
-        filter_size=int(config['consistency_checks']['filter_size']),
-        roi_mask=roi_mask,
+    print('Saving median match fractions to FITS...', end=' ', flush=True)
+    file_path = (
+        partial_dir / f'median_mf_{roi_split + 1:04d}-{n_roi_splits:04d}.fits'
     )
-    print(f'Done! (threshold = {threshold:.3f})', flush=True)
-
-    print('Saving selection_mask mask to FITS...', end=' ', flush=True)
-    array = np.array(selection_mask).astype(int)
-    file_path = results_dir / 'selection_mask.fits'
-    save_fits(array=array, file_path=file_path)
-    print('Done!', flush=True)
-
-    print('Saving signal estimate to FITS...', end=' ', flush=True)
-    array = np.array(signal_estimate)
-    file_path = results_dir / 'signal_estimate.fits'
-    save_fits(array=array, file_path=file_path)
+    save_fits(array=median_mf, file_path=file_path)
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
