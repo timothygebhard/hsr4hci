@@ -6,10 +6,6 @@ Utility functions for working with point spread functions.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Optional
-
-import math
-
 from astropy.convolution import AiryDisk2DKernel
 from astropy.units import Quantity
 from photutils import centroid_2dg, CircularAperture
@@ -75,69 +71,41 @@ def crop_psf_template(
     return np.asarray(psf_masked)
 
 
-def get_psf_radius(
-    psf_template: np.ndarray,
-    pixscale: Optional[float] = None,
-    lambda_over_d: Optional[float] = None,
-) -> float:
+def get_psf_fwhm(psf_template: np.ndarray) -> float:
     """
-    Fit a simple, symmetric 2D Gauss function to the given PSF template
-    to estimate the radius of the central "blob" in pixels.
+    Fit a symmetric 2D Gauss function to the given `psf_template` to
+    estimate the full width half maximum (FWHM) of the central "blob".
 
     Args:
         psf_template: A 2D numpy array containing the raw, unsaturated
             PSF template.
-        pixscale:
-        lambda_over_d:
 
     Returns:
-        The radius of the PSF template in pixels.
+        The FWHM of the PSF template (in pixels).
     """
 
-    # Case 1: We have been provided a suitable PSF template and can determine
-    # the size by fitting the PSF with a 2D Gauss function
-    if psf_template.shape != (0, 0):
+    # Crop PSF template: too large templates (which are mostly zeros) can
+    # cause problems when fitting them with a 2D Gauss function
+    if psf_template.shape[0] >= 33 and psf_template.shape[1] >= 33:
+        psf_template = crop_center(psf_template, (33, 33))
 
-        # Crop PSF template: too large templates (which are mostly zeros) can
-        # cause problems when fitting them with a 2D Gauss function
-        if psf_template.shape[0] >= 33 and psf_template.shape[1] >= 33:
-            psf_template = crop_center(psf_template, (33, 33))
+    # Define the grid for the fit
+    x = np.arange(psf_template.shape[0])
+    y = np.arange(psf_template.shape[1])
+    meshgrid = (
+        np.array(np.meshgrid(x, y)[0]),
+        np.array(np.meshgrid(x, y)[1]),
+    )
 
-        # Define the grid for the fit
-        x = np.arange(psf_template.shape[0])
-        y = np.arange(psf_template.shape[1])
-        meshgrid = (
-            np.array(np.meshgrid(x, y)[0]),
-            np.array(np.meshgrid(x, y)[1]),
-        )
+    # Set up a 2D Gaussian and fit it to the PSF template
+    model = CircularGauss2D(
+        mu_x=psf_template.shape[0] / 2 - 0.5,
+        mu_y=psf_template.shape[1] / 2 - 0.5,
+    )
+    model.fit(meshgrid=meshgrid, target=psf_template)
 
-        # Set up a 2D Gaussian and fit it to the PSF template
-        model = CircularGauss2D(
-            mu_x=psf_template.shape[0] / 2 - 0.5,
-            mu_y=psf_template.shape[1] / 2 - 0.5,
-        )
-        model.fit(meshgrid=meshgrid, target=psf_template)
-
-        # "Compute" the PSF radius simply as the FWHM of the fit result
-        # TODO: It's currently not quite clear what is a good estimate here.
-        #       "Traditionally", one would divide the FWHM by 2, but that
-        #       seems to underestimate the PSF size in practice?
-        psf_radius = model.fwhm
-
-    # Case 2: We do not have PSF template, but the PIXSCALE and LAMBDA_OVER_D
-    elif (pixscale is not None) and (lambda_over_d is not None):
-
-        # In this case, we can approximately compute the expected PSF radius.
-        # The 1.144 is a magic number to get closer to the empirical estimate
-        # from data sets where a PSF template is available.
-        psf_radius = lambda_over_d / pixscale * 1.144
-
-    # Case 3: In all other scenarios, we raise an error
-    else:
-        raise RuntimeError('Could not determine PSF radius!')
-
-    # Make sure the returned PSF radius is positive
-    return math.fabs(psf_radius)
+    # Make sure the returned FWHM is positive
+    return abs(model.fwhm)
 
 
 def get_artificial_psf(
