@@ -102,23 +102,16 @@ def train_all_models(
             "signal_times": A numpy array with shape `(n_signal_times,)`
                 containing the signal times.
             "default": {
-                "predictions": A 2D numpy array with shape `(n_frames,
-                    n_pixels_in_split)` that contains the predictions
-                    for the "default" case (i.e., no signal masking).
                 "residuals": A 2D numpy array with shape `(n_frames,
                     n_pixels_in_split)` that contains the residuals
                     for the "default" case (i.e., no signal masking).
                 "mask": A 2D numpy array with shape `(width, height)`
                     that contains a binary mask indicating the subset
                     of the ROI that was processed by this function.
-                    This mask can be used to insert the `predictions`
-                    and `residuals` at the correct positions  inside a
-                    `stack`-shaped array.
+                    This mask can be used to insert the `residuals` at
+                    the correct positions in a `stack`-shaped array.
             }
             "0": {
-                "predictions": A 2D numpy array with shape `(n_frames,
-                    n_pixels_in_split)` that contains the predictions
-                    based on signal masking for `signal_time == 0`.
                 "residuals": A 2D numpy array with shape `(n_frames,
                     n_pixels_in_split)` that contains the residuals
                     based on signal masking for `signal_time == 0`.
@@ -145,17 +138,11 @@ def train_all_models(
             "signal_times": A numpy array with shape `(n_signal_times,)`
                 containing the signal times.
             "default": {
-                "predictions": A 3D numpy array (same shape as `stack`)
-                    that contains the predictions for the "default"
-                    case (i.e., no signal masking).
                 "residuals": A 3D numpy array (same shape as `stack`)
                     that contains the residuals for the "default"
                     case (i.e., no signal masking).
             }
             "0": {
-                "predictions": A 3D numpy array (same shape as `stack`)
-                    that contains the predictions based on signal
-                    masking for `signal_time == 0`.
                 "residuals": A 3D numpy array (same shape as `stack`)
                     that contains the residuals based on signal
                     masking for `signal_time == 0`.
@@ -206,13 +193,11 @@ def train_all_models(
     ] = dict(
         stack_shape=np.array(stack.shape),
         signal_times=signal_times,
-        default=dict(
-            predictions=[], residuals=[], mask=np.full(frame_size, False)
-        ),
+        default=dict(residuals=[], mask=np.full(frame_size, False)),
     )
     for signal_time in signal_times:
         tmp_results[str(signal_time)] = dict(
-            predictions=[], residuals=[], mask=np.full(frame_size, False)
+            residuals=[], mask=np.full(frame_size, False)
         )
 
     # Create an auxiliary array which tells us the index that each spatial
@@ -255,7 +240,7 @@ def train_all_models(
         # ---------------------------------------------------------------------
 
         # Get default results
-        predictions, residuals, _ = train_model(
+        residuals, _ = train_model(
             stack=stack,
             parang=parang,
             obscon_array=obscon_array,
@@ -274,9 +259,6 @@ def train_all_models(
         # list into a 2D numpy array and use the `results['mask']` to assign
         # it to a subset of a stack-shaped 3D array, everything ends up at the
         # expected position.
-        cast(list, tmp_results['default']['predictions']).insert(
-            insert_idx, predictions
-        )
         cast(list, tmp_results['default']['residuals']).insert(
             insert_idx, residuals
         )
@@ -301,7 +283,7 @@ def train_all_models(
             )
 
             # Get results based on signal masking
-            predictions, residuals, _ = train_model(
+            residuals, _ = train_model(
                 stack=stack,
                 parang=parang,
                 obscon_array=obscon_array,
@@ -315,9 +297,6 @@ def train_all_models(
                 base_model_creator=base_model_creator,
             )
 
-            cast(list, tmp_results[str(signal_time)]['predictions']).insert(
-                insert_idx, predictions
-            )
             cast(list, tmp_results[str(signal_time)]['residuals']).insert(
                 insert_idx, residuals
             )
@@ -340,14 +319,15 @@ def train_all_models(
         if not isinstance(value, dict):
             results[key] = np.array(value)
 
-        # Second-level elements (i.e., the `predictions` and `residuals` in
-        # "default" or "<signal_time>") are converted from lists to numpy
-        # arrays. The transpose is necessary to allow reconstructing the 3D
+        # Second-level elements (i.e., the `residuals` in "default" or
+        # "<signal_time>") are converted from lists to numpy arrays. The
+        # transpose is necessary to allow reconstructing the 3D
         # `stack`-like shape from the 2D arrays using the `mask`.
         else:
             results[key] = dict()
-            for _ in ('predictions', 'residuals'):
-                results[key][_] = np.array(tmp_results[key][_]).T
+            results[key]['residuals'] = np.array(
+                tmp_results[key]['residuals']
+            ).T
             results[key]['mask'] = np.array(tmp_results[key]['mask'])
 
     # -------------------------------------------------------------------------
@@ -372,17 +352,13 @@ def train_all_models(
         # Loop only over second-level dictionaries:
         # Effectively, this means that `group_name` will either be "default"
         # or a signal time, and `group` will be the corresponding dictionary
-        # holding the `predictions` and `residuals` arrays (which are 2D).
+        # holding the `residuals` array (which are 2D).
         if not isinstance(group, dict):
             continue
         new_results[group_name] = dict()
 
         # Define a shortcut to the positions mask
         mask = group['mask']
-
-        # Create a new `stack`-like array for the predictions and add results
-        new_results[group_name]['predictions'] = np.full(stack.shape, np.nan)
-        new_results[group_name]['predictions'][:, mask] = group['predictions']
 
         # Create a new `stack`-like array for the residuals and add results
         new_results[group_name]['residuals'] = np.full(stack.shape, np.nan)
@@ -403,12 +379,12 @@ def train_model(
     psf_template: np.ndarray,
     n_splits: int,
     base_model_creator: BaseModelCreator,
-) -> Tuple[np.ndarray, np.ndarray, Dict[str, np.ndarray]]:
+) -> Tuple[np.ndarray, Dict[str, np.ndarray]]:
     """
     Train a set of models (using a cross validation-like splitting
-    scheme with `n_splits` splits) for a given spatial `position` and
-    a given `signal_time`, and return the predictions, residuals and
-    model parameters.
+    scheme with `n_splits` splits) for a given spatial `position`
+    and a given `signal_time`, and return the residuals and model
+    parameters.
 
     Args:
         stack:
@@ -543,7 +519,6 @@ def train_model(
             # the default result values.
             if np.mean(signal_mask) < 0.5:
                 return (
-                    full_predictions,
                     full_residuals,
                     dict(
                         alphas=alphas,
@@ -714,11 +689,10 @@ def train_model(
             pixel_coefs[i] = model.coef_[:n_predictor_pixels]
 
     # -------------------------------------------------------------------------
-    # Return results (predictions, residuals and model information)
+    # Return results (residuals and model information)
     # -------------------------------------------------------------------------
 
     return (
-        full_predictions,
         full_residuals,
         dict(
             alphas=alphas,
