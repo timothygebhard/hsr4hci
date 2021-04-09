@@ -156,8 +156,9 @@ def find_hypothesis_from_dict_like(
 
         # Select residual for this position. Note: `results` is either a
         # numpy array or an open h5py.File object!
-        signal_time_residuals = results[str(signal_time)]['residuals']
-        residual = np.array(signal_time_residuals[:, position[0], position[1]])
+        residual = np.array(
+            results[str(signal_time)]['residuals'][:, position[0], position[1]]
+        )
 
         # If the residual is NaN, we can't compute the metric function
         if np.isnan(residual).any():
