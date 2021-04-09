@@ -125,12 +125,12 @@ if __name__ == '__main__':
 
     # Store selection mask as FITS (add threshold to header). Note that FITS
     # does not support boolean masks, so we need to convert to integer first.
-    print('\nComputing selection mask...', end=' ', flush=True)
+    print('Saving selection mask to FITS...', end=' ', flush=True)
     file_path = results_dir / 'selection_mask.fits'
     save_fits(
         array=selection_mask.astype(int),
         file_path=file_path,
-        header={'threshold': threshold},
+        header={'thresh': threshold},
     )
     print('Done!', flush=True)
 
@@ -139,7 +139,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Load hypotheses from FITS
-    print('Loading hypotheses from FITS...', end=' ', flush=True)
+    print('\nLoading hypotheses from FITS...', end=' ', flush=True)
     file_path = experiment_dir / 'hypotheses' / 'hypotheses.fits'
     hypotheses = np.asarray(read_fits(file_path))
     print('Done!', flush=True)
@@ -184,4 +184,3 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     print(f'\nThis took {time.time() - script_start:.1f} seconds!\n')
-    print('Done!', flush=True)
