@@ -337,10 +337,7 @@ def get_md5_checksum(
     return str(md5_checksum.hexdigest())
 
 
-def find_closest(
-    sequence: Union[list, tuple, np.ndarray],
-    value: Any,
-) -> Tuple[int, Any]:
+def find_closest(sequence: Sequence, value: Any) -> Tuple[int, Any]:
     """
     Given a sorted `sequence`, find the entry (and its index) in it
     that is the closest to the given `value`.

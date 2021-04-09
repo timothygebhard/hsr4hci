@@ -165,6 +165,9 @@ def get_match_fraction(
     # Keep track of the matches (similarity scores) for affected positions
     matches = []
 
+    # Convert signal_times to list (to avoid mypy issue with find_closest())
+    signal_times_list = list(signal_times)
+
     # Loop over all affected positions and check how well the residuals
     # match the expected signals
     for (x, y) in get_positions_from_mask(affected_mask):
@@ -176,7 +179,7 @@ def get_match_fraction(
 
         # Find the time at which this pixel is affected the most
         peak_time = int(np.argmax(expected_stack[:, x, y]))
-        _, peak_time = find_closest(signal_times, peak_time)
+        _, peak_time = find_closest(signal_times_list, peak_time)
 
         # Define shortcuts for the time series that we compare
         a = expected_stack[:, x, y]
