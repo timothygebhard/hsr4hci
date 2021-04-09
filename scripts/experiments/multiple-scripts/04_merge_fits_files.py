@@ -59,7 +59,7 @@ def merge_fits_files(fits_file_paths: List[Path]) -> np.ndarray:
     # Stack and merge them along the first axis
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore', r'Mean of empty slice')
-        array = np.nanmean(arrays)
+        array = np.nanmean(arrays, axis=0)
 
     return array
 
