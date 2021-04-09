@@ -38,7 +38,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     script_start = time.time()
-    print('\nMERGE FITS FILES\n', flush=True)
+    print('\nGET SIGNAL ESTIMATE\n', flush=True)
 
     # -------------------------------------------------------------------------
     # Set up parser to get command line arguments; get experiment directory
@@ -123,11 +123,12 @@ if __name__ == '__main__':
     results_dir = experiment_dir / 'results'
     results_dir.mkdir(exist_ok=True)
 
-    # Store selection mask as FITS (add threshold to header
+    # Store selection mask as FITS (add threshold to header). Note that FITS
+    # does not support boolean masks, so we need to convert to integer first.
     print('\nComputing selection mask...', end=' ', flush=True)
     file_path = results_dir / 'selection_mask.fits'
     save_fits(
-        array=selection_mask,
+        array=selection_mask.astype(int),
         file_path=file_path,
         header={'threshold': threshold},
     )
