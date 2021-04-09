@@ -170,7 +170,7 @@ if __name__ == '__main__':
     # Finally, save results to HDF (in the partial directory)
     print('Saving results...', end=' ', flush=True)
     file_path = (
-        partial_dir / f'results_{roi_split + 1:03d}-{n_roi_splits:03d}.hdf'
+        partial_dir / f'results_{roi_split + 1:04d}-{n_roi_splits:04d}.hdf'
     )
     save_dict_to_hdf(dictionary=results, file_path=file_path)
     print('Done!', flush=True)
