@@ -148,7 +148,7 @@ def load_parang(name: str, binning_factor: int = 1, **_: Any) -> np.ndarray:
     # Read in the data set from the HDF file
     file_path = get_datasets_dir() / name / 'output' / f'{name}.hdf'
     with h5py.File(file_path, 'r') as hdf_file:
-        parang = np.array(hdf_file['parang']).astype(float)
+        parang = np.array(hdf_file['parang'])
 
     # Temporally bin the parallactic angles
     parang = prestack_array(array=parang, stacking_factor=binning_factor)
@@ -170,7 +170,14 @@ def load_psf_template(name: str, **_: Any) -> np.ndarray:
     # Read in the data set from the HDF file
     file_path = get_datasets_dir() / name / 'output' / f'{name}.hdf'
     with h5py.File(file_path, 'r') as hdf_file:
-        psf_template = np.array(hdf_file['psf_template']).astype(float)
+        psf_template = np.array(hdf_file['psf_template']).squeeze()
+
+    # Ensure that the PSF template is two-dimensional now; otherwise this
+    # can result in weird errors that are hard to debug
+    if psf_template.ndim != 2:
+        raise RuntimeError(
+            f'psf_template is not 2D! (shape = {psf_template.shape}'
+        )
 
     return psf_template
 
