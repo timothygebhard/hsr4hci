@@ -20,6 +20,7 @@ from hsr4hci.observing_conditions import ObservingConditions
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
+
 def load_dataset(
     name: str,
     binning_factor: int = 1,
@@ -226,6 +227,7 @@ def load_planets(name: str, **_: Any) -> dict:
             )
 
     return planets
+
 
 def get_stack_shape(name: str, **_: Any) -> Tuple[int, int, int]:
     """
