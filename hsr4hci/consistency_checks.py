@@ -80,7 +80,7 @@ def get_all_match_fractions(
 
         # Open the HDF file
         with h5py.File(dict_or_path, 'r') as results:
-    
+
             # Get signal times
             signal_times = get_signal_times_from_keys(list(results.keys()))
 
