@@ -337,7 +337,10 @@ def get_md5_checksum(
     return str(md5_checksum.hexdigest())
 
 
-def find_closest(sequence: Sequence, value: Any) -> Tuple[int, Any]:
+def find_closest(
+    sequence: Union[list, tuple, np.ndarray],
+    value: Any,
+) -> Tuple[int, Any]:
     """
     Given a sorted `sequence`, find the entry (and its index) in it
     that is the closest to the given `value`.
@@ -345,7 +348,7 @@ def find_closest(sequence: Sequence, value: Any) -> Tuple[int, Any]:
     Original source: https://stackoverflow.com/a/12141511/4100721
 
     Args:
-        sequence: A sequence (basically: a list, tuple or array).
+        sequence: A sequence (i.e., a list, tuple or array).
         value: A numeric value (i.e., usually an int or float).
 
     Returns:
