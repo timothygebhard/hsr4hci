@@ -267,8 +267,8 @@ if __name__ == '__main__':
     print(f'Creating {name}.sub...', end=' ', flush=True)
     submit_file = SubmitFile(
         clusterlogs_dir=clusterlogs_dir.as_posix(),
-        memory=1024,
-        cpus=4,
+        memory=4096,
+        cpus=1,
     )
     submit_file.add_job(
         name=name,
@@ -303,7 +303,7 @@ if __name__ == '__main__':
     print(f'Creating {name}.sub...', end=' ', flush=True)
     submit_file = SubmitFile(
         clusterlogs_dir=clusterlogs_dir.as_posix(),
-        memory=8192,
+        memory=1024,
         cpus=1,
     )
     submit_file.add_job(
