@@ -226,3 +226,20 @@ def load_planets(name: str, **_: Any) -> dict:
             )
 
     return planets
+
+def get_stack_shape(name: str, **_: Any) -> Tuple[int, int, int]:
+    """
+    Get the shape of the `stack` in the given data set.
+
+    Args:
+        name: Name of the data set (e.g., "beta_pictoris__lp").
+
+    Returns:
+        The stack shape as a 3-tuple: `(n_frames, width, height)`.
+    """
+
+    # Open the HDF file and the shape of the stack
+    file_path = get_datasets_dir() / name / 'output' / f'{name}.hdf'
+    with h5py.File(file_path, 'r') as hdf_file:
+        shape = hdf_file['stack'].shape
+        return int(shape[0]), int(shape[1]), int(shape[2])
