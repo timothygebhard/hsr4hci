@@ -16,7 +16,12 @@ from astropy.units import Quantity
 
 from hsr4hci.config import load_config
 from hsr4hci.consistency_checks import get_all_match_fractions
-from hsr4hci.data import load_dataset
+from hsr4hci.data import (
+    get_stack_shape,
+    load_metadata,
+    load_parang,
+    load_psf_template,
+)
 from hsr4hci.fits import save_fits
 from hsr4hci.hypotheses import get_all_hypotheses
 from hsr4hci.masking import get_roi_mask
@@ -76,9 +81,10 @@ if __name__ == '__main__':
 
     # Load frames, parallactic angles, etc. from HDF file
     print('Loading data set...', end=' ', flush=True)
-    stack, parang, psf_template, observing_conditions, metadata = load_dataset(
-        **config['dataset']
-    )
+    stack_shape = get_stack_shape(**config['dataset'])
+    parang = load_parang(**config['dataset'])
+    metadata = load_metadata(**config['dataset'])
+    psf_template = load_psf_template(**config['dataset'])
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
@@ -86,7 +92,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Quantities related to the size of the data set
-    n_frames, x_size, y_size = stack.shape
+    n_frames, x_size, y_size = stack_shape
     frame_size = (x_size, y_size)
 
     # Metadata of the data set
