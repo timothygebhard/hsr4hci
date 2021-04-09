@@ -233,6 +233,10 @@ def get_stack_shape(name: str, **_: Any) -> Tuple[int, int, int]:
     """
     Get the shape of the `stack` in the given data set.
 
+    NOTE: This does NOT take into account any additional cropping
+          that happens when a `frame_size` argument is passed to
+          `load_dataset()`!
+
     Args:
         name: Name of the data set (e.g., "beta_pictoris__lp").
 
