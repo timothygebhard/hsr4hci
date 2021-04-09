@@ -29,7 +29,6 @@ from hsr4hci.units import set_units_for_instrument
 # FUNCTIONS DEFINITIONS
 # -----------------------------------------------------------------------------
 
-
 def get_size(_object: Any) -> int:
     """
     Auxiliary function to determine the size (in memory) of an object.
@@ -259,7 +258,7 @@ if __name__ == '__main__':
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
-    # Create a submit file for stage 2 (find hypothesis, compute MF, ...)
+    # Create a submit file for stage 2 (finding hypotheses, computing MF)
     # -------------------------------------------------------------------------
 
     name = '03_run_stage_2'
@@ -268,8 +267,44 @@ if __name__ == '__main__':
     print(f'Creating {name}.sub...', end=' ', flush=True)
     submit_file = SubmitFile(
         clusterlogs_dir=clusterlogs_dir.as_posix(),
-        memory=expected_total_memory,
+        memory=1024,
         cpus=4,
+    )
+    submit_file.add_job(
+        name=name,
+        job_script=(scripts_dir / f'{name}.py').as_posix(),
+        arguments={
+            'experiment-dir': experiment_dir.as_posix(),
+            'roi-split': '$(Process)',
+            'n-roi-splits': str(n_splits),
+        },
+        bid=bid,
+        queue=int(n_splits),
+    )
+    file_path = htcondor_dir / f'{name}.sub'
+    submit_file.save(file_path=file_path)
+    print('Done!', flush=True)
+
+    # Add submit file to DAG
+    print(f'Adding {name}.sub to DAG file...', end=' ', flush=True)
+    dag_file.add_submit_file(
+        name=name,
+        attributes=dict(file_path=file_path.as_posix(), bid=bid),
+    )
+    dag_file.add_dependency('02_merge_hdf_files', name)
+    print('Done!', flush=True)
+
+    # -------------------------------------------------------------------------
+    # Create submit file for merging hypotheses and match fractions
+    # -------------------------------------------------------------------------
+
+    name = '04_merge_fits_files'
+
+    print(f'Creating {name}.sub...', end=' ', flush=True)
+    submit_file = SubmitFile(
+        clusterlogs_dir=clusterlogs_dir.as_posix(),
+        memory=8192,
+        cpus=1,
     )
     submit_file.add_job(
         name=name,
@@ -289,7 +324,7 @@ if __name__ == '__main__':
         name=name,
         attributes=dict(file_path=file_path.as_posix(), bid=bid),
     )
-    dag_file.add_dependency('02_merge_hdf_files', name)
+    dag_file.add_dependency('03_run_stage_2', name)
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
