@@ -23,7 +23,7 @@ from hsr4hci.data import load_psf_template, load_metadata, load_planets
 from hsr4hci.evaluation import compute_optimized_snr
 from hsr4hci.fits import read_fits
 from hsr4hci.plotting import plot_frame
-from hsr4hci.psf import get_psf_radius
+from hsr4hci.psf import get_psf_fwhm
 from hsr4hci.units import set_units_for_instrument
 
 
@@ -72,11 +72,11 @@ if __name__ == '__main__':
     config = load_config(experiment_dir / 'config.json')
     print('Done!', flush=True)
 
-    # Load the PSF template and estimate its radius
+    # Load the PSF template and estimate its FWHM
     print('Loading PSF template...', end=' ', flush=True)
     psf_template = load_psf_template(**config['dataset']).squeeze()
-    psf_radius = round(abs(get_psf_radius(psf_template)), 2)
-    print(f'Done! (psf_radius = {psf_radius})', flush=True)
+    psf_fwhm = round(get_psf_fwhm(psf_template), 2)
+    print(f'Done! (psf_radius = {psf_fwhm})', flush=True)
 
     # Load the metadata and set up the unit conversions
     print('Loading metadata and setting up units...', end=' ', flush=True)
@@ -124,7 +124,7 @@ if __name__ == '__main__':
             results_dict = compute_optimized_snr(
                 frame=signal_estimate,
                 position=planet_position,
-                aperture_radius=Quantity(psf_radius, 'pixel'),
+                aperture_radius=Quantity(psf_fwhm / 2, 'pixel'),
                 ignore_neighbors=ignore_neighbors,
             )
         except ValueError:
@@ -132,7 +132,7 @@ if __name__ == '__main__':
             results_dict = compute_optimized_snr(
                 frame=signal_estimate,
                 position=planet_position,
-                aperture_radius=Quantity(psf_radius, 'pixel'),
+                aperture_radius=Quantity(psf_fwhm / 2, 'pixel'),
                 ignore_neighbors=ignore_neighbors,
             )
 
@@ -177,7 +177,7 @@ if __name__ == '__main__':
     plot_frame(
         frame=signal_estimate,
         file_path=file_path,
-        aperture_radius=psf_radius,
+        aperture_radius=(psf_fwhm / 2),
         expand_radius=1,
         positions=list(results_df.loc['new_position'].values),
         snrs=list(results_df.loc['snr'].values),
