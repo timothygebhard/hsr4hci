@@ -18,6 +18,7 @@ from hsr4hci.config import load_config
 from hsr4hci.consistency_checks import get_all_match_fractions
 from hsr4hci.data import load_metadata, load_parang, load_psf_template
 from hsr4hci.fits import save_fits
+from hsr4hci.hdf import load_dict_from_hdf
 from hsr4hci.hypotheses import get_all_hypotheses
 from hsr4hci.masking import get_roi_mask
 from hsr4hci.units import set_units_for_instrument
@@ -119,14 +120,18 @@ if __name__ == '__main__':
     # STEP 1: Find hypotheses
     # -------------------------------------------------------------------------
 
-    # Define path to the HDF file holding the training results (= residuals)
-    results_file_path = experiment_dir / 'hdf' / 'results.hdf'
+    # Load results. This is very memory-intensive, but read-on-demand seems
+    # orders of magnitude slower and thus infeasible
+    print('\nLoading results from HDF...', end=' ', flush=True)
+    file_path = experiment_dir / 'hdf' / 'results.hdf'
+    results = load_dict_from_hdf(file_path)
+    print('Done!', flush=True)
 
     # Find best hypothesis (for specified subset of ROI)
     print('\nFinding best hypothesis for each spatial pixel:', flush=True)
     hypotheses, similarities = get_all_hypotheses(
         roi_mask=roi_mask,
-        dict_or_path=results_file_path,
+        dict_or_path=results,
         parang=parang,
         n_signal_times=n_signal_times,
         frame_size=frame_size,
@@ -164,7 +169,7 @@ if __name__ == '__main__':
     # Compute match fraction (for specified subset of ROI)
     print('\nComputing match fractions:', flush=True)
     mean_mf, median_mf, _ = get_all_match_fractions(
-        dict_or_path=results_file_path,
+        dict_or_path=results,
         roi_mask=roi_mask,
         hypotheses=hypotheses,
         parang=parang,
