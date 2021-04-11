@@ -18,7 +18,7 @@ from hsr4hci.config import load_config
 from hsr4hci.consistency_checks import get_all_match_fractions
 from hsr4hci.data import load_metadata, load_parang, load_psf_template
 from hsr4hci.fits import save_fits
-from hsr4hci.hdf import load_dict_from_hdf
+from hsr4hci.hdf import load_residuals
 from hsr4hci.hypotheses import get_all_hypotheses
 from hsr4hci.masking import get_roi_mask
 from hsr4hci.units import set_units_for_instrument
@@ -124,7 +124,7 @@ if __name__ == '__main__':
     # orders of magnitude slower and thus infeasible
     print('\nLoading results from HDF...', end=' ', flush=True)
     file_path = experiment_dir / 'hdf' / 'results.hdf'
-    results = load_dict_from_hdf(file_path)
+    results = load_residuals(file_path)
     print('Done!', flush=True)
 
     # Find best hypothesis (for specified subset of ROI)
