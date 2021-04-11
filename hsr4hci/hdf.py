@@ -12,6 +12,8 @@ Parts of the code in the module are based on:
 from pathlib import Path
 from typing import Any, Union
 
+from tqdm.auto import tqdm
+
 import h5py
 import numpy as np
 
@@ -235,4 +237,25 @@ def recursively_load_dict_contents_from_group(
                 path=new_path,
             )
 
+    return results
+
+
+def load_residuals(file_path: Union[str, Path]) -> dict:
+    """
+    Auxiliary function load only the residuals (and not the predictions)
+    from a given results.hdf file.
+
+    Args:
+        file_path: Path to target results.hdf file.
+
+    Returns:
+        A dictionary containing only the residuals.
+    """
+
+    results = {}
+    with h5py.File(file_path, 'r') as hdf_file:
+        for key in tqdm(list(hdf_file.keys()), ncols=80):
+            if key == 'signal_times':
+                continue
+            results[key] = {'residuals': np.array(hdf_file[key]['residuals'])}
     return results
