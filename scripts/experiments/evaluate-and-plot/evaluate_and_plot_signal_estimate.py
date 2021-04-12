@@ -22,6 +22,7 @@ from hsr4hci.coordinates import polar2cartesian
 from hsr4hci.data import load_psf_template, load_metadata, load_planets
 from hsr4hci.evaluation import compute_optimized_snr
 from hsr4hci.fits import read_fits
+from hsr4hci.masking import get_roi_mask
 from hsr4hci.plotting import plot_frame
 from hsr4hci.psf import get_psf_fwhm
 from hsr4hci.units import set_units_for_instrument
@@ -81,14 +82,25 @@ if __name__ == '__main__':
     # Load the metadata and set up the unit conversions
     print('Loading metadata and setting up units...', end=' ', flush=True)
     metadata = load_metadata(**config['dataset'])
-    pixscale = Quantity(metadata['PIXSCALE'], 'arcsec / pix')
-    lambda_over_d = Quantity(metadata['LAMBDA_OVER_D'], 'arcsec')
     set_units_for_instrument(
-        pixscale=pixscale,
-        lambda_over_d=lambda_over_d,
+        pixscale=Quantity(metadata['PIXSCALE'], 'arcsec / pix'),
+        lambda_over_d=Quantity(metadata['LAMBDA_OVER_D'], 'arcsec'),
         verbose=False,
     )
     print('Done!', flush=True)
+
+    # Define shortcut to frame_size
+    frame_size = (
+        int(config['dataset']['frame_size'][0]),
+        int(config['dataset']['frame_size'][1]),
+    )
+
+    # Construct the mask for the region of interest (ROI)
+    roi_mask = get_roi_mask(
+        mask_size=frame_size,
+        inner_radius=Quantity(*config['roi_mask']['inner_radius']),
+        outer_radius=Quantity(*config['roi_mask']['outer_radius']),
+    )
 
     # -------------------------------------------------------------------------
     # Load signal estimate from FITS and compute SNRs
@@ -171,6 +183,9 @@ if __name__ == '__main__':
     plots_dir = experiment_dir / 'plots'
     plots_dir.mkdir(exist_ok=True)
 
+    # Apply ROI mask to signal estimate (mostly for PCA plots)
+    signal_estimate[~roi_mask] = np.nan
+
     # Create plot (including SNR etc.)
     print('Creating plot of signal estimate...', end=' ', flush=True)
     file_path = plots_dir / 'signal_estimate.pdf'
@@ -178,9 +193,11 @@ if __name__ == '__main__':
         frame=signal_estimate,
         file_path=file_path,
         aperture_radius=(psf_fwhm / 2),
-        expand_radius=1,
+        expand_radius=2,
         positions=list(results_df.loc['new_position'].values),
         snrs=list(results_df.loc['snr'].values),
+        use_colorbar=True,
+        use_logscale=False,
     )
     print('Done!', flush=True)
 
