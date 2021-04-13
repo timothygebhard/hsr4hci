@@ -108,7 +108,7 @@ if __name__ == '__main__':
         sh_file.write('#!/bin/zsh\n\n')
         for line in create_submit_files:
             sh_file.write(f'{line}\n')
-    os.chmod(file_path, 755)
+    os.chmod(file_path, 0o755)
 
     # Create the shell script to launch the experiments on the cluster
     file_path = main_dir / 'start_jobs.sh'
@@ -116,7 +116,7 @@ if __name__ == '__main__':
         sh_file.write('#!/bin/zsh\n\n')
         for line in start_jobs:
             sh_file.write(f'{line}\n')
-    os.chmod(file_path, 755)
+    os.chmod(file_path, 0o755)
 
     # -------------------------------------------------------------------------
     # Postliminaries
