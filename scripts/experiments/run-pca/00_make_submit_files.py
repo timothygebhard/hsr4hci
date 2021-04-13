@@ -92,7 +92,7 @@ if __name__ == '__main__':
 
     # Estimate memory needed to perform PCA on stack of this size
     # FIXME: Improve this very crude estimate...
-    expected_job_memory = 32 * int(stack_memory / 1024 ** 2)
+    expected_job_memory = 32 * int(stack_memory / 1024 ** 2) + 2048
 
     # -------------------------------------------------------------------------
     # Instantiate a new DAG file
