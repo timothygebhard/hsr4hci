@@ -9,6 +9,7 @@ Create experiments.
 
 import argparse
 import json
+import os
 import time
 
 from hsr4hci.config import load_config, get_hsr4hci_dir
@@ -101,15 +102,21 @@ if __name__ == '__main__':
         file_path = experiment_dir / 'htcondor' / 'run_experiment.dag'
         start_jobs.append(f'csd 5 {file_path.as_posix()}')
 
-    # Create the shell scripts
-    with open('create_submit_files.sh', 'w') as sh_file:
+    # Create the shell script to create submit files for all experiments
+    file_path = main_dir / 'create_submit_files.sh'
+    with open(file_path, 'w') as sh_file:
         sh_file.write('#!/bin/zsh\n\n')
         for line in create_submit_files:
             sh_file.write(f'{line}\n')
-    with open('start_jobs.sh', 'w') as sh_file:
+    os.chmod(file_path, 755)
+
+    # Create the shell script to launch the experiments on the cluster
+    file_path = main_dir / 'start_jobs.sh'
+    with open(file_path, 'w') as sh_file:
         sh_file.write('#!/bin/zsh\n\n')
         for line in start_jobs:
             sh_file.write(f'{line}\n')
+    os.chmod(file_path, 755)
 
     # -------------------------------------------------------------------------
     # Postliminaries
