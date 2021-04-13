@@ -6,34 +6,15 @@ Create submit files to run experiment on an HTCondor-based cluster.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from sys import getsizeof
 from pathlib import Path
-from typing import Any
 
 import argparse
 import time
 import os
 
-import numpy as np
-
 from hsr4hci.config import load_config, get_hsr4hci_dir
-from hsr4hci.data import load_dataset
+from hsr4hci.data import load_parang
 from hsr4hci.htcondor import SubmitFile, DAGFile
-
-
-# -----------------------------------------------------------------------------
-# FUNCTIONS DEFINITIONS
-# -----------------------------------------------------------------------------
-
-
-def get_size(_object: Any) -> int:
-    """
-    Auxiliary function to determine the size (in memory) of an object.
-    """
-
-    if isinstance(_object, np.ndarray):
-        return int(_object.nbytes)
-    return getsizeof(_object)
 
 
 # -----------------------------------------------------------------------------
@@ -64,7 +45,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--bid',
         type=int,
-        default=20,
+        default=5,
         help='Amount of cluster dollars to bid for each job.',
     )
     args = parser.parse_args()
@@ -95,38 +76,23 @@ if __name__ == '__main__':
 
     # Load frames, parallactic angles, etc. from HDF file
     print('Loading data set...', end=' ', flush=True)
-    stack, parang, psf_template, observing_conditions, metadata = load_dataset(
-        **config['dataset']
-    )
+    parang = load_parang(**config['dataset'])
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
     # Compute the expected memory consumption of a training job
     # -------------------------------------------------------------------------
 
-    # Compute the size of the full data set which we will be loading
-    dataset_memory = sum(
-        [
-            get_size(stack),
-            get_size(parang),
-            get_size(psf_template),
-            get_size(observing_conditions),
-            get_size(metadata),
-        ]
-    )
+    # Metadata of the data set
+    n_frames = len(parang)
+    frame_size = config['dataset']['frame_size']
 
-    print('\nMemory consumption:')
-    print(f'-- stack:        {int(get_size(stack) / 1024**2):>4d} MB')
-    print(f'-- parang:       {int(get_size(parang) / 1024):>4d} KB')
-    print(f'-- psf_template: {int(get_size(psf_template) / 1024):>4d} KB')
-    print(f'-- obs_con:      {int(get_size(observing_conditions)):>4d} B')
-    print(f'-- metadata:     {int(get_size(metadata)):>4d} B')
+    # Compute the memory required for loading the full stack (in bytes)
+    stack_memory = n_frames * frame_size[0] * frame_size[1] * 8
 
-    # Compute the expected amount of memory that we need per job (in MB)
-    expected_job_memory = float(get_size(stack))
-    expected_job_memory /= 1024 ** 2
-    expected_job_memory *= 32
-    expected_job_memory = int(expected_job_memory)
+    # Estimate memory needed to perform PCA on stack of this size
+    # FIXME: Improve this very crude estimate...
+    expected_job_memory = 32 * stack_memory
 
     # -------------------------------------------------------------------------
     # Instantiate a new DAG file
@@ -147,7 +113,7 @@ if __name__ == '__main__':
     submit_file = SubmitFile(
         clusterlogs_dir=clusterlogs_dir.as_posix(),
         memory=expected_job_memory,
-        cpus=8,
+        cpus=4,
     )
     submit_file.add_job(
         name=name,
