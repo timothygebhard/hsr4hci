@@ -448,6 +448,38 @@ def get_selection_mask(
     return np.asarray(selection_mask)
 
 
+def get_radial_masks(
+    mask_size: Tuple[int, int],
+    n_rings: int,
+) -> List[np.ndarray]:
+    """
+    Create a list of annulus-shaped masks that can be used, for example,
+    to compute radial averages.
+
+    Source: https://scipy-lectures.org/advanced/image_processing/auto_examples/plot_radial_mean.html
+
+    Args:
+        mask_size: A tuple `(x_size, y_size)` containing the size of the
+            mask (in pixels) to be created.
+        n_rings: Number of rings to be created for the mask.
+
+    Returns:
+        A list of annulus masks.
+    """
+
+    sx, sy = mask_size
+    x, y = np.ogrid[0:sx, 0:sy]
+    r = np.hypot(x - sx / 2, y - sy / 2)
+    radial_bins = (n_rings * r / r.max()).astype(np.int)
+
+    masks = []
+    for i in range(n_rings):
+        mask = radial_bins == i
+        masks.append(mask)
+
+    return masks
+
+
 # -----------------------------------------------------------------------------
 # OTHER MASKING-RELATED FUNCTIONS
 # -----------------------------------------------------------------------------
