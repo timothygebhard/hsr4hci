@@ -7,12 +7,13 @@ Utility functions for creating signal estimates.
 # -----------------------------------------------------------------------------
 
 from typing import Tuple
-from warnings import warn
 
-from skimage.filters import threshold_minimum
-from skimage.morphology import disk, opening
+from scipy import ndimage
+from skimage.filters import threshold_isodata
 
 import numpy as np
+
+from hsr4hci.masking import get_circle_mask
 
 
 # -----------------------------------------------------------------------------
@@ -23,37 +24,53 @@ def get_selection_mask(
     match_fraction: np.ndarray,
     roi_mask: np.ndarray,
     filter_size: int = 0,
+    minimum_size: int = 25,
 ) -> Tuple[np.ndarray, float]:
     """
-    Threshold the match fraction and apply a morphological filter to
-    create the selection mask for choosing residuals.
+    Threshold the match fraction and apply a filter to create the
+    selection mask for choosing residuals.
+
+    FIXME: Ultimately, we probably want to use some form of segmentation
+           or local thresholding here; not one single global threshold.
 
     Args:
         match_fraction:
         roi_mask:
         filter_size:
+        minimum_size:
 
     Returns:
-        A tuple (`selection_mask` `threshold`).
+        A tuple (`selection_mask`, `threshold`).
     """
 
+    # Drop the innermost few pixels, where we realistically cannot find
+    # planets but which for signal fitting are often very bright, which breaks
+    # the threshold estimation
+    drop_mask = get_circle_mask(mask_size=roi_mask.shape, radius=4)
+
+    # For threshold_isodata(), it seems to make sense to remove all the pixels
+    # that are (close to) zero in the match fraction (?)
+    zero_mask = np.isclose(match_fraction, 0)
+
+    # Select pixels on which to compute the threshold
+    pixel_mask = np.logical_and(roi_mask, ~np.logical_or(drop_mask, zero_mask))
+    pixels = np.nan_to_num(match_fraction[pixel_mask])
+
     # Determine the "optimal" threshold for the match fraction
-    threshold = threshold_minimum(np.nan_to_num(match_fraction[roi_mask]))
+    try:
+        threshold = threshold_isodata(pixels)
+    except RuntimeError:
+        threshold = 1
 
     # Apply threshold to match fraction to get a mask
     mask = match_fraction >= threshold
 
-    # If the mask selects "too many" pixels (i.e., more than can reasonably
-    # be affected by planet signals), fall back to the default. This is a
-    # somewhat crude way to incorporate our knowledge that a real planet
-    # signal must be spatially sparse.
-    if np.mean(mask[roi_mask]) > 0.2:
-        mask = np.full(mask.shape, False)
-        warn('Threshold allows too many pixels, falling back to default mask!')
+    # Drop regions in the mask that are below a certain size
+    final_mask, nb_labels = ndimage.label(mask)
+    sizes = ndimage.sum(mask, final_mask, range(nb_labels + 1))
+    mask_size = sizes < minimum_size
+    remove_pixel = mask_size[final_mask]
+    final_mask[remove_pixel] = 0
+    final_mask = final_mask > 0
 
-    # Define a structure element and apply a morphological filter (more
-    # precisely, an opening filter) to remove small regions in the mask.
-    structure_element = disk(filter_size)
-    filtered_mask = np.logical_and(opening(mask, structure_element), mask)
-
-    return filtered_mask, threshold
+    return final_mask, threshold
