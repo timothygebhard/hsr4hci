@@ -470,7 +470,7 @@ def get_radial_masks(
     sx, sy = mask_size
     x, y = np.ogrid[0:sx, 0:sy]
     r = np.hypot(x - sx / 2, y - sy / 2)
-    radial_bins = (n_rings * r / r.max()).astype(np.int)
+    radial_bins = (n_rings * r / r.max()).astype(int)
 
     masks = []
     for i in range(n_rings):
