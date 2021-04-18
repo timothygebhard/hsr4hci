@@ -6,9 +6,7 @@ Create submit files to run experiment on an HTCondor-based cluster.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from sys import getsizeof
 from pathlib import Path
-from typing import Any
 
 import argparse
 import time
@@ -23,20 +21,6 @@ from hsr4hci.data import load_parang, load_metadata
 from hsr4hci.htcondor import SubmitFile, DAGFile
 from hsr4hci.masking import get_roi_mask
 from hsr4hci.units import set_units_for_instrument
-
-
-# -----------------------------------------------------------------------------
-# FUNCTIONS DEFINITIONS
-# -----------------------------------------------------------------------------
-
-def get_size(_object: Any) -> int:
-    """
-    Auxiliary function to determine the size (in memory) of an object.
-    """
-
-    if isinstance(_object, np.ndarray):
-        return int(_object.nbytes)
-    return getsizeof(_object)
 
 
 # -----------------------------------------------------------------------------
@@ -67,7 +51,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--bid',
         type=int,
-        default=10,
+        default=5,
         help='Amount of cluster dollars to bid for each job.',
     )
     parser.add_argument(
@@ -99,9 +83,7 @@ if __name__ == '__main__':
     n_splits = args.n_splits
 
     # Define directory in which this script (and subsequent ones) are located
-    scripts_dir = (
-        get_hsr4hci_dir() / 'scripts' / 'experiments' / 'multiple-scripts'
-    )
+    scripts_dir = get_hsr4hci_dir() / 'scripts' / 'experiments'
 
     # Load experiment config from JSON
     print('Loading experiment configuration...', end=' ', flush=True)
@@ -203,7 +185,9 @@ if __name__ == '__main__':
     )
     submit_file.add_job(
         name=name,
-        job_script=(scripts_dir / f'{name}.py').as_posix(),
+        job_script=(
+            scripts_dir / 'multiple-scripts' / f'{name}.py'
+        ).as_posix(),
         arguments={
             'experiment-dir': experiment_dir.as_posix(),
             'roi-split': '$(Process)',
@@ -238,7 +222,9 @@ if __name__ == '__main__':
     )
     submit_file.add_job(
         name=name,
-        job_script=(scripts_dir / f'{name}.py').as_posix(),
+        job_script=(
+            scripts_dir / 'multiple-scripts' / f'{name}.py'
+        ).as_posix(),
         arguments={
             'experiment-dir': experiment_dir.as_posix(),
         },
@@ -267,12 +253,14 @@ if __name__ == '__main__':
     print(f'Creating {name}.sub...', end=' ', flush=True)
     submit_file = SubmitFile(
         clusterlogs_dir=clusterlogs_dir.as_posix(),
-        memory=4096,
+        memory=expected_total_memory,
         cpus=1,
     )
     submit_file.add_job(
         name=name,
-        job_script=(scripts_dir / f'{name}.py').as_posix(),
+        job_script=(
+            scripts_dir / 'multiple-scripts' / f'{name}.py'
+        ).as_posix(),
         arguments={
             'experiment-dir': experiment_dir.as_posix(),
             'roi-split': '$(Process)',
@@ -308,7 +296,9 @@ if __name__ == '__main__':
     )
     submit_file.add_job(
         name=name,
-        job_script=(scripts_dir / f'{name}.py').as_posix(),
+        job_script=(
+            scripts_dir / 'multiple-scripts' / f'{name}.py'
+        ).as_posix(),
         arguments={
             'experiment-dir': experiment_dir.as_posix(),
         },
@@ -325,6 +315,76 @@ if __name__ == '__main__':
         attributes=dict(file_path=file_path.as_posix(), bid=bid),
     )
     dag_file.add_dependency('03_run_stage_2', name)
+    print('Done!', flush=True)
+
+    # -------------------------------------------------------------------------
+    # Create submit file for computing the signal estimate
+    # -------------------------------------------------------------------------
+
+    name = '05_get_signal_estimate'
+
+    print(f'Creating {name}.sub...', end=' ', flush=True)
+    submit_file = SubmitFile(
+        clusterlogs_dir=clusterlogs_dir.as_posix(),
+        memory=1024,
+        cpus=1,
+    )
+    submit_file.add_job(
+        name=name,
+        job_script=(
+            scripts_dir / 'multiple-scripts' / f'{name}.py'
+        ).as_posix(),
+        arguments={
+            'experiment-dir': experiment_dir.as_posix(),
+        },
+        bid=bid,
+    )
+    file_path = htcondor_dir / f'{name}.sub'
+    submit_file.save(file_path=file_path)
+    print('Done!', flush=True)
+
+    # Add submit file to DAG
+    print(f'Adding {name}.sub to DAG file...', end=' ', flush=True)
+    dag_file.add_submit_file(
+        name=name,
+        attributes=dict(file_path=file_path.as_posix(), bid=bid),
+    )
+    dag_file.add_dependency('04_merge_fits_files', name)
+    print('Done!', flush=True)
+
+    # -------------------------------------------------------------------------
+    # Create a submit file for creating a plot of the signal estimate
+    # -------------------------------------------------------------------------
+
+    name = 'evaluate_and_plot_signal_estimate'
+
+    print(f'Creating {name}.sub...', end=' ', flush=True)
+    submit_file = SubmitFile(
+        clusterlogs_dir=clusterlogs_dir.as_posix(),
+        memory=1024,
+        cpus=1,
+    )
+    submit_file.add_job(
+        name=name,
+        job_script=(
+            scripts_dir / 'evaluate-and-plot' / f'{name}.py'
+        ).as_posix(),
+        arguments={
+            'experiment-dir': experiment_dir.as_posix(),
+        },
+        bid=bid,
+    )
+    file_path = htcondor_dir / f'{name}.sub'
+    submit_file.save(file_path=file_path)
+    print('Done!', flush=True)
+
+    # Add submit file to DAG
+    print(f'Adding {name}.sub to DAG file...', end=' ', flush=True)
+    dag_file.add_submit_file(
+        name=name,
+        attributes=dict(file_path=file_path.as_posix(), bid=bid),
+    )
+    dag_file.add_dependency('05_get_signal_estimate', name)
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
