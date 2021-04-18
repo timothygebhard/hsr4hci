@@ -2,7 +2,6 @@
 Create experiments.
 """
 
-
 # -----------------------------------------------------------------------------
 # IMPORTS
 # -----------------------------------------------------------------------------
@@ -13,6 +12,7 @@ import os
 import time
 
 from hsr4hci.config import load_config, get_hsr4hci_dir
+
 
 # -----------------------------------------------------------------------------
 # MAIN CODE
@@ -40,7 +40,10 @@ if __name__ == '__main__':
         required=True,
     )
     parser.add_argument(
-        '--dataset', type=str, choices=['beta_pictoris__lp'], required=True
+        '--dataset',
+        type=str,
+        choices=['beta_pictoris__lp', 'r_cra__lp'],
+        required=True,
     )
     args = parser.parse_args()
 
@@ -58,21 +61,28 @@ if __name__ == '__main__':
     factors = (2, 3, 4, 5, 6, 8, 10, 16, 25, 32, 64, 128)
 
     # Read in the basic experiment configuration
+    # We basically copy over the version from "factor_1", which is symlinked
+    # to the 01_first-results directory (see above), and then only change the
+    # binning factor in the "dataset" section of the configuration.
     main_dir = (
         get_hsr4hci_dir()
         / 'experiments'
         / '02_temporal-binning'
-        / algorithm
         / dataset
+        / algorithm
     )
     file_path = main_dir / 'factor_1' / 'config.json'
     experiment_config = load_config(file_path)
 
-    # Keep track of lines that will be written to shell scripts
+    # Define the directory with the script for creating the submit files
     if algorithm == 'pca':
         scripts_dir = get_hsr4hci_dir() / 'scripts' / 'experiments' / 'run-pca'
     else:
-        raise NotImplementedError
+        scripts_dir = (
+            get_hsr4hci_dir() / 'scripts' / 'experiments' / 'multiple_scripts'
+        )
+
+    # Keep track of lines that will be written to shell scripts
     create_submit_files = []
     start_jobs = []
 
@@ -100,10 +110,10 @@ if __name__ == '__main__':
 
         # Add line for the shell script to submit the DAGs
         file_path = experiment_dir / 'htcondor' / 'run_experiment.dag'
-        start_jobs.append(f'csd 5 {file_path.as_posix()}')
+        start_jobs.append(f'condor_submit_dag {file_path.as_posix()}')
 
     # Create the shell script to create submit files for all experiments
-    file_path = main_dir / 'create_submit_files.sh'
+    file_path = main_dir / '00_create_submit_files.sh'
     with open(file_path, 'w') as sh_file:
         sh_file.write('#!/bin/zsh\n\n')
         for line in create_submit_files:
@@ -111,7 +121,7 @@ if __name__ == '__main__':
     os.chmod(file_path, 0o755)
 
     # Create the shell script to launch the experiments on the cluster
-    file_path = main_dir / 'start_jobs.sh'
+    file_path = main_dir / '01_start_jobs.sh'
     with open(file_path, 'w') as sh_file:
         sh_file.write('#!/bin/zsh\n\n')
         for line in start_jobs:
