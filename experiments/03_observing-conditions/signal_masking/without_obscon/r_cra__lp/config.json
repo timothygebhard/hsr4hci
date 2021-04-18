@@ -2,7 +2,7 @@
   "dataset": {
     "name":                    "r_cra__lp",
     "binning_factor":          25,
-    "frame_size":              [35, 35]
+    "frame_size":              [43, 43]
   },
   "observing_conditions": {
     "selected_keys":           null
