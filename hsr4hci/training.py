@@ -601,17 +601,39 @@ def train_model(
         if mode is None:
 
             # Fit the model to the (full) training data
-            model.fit(X=train_predictors, y=train_targets)
+            try:
+                model.fit(X=train_predictors, y=train_targets)
+            except np.linalg.LinAlgError:
+                return (
+                    full_residuals,
+                    dict(
+                        alphas=alphas,
+                        pixel_coefs=pixel_coefs,
+                        planet_coefs=planet_coefs,
+                        selection_mask=selection_mask,
+                    ),
+                )
 
         # Case 2: We are training the model with "signal masking"
         elif mode == 'signal_masking':
 
             # Fit the model to the training data selected by the sample_weight
-            model.fit(
-                X=train_predictors,
-                y=train_targets,
-                sample_weight=sample_weight,
-            )
+            try:
+                model.fit(
+                    X=train_predictors,
+                    y=train_targets,
+                    sample_weight=sample_weight,
+                )
+            except np.linalg.LinAlgError:
+                return (
+                    full_residuals,
+                    dict(
+                        alphas=alphas,
+                        pixel_coefs=pixel_coefs,
+                        planet_coefs=planet_coefs,
+                        selection_mask=selection_mask,
+                    ),
+                )
 
         # Case 3: We are training the model with "signal fitting"
         elif mode == 'signal_fitting' and expected_signal is not None:
@@ -629,7 +651,18 @@ def train_model(
 
             # Fit the model to the (full) training data, including the extra
             # predictor in form of the expected signal
-            model.fit(X=train_predictors_, y=train_targets)
+            try:
+                model.fit(X=train_predictors_, y=train_targets)
+            except np.linalg.LinAlgError:
+                return (
+                    full_residuals,
+                    dict(
+                        alphas=alphas,
+                        pixel_coefs=pixel_coefs,
+                        planet_coefs=planet_coefs,
+                        selection_mask=selection_mask,
+                    ),
+                )
 
             # Ideally, we would constrain the coefficient of the expected
             # signal (and ONLY this coefficient) to be non-negative. After
@@ -646,7 +679,18 @@ def train_model(
             # we train the model again, this time WITHOUT the expected signal
             # as a predictor (effectively forcing the coefficient to 0).
             if model.coef_[-1] < 0:
-                model.fit(X=train_predictors, y=train_targets)
+                try:
+                    model.fit(X=train_predictors, y=train_targets)
+                except np.linalg.LinAlgError:
+                    return (
+                        full_residuals,
+                        dict(
+                            alphas=alphas,
+                            pixel_coefs=pixel_coefs,
+                            planet_coefs=planet_coefs,
+                            selection_mask=selection_mask,
+                        ),
+                    )
 
             # If the coefficient that belongs to the expected_signal was NOT
             # negative, we can create a "noise only"-model by simply dropping
