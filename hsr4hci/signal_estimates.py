@@ -43,10 +43,12 @@ def get_selection_mask(
         A tuple (`selection_mask`, `threshold`).
     """
 
+    mask_size = (int(roi_mask.shape[0]), int(roi_mask.shape[1]))
+
     # Drop the innermost few pixels, where we realistically cannot find
     # planets but which for signal fitting are often very bright, which breaks
     # the threshold estimation
-    drop_mask = get_circle_mask(mask_size=roi_mask.shape, radius=4)
+    drop_mask = get_circle_mask(mask_size=mask_size, radius=4)
 
     # For threshold_isodata(), it seems to make sense to remove all the pixels
     # that are (close to) zero in the match fraction (?)
