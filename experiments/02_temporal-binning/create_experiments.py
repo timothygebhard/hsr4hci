@@ -40,6 +40,21 @@ if __name__ == '__main__':
         required=True,
     )
     parser.add_argument(
+        '--n-splits',
+        type=int,
+        default=1,
+        help=(
+            'Number of splits into which the training data is divided to '
+            'parallelize the training.'
+        ),
+    )
+    parser.add_argument(
+        '--bid',
+        type=int,
+        default=5,
+        help='Amount of cluster dollars to bid for each job.',
+    )
+    parser.add_argument(
         '--dataset',
         type=str,
         choices=['beta_pictoris__lp', 'r_cra__lp'],
@@ -50,6 +65,8 @@ if __name__ == '__main__':
     # Get arguments
     algorithm = args.algorithm
     dataset = args.dataset
+    n_splits = args.n_splits
+    bid = args.bid
 
     # -------------------------------------------------------------------------
     # Create experiments
@@ -77,10 +94,12 @@ if __name__ == '__main__':
     # Define the directory with the script for creating the submit files
     if algorithm == 'pca':
         scripts_dir = get_hsr4hci_dir() / 'scripts' / 'experiments' / 'run-pca'
+        n_splits_argument = ''
     else:
         scripts_dir = (
-            get_hsr4hci_dir() / 'scripts' / 'experiments' / 'multiple_scripts'
+            get_hsr4hci_dir() / 'scripts' / 'experiments' / 'multiple-scripts'
         )
+        n_splits_argument = f'--n-splits {n_splits}'
 
     # Keep track of lines that will be written to shell scripts
     create_submit_files = []
@@ -105,6 +124,8 @@ if __name__ == '__main__':
         file_path = scripts_dir / '00_make_submit_files.py'
         create_submit_files.append(
             f'python {file_path.as_posix()} '
+            f'--bid {bid} '
+            f'{n_splits_argument}'
             f'--experiment-dir {experiment_dir.as_posix()} ;'
         )
 
@@ -112,7 +133,8 @@ if __name__ == '__main__':
         file_path = experiment_dir / 'htcondor' / 'run_experiment.dag'
         start_jobs.append(f'condor_submit_dag {file_path.as_posix()}')
 
-    # Create the shell script to create submit files for all experiments
+    # Create the shell script to create submit files for all experiments;
+    # use chmod() to make the script executable
     file_path = main_dir / '00_create_submit_files.sh'
     with open(file_path, 'w') as sh_file:
         sh_file.write('#!/bin/zsh\n\n')
@@ -120,7 +142,8 @@ if __name__ == '__main__':
             sh_file.write(f'{line}\n')
     os.chmod(file_path, 0o755)
 
-    # Create the shell script to launch the experiments on the cluster
+    # Create the shell script to launch the experiments on the cluster;
+    # use chmod() to make the script executable
     file_path = main_dir / '01_start_jobs.sh'
     with open(file_path, 'w') as sh_file:
         sh_file.write('#!/bin/zsh\n\n')
