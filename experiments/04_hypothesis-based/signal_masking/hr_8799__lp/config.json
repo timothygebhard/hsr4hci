@@ -1,24 +1,24 @@
 {
   "hypothesis": {
     "b": {
-        "radius":              [1.71, "arcsecond"],
-        "angle":               [62.99, "degree"],
-        "magnitude":           1
+        "separation":          [1.71, "arcsecond"],
+        "position_angle":      [62.99, "degree"],
+        "contrast":            1
       },
     "c": {
-        "radius":              [0.95, "arcsecond"],
-        "angle":               [320.47, "degree"],
-        "magnitude":           1
+        "separation":          [0.95, "arcsecond"],
+        "position_angle":      [320.47, "degree"],
+        "contrast":            1
       },
     "d": {
-        "radius":              [0.64, "arcsecond"],
-        "angle":               [207.00, "degree"],
-        "magnitude":           1
+        "separation":          [0.64, "arcsecond"],
+        "position_angle":      [207.00, "degree"],
+        "contrast":            1
       },
     "e": {
-        "radius":              [0.39, "arcsecond"],
-        "angle":               [249.35, "degree"],
-        "magnitude":           1
+        "separation":          [0.39, "arcsecond"],
+        "position_angle":      [249.35, "degree"],
+        "contrast":            1
       }
   },
   "dataset": {
