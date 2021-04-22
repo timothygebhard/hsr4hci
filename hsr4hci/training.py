@@ -379,6 +379,7 @@ def train_model(
     psf_template: np.ndarray,
     n_splits: int,
     base_model_creator: BaseModelCreator,
+    signal_masking_threshold: float = 0.5,
 ) -> Tuple[np.ndarray, Dict[str, np.ndarray]]:
     """
     Train a set of models (using a cross validation-like splitting
@@ -398,6 +399,7 @@ def train_model(
         psf_template:
         n_splits:
         base_model_creator:
+        signal_masking_threshold:
 
     Returns:
 
@@ -513,11 +515,11 @@ def train_model(
             # frames that do NOT contain signal (= can be used for training).
             signal_mask = expected_signal < 0.2
 
-            # Check if the signal mask excludes more than 50% of the training
-            # data (again, one could also choose another threshold here). In
-            # this case, we cannot train a model, and we immediately return
+            # Check if the signal mask excludes more than a given fraction of
+            # the training data (again, this threshold is somewhat arbitrary).
+            # In this case, we cannot train a model, and we immediately return
             # the default result values.
-            if np.mean(signal_mask) < 0.5:
+            if np.mean(signal_mask) < signal_masking_threshold:
                 return (
                     full_residuals,
                     dict(
