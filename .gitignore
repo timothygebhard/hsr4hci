@@ -5,11 +5,12 @@
 # Ignore results, models, ... folders in experiment directories
 experiments/playground
 experiments/**/htcondor
+experiments/**/hdf
+experiments/**/partial
 experiments/**/results
 experiments/**/clusterlogs
 experiments/**/*.sub
 experiments/**/*.dag
-experiments/*/99_archive
 
 # Ignore FITS and HDF files (these should never go into the repository)
 *.fits
