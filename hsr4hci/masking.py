@@ -324,8 +324,11 @@ def get_exclusion_mask(
         # we find using this method is not very sensitive to the temporal
         # resolution anyway, so we can compute it using a quick approximation
         # of the signal stack to speed things up.
-        n = n_frames // 100
-        parang_resampled = parang[::n]
+        if len(parang) > 100:
+            n = n_frames // 100
+            parang_resampled = parang[::n]
+        else:
+            parang_resampled = parang
 
         # Compute final planet position under the hypothesis given by the
         # tuple (position, signal_time)
