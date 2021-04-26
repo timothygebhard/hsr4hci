@@ -42,7 +42,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--n-splits',
         type=int,
-        default=1,
+        default=64,
         help=(
             'Number of splits into which the training data is divided to '
             'parallelize the training.'
@@ -127,7 +127,7 @@ if __name__ == '__main__':
         create_submit_files.append(
             f'python {file_path.as_posix()} '
             f'--bid {bid} '
-            f'{n_splits_argument}'
+            f'{n_splits_argument} '
             f'--experiment-dir {experiment_dir.as_posix()} ;'
         )
 

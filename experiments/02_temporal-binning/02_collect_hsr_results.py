@@ -45,7 +45,6 @@ if __name__ == '__main__':
     parser.add_argument(
         '--dataset',
         type=str,
-        choices=['beta_pictoris__lp', 'r_cra__lp'],
         required=True,
     )
     parser.add_argument(
