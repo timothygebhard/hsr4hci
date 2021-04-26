@@ -134,23 +134,23 @@ if __name__ == '__main__':
     array_memory = n_frames * n_pixels_per_job * 8
 
     # Count the number of such variables that we need to keep in memory and
-    # write out to the (partial) HDF files
-    n_arrays = 2 + 3 * (config['n_signal_times'] + 1)
+    # write out to the (partial) HDF files: one for each signal time on the
+    # temporal grid, plus 1 for the "default" model.
+    n_arrays = config['n_signal_times'] + 1
 
     # Compute the expected amount of memory that we need per job (in MB)
     expected_job_memory = stack_memory + (n_arrays * array_memory)
     expected_job_memory /= 1024 ** 2
-    expected_job_memory = 2 * int(expected_job_memory)
+    expected_job_memory *= 2
+    expected_job_memory += 4096
+    expected_job_memory = int(expected_job_memory)
 
     # Compute the expected total memory for merging the HDF files (in MB)
     expected_total_memory = n_arrays * array_memory * n_splits
     expected_total_memory /= 1024 ** 2
-    expected_total_memory *= 2
+    expected_total_memory *= 4
+    expected_total_memory += 8192
     expected_total_memory = int(expected_total_memory)
-
-    # Round up (it never makes sense to ask for less than 1 GB on the cluster)
-    expected_job_memory = max(expected_job_memory, 1024)
-    expected_total_memory = max(expected_total_memory, 1024)
 
     print(
         f'\nPixels per job: {np.sum(roi_mask)} / {n_splits} <= '
@@ -181,7 +181,7 @@ if __name__ == '__main__':
     submit_file = SubmitFile(
         clusterlogs_dir=clusterlogs_dir.as_posix(),
         memory=expected_job_memory,
-        cpus=8,
+        cpus=4,
     )
     submit_file.add_job(
         name=name,
@@ -326,7 +326,7 @@ if __name__ == '__main__':
     print(f'Creating {name}.sub...', end=' ', flush=True)
     submit_file = SubmitFile(
         clusterlogs_dir=clusterlogs_dir.as_posix(),
-        memory=1024,
+        memory=4096,
         cpus=1,
     )
     submit_file.add_job(
