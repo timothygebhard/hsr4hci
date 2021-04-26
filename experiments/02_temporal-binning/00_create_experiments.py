@@ -57,7 +57,6 @@ if __name__ == '__main__':
     parser.add_argument(
         '--dataset',
         type=str,
-        choices=['beta_pictoris__lp', 'r_cra__lp'],
         required=True,
     )
     args = parser.parse_args()
@@ -74,8 +73,11 @@ if __name__ == '__main__':
 
     # Define binning factors for which we want to create an experiment
     # Note: We do not need 1 here, because we will symlink to the experiment
-    #       from 01_first-results to avoid computing anything twice
-    factors = (2, 3, 4, 5, 6, 8, 10, 16, 25, 32, 64, 128)
+    #       from 01_first-results to avoid computing anything twice. The
+    #       symlinking has to happen manually (for now).
+    factors = (
+        2, 3, 4, 5, 6, 8, 10, 16, 25, 32, 64, 128, 150, 200, 300, 400, 500
+    )
 
     # Read in the basic experiment configuration
     # We basically copy over the version from "factor_1", which is symlinked
