@@ -103,44 +103,57 @@ if __name__ == '__main__':
     # Load and plot the results for HSR (signal fitting)
     # -------------------------------------------------------------------------
 
-    # Read in the results for PCA into a pandas DataFrame
     print('Reading in HSR results (signal fitting)...', end=' ', flush=True)
-    file_path = signal_fitting_dir / f'snr__{planet}.tsv'
-    df =  pd.read_csv(file_path, sep='\t')
-    print('Done!', flush=True)
 
-    # Plot the SNR over the binning factor
-    ax1.plot(df.factor, df.snr, color='C0')
-    ax1.plot(
-        df.factor,
-        df.snr,
-        'o',
-        markerfacecolor='C0',
-        markeredgecolor='white',
-        label=f'HSR (signal fitting)',
-    )
+    try:
 
+        # Read in the results for PCA into a pandas DataFrame
+        file_path = signal_fitting_dir / f'snr__{planet}.tsv'
+        df =  pd.read_csv(file_path, sep='\t')
+
+        # Plot the SNR over the binning factor
+        ax1.plot(df.factor, df.snr, ls='--', color='C0')
+        ax1.plot(
+            df.factor,
+            df.snr,
+            's',
+            markerfacecolor='C0',
+            markeredgecolor='white',
+            label=f'HSR (signal fitting)',
+        )
+
+        print('Done!', flush=True)
+
+    except FileNotFoundError:
+        print('Failed!', flush=True)
 
     # -------------------------------------------------------------------------
     # Load and plot the results for HSR (signal masking)
     # -------------------------------------------------------------------------
 
-    # Read in the results for PCA into a pandas DataFrame
     print('Reading in HSR results (signal masking)...', end=' ', flush=True)
-    file_path = signal_masking_dir / f'snr__{planet}.tsv'
-    df =  pd.read_csv(file_path, sep='\t')
-    print('Done!', flush=True)
 
-    # Plot the SNR over the binning factor
-    ax1.plot(df.factor, df.snr, ls='--', color='C0')
-    ax1.plot(
-        df.factor,
-        df.snr,
-        's',
-        markerfacecolor='C0',
-        markeredgecolor='white',
-        label=f'HSR (signal masking)',
-    )
+    try:
+
+        # Read in the results for PCA into a pandas DataFrame
+        file_path = signal_masking_dir / f'snr__{planet}.tsv'
+        df =  pd.read_csv(file_path, sep='\t')
+
+        # Plot the SNR over the binning factor
+        ax1.plot(df.factor, df.snr, ls='--', color='C0')
+        ax1.plot(
+            df.factor,
+            df.snr,
+            's',
+            markerfacecolor='C0',
+            markeredgecolor='white',
+            label=f'HSR (signal masking)',
+        )
+
+        print('Done!', flush=True)
+
+    except FileNotFoundError:
+        print('Failed!', flush=True)
 
     # -------------------------------------------------------------------------
     # Set up plot options and save results

@@ -104,7 +104,7 @@ if __name__ == '__main__':
     # Loop over the binning factors to compute the results
     for factor in factors:
 
-        print(f'Computing SNRs for factor = {factor}:', flush=True)
+        print(f'\nComputing SNRs for factor = {factor}:', flush=True)
 
         # Define path to experiment directory
         experiment_dir = main_dir / f'factor_{factor}'
@@ -162,10 +162,10 @@ if __name__ == '__main__':
             )
 
     # Convert the results to a pandas data frame and save as a TSV file
-    print('Saving results to TSV...', end=' ', flush=True)
+    print('\nSaving results to TSV...', end=' ', flush=True)
     results_df = pd.DataFrame(results)
     results_df.to_csv(main_dir / f'snr__{planet}.tsv', sep='\t')
-    print('\nDone', flush=True)
+    print('Done', flush=True)
 
     # -------------------------------------------------------------------------
     # Postliminaries
