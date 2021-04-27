@@ -15,6 +15,7 @@ import pandas as pd
 
 from hsr4hci.config import get_hsr4hci_dir
 from hsr4hci.data import load_metadata
+from hsr4hci.plotting import adjust_luminosity
 
 
 # -----------------------------------------------------------------------------
@@ -112,7 +113,7 @@ if __name__ == '__main__':
         df =  pd.read_csv(file_path, sep='\t')
 
         # Plot the SNR over the binning factor
-        ax1.plot(df.factor, df.snr, ls='--', color='C0')
+        ax1.plot(df.factor, df.snr, ls='-', color='C0')
         ax1.plot(
             df.factor,
             df.snr,
@@ -140,12 +141,12 @@ if __name__ == '__main__':
         df =  pd.read_csv(file_path, sep='\t')
 
         # Plot the SNR over the binning factor
-        ax1.plot(df.factor, df.snr, ls='--', color='C0')
+        ax1.plot(df.factor, df.snr, ls='--', color=adjust_luminosity('C0'))
         ax1.plot(
             df.factor,
             df.snr,
             's',
-            markerfacecolor='C0',
+            markerfacecolor=adjust_luminosity('C0'),
             markeredgecolor='white',
             label=f'HSR (signal masking)',
         )
