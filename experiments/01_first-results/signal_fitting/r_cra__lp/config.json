@@ -2,14 +2,14 @@
   "dataset": {
     "name":                    "r_cra__lp",
     "binning_factor":          1,
-    "frame_size":              [35, 35]
+    "frame_size":              [49, 49]
   },
   "observing_conditions": {
     "selected_keys":           null
   },
   "roi_mask": {
     "inner_radius":            [0.00, "arcsec"],
-    "outer_radius":            [0.35, "arcsec"]
+    "outer_radius":            [0.40, "arcsec"]
   },
   "selection_mask": {
     "annulus_width":           [ 0.0, "pixel"],

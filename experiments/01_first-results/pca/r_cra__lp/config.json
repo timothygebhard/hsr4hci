@@ -2,15 +2,15 @@
   "dataset": {
     "name":           "r_cra__lp",
     "binning_factor": 1,
-    "frame_size":     [35, 35]
+    "frame_size":     [49, 49]
   },
   "roi_mask": {
     "inner_radius":   [0.00, "arcsec"],
-    "outer_radius":   [0.35, "arcsec"]
+    "outer_radius":   [0.40, "arcsec"]
   },
   "pca": {
     "min_n":          1,
     "max_n":          200,
-    "default_n":      10
+    "default_n":      9
   }
 }
