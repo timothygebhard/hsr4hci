@@ -46,7 +46,7 @@ def crop_psf_template(
 
     # If desired, rescale the PSF template into the value range (0, 1]
     scale_factor = np.max(psf_template) if rescale_psf else 1
-    psf_rescaled = psf_template / scale_factor
+    psf_rescaled = np.copy(psf_template) / scale_factor
 
     # Clip the PSF template to strictly positive values
     epsilon = np.finfo(np.float64).eps
@@ -87,11 +87,13 @@ def get_psf_fwhm(psf_template: np.ndarray) -> float:
     # Crop PSF template: too large templates (which are mostly zeros) can
     # cause problems when fitting them with a 2D Gauss function
     if psf_template.shape[0] >= 33 and psf_template.shape[1] >= 33:
-        psf_template = crop_center(psf_template, (33, 33))
+        psf_cropped = crop_center(psf_template, (33, 33))
+    else:
+        psf_cropped = psf_template
 
     # Define the grid for the fit
-    x = np.arange(psf_template.shape[0])
-    y = np.arange(psf_template.shape[1])
+    x = np.arange(psf_cropped.shape[0])
+    y = np.arange(psf_cropped.shape[1])
     meshgrid = (
         np.array(np.meshgrid(x, y)[0]),
         np.array(np.meshgrid(x, y)[1]),
@@ -99,10 +101,10 @@ def get_psf_fwhm(psf_template: np.ndarray) -> float:
 
     # Set up a 2D Gaussian and fit it to the PSF template
     model = CircularGauss2D(
-        mu_x=psf_template.shape[0] / 2 - 0.5,
-        mu_y=psf_template.shape[1] / 2 - 0.5,
+        mu_x=psf_cropped.shape[0] / 2 - 0.5,
+        mu_y=psf_cropped.shape[1] / 2 - 0.5,
     )
-    model.fit(meshgrid=meshgrid, target=psf_template)
+    model.fit(meshgrid=meshgrid, target=psf_cropped)
 
     # Make sure the returned FWHM is positive
     return abs(model.fwhm)

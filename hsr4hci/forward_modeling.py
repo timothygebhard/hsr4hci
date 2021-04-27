@@ -134,7 +134,7 @@ def add_fake_planet(
 
     # Combine all scaling factors and scale the PSF template
     scaling_factor = flux_ratio * dit_scaling * extra_scaling
-    psf_scaled = scaling_factor * psf_template
+    psf_scaled = scaling_factor * np.copy(psf_template)
 
     # Make sure that the PSF has a compatible shape, that is, either crop or
     # pad the PSF template to the same spatial shape as the `stack`.
@@ -232,11 +232,12 @@ def get_time_series_for_position(
 
     # Make sure that the PSF has a compatible shape, that is, either crop or
     # pad the PSF template to the same shape as the `stack`.
-    psf_template = crop_or_pad(psf_template, frame_size)
+    psf_cropped = np.copy(psf_template)
+    psf_cropped = crop_or_pad(psf_cropped, frame_size)
 
     # Create array where we place the PSF template at the target `position`
     array = shift_image(
-        image=psf_template,
+        image=psf_cropped,
         offset=(position[0] - center[0], position[1] - center[1]),
         interpolation=interpolation,
     )
@@ -299,7 +300,8 @@ def get_time_series_for_position__full_stack(
 
     # Make sure that the PSF has a compatible shape, that is, either crop or
     # pad the PSF template to the same shape as the `stack`.
-    psf_template = crop_or_pad(psf_template, frame_size)
+    psf_cropped = np.copy(psf_template)
+    psf_cropped = crop_or_pad(psf_cropped, frame_size)
 
     # Given that the hypothesis that the planet is at `position` at the given
     # `signal_time`, compute the planet position in the final images
@@ -315,7 +317,7 @@ def get_time_series_for_position__full_stack(
     signal_stack = add_fake_planet(
         stack=np.zeros((n_frames,) + frame_size),
         parang=parang,
-        psf_template=psf_template,
+        psf_template=psf_cropped,
         polar_position=final_position_polar,
         magnitude=0,
         extra_scaling=1,

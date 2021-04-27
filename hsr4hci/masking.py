@@ -281,9 +281,10 @@ def get_exclusion_mask(
     center = get_center(mask_size)
 
     # Prepare the unsaturated PSF template (crop it, normalize it)
-    psf_resized = crop_or_pad(psf_template, mask_size)
+    psf_resized = np.copy(psf_template)
     psf_resized -= np.min(psf_resized)
     psf_resized /= np.max(psf_resized)
+    psf_resized = crop_or_pad(psf_resized, mask_size)
 
     # -------------------------------------------------------------------------
     # CASE 1: Exclusion mask *without* signal time
@@ -486,7 +487,6 @@ def get_radial_masks(
 # -----------------------------------------------------------------------------
 # OTHER MASKING-RELATED FUNCTIONS
 # -----------------------------------------------------------------------------
-
 
 def get_positions_from_mask(mask: np.ndarray) -> List[Tuple[int, int]]:
     """
