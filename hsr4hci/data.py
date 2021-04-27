@@ -23,6 +23,7 @@ from hsr4hci.observing_conditions import ObservingConditions
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
+
 def load_dataset(
     name: str,
     binning_factor: int = 1,
@@ -142,20 +143,22 @@ def load_dataset(
         # Loop over the existing planets and add negative fake planets at
         # their positions to remove them
         for name, parameters in planets.items():
-            stack = add_fake_planet(
-                stack=stack,
-                parang=parang,
-                psf_template=psf_template,
-                polar_position=(
-                    Quantity(parameters['separation'] / pixscale , 'pixel'),
-                    Quantity(parameters['position_angle'], 'degree'),
-                ),
-                magnitude=float(parameters['contrast']),
-                extra_scaling=-1,
-                dit_stack=float(metadata['DIT_STACK']),
-                dit_psf_template=float(metadata['DIT_PSF_TEMPLATE']),
-                return_planet_positions=False,
-                interpolation='bilinear',
+            stack = np.asarray(
+                add_fake_planet(
+                    stack=stack,
+                    parang=parang,
+                    psf_template=psf_template,
+                    polar_position=(
+                        Quantity(parameters['separation'] / pixscale, 'pixel'),
+                        Quantity(parameters['position_angle'], 'degree'),
+                    ),
+                    magnitude=float(parameters['contrast']),
+                    extra_scaling=-1,
+                    dit_stack=float(metadata['DIT_STACK']),
+                    dit_psf_template=float(metadata['DIT_PSF_TEMPLATE']),
+                    return_planet_positions=False,
+                    interpolation='bilinear',
+                )
             )
 
     # -------------------------------------------------------------------------

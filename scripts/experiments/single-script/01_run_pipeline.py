@@ -157,7 +157,7 @@ if __name__ == '__main__':
         # Now, create a HDF directory on /work
         work_hdf_dir = work_dir / 'hdf'
         work_hdf_dir.mkdir(exist_ok=True)
-    
+
         # Then, create a symlink from /home to /work
         home_hdf_dir = experiment_dir / 'hdf'
         if not home_hdf_dir.exists():

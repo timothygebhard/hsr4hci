@@ -25,7 +25,6 @@ from hsr4hci.masking import get_exclusion_mask, get_selection_mask
 from hsr4hci.plotting import get_transparent_cmap, disable_ticks
 
 
-
 # -----------------------------------------------------------------------------
 # MAIN CODE
 # -----------------------------------------------------------------------------

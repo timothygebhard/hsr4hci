@@ -136,7 +136,6 @@ if __name__ == '__main__':
             frame_size=frame_size,
         )
 
-
         # Compute the figures of merit
         try:
             ignore_neighbors = 1

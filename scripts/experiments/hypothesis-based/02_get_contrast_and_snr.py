@@ -70,7 +70,7 @@ if __name__ == '__main__':
     # Load experiment config from JSON
     print('Loading experiment configuration...', end=' ', flush=True)
     config = load_config(experiment_dir / 'config.json')
-    if not 'hypothesis' in config.keys():
+    if 'hypothesis' not in config.keys():
         raise RuntimeError('Experiment configuration contains no hypothesis!')
     print('Done!', flush=True)
 

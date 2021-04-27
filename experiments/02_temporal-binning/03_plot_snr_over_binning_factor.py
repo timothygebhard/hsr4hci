@@ -80,7 +80,7 @@ if __name__ == '__main__':
     # Read in the results for PCA into a pandas DataFrame
     print('Reading in PCA results...', end=' ', flush=True)
     file_path = pca_dir / f'snr__{planet}.tsv'
-    df =  pd.read_csv(file_path, sep='\t')
+    df = pd.read_csv(file_path, sep='\t')
     print('Done!', flush=True)
 
     # Plot results for different numbers of principal components
@@ -110,7 +110,7 @@ if __name__ == '__main__':
 
         # Read in the results for PCA into a pandas DataFrame
         file_path = signal_fitting_dir / f'snr__{planet}.tsv'
-        df =  pd.read_csv(file_path, sep='\t')
+        df = pd.read_csv(file_path, sep='\t')
 
         # Plot the SNR over the binning factor
         ax1.plot(df.factor, df.snr, ls='-', color='C0')
@@ -120,7 +120,7 @@ if __name__ == '__main__':
             's',
             markerfacecolor='C0',
             markeredgecolor='white',
-            label=f'HSR (signal fitting)',
+            label='HSR (signal fitting)',
         )
 
         print('Done!', flush=True)
@@ -138,7 +138,7 @@ if __name__ == '__main__':
 
         # Read in the results for PCA into a pandas DataFrame
         file_path = signal_masking_dir / f'snr__{planet}.tsv'
-        df =  pd.read_csv(file_path, sep='\t')
+        df = pd.read_csv(file_path, sep='\t')
 
         # Plot the SNR over the binning factor
         ax1.plot(df.factor, df.snr, ls='--', color=adjust_luminosity('C0'))
@@ -148,7 +148,7 @@ if __name__ == '__main__':
             's',
             markerfacecolor=adjust_luminosity('C0'),
             markeredgecolor='white',
-            label=f'HSR (signal masking)',
+            label='HSR (signal masking)',
         )
 
         print('Done!', flush=True)
