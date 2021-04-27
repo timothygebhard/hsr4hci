@@ -8,10 +8,13 @@ Utility functions for loading data sets.
 
 from typing import Any, Dict, Optional, Tuple, Union
 
+from astropy.units import Quantity
+
 import h5py
 import numpy as np
 
 from hsr4hci.config import get_datasets_dir
+from hsr4hci.forward_modeling import add_fake_planet
 from hsr4hci.general import prestack_array
 from hsr4hci.observing_conditions import ObservingConditions
 
@@ -20,11 +23,11 @@ from hsr4hci.observing_conditions import ObservingConditions
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-
 def load_dataset(
     name: str,
     binning_factor: int = 1,
     frame_size: Optional[Tuple[int, int]] = None,
+    remove_planets: bool = False,
 ) -> Tuple[
     np.ndarray,
     np.ndarray,
@@ -44,6 +47,9 @@ def load_dataset(
             spatial size (in pixels) to which the stack will be cropped
             around the center. Dimensions should be odd numbers.
             If `None` is given, the frames are not cropped (default).
+        remove_planets: Whether or not to remove the planets in the
+            data set (using the literate values for their positions
+            and contrasts).
 
     Returns:
         A 5-tuple of the following form:
@@ -113,6 +119,44 @@ def load_dataset(
             if isinstance(value, bytes):
                 value = value.decode('utf-8')
             metadata[key] = value
+
+        # Read in the planet information into a dictionary (by default, this
+        # is not returned; use `load_planets()` for this)
+        planets: Dict[str, Dict[str, float]] = dict()
+        for key in hdf_file['planets'].keys():
+            planets[key] = dict(
+                separation=hdf_file['planets'][key]['separation'][()],
+                position_angle=hdf_file['planets'][key]['position_angle'][()],
+                contrast=hdf_file['planets'][key]['contrast'][()],
+            )
+
+    # -------------------------------------------------------------------------
+    # Remove planets from stack, if desired
+    # -------------------------------------------------------------------------
+
+    if remove_planets:
+
+        # Define shortcut (PIXSCALE is in arcsec / pixel)
+        pixscale = float(metadata['PIXSCALE'])
+
+        # Loop over the existing planets and add negative fake planets at
+        # their positions to remove them
+        for name, parameters in planets.items():
+            stack = add_fake_planet(
+                stack=stack,
+                parang=parang,
+                psf_template=psf_template,
+                polar_position=(
+                    Quantity(parameters['separation'] / pixscale , 'pixel'),
+                    Quantity(parameters['position_angle'], 'degree'),
+                ),
+                magnitude=float(parameters['contrast']),
+                extra_scaling=-1,
+                dit_stack=float(metadata['DIT_STACK']),
+                dit_psf_template=float(metadata['DIT_PSF_TEMPLATE']),
+                return_planet_positions=False,
+                interpolation='bilinear',
+            )
 
     # -------------------------------------------------------------------------
     # Apply temporal binning to the stack
