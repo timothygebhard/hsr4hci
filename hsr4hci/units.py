@@ -6,9 +6,11 @@ Utility functions related to using units and quantities (astropy.units)
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, Union
 
 from astropy import units
+
+import numpy as np
 
 from hsr4hci.general import get_from_nested_dict, set_in_nested_dict
 
@@ -16,6 +18,7 @@ from hsr4hci.general import get_from_nested_dict, set_in_nested_dict
 # -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
+
 
 def convert_to_quantity(
     config: Dict[str, Any],
@@ -120,3 +123,39 @@ def to_pixel(quantity: units.Quantity) -> float:
     """
 
     return float(quantity.to('pixel').value)
+
+
+def flux_ratio_to_magnitudes(
+    flux_ratio: Union[float, np.ndarray]
+) -> Union[float, np.ndarray]:
+    """
+    Convert a given flux ratio to magnitudes.
+
+    Args:
+        flux_ratio: The brightness / contrast as a flux ratio; either
+            as a single float or as a numpy array of floats.
+
+    Returns:
+        The brightness / contrast(s) in magnitudes.
+    """
+
+    if isinstance(flux_ratio, np.ndarray):
+        return np.asarray(-2.5 * np.log10(flux_ratio))
+    return -2.5 * float(np.log10(flux_ratio))
+
+
+def magnitude_to_flux_ratio(
+    magnitudes: Union[float, np.ndarray]
+) -> Union[float, np.ndarray]:
+    """
+    Convert magnitudes to a flux ratio.
+
+    Args:
+        magnitudes: The brightness / contrast in magnitudes; either as
+            a single float or as a numpy array of floats.
+
+    Returns:
+        The brightness / contrast(s) as a flux ratio.
+    """
+
+    return 10 ** (-magnitudes / 2.5)

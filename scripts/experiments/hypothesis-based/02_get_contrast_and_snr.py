@@ -22,16 +22,16 @@ from hsr4hci.apertures import (
     get_reference_aperture_positions,
 )
 from hsr4hci.config import load_config
-from hsr4hci.contrast_curves import (
-    flux_ratio_to_magnitudes,
-    magnitude_to_flux_ratio,
-)
 from hsr4hci.coordinates import get_center, polar2cartesian
 from hsr4hci.data import load_metadata, load_psf_template
 from hsr4hci.evaluation import compute_optimized_snr
 from hsr4hci.fits import read_fits
 from hsr4hci.psf import get_psf_fwhm
-from hsr4hci.units import set_units_for_instrument
+from hsr4hci.units import (
+    flux_ratio_to_magnitudes,
+    magnitude_to_flux_ratio,
+    set_units_for_instrument,
+)
 
 
 # -----------------------------------------------------------------------------

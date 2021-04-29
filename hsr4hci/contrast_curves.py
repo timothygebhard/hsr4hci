@@ -6,7 +6,7 @@ Utilities for computing contrast curves (under heavy development).
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import List, Tuple, Union
+from typing import List, Tuple
 
 from astropy.units import Quantity
 
@@ -19,42 +19,6 @@ from hsr4hci.general import find_closest
 # -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
-
-def flux_ratio_to_magnitudes(
-    flux_ratio: Union[float, np.ndarray]
-) -> Union[float, np.ndarray]:
-    """
-    Convert a contrast given as a flux ratio to magnitudes.
-
-    Args:
-        flux_ratio: The contrast as a flux ratio; either as a single
-            float or as a numpy array of floats.
-
-    Returns:
-        The contrast(s) in magnitudes.
-    """
-
-    if isinstance(flux_ratio, np.ndarray):
-        return np.asarray(-2.5 * np.log10(flux_ratio))
-    return -2.5 * float(np.log10(flux_ratio))
-
-
-def magnitude_to_flux_ratio(
-    magnitudes: Union[float, np.ndarray]
-) -> Union[float, np.ndarray]:
-    """
-    Convert a contrast in magnitudes back to a flux ratio.
-
-    Args:
-        magnitudes: The contrast in magnitudes; either as a single
-            float or as a numpy array of floats.
-
-    Returns:
-        The contrast(s) as a flux ratio.
-    """
-
-    return 10 ** (-magnitudes / 2.5)
-
 
 def azimuth_id_to_angle(azimuth_id: str) -> float:
     """
