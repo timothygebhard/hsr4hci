@@ -60,7 +60,7 @@ def create_submit_file(experiment_dir: Path, algorithm: str) -> Path:
     submit_file.add_job(
         name='run_experiment',
         job_script=job_script.as_posix(),
-        arguments={'experiment_dir': experiment_dir.as_posix()},
+        arguments={'experiment-dir': experiment_dir.as_posix()},
         bid=5,
     )
 
@@ -94,8 +94,7 @@ if __name__ == '__main__':
         '--algorithm',
         type=str,
         choices=['signal_fitting', 'signal_masking', 'pca'],
-        # required=True,
-        default='pca',
+        required=True,
         help='Name of the HCIpp algorithm for which to create experiments.',
     )
     parser.add_argument(
