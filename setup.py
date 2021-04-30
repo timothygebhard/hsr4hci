@@ -28,6 +28,7 @@ setup(
         'astropy',
         'astroquery',
         'bottleneck',
+        'click',
         'contexttimer',
         'h5py',
         'joblib',
