@@ -8,9 +8,15 @@ Tests for units.py
 
 from astropy import units
 
+import numpy as np
 import pytest
 
-from hsr4hci.units import convert_to_quantity, set_units_for_instrument
+from hsr4hci.units import (
+    convert_to_quantity,
+    flux_ratio_to_magnitudes,
+    magnitude_to_flux_ratio,
+    set_units_for_instrument,
+)
 
 
 # -----------------------------------------------------------------------------
@@ -58,3 +64,19 @@ def test__convert_to_quantity() -> None:
     )
 
     assert converted_nested_dict['a']['b'] == units.Quantity(42, 'meter')
+
+
+def test__flux_ratio_to_magnitudes() -> None:
+
+    assert flux_ratio_to_magnitudes(100) == -5
+    assert np.allclose(
+        flux_ratio_to_magnitudes(np.array([100, 0.01])), np.array([-5, 5])
+    )
+
+
+def test__magnitude_to_flux_ratio() -> None:
+
+    assert magnitude_to_flux_ratio(-5) == 100
+    assert np.allclose(
+        magnitude_to_flux_ratio(np.array([-5, 5])), np.array([100, 0.01])
+    )
