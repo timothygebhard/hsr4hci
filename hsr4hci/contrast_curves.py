@@ -20,36 +20,37 @@ from hsr4hci.general import find_closest
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def azimuth_id_to_angle(azimuth_id: str) -> float:
+def azimuthal_position_to_angle(azimuthal_position: str) -> float:
     """
     Convert an azimuthal identifier (used for fake planet positions) to
     to the polar angle at which it (approximately) is injected.
 
     The azimuthal identifier are to be interpreted as follows: "a" is
-    the position whose polar angle is the closest to 0°, "b" is the
-    position whose polar angle is the closest to 60°, and so on. In
-    practice, the injection positions are not always exactly at these
-    angles; the exact angle depends on the separation.
+    the position whose polar angle is the closest to 0 degree, "b" is
+    the position whose polar angle is the closest to 60 degree, and so
+    on. In practice, the injection positions are not always exactly at
+    these angles; the exact angle depends on the separation.
 
     Args:
-        azimuth_id: Azimuthal identifier: "a", "b", "c", "d", "e", "f".
+        azimuthal_position: One of "a", "b", "c", "d", "e", "f".
 
     Returns:
-        The polar angle that corresponds to this azimuthal identifier.
+        The polar angle (in degree) that corresponds to this azimuthal
+        identifier.
     """
 
     # Define lookup table
     lookup_table = {"a": 0, "b": 60, "c": 120, "d": 180, "e": 240, "f": 300}
 
     # Resolve given azimuth_id
-    if azimuth_id not in lookup_table.keys():
+    if azimuthal_position not in lookup_table.keys():
         raise ValueError('Invalid injection_key: must be "a", "b", ..., "f"!')
-    return lookup_table[azimuth_id]
+    return lookup_table[azimuthal_position]
 
 
 def get_injection_and_reference_positions(
     separation: Quantity,
-    azimuth_id: str,
+    azimuthal_position: str,
     aperture_radius: Quantity,
     frame_size: Tuple[int, int],
 ) -> Tuple[Tuple[float, float], List[Tuple[float, float]]]:
@@ -61,10 +62,10 @@ def get_injection_and_reference_positions(
 
     Args:
         separation: The separation from the center.
-        azimuth_id: The azimuthal identifier of the fake planet. "a"
-            refers to a planet at a polar angle of 0°, "b" to a planet
-            at (approximately) 60° and so on (the exact angle depends
-            on the separation).
+        azimuthal_position: The identifier of the azimuthal position of
+            the fake planet. "a" refers to a planet at a polar angle of
+            0 degree, "b" to a planet at (approximately) 60 degree and
+            so on (the exact angle depends on the separation).
         aperture_radius: The radius of the apertures; usually this is
             chosen as 0.5 lambda / D.
         frame_size: A tuple of integers `(width, height)` that specifies
@@ -91,7 +92,7 @@ def get_injection_and_reference_positions(
     # angle for this azimuthal_id
     injection_position_idx, _ = find_closest(
         sequence=list(np.linspace(0, 360, len(positions), endpoint=False)),
-        value=azimuth_id_to_angle(azimuth_id),
+        value=azimuthal_position_to_angle(azimuthal_position),
     )
 
     # Split the positions into the injection and reference position(s)
