@@ -19,7 +19,6 @@ from hsr4hci.general import get_from_nested_dict, set_in_nested_dict
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-
 def convert_to_quantity(
     config: Dict[str, Any],
     key_tuple: Tuple[str, ...],
@@ -54,7 +53,8 @@ def convert_to_quantity(
 
 
 @units.quantity_input(
-    pixscale=units.Unit('arcsec / pixel'), lambda_over_d=units.Unit('arcsec')
+    pixscale=units.Unit('arcsec / pixel'),
+    lambda_over_d=units.Unit('arcsec'),
 )
 def set_units_for_instrument(
     pixscale: units.Quantity,
@@ -108,21 +108,6 @@ def set_units_for_instrument(
         print('Activated instrument-specific unit conversion context:')
         print('  PIXSCALE      =', pixscale)
         print('  LAMBDA_OVER_D =', lambda_over_d, '\n')
-
-
-def to_pixel(quantity: units.Quantity) -> float:
-    """
-    Convert a given quantity to pixels and return the value as a float.
-
-    Args:
-        quantity: A compatible astropy.units.Quantity, that is, a
-        quantity that can be converted to pixel.
-
-    Returns:
-        The value of `quantity` in pixels as a simple float.
-    """
-
-    return float(quantity.to('pixel').value)
 
 
 def flux_ratio_to_magnitudes(
