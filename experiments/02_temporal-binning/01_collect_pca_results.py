@@ -8,6 +8,7 @@ SNR for different numbers of components.
 # -----------------------------------------------------------------------------
 
 import argparse
+import os
 import time
 
 from astropy.units import Quantity
@@ -93,9 +94,14 @@ if __name__ == '__main__':
         / 'pca'
     )
 
-    # Define binning factors
-    factors = (
-        1, 2, 3, 4, 5, 6, 8, 10, 16, 25, 32, 64, 128, 150, 200, 300, 400, 500
+    # Find factors by filtering folders in the main directory
+    factors = sorted(
+        [
+            int(name.split('_')[1])
+            for name in filter(
+                lambda _: os.path.isdir(main_dir / _), os.listdir(main_dir)
+            )
+        ]
     )
 
     # Keep track of the results

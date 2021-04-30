@@ -172,7 +172,7 @@ if __name__ == '__main__':
     ax1.grid(which='both', color='lightgray', ls='--')
     ax1.legend(loc='best')
 
-    ax1.set_xlim(0.9, 600)
+    ax1.set_xlim(0.9, 1.1 * df.factor.max())
     ax1.set_ylim(0.0, None)
 
     ax1.set_xlabel('Binning factor')
