@@ -6,7 +6,7 @@ Additional custom types that can be used for type hinting.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Optional, Protocol
+from typing import Protocol
 
 import numpy as np
 
@@ -59,39 +59,3 @@ class BaseLinearModelCV(BaseLinearModel):
     """
 
     alpha_: np.ndarray
-
-
-class Scaler(Protocol):
-    """
-    Define type hint for pre-processing scalers (RobustScaler, ...).
-    """
-
-    # pylint: disable=missing-function-docstring
-    def fit(
-        self,
-        X: np.ndarray,
-        y: Optional[np.ndarray] = None,
-    ) -> None:
-        ...
-
-    # pylint: disable=missing-function-docstring
-    def fit_transform(
-        self,
-        X: np.ndarray,
-        y: Optional[np.ndarray] = None,
-    ) -> np.ndarray:
-        ...
-
-    # pylint: disable=missing-function-docstring
-    def transform(
-        self,
-        X: np.ndarray,
-    ) -> np.ndarray:
-        ...
-
-    # pylint: disable=missing-function-docstring
-    def inverse_transform(
-        self,
-        X: np.ndarray,
-    ) -> np.ndarray:
-        ...
