@@ -9,7 +9,11 @@ Tests for splitting.py
 import numpy as np
 import pytest
 
-from hsr4hci.utils import check_consistent_size, check_frame_size
+from hsr4hci.utils import (
+    check_cartesian_position,
+    check_consistent_size,
+    check_frame_size,
+)
 
 
 # -----------------------------------------------------------------------------
@@ -21,7 +25,7 @@ def test__check_consistent_size() -> None:
     # Check that only numpy arrays are accepted
     with pytest.raises(TypeError) as type_error:
         # noinspection PyTypeChecker
-        check_consistent_size(None)  # type: ignore
+        check_consistent_size(None)
     assert 'All arguments must be numpy arrays!' in str(type_error)
 
     # Case 1: Ensure the correct default case is accepted
@@ -60,3 +64,34 @@ def test__check_frame_size() -> None:
     with pytest.raises(ValueError) as value_error:
         check_frame_size(frame_size_3)
     assert 'frame_size is not a valid frame size!' in str(value_error)
+
+    # Case 4: everything's okay
+    assert check_frame_size((10, 10))
+
+
+def test__check_cartesian_position() -> None:
+
+    # Case 1
+    with pytest.raises(ValueError) as value_error:
+        check_cartesian_position('position')
+    assert 'is not a valid Cartesian position' in str(value_error)
+
+    # Case 2
+    with pytest.raises(ValueError) as value_error:
+        check_cartesian_position((1, 2, 3))
+    assert 'is not a valid Cartesian position' in str(value_error)
+
+    # Case 3
+    with pytest.raises(ValueError) as value_error:
+        check_cartesian_position((1, 'a'))
+    assert 'is not a valid Cartesian position' in str(value_error)
+
+    # Case 4
+    with pytest.raises(ValueError) as value_error:
+        check_cartesian_position((1.0, 2), require_int=True)
+    assert 'Not all entries of position are integers!' in str(value_error)
+
+    # Case 5
+    assert check_cartesian_position((1, 2), require_int=True)
+    assert check_cartesian_position((1.0, 2))
+    assert check_cartesian_position((1.0, 2.0))
