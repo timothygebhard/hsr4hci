@@ -29,17 +29,17 @@ class RegressorModel(Protocol):
         X: np.ndarray,
         y: np.ndarray,
     ) -> 'RegressorModel':
-        ...
+        ...  # pragma: no cover
 
     # pylint: disable=missing-function-docstring
     def predict(
         self,
         X: np.ndarray,
     ) -> np.ndarray:
-        ...
+        ...  # pragma: no cover
 
 
-class BaseLinearModel(RegressorModel):
+class BaseLinearModel(RegressorModel, Protocol):
     """
     Define a base class for linear models from sklearn. Linear models
     are characterized by the fact that they have a coefficient vector
@@ -50,7 +50,7 @@ class BaseLinearModel(RegressorModel):
     intercept_: float
 
 
-class BaseLinearModelCV(BaseLinearModel):
+class BaseLinearModelCV(BaseLinearModel, Protocol):
     """
     Define a base class for cross-validated linear models from sklearn
     such as, e.g., RidgeCV. These models are characterized by the fact
