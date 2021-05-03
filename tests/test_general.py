@@ -6,20 +6,18 @@ Tests for general.py
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from _pytest.tmpdir import TempPathFactory
-from deepdiff import DeepDiff
-
 import numpy as np
 import pytest
 
 from hsr4hci.general import (
     crop_center,
+    crop_or_pad,
+    find_closest,
     get_from_nested_dict,
-    get_md5_checksum,
+    pad_array_to_shape,
     prestack_array,
     rotate_position,
     set_in_nested_dict,
-    split_into_n_chunks,
 )
 
 
@@ -64,6 +62,11 @@ def test__crop_center() -> None:
     result = crop_center(array=array, size=(-1,))
     assert np.array_equal(result, array)
 
+    # Test case 6: 1D, new shape is bigger than old shape
+    array = np.array([1, 2, 3, 4, 5, 6, 7, 8])
+    result = crop_center(array=array, size=(10,))
+    assert np.array_equal(result, array)
+
     # -------------------------------------------------------------------------
     # 2D case
     # -------------------------------------------------------------------------
@@ -74,6 +77,16 @@ def test__crop_center() -> None:
     assert np.array_equal(
         result, np.array([[7, 8, 9], [12, 13, 14], [17, 18, 19]])
     )
+
+
+def test__find_closest() -> None:
+
+    sequence = [1, 2, 3, 4, 5]
+
+    assert find_closest(sequence=sequence, value=3.141) == (2, 3)
+    assert find_closest(sequence=sequence, value=0.123) == (0, 1)
+    assert find_closest(sequence=sequence, value=6.282) == (4, 5)
+    assert find_closest(sequence=sequence, value=2.999) == (2, 3)
 
 
 def test__get_from_nested_dict() -> None:
@@ -166,47 +179,46 @@ def test__rotate_position() -> None:
     assert np.allclose(rotate_position(position, center, angle), expected)
 
 
-def test__get_md5_checksum(tmp_path_factory: TempPathFactory) -> None:
+def test__pad_array_to_shape() -> None:
 
-    # Define location of test file in temporary directory
-    test_dir = tmp_path_factory.mktemp('general', numbered=False)
-    file_path = test_dir / 'dummy.txt'
-
-    # Create dummy file with known checksum
-    with open(file_path, 'w') as text_file:
-        text_file.write('This is a dummy file.')
-
-    assert get_md5_checksum(file_path) == 'f30f68c2ec607099c3ade01dba0571d8'
-
-
-def test__split_into_n_chunks() -> None:
-
-    # Test case 0a: Check that an error is raised when len(sequence) < n_chunks
+    # Case 1
     with pytest.raises(ValueError) as error:
-        sequence_0 = (0, 1)
-        split_into_n_chunks(sequence=sequence_0, n_chunks=3)
-    assert 'n_chunks is greater than len(sequence):' in str(error)
+        pad_array_to_shape(array=np.ones((3, 3)), shape=(4,))
+    assert 'Dimensions of array and shape do not align!' in str(error)
 
-    # Test case 0b: Check that an error is raised when n_chunks <= 0
+    # Case 2
+    padded = pad_array_to_shape(array=np.ones((3,)), shape=(4,))
+    assert np.allclose(padded, np.array([1, 1, 1, 0]))
+
+    # Case 3
+    padded = pad_array_to_shape(array=np.ones((3,)), shape=(5,))
+    assert np.allclose(padded, np.array([0, 1, 1, 1, 0]))
+
+    # Case 4
+    padded = pad_array_to_shape(array=np.ones((1, 2)), shape=(3, 4))
+    assert np.allclose(
+        padded, np.array([[0, 0, 0, 0], [0, 1, 1, 0], [0, 0, 0, 0]])
+    )
+
+    # Case 5
     with pytest.raises(ValueError) as error:
-        sequence_0 = (0, 1)
-        split_into_n_chunks(sequence=sequence_0, n_chunks=0)
-    assert 'n_chunks must be a positive integer!' in str(error)
+        pad_array_to_shape(array=np.ones((3, 3)), shape=(4, 2))
+    assert 'is smaller than current size' in str(error)
 
-    # Test case 1: tuple, len(sequence) mod n_chunks == 0
-    sequence_1 = (1, 2, 3, 4, 5, 6)
-    target_1 = [(1, 2), (3, 4), (5, 6)]
-    output_1 = split_into_n_chunks(sequence=sequence_1, n_chunks=3)
-    assert not DeepDiff(output_1, target_1)
 
-    # Test case 2: list, len(sequence) mod n_chunks != 0
-    sequence_2 = [1, 2, 3, 4, 5]
-    target_2 = [[1, 2], [3, 4], [5]]
-    output_2 = split_into_n_chunks(sequence=sequence_2, n_chunks=3)
-    assert not DeepDiff(output_2, target_2)
+def test__crop_or_pad() -> None:
 
-    # Test case 3: np.ndarray, len(sequence) mod n_chunks == 0
-    sequence_3 = np.array(['a', 'b', 'c', 'd'])
-    target_3 = [np.array(['a', 'b']), np.array(['c', 'd'])]
-    output_3 = split_into_n_chunks(sequence=sequence_3, n_chunks=2)
-    assert not DeepDiff(output_3, target_3)
+    # Case 1 (crop)
+    result = crop_or_pad(array=np.arange(25).reshape((5, 5)), size=(3, 3))
+    assert np.allclose(
+        result, np.array([[6, 7, 8], [11, 12, 13], [16, 17, 18]])
+    )
+
+    # Case 2 (pad)
+    result = crop_or_pad(array=np.ones((1, 1)), size=(3, 3))
+    assert np.allclose(result, np.array([[0, 0, 0], [0, 1, 0], [0, 0, 0]]))
+
+    # Case 3
+    with pytest.raises(RuntimeError) as error:
+        crop_or_pad(array=np.ones((5, 5)), size=(7, 3))
+    assert 'Mixing of cropping and padding is not supported!' in str(error)
