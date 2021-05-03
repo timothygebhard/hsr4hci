@@ -16,10 +16,10 @@ from astropy.units import Quantity
 
 import numpy as np
 
+from hsr4hci.apertures import get_injection_and_reference_positions
 from hsr4hci.base_models import BaseModelCreator
 from hsr4hci.config import load_config
 from hsr4hci.consistency_checks import get_all_match_fractions
-from hsr4hci.contrast_curves import get_injection_and_reference_positions
 from hsr4hci.coordinates import cartesian2polar
 from hsr4hci.data import load_dataset
 from hsr4hci.derotating import derotate_combine

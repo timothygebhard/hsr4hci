@@ -16,8 +16,8 @@ from astropy.units import Quantity
 
 import numpy as np
 
+from hsr4hci.apertures import get_injection_and_reference_positions
 from hsr4hci.config import load_config
-from hsr4hci.contrast_curves import get_injection_and_reference_positions
 from hsr4hci.coordinates import cartesian2polar
 from hsr4hci.data import load_dataset
 from hsr4hci.forward_modeling import add_fake_planet
