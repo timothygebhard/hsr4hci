@@ -8,18 +8,15 @@ General purpose utilities, e.g., cropping arrays.
 
 from bisect import bisect_left
 from functools import reduce
-from hashlib import md5
-from math import modf
-from pathlib import Path
-from typing import Any, Callable, List, Sequence, Tuple, Union, TypeVar
+from typing import Any, Callable, Sequence, Tuple, Union, TypeVar
 
 import operator
 
-from astropy.nddata.utils import add_array
 from scipy.interpolate import RegularGridInterpolator
 from scipy.ndimage import fourier_shift, shift
 
 import numpy as np
+
 
 # -----------------------------------------------------------------------------
 # TYPE VARS
@@ -31,52 +28,6 @@ T = TypeVar('T', np.ndarray, Sequence)
 # -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
-
-def add_array_with_interpolation(
-    array_large: np.ndarray,
-    array_small: np.ndarray,
-    position: Tuple[float, float],
-) -> np.ndarray:
-    """
-    An extension of astropy.nddata.utils.add_array to add a smaller
-    array at a given position in a larger array. In this version, the
-    position may also be a float, in which case bilinear interpolation
-    is used when adding array_small into array_large.
-
-    Args:
-        array_large: Large array, into which array_small is added into.
-        array_small: Small array, which is added into array_large.
-        position: The target position of the small array’s center, with
-            respect to the large array. Coordinates should be in the
-            same order as the array shape, but can also be floats.
-
-    Returns:
-        The new array, constructed as the the sum of `array_large`
-        and `array_small`.
-    """
-
-    # Add an additional offset of (-0.5, -0.5) to the position, which is
-    # necessary because the add_array() routine from astropy uses coordinate
-    # system that is slightly different from the one that the rest of the
-    # code base uses: basically, it only counts pixels but does not take into
-    # account that (0, 0) is actually the *center* of the bottom left pixel.
-    position = (position[0] - 0.5, position[1] - 0.5)
-
-    # Split the position into its integer and its fractional parts
-    fractional_position, integer_position = tuple(
-        zip(*tuple(modf(x) for x in position))
-    )
-
-    # Create an empty with the same size as array_larger and add the
-    # small array at the approximately correct position
-    dummy = np.zeros_like(array_large)
-    dummy = add_array(dummy, array_small, integer_position)
-
-    # Use scipy.ndimage.shift to shift the array to the exact
-    # position, using bilinear interpolation
-    dummy = shift(dummy, fractional_position, order=1)
-
-    return np.asarray(array_large + dummy)
 
 
 def crop_center(
@@ -121,41 +72,6 @@ def crop_center(
         slices.append(slice(start, end))
 
     return np.asarray(array[tuple(slices)])
-
-
-def split_into_n_chunks(sequence: T, n_chunks: int) -> List[T]:
-    """
-    Split a given `sequence` (list, numpy array, ...) into `n_chunks`
-    "chunks" (sub-sequences) of approximately equal length, which are
-    returned as a list.
-
-    Source: https://stackoverflow.com/a/2135920/4100721
-
-    Args:
-        sequence: The sequence which should be split into chunks.
-        n_chunks: The number of chunks into which `sequence` is split.
-
-    Returns:
-        A list containing the original sequence split into chunks.
-    """
-
-    # Basic sanity checks
-    if len(sequence) < n_chunks:
-        raise ValueError(
-            f"n_chunks is greater than len(sequence): "
-            f"{n_chunks} > {len(sequence)}"
-        )
-    if n_chunks <= 0:
-        raise ValueError("n_chunks must be a positive integer!")
-
-    # Compute number of chunks (k) and number of chunks with extra elements (m)
-    k, m = divmod(len(sequence), n_chunks)
-
-    # Split the sequence into n chunks of (approximately) size k
-    return [
-        sequence[i * k + min(i, m) : (i + 1) * k + min(i + 1, m)]
-        for i in range(n_chunks)
-    ]
 
 
 def prestack_array(
@@ -309,34 +225,6 @@ def rotate_position(
     return x, y
 
 
-def get_md5_checksum(
-    file_path: Union[Path, str],
-    buffer_size: int = 8192,
-) -> str:
-    """
-    Compute the MD5 checksum of the file at the given `file_path`.
-
-    Args:
-        file_path: The to the file of which we want to compute the MD5
-            checksum.
-        buffer_size: Buffer size (in bytes) for reading in the target
-            file in chunks.
-
-    Returns:
-        The MD5 checksum of the specified file.
-    """
-
-    # Initialize the MD5 checksum
-    md5_checksum = md5()
-
-    # Open the input file and process it in chunks, updating the MD5 hash
-    with open(file_path, 'rb') as binary_file:
-        for chunk in iter(lambda: binary_file.read(buffer_size), b""):
-            md5_checksum.update(chunk)
-
-    return str(md5_checksum.hexdigest())
-
-
 def find_closest(sequence: Sequence, value: Any) -> Tuple[int, Any]:
     """
     Given a sorted `sequence`, find the entry (and its index) in it
@@ -367,36 +255,6 @@ def find_closest(sequence: Sequence, value: Any) -> Tuple[int, Any]:
     if after - value < value - before:
         return pos, after
     return pos - 1, before
-
-
-def fast_corrcoef(x: np.ndarray, y: np.ndarray) -> float:
-    """
-    A fast(er) way to compute the correlation coefficient between
-    the variables `x` and `y`, based on `numpy.einsum()`.
-
-    For array sizes between 2 and 10^8, this implementation is, on
-    average, 4.2 (+-2.2) times faster than `numpy.corrcoef()`, and
-    2.9 (+-1.1) times faster than `scipy.stats.pearsonr()`.
-
-    Args:
-        x: A numpy array with realizations of the random variable X.
-        y: A numpy array with realizations of the random variable Y.
-
-    Returns:
-        The correlation coefficient Corr(X, Y).
-    """
-
-    n = x.shape[0]
-    dx = x - (np.einsum("n->", x) / np.double(n))
-    dy = y - (np.einsum("n->", y) / np.double(n))
-
-    cov = np.einsum("i,i->", dy, dx)
-
-    var_x = np.einsum("n,n->", dy, dy)
-    var_y = np.einsum("n,n->", dx, dx)
-    tmp = var_x * var_y
-
-    return float(cov / np.sqrt(tmp))
 
 
 def pad_array_to_shape(
