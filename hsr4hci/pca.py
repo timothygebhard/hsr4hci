@@ -7,16 +7,14 @@ Utility functions for performing principal component analysis (PCA).
 # -----------------------------------------------------------------------------
 
 from copy import deepcopy
-from typing import cast, Iterable, Optional, Tuple, Union
+from typing import Iterable, Optional, Tuple, Union
+from warnings import warn
 
-from joblib import delayed, Parallel
 from sklearn.decomposition import PCA
-from tqdm import tqdm
 
 import numpy as np
 
 from hsr4hci.derotating import derotate_combine
-from hsr4hci.tqdm import tqdm_joblib
 
 
 # -----------------------------------------------------------------------------
@@ -82,15 +80,13 @@ def get_pca_signal_estimates(
     pca_numbers: Iterable[int],
     roi_mask: Optional[np.ndarray] = None,
     return_components: bool = True,
-    n_processes: int = 4,
-    verbose: bool = False,
 ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
     """
     Get the signal estimate (i.e., the derotated and combined stack that
     has been denoised) using PCA-based PSF subtraction for different
     numbers of principal components.
 
-    Note: This function essentially provides an extremely minimalistic
+    Note: This function essentially provides a rather minimalistic
     implementation of PynPoint's PcaPsfSubtractionModule.
 
     Args:
@@ -108,13 +104,6 @@ def get_pca_signal_estimates(
             the PCA basis.
         return_components: Whether or not to return the principal
             components of the PCA.
-        n_processes: Number of parallel processes to be used to process
-            the different numbers of principal components. Choosing this
-            value too high will actually decrease the performance (due
-            to the increased process initialization costs)!
-            If this value is chosen as 1, no multiprocessing is used and
-            the different numbers of components are processed serially.
-        verbose: Whether or not to print debugging information.
 
     Returns:
         A 3D numpy array of shape `(N, width, height)` (where N is the
@@ -123,21 +112,14 @@ def get_pca_signal_estimates(
         results are ordered from lowest to highest number of PCs.
     """
 
-    def vprint(string: str, end: str = '\n') -> None:
-        if verbose:
-            print(string, end=end, flush=True)
-
-    def add_progressbar(iterator: Iterable) -> Iterable:
-        if verbose:
-            return cast(Iterable, tqdm(iterator, ncols=80))
-        return iterator
-
     # Convert pca_numbers into a sorted list
     pca_numbers = sorted(list(pca_numbers), reverse=True)
 
     # Find the maximum number of PCA components to use: This number cannot be
     # higher than the number of frames in the stack!
     max_pca_number = min(len(stack), max(pca_numbers))
+    if max(pca_numbers) > len(stack):
+        warn('n_components cannot be larger than n_frames!')
 
     # Reshape stack from 3D to 2D (each frame is turned into a single 1D
     # vector). If a ROI mask is given, only the pixels inside the ROI are
@@ -149,33 +131,13 @@ def get_pca_signal_estimates(
 
     # Instantiate new PCA with maximum number of principal components, and fit
     # it to the reshaped stack
-    vprint('Fitting PCA with maximum number of components...', end=' ')
     pca = PCA(n_components=max_pca_number)
     pca.fit(reshaped_stack)
-    vprint('Done!')
 
-    # If desired, create an array with the principal components reshaped to
-    # proper eigenimages / frames. (We need to initialize it as an empty array
-    # so that the linter does not complain about potentially referencing a
-    # variable before assignment.)
-    components = np.empty(())
-    if return_components:
-        if roi_mask is not None:
-            components = np.full(
-                (len(pca_numbers), stack.shape[1], stack.shape[2]), np.nan
-            )
-            components[:, roi_mask] = pca.components_
-        else:
-            components = deepcopy(pca.components_)
-            components = components.reshape(
-                (-1, stack.shape[1], stack.shape[2])
-            )
-
-    # Define helper function to get signal estimate for a given n_components
-    def get_signal_estimate(
-        n_components: int,
-        pca: PCA,
-    ) -> Tuple[int, np.ndarray]:
+    # Loop over different numbers of principal components and compute the
+    # signal estimates for that number of PCs
+    signal_estimates = []
+    for n_components in pca_numbers:
 
         # Only keep the first `n_components` PCs
         truncated_pca = deepcopy(pca)
@@ -209,31 +171,31 @@ def get_pca_signal_estimates(
         if roi_mask is not None:
             signal_estimate[~roi_mask] = np.nan
 
-        return n_components, signal_estimate
-
-    # Use joblib to process the different values of n_components in parallel...
-    if n_processes > 1:
-        vprint('Computing signal estimates (in parallel):')
-        with tqdm_joblib(tqdm(total=len(pca_numbers), ncols=80)) as _:
-            with Parallel(n_jobs=n_processes, require='sharedmem') as run:
-                signal_estimates = run(
-                    delayed(get_signal_estimate)(n_components, pca)
-                    for n_components in pca_numbers
-                )
-
-    # ...or simply serially if n_processes == 1
-    else:
-        vprint('Computing signal estimates (serially):')
-        signal_estimates = list()
-        for n_components in add_progressbar(pca_numbers):
-            signal_estimates.append(get_signal_estimate(n_components, pca))
+        signal_estimates.append((n_components, signal_estimate))
 
     # Sort the list such that signal estimates are ordered by increasing
     # number of principal components, and convert to a numpy array
     signal_estimates = sorted(signal_estimates, key=lambda _: int(_[0]))
     signal_estimates = np.array([_[1] for _ in signal_estimates])
 
-    # Return the signal estimates and optionally also the principal components
-    if return_components:
+    # Return the signal estimates and, if desired, also the principal
+    # components reshaped to proper eigenimages / frames
+    if not return_components:
+        return np.asarray(signal_estimates)
+
+    else:
+
+        # The reshaping of principal components into 2D frames depends on
+        # whether or not we have used an ROI mask
+        if roi_mask is not None:
+            components = np.full(
+                (len(pca_numbers), stack.shape[1], stack.shape[2]), np.nan
+            )
+            components[:, roi_mask] = pca.components_
+        else:
+            components = deepcopy(pca.components_)
+            components = components.reshape(
+                (-1, stack.shape[1], stack.shape[2])
+            )
+
         return signal_estimates, components
-    return np.asarray(signal_estimates)

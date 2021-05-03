@@ -158,8 +158,6 @@ if __name__ == '__main__':
             pca_numbers=[int(config['n_components'])],
             roi_mask=None,
             return_components=False,
-            n_processes=1,
-            verbose=False,
         )
     )
     signal_estimate = signal_estimate.squeeze()
