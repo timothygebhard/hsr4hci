@@ -87,7 +87,6 @@ def derotate_combine(
     parang: np.ndarray,
     mask: Optional[np.ndarray] = None,
     order: int = 3,
-    subtract: Optional[str] = None,
     combine: str = 'mean',
     n_processes: int = 4,
 ) -> np.ndarray:
@@ -106,9 +105,6 @@ def derotate_combine(
             allows to restore these NaN values again.
         order: The order of the spline interpolation for the rotation.
             Has to be in the range [0, 5]; default is 3.
-        subtract: A string specifying what to subtract from the stack
-            before derotating the frames. Options are "mean", "median"
-            or None.
         combine: A string specifying how to combine the frames after
             derotating them. Options are "mean" or "median".
         n_processes: Number of parallel processes to be used to derotate
@@ -119,23 +115,9 @@ def derotate_combine(
         derotated and combined stack.
     """
 
-    # Create the classical ADI estimate of the PSF (either as the mean or
-    # median along the time axis of the frames before de-rotating)
-    if subtract == 'mean':
-        psf_frame = np.nanmean(stack, axis=0)
-    elif subtract == 'median':
-        psf_frame = np.nanmedian(stack, axis=0)
-    elif subtract is None:
-        psf_frame = np.zeros(stack.shape[1:])
-    else:
-        raise ValueError('Illegal option for parameter "subtract"!')
-
-    # Subtract the PSF estimate from every frame
-    subtracted = stack - psf_frame
-
     # De-rotate all frames by their respective parallactic angles
     residual_frames = derotate_frames(
-        stack=subtracted,
+        stack=stack,
         parang=parang,
         order=order,
         n_processes=n_processes,
