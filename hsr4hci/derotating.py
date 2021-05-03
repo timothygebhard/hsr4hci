@@ -76,6 +76,7 @@ def derotate_frames(
 
     # Check if there is a mask that we need to apply after derotating
     if mask is not None:
+        derotated = derotated.astype(float)
         derotated[:, mask] = np.nan
 
     return np.asarray(derotated)
@@ -150,6 +151,7 @@ def derotate_combine(
 
     # Apply mask to result before returning it
     if mask is not None:
+        result = result.astype(float)
         result[mask] = np.nan
 
     return np.asarray(result)
