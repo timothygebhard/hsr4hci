@@ -134,10 +134,14 @@ def get_pca_signal_estimates(
     pca = PCA(n_components=max_pca_number)
     pca.fit(reshaped_stack)
 
+    # Initialize an empty array for the signal estimates
+    signal_estimates = np.full(
+        (len(pca_numbers), stack.shape[1], stack.shape[2]), np.nan
+    )
+
     # Loop over different numbers of principal components and compute the
     # signal estimates for that number of PCs
-    signal_estimates = []
-    for n_components in pca_numbers:
+    for i, n_components in enumerate(pca_numbers):
 
         # Only keep the first `n_components` PCs
         truncated_pca = deepcopy(pca)
@@ -171,17 +175,13 @@ def get_pca_signal_estimates(
         if roi_mask is not None:
             signal_estimate[~roi_mask] = np.nan
 
-        signal_estimates.append((n_components, signal_estimate))
-
-    # Sort the list such that signal estimates are ordered by increasing
-    # number of principal components, and convert to a numpy array
-    signal_estimates = sorted(signal_estimates, key=lambda _: int(_[0]))
-    signal_estimates = np.array([_[1] for _ in signal_estimates])
+        # Store the signal estimate
+        signal_estimates[i] = signal_estimate
 
     # Return the signal estimates and, if desired, also the principal
     # components reshaped to proper eigenimages / frames
     if not return_components:
-        return np.asarray(signal_estimates)
+        return signal_estimates
 
     else:
 

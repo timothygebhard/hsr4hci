@@ -94,7 +94,7 @@ def get_flux(
             else:
                 raise ValueError('Mode "ASS" needs a search_radius!')
         else:
-            new_positions = position
+            new_positions = np.array([position])
 
         # Set up an aperture (or a grid of apertures, for search-based mode)
         aperture = CircularAperture(positions=new_positions, r=aperture_radius)
