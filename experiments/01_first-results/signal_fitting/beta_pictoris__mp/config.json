@@ -2,7 +2,7 @@
   "dataset": {
     "name":                    "beta_pictoris__mp",
     "binning_factor":          1,
-    "frame_size":              [65, 65]
+    "frame_size":              [69, 69]
   },
   "observing_conditions": {
     "selected_keys":           null
