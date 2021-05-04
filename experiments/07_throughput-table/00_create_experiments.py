@@ -137,7 +137,7 @@ if __name__ == '__main__':
     )
 
     # Define path to this algorithm's base directory and check if it exists
-    algorithm_dir = Path('.', 'algorithms', algorithm).resolve()
+    algorithm_dir = Path('.', algorithm).resolve()
     if not algorithm_dir.exists():
         raise RuntimeError(f'{algorithm_dir} does not exist!')
 
