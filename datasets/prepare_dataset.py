@@ -276,7 +276,7 @@ if __name__ == '__main__':
         parang_shape = output_file['parang'].shape
 
         # Keep track of the timestamps of all frames
-        timestamps_utc = []
+        timestamps_utc_list = []
 
         # Compute the start and end of every cube as UTC timestamps
         cube_starts = [date_string_to_timestamp(_) for _ in cube_dates]
@@ -311,19 +311,19 @@ if __name__ == '__main__':
                 mask = mask[start : start + n_dit]
 
                 # Finally, select only the timestamps for the selected frames
-                timestamps_utc += list(timestamps[mask])
+                timestamps_utc_list += list(timestamps[mask])
 
             # If we have lost frames (e.g., due to problems with the read-out),
             # we need to improvise, because there is no way of knowing *which*
             # got lost: In this case, we simply distribute the frames that we
             # have uniformly over the duration of the cube.
             else:
-                timestamps_utc += list(
+                timestamps_utc_list += list(
                     np.linspace(cube_start, cube_end, n_frames)
                 )
 
         # Convert timestamps to a numpy array
-        timestamps_utc = np.array(timestamps_utc)
+        timestamps_utc = np.array(timestamps_utc_list)
 
         # Save the result (i.e., the timestamps for all frames in all cubes)
         output_file.require_dataset(
@@ -462,7 +462,7 @@ if __name__ == '__main__':
             print(f'Retrieving {parameter_name}...', end=' ', flush=True)
 
             # Keep track of the value of the parameter for each frame
-            parameter_values = []
+            parameter_values_list = []
 
             # Loop over cubes and "interpolate" observing conditions from FITS
             for i in range(n_cubes):
@@ -491,7 +491,7 @@ if __name__ == '__main__':
 
                     # Apply the selection mask, that is, only keep the values
                     # that belong to frames kept by the frame selection
-                    parameter_values += list(dummy[mask])
+                    parameter_values_list += list(dummy[mask])
 
                 # ...and "frame loss":
                 else:
@@ -499,13 +499,13 @@ if __name__ == '__main__':
                     # In this case, we simply distribute the the frames (or
                     # rather, the parameter values for the frames) uniformly
                     # over the entire cube
-                    parameter_values += list(
+                    parameter_values_list += list(
                         np.linspace(start_value, end_value, n_frames)
                     )
 
             # Convert parameter values to array and store in data frame
             # (unless it is a debugging parameter)
-            parameter_values = np.array(parameter_values)
+            parameter_values = np.array(parameter_values_list)
 
             # Store the parameter values in the output HDF file and the data
             # frame (parameters ending in '__fits' are only for debugging)
@@ -608,7 +608,6 @@ if __name__ == '__main__':
             parang=parang,
             pca_numbers=[20],
             return_components=False,
-            n_processes=1,
         )
         signal_estimate = np.asarray(signal_estimate).squeeze()
         print('Done!\n', flush=True)
@@ -621,7 +620,7 @@ if __name__ == '__main__':
             lambda_over_d=lambda_over_d,
             verbose=False,
         )
-        frame_size = signal_estimate.shape
+        frame_size = (signal_estimate.shape[0], signal_estimate.shape[1])
         center = get_center(frame_size)
 
         # Plot the signal estimate; set up some plot options; add plot title
