@@ -219,7 +219,6 @@ def get_exclusion_mask(
     parang: np.ndarray,
     psf_template: np.ndarray,
     signal_time: Optional[int],
-    threshold: float = 2e-1,
 ) -> np.ndarray:
     """
     Get a mask of the pixels that we must *not* use as predictors.
@@ -258,10 +257,6 @@ def get_exclusion_mask(
             in which the planet signal peaks at the given `position`.
             If signal_time is None, the function assumes that there is
             no planet signal in `position` at any time.
-        threshold: Threshold value used for creating the mask. This
-            parameter can be used to control how "conservative" the
-            exclusion mask will be: the lower the threshold value, the
-            more pixels will be excluded as predictors.
 
     Returns:
         A 2D numpy array containing the (binary) exclusion mask for the
@@ -308,7 +303,7 @@ def get_exclusion_mask(
         )
 
         # Threshold the shifted PSF to get the exclusion mask
-        exclusion_mask = exclusion_mask > threshold / 2
+        exclusion_mask = exclusion_mask > 0.025
 
     # -------------------------------------------------------------------------
     # CASE 2: Exclusion mask *with* signal time
@@ -363,23 +358,20 @@ def get_exclusion_mask(
 
         # Compute the "overlap" of the target time series with every other
         # time series. For this, we take the (element-wise) product of each
-        # pair of time series, find the maximum, and take the square root.
-        # The last step (sqrt) is so that the overlap_map has the same scale
-        # as the normal unsaturated PSF template.
+        # pair of time series and find the maximum.
         overlap_map = np.einsum('i,ijk->ijk', target, signal_stack)
         overlap_map = np.max(overlap_map, axis=0)
-        overlap_map = np.sqrt(overlap_map)
 
         # Threshold the overlap_map to get the exclusion map: all pixels whose
         # time series "know too much" about the target time series are excluded
-        exclusion_mask = overlap_map > threshold
+        exclusion_mask = overlap_map > 0.05
 
     # -------------------------------------------------------------------------
     # Apply a morphological filter to the exclusion mask and return it
     # -------------------------------------------------------------------------
 
     # Dilate the mask by one pixel for a little extra "safety margin"
-    selem = disk(radius=1)
+    selem = disk(radius=2)
     exclusion_mask = binary_dilation(image=exclusion_mask, selem=selem)
 
     return exclusion_mask
