@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import colorsys
 
 from astropy.units import Quantity
+from astropy.modeling import models, fitting
 from matplotlib.axes import Axes
 from matplotlib.cm import get_cmap as original_get_cmap
 from matplotlib.colorbar import Colorbar
@@ -22,14 +23,13 @@ from matplotlib.image import AxesImage
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from photutils import CircularAperture
 
 import bottleneck as bn
 import matplotlib.colors as mc
 import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import numpy as np
-
-from hsr4hci.photometry import CustomCircularAperture
 
 
 # -----------------------------------------------------------------------------
@@ -255,7 +255,7 @@ def plot_frame(
     fig, ax = plt.subplots(figsize=figsize)
 
     # Initialize aperture
-    aperture: Optional[CustomCircularAperture] = None
+    aperture: Optional[CircularAperture] = None
 
     # Define the radius for drawing
     if aperture_radius is not None:
@@ -268,24 +268,30 @@ def plot_frame(
     if (aperture_radius is not None) and (positions is not None):
 
         # Define aperture, because we need it for plotting later
-        aperture = CustomCircularAperture(positions=positions, r=draw_radius)
+        aperture = CircularAperture(positions=positions, r=draw_radius)
 
-        # If no explicit plot limits are given, we fit the aperture(s) to
-        # determine the limit from the data
+        # If no explicit plot limits are given, we fit the given position with
+        # a 2D Gaussian to determine the limit from the fit amplitude
         if limit is None:
 
-            # Fit each aperture with a 2D Gaussian; the results should have
-            # the form `(amplitude, sigma)`.
-            fit_results = aperture.fit_2d_gaussian(data=np.nan_to_num(frame))
+            # Define the grid for the fit
+            x = np.arange(frame.shape[0])
+            y = np.arange(frame.shape[1])
+            x, y = np.meshgrid(x, y)
 
-            # If we have multiple apertures, we need to still take the maximum
-            # over them; otherwise, we can directly use the value from the fit
-            if isinstance(fit_results, list):
-                limit = float(
-                    np.around(1.1 * max(_[0] for _ in fit_results), 1)
-                )
-            else:
-                limit = float(np.around(1.1 * fit_results[0], 1))
+            # Fit the given position with a 2D Gaussian
+            fit_p = fitting.LevMarLSQFitter()
+            gaussian_model = fit_p(
+                model=models.Gaussian2D(
+                    x_mean=positions[0], y_mean=positions[1]
+                ),
+                x=x,
+                y=y,
+                z=np.nan_to_num(frame),
+            )
+
+            # Compute the limit based on the amplitude of the 2D Gaussian
+            limit = float(gaussian_model.amplitude)
 
     # If the limit is still None at this point (i.e., if no apertures were
     # given, and there are also no explicit plot limits), just compute the
