@@ -15,7 +15,6 @@ from hsr4hci.base_models import BaseModelCreator
 # TEST CASES
 # -----------------------------------------------------------------------------
 
-
 def test__base_model_creator() -> None:
 
     base_model_creator = BaseModelCreator(
@@ -31,5 +30,5 @@ def test__base_model_creator() -> None:
     model = base_model_creator.get_model_instance()
 
     assert isinstance(model, RidgeCV)
-    assert model.fit_intercept == True
+    assert model.fit_intercept
     assert set(model.alphas) == {1, 10, 100}

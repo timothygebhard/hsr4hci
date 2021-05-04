@@ -16,7 +16,6 @@ from hsr4hci.derotating import derotate_combine, derotate_frames
 # TEST CASES
 # -----------------------------------------------------------------------------
 
-
 def test__derotate_frames() -> None:
 
     # Case 1: no rotation at all
@@ -70,4 +69,4 @@ def test__derotate_combine() -> None:
     parang = np.random.normal(0, 2 * np.pi, 10)
     mask = np.array([[1, 0, 1], [1, 0, 1], [1, 0, 1]]).astype(bool)
     combined = derotate_combine(stack=stack, parang=parang, mask=mask)
-    assert np.isnan(combined[ mask]).all()
+    assert np.isnan(combined[mask]).all()
