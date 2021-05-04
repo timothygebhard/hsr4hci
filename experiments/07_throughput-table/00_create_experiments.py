@@ -35,12 +35,12 @@ def create_submit_file(experiment_dir: Path, algorithm: str) -> Path:
 
     # Define algorithm-specific variables
     if algorithm == 'pca':
-        memory = 8192
-        cpus = 2
+        memory = 1024
+        cpus = 1
         job_script = scripts_dir / 'run_pca.py'
     elif algorithm in ('signal_fitting', 'signal_masking'):
-        memory = 4096
-        cpus = 1
+        memory = 8192
+        cpus = 2
         job_script = scripts_dir / 'run_hsr.py'
     else:
         raise ValueError(f'Illegal value "{algorithm}" for algorithm!')
