@@ -103,31 +103,37 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Get injection parameters
-    contrast = float(config['injection']['contrast'])
-    separation = float(config['injection']['separation'])
+    contrast = config['injection']['contrast']
+    separation = config['injection']['separation']
     azimuthal_position = config['injection']['azimuthal_position']
 
-    # Compute (Cartesian) position at which to inject the fake planet and
-    # convert to a polar position (for add_fake_planet())
-    print('Computing injection position...', end=' ', flush=True)
-    injection_position_cartesian, _ = get_injection_and_reference_positions(
-        separation=Quantity(separation, 'lambda_over_d'),
-        azimuthal_position=azimuthal_position,
-        aperture_radius=Quantity(0.5, 'lambda_over_d'),
-        frame_size=frame_size,
-    )
-    injection_position_polar = cartesian2polar(
-        position=injection_position_cartesian,
-        frame_size=frame_size,
-    )
-    rho = injection_position_polar[0].to('pixel').value
-    phi = injection_position_polar[1].to('degree').value + 90
-    print(f'Done! (rho = {rho:.2f} pix, phi = {phi:.2f} deg)', flush=True)
-
-    # Add fake planet with given parameters to the stack
+    # If any parameter is None, skip the injection...
     if contrast is None or separation is None or azimuthal_position is None:
         print('Skipping injection of a fake planet!', flush=True)
+
+    # ... otherwise, add a fake planet with given parameters to the stack
     else:
+
+        # Compute (Cartesian) position at which to inject the fake planet and
+        # convert to a polar position (for add_fake_planet())
+        print('Computing injection position...', end=' ', flush=True)
+        (
+            injection_position_cartesian,
+            _,
+        ) = get_injection_and_reference_positions(
+            separation=Quantity(separation, 'lambda_over_d'),
+            azimuthal_position=azimuthal_position,
+            aperture_radius=Quantity(0.5, 'lambda_over_d'),
+            frame_size=frame_size,
+        )
+        injection_position_polar = cartesian2polar(
+            position=injection_position_cartesian,
+            frame_size=frame_size,
+        )
+        rho = injection_position_polar[0].to('pixel').value
+        phi = injection_position_polar[1].to('degree').value + 90
+        print(f'Done! (rho = {rho:.2f} pix, phi = {phi:.2f} deg)', flush=True)
+
         print('Injecting fake planet...', end=' ', flush=True)
         stack = np.asarray(
             add_fake_planet(
