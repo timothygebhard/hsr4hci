@@ -8,8 +8,6 @@ Functions which are (temporarily) ported from apelfei.
 
 from typing import Any, Optional, Tuple
 
-import warnings
-
 from astropy.modeling import models, fitting
 from photutils import aperture_photometry, CircularAperture
 
@@ -101,7 +99,7 @@ def get_flux(
 
         # Run aperture photometry, that is, compute the integrated flux for the
         # aperture (or each aperture on the grid)
-        photometry_table = aperture_photometry(frame, aperture, method='exact')
+        photometry_table = aperture_photometry(frame, aperture)
 
         # Find the optimum, that is, the position with the highest flux, and
         # the corresponding flux. For modes that are not search-based, the
@@ -151,9 +149,7 @@ def get_flux(
 
         # Fit the model to the data
         fit_p = fitting.LevMarLSQFitter()
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore')
-            gaussian_model = fit_p(gaussian_model, x, y, frame)
+        gaussian_model = fit_p(gaussian_model, x, y, np.nan_to_num(frame))
 
         # Get the final position of the Gaussian after the fit
         final_position = (
@@ -167,10 +163,8 @@ def get_flux(
         # Therefore, we create a new frame that contains *only* the Gaussian
         # and perform "P" mode-like aperture photometry on this new frame.
         gaussian_frame = gaussian_model(x, y)
-        aperture = CircularAperture(positions=position, r=0.5)
-        photometry_table = aperture_photometry(
-            gaussian_frame, aperture, method='exact'
-        )
+        aperture = CircularAperture(positions=final_position, r=0.5)
+        photometry_table = aperture_photometry(gaussian_frame, aperture)
         flux = photometry_table['aperture_sum'][0]
 
         return final_position, flux
