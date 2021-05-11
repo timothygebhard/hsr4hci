@@ -16,13 +16,12 @@ from astropy.units import Quantity
 
 import numpy as np
 
-from hsr4hci.apertures import get_injection_and_reference_positions
 from hsr4hci.config import load_config
-from hsr4hci.coordinates import cartesian2polar
 from hsr4hci.data import load_dataset
-from hsr4hci.forward_modeling import add_fake_planet
 from hsr4hci.fits import save_fits
+from hsr4hci.forward_modeling import add_fake_planet
 from hsr4hci.pca import get_pca_signal_estimates
+from hsr4hci.positions import get_injection_position
 from hsr4hci.units import set_units_for_instrument
 
 
@@ -114,33 +113,26 @@ if __name__ == '__main__':
     # ... otherwise, add a fake planet with given parameters to the stack
     else:
 
-        # Compute (Cartesian) position at which to inject the fake planet and
-        # convert to a polar position (for add_fake_planet())
+        # Compute position at which to inject the fake planet
         print('Computing injection position...', end=' ', flush=True)
-        (
-            injection_position_cartesian,
-            _,
-        ) = get_injection_and_reference_positions(
-            separation=Quantity(separation, 'lambda_over_d'),
+        injection_position = get_injection_position(
+            separation=separation,
             azimuthal_position=azimuthal_position,
-            aperture_radius=Quantity(0.5, 'lambda_over_d'),
-            frame_size=frame_size,
         )
-        injection_position_polar = cartesian2polar(
-            position=injection_position_cartesian,
-            frame_size=frame_size,
+        print(
+            f'Done! (separation = {separation}, '
+            f'azimuthal_position = {azimuthal_position})',
+            flush=True,
         )
-        rho = injection_position_polar[0].to('pixel').value
-        phi = injection_position_polar[1].to('degree').value + 90
-        print(f'Done! (rho = {rho:.2f} pix, phi = {phi:.2f} deg)', flush=True)
 
+        # Inject the fake planet at the injection_position
         print('Injecting fake planet...', end=' ', flush=True)
         stack = np.asarray(
             add_fake_planet(
                 stack=stack,
                 parang=parang,
                 psf_template=psf_template,
-                polar_position=injection_position_polar,
+                polar_position=injection_position,
                 magnitude=contrast,
                 extra_scaling=1,
                 dit_stack=float(metadata['DIT_STACK']),
