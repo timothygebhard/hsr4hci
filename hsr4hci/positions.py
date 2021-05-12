@@ -126,7 +126,14 @@ def get_reference_positions(
     reference_angle = Quantity(360, 'degree') - exclusion_angle - opening_angle
 
     # Compute the number of reference positions
-    n_reference_positions = int(reference_angle / opening_angle) + 1
+    # Note: The additional round() call is needed here because otherwise, the
+    # result can actually be different on different machines: Depending on the
+    # machine `reference_angle / opening_angle` can evaluate to, for example,
+    # 4.000000000000001 or 3.9999999999999996 --- and calling int() will then
+    # either give 4 or 3.
+    n_reference_positions = (
+        int(round(float(reference_angle / opening_angle), 1)) + 1
+    )
 
     # Compute the (polar) position angles of the reference positions
     offsets = np.linspace(
