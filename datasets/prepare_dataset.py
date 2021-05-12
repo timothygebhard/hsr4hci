@@ -25,6 +25,7 @@ Run a pre-processing pipeline that does the following things:
 # -----------------------------------------------------------------------------
 
 from pathlib import Path
+from warnings import warn
 
 import argparse
 import json
@@ -77,14 +78,7 @@ if __name__ == '__main__':
         '--dataset',
         type=str,
         metavar='NAME',
-        # required=True,
-        default='beta_pictoris__lp',
-        choices=[
-            'beta_pictoris__lp',
-            'beta_pictoris__mp',
-            'hr_8799__lp',
-            'r_cra__lp',
-        ],
+        required=True,
         help='The name of the data set for which to run the preparation.',
     )
     item = arg_parser.parse_args().dataset
@@ -175,14 +169,18 @@ if __name__ == '__main__':
                     if header_name in output_file:
                         del output_file[header_name]
 
-                    # Copy the header
+                    # Copy the header (if it exists)
                     print(f'Copying /{header_name}...', end=' ', flush=True)
-                    input_file.copy(
-                        source=header_key,
-                        dest=output_file,
-                        name=header_name,
-                    )
-                    print('Done!')
+                    if header_key in input_file:
+                        input_file.copy(
+                            source=header_key,
+                            dest=output_file,
+                            name=header_name,
+                        )
+                        print('Done!')
+                    else:
+                        print('Failed!')
+                        warn(f'No HEADER information found for {item}!')
 
     # -------------------------------------------------------------------------
     # Download FITS headers and store in CSV / HDF
