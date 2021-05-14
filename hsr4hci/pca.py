@@ -176,7 +176,7 @@ def get_pca_signal_estimates(
             signal_estimate[~roi_mask] = np.nan
 
         # Store the signal estimate
-        signal_estimates[i] = signal_estimate
+        signal_estimates[len(pca_numbers) - i - 1] = signal_estimate
 
     # Return the signal estimates and, if desired, also the principal
     # components reshaped to proper eigenimages / frames
