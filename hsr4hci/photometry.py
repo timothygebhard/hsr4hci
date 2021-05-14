@@ -1,5 +1,5 @@
 """
-Functions which are (temporarily) ported from apelfei.
+Functions for measuring fluxes.
 """
 
 # -----------------------------------------------------------------------------
