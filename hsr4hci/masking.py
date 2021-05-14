@@ -9,6 +9,7 @@ Utility functions for creating and working with (binary) masks.
 from typing import List, Optional, Tuple
 
 from astropy.units import Quantity
+from scipy import ndimage
 from skimage.morphology import binary_dilation, disk
 
 import numpy as np
@@ -495,3 +496,48 @@ def get_positions_from_mask(mask: np.ndarray) -> List[Tuple[int, int]]:
     """
 
     return sorted(list((x, y) for x, y in zip(*np.where(mask))))
+
+
+def remove_connected_components(
+    mask: np.ndarray,
+    minimum_size: Optional[int] = None,
+    maximum_size: Optional[int] = None,
+) -> np.ndarray:
+    """
+    Remove connected components from a binary mask based on their size.
+ 
+    Args:
+        mask: Binary 2D numpy array from which to remove components.
+        minimum_size: Components with *less* pixels than this number
+            will be removed from `mask`. Set to None to not remove
+            small components.
+        maximum_size: Components with *more* pixels than this number
+            will be removed from `mask`. Set to None to not remove
+            large components.
+
+    Returns:
+        The original `mask`, with connected components removed according
+        to `minimum_size` and `maximum_size`.
+    """
+
+    # Ensure that the mask is a binary
+    if not np.allclose(mask, mask.astype(bool)):
+        raise ValueError('Input image must be binary!')
+
+    # Find connected components
+    output, n_components = ndimage.label(mask)
+    component_sizes = ndimage.sum(mask, output, range(n_components + 1))
+
+    # Remove everything that is smaller than the minimum size
+    if minimum_size is not None:
+        too_small = component_sizes < minimum_size
+        remove_pixel = too_small[output]
+        output[remove_pixel] = 0
+
+    # Remove everything that is larger than the maximum size
+    if maximum_size is not None:
+        too_large = component_sizes > maximum_size
+        remove_pixel = too_large[output]
+        output[remove_pixel] = 0
+
+    return np.asarray(output).astype(bool)
