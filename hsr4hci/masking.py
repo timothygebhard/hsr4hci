@@ -505,7 +505,7 @@ def remove_connected_components(
 ) -> np.ndarray:
     """
     Remove connected components from a binary mask based on their size.
- 
+
     Args:
         mask: Binary 2D numpy array from which to remove components.
         minimum_size: Components with *less* pixels than this number

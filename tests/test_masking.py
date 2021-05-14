@@ -20,7 +20,6 @@ from hsr4hci.masking import (
 # TEST CASES
 # -----------------------------------------------------------------------------
 
-
 def test__get_circle_mask() -> None:
 
     # Case 1
@@ -91,6 +90,7 @@ def test__get_circle_mask() -> None:
             ]
         ),
     )
+
 
 def test__get_positions_from_mask() -> None:
 

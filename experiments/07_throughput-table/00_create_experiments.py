@@ -231,7 +231,7 @@ if __name__ == '__main__':
         file_path = experiment_dir / 'config.json'
         with open(file_path, 'w') as json_file:
             json.dump(config, json_file, indent=2)
-            
+
         # Create a submit file for the experiment
         file_path = create_submit_file(
             experiment_dir=experiment_dir, algorithm=algorithm
