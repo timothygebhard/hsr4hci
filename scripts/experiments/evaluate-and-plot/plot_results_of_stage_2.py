@@ -30,8 +30,8 @@ from hsr4hci.data import (
 from hsr4hci.fits import read_fits
 from hsr4hci.forward_modeling import add_fake_planet
 from hsr4hci.masking import get_roi_mask
+from hsr4hci.match_fraction import get_selection_mask
 from hsr4hci.plotting import disable_ticks, get_cmap
-from hsr4hci.signal_estimates import get_selection_mask
 from hsr4hci.units import set_units_for_instrument
 
 
@@ -151,7 +151,7 @@ if __name__ == '__main__':
         hypothesized_stack += signal_stack
 
     # Determine the mask with all pixels affected by planets
-    affected_mask = np.max(hypothesized_stack, axis=0) # > 0.2
+    affected_mask = np.max(hypothesized_stack, axis=0)  # > 0.2
 
     print('Done!', flush=True)
 
@@ -253,7 +253,11 @@ if __name__ == '__main__':
 
     # Compute the selection mask
     print('\nComputing selection mask...', end=' ', flush=True)
-    selection_mask, _ = get_selection_mask(median_mf, roi_mask=roi_mask)
+    selection_mask, _, _, _ = get_selection_mask(
+        match_fraction=median_mf,
+        parang=parang,
+        psf_template=psf_template,
+    )
     selection_mask = selection_mask.astype(float)
     selection_mask[~roi_mask] = np.nan
     print('Done!', flush=True)
