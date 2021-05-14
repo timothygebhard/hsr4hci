@@ -19,11 +19,11 @@ import h5py
 import numpy as np
 
 from hsr4hci.config import load_config
-from hsr4hci.data import load_metadata, load_parang
+from hsr4hci.data import load_metadata, load_parang, load_psf_template
 from hsr4hci.derotating import derotate_combine
 from hsr4hci.fits import read_fits, save_fits
 from hsr4hci.masking import get_roi_mask, get_positions_from_mask
-from hsr4hci.signal_estimates import get_selection_mask
+from hsr4hci.match_fraction import get_selection_mask
 from hsr4hci.units import set_units_for_instrument
 
 
@@ -72,6 +72,7 @@ if __name__ == '__main__':
     # Load frames, parallactic angles, etc. from HDF file
     print('Loading data set...', end=' ', flush=True)
     parang = load_parang(**config['dataset'])
+    psf_template = load_psf_template(**config['dataset'])
     metadata = load_metadata(**config['dataset'])
     print('Done!', flush=True)
 
@@ -112,12 +113,12 @@ if __name__ == '__main__':
 
     # Construct selection mask
     print('\nComputing selection mask...', end=' ', flush=True)
-    selection_mask, threshold = get_selection_mask(
+    selection_mask, _, _, _ = get_selection_mask(
         match_fraction=median_mf,
-        roi_mask=roi_mask,
-        filter_size=int(config['consistency_checks']['filter_size']),
+        parang=parang,
+        psf_template=psf_template,
     )
-    print(f'Done! (threshold = {threshold:.3f})', flush=True)
+    print('Done!', flush=True)
 
     # Make sure the results directory exists
     results_dir = experiment_dir / 'results'
@@ -130,7 +131,6 @@ if __name__ == '__main__':
     save_fits(
         array=selection_mask.astype(int),
         file_path=file_path,
-        header={'thresh': threshold},
     )
     print('Done!', flush=True)
 
