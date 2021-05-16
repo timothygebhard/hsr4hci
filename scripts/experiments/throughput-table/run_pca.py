@@ -116,7 +116,7 @@ if __name__ == '__main__':
         # Compute position at which to inject the fake planet
         print('Computing injection position...', end=' ', flush=True)
         injection_position = get_injection_position(
-            separation=separation,
+            separation=Quantity(separation, 'lambda_over_d'),
             azimuthal_position=azimuthal_position,
         )
         print(
