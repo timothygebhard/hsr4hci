@@ -18,7 +18,6 @@ import numpy as np
 
 from hsr4hci.base_models import BaseModelCreator
 from hsr4hci.config import load_config
-from hsr4hci.consistency_checks import get_all_match_fractions
 from hsr4hci.data import load_dataset
 from hsr4hci.derotating import derotate_combine
 from hsr4hci.fits import save_fits
@@ -26,7 +25,7 @@ from hsr4hci.forward_modeling import add_fake_planet
 from hsr4hci.hypotheses import get_all_hypotheses
 from hsr4hci.masking import get_roi_mask, get_positions_from_mask
 from hsr4hci.positions import get_injection_position
-from hsr4hci.signal_estimates import get_selection_mask
+from hsr4hci.match_fraction import get_all_match_fractions, get_selection_mask
 from hsr4hci.training import train_all_models
 from hsr4hci.units import set_units_for_instrument
 
@@ -126,12 +125,12 @@ if __name__ == '__main__':
         # Compute position at which to inject the fake planet
         print('Computing injection position...', end=' ', flush=True)
         injection_position = get_injection_position(
-            separation=separation,
+            separation=Quantity(separation, 'lambda_over_d'),
             azimuthal_position=azimuthal_position,
         )
         print(
-            f'Done! (separation = {separation}, '
-            f'azimuthal_position = {azimuthal_position})',
+            f'Done! (separation = {injection_position[0]}, '
+            f'azimuthal_position = {injection_position[1]})',
             flush=True,
         )
 
@@ -236,12 +235,12 @@ if __name__ == '__main__':
     # Compute the selection mask that determines which residual type (default
     # or based on signal fitting / masking) is used for a pixel
     print('\nComputing selection mask for residuals...', end=' ', flush=True)
-    selection_mask, threshold = get_selection_mask(
+    selection_mask, _, _, _ = get_selection_mask(
         match_fraction=median_mf,
-        roi_mask=roi_mask,
-        minimum_size=5,
+        parang=parang,
+        psf_template=psf_template,
     )
-    print(f'Done! (threshold = {threshold:.3f})', flush=True)
+    print('Done!', flush=True)
 
     # (Always) save the selection mask
     print('Saving selection_mask mask to FITS...', end=' ', flush=True)
@@ -254,16 +253,45 @@ if __name__ == '__main__':
     # STEP 5: Assemble residuals
     # -------------------------------------------------------------------------
 
-    # Initialize everything to the default residuals
-    residuals = np.array(results['default']['residuals'])
+    # Keep track of the default and the hypothesis-based residuals, as we
+    # will save those to ensure that a change in the way the selection mask
+    # is determined does not require re-running all experiments.
+    default_residuals = np.array(results['default']['residuals'])
+    hypothesis_residuals = np.full_like(default_residuals, np.nan)
 
-    # For the pixels where the selection mask is 1, select the residuals
-    # based on the corresponding hypothesis
-    for (x, y) in get_positions_from_mask(selection_mask):
+    # Keep track of the "final" residuals, that is, the combination of the
+    # default and hypothesis-based residuals determined by the selection_mask
+    residuals = np.full_like(default_residuals, np.nan)
+
+    # Loop over all pixels in the ROI and select residuals
+    for (x, y) in get_positions_from_mask(roi_mask):
+
+        # Get the hypothesis for this pixel, and store the hypothesis-based
+        # residual for this pixel (i.e., the "best" residual that was obtained
+        # with signal fitting / masking).
         signal_time = str(int(hypotheses[x, y]))
-        residuals[:, x, y] = np.array(
+        hypothesis_residuals[:, x, y] = np.array(
             results[signal_time]['residuals'][:, x, y]
         )
+
+        # Set the value of the "final" residuals for this pixel based on the
+        # value of the selection_mask
+        if bool(selection_mask[x, y]):
+            residuals[:, x, y] = hypothesis_residuals[:, x, y]
+        else:
+            residuals[:, x, y] = default_residuals[:, x, y]
+
+    # Save the default residuals to FITS
+    print('Saving default residuals to FITS...', end=' ', flush=True)
+    file_path = results_dir / 'default_residuals.fits'
+    save_fits(array=default_residuals, file_path=file_path)
+    print('Done!', flush=True)
+
+    # Save the hypothesis residuals to FITS
+    print('Saving hypothesis residuals to FITS...', end=' ', flush=True)
+    file_path = results_dir / 'hypothesis_residuals.fits'
+    save_fits(array=hypothesis_residuals, file_path=file_path)
+    print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
     # STEP 6: Compute signal estimate
