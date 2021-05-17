@@ -33,7 +33,7 @@ class Fittable2DModel:
         Define parameter names (and parameter order). This has to be
         implemented by every model individually.
         """
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     @property
     def parameters(self) -> Tuple[float, ...]:
@@ -95,7 +95,7 @@ class Fittable2DModel:
             The value of the model on the given `meshgrid` when using
             the parameter values in `*parameters`.
         """
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def evaluate_without_offset(
         self,
@@ -199,6 +199,7 @@ class Fittable2DModel:
 # -----------------------------------------------------------------------------
 # MODEL CLASSES
 # -----------------------------------------------------------------------------
+
 
 class CircularGauss2D(Fittable2DModel):
     """
@@ -373,7 +374,7 @@ class CircularMoffat2D(Fittable2DModel):
 
     This function uses a parametrization that is based on the one given
     in the AsPyLib library:
-        http://www.aspylib.com/doc/aspylib_fitting.html#circular-moffat-psf
+        https://www.aspylib.com/doc/aspylib_fitting.html#circular-moffat-psf
 
     Args:
         mu_x: The x-position of the center of the Moffat function.
@@ -448,7 +449,7 @@ class EllipticalMoffat2D(Fittable2DModel):
 
     This function uses a parametrization that is based on the one given
     in the AsPyLib library:
-        http://www.aspylib.com/doc/aspylib_fitting.html#elliptical-moffat-psf
+        https://www.aspylib.com/doc/aspylib_fitting.html#elliptical-moffat-psf
 
     Args:
         mu_x: The x-position of the center of the Moffat function.

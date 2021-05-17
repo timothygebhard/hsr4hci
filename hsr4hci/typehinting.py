@@ -8,8 +8,8 @@ Additional custom types that can be used for type hinting.
 
 try:
     from typing import Protocol
-except ImportError:
-    from typing_extensions import Protocol  # type: ignore
+except ImportError:  # pragma: no cover
+    from typing_extensions import Protocol  # type: ignore  # pragma: no cover
 
 import numpy as np
 
