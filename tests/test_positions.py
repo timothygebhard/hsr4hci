@@ -79,6 +79,17 @@ def test__rotate_positions() -> None:
 
     # Case 1
     reference_positions = get_reference_positions(
+        polar_position=(Quantity(15, 'pixel'), Quantity(180, 'degree')),
+        aperture_radius=Quantity(5, 'pixel'),
+        exclusion_angle=Quantity(180, 'degree'),
+    )
+    rotated_reference_positions = rotate_reference_positions(
+        reference_positions=reference_positions, n_steps=0
+    )
+    assert len(rotated_reference_positions) == 1
+
+    # Case 2
+    reference_positions = get_reference_positions(
         polar_position=(Quantity(5, 'pixel'), Quantity(0, 'degree')),
         aperture_radius=Quantity(2.5, 'pixel'),
         exclusion_angle=Quantity(0, 'degree'),
@@ -86,11 +97,11 @@ def test__rotate_positions() -> None:
     rotated_reference_positions = rotate_reference_positions(
         reference_positions=reference_positions, n_steps=5
     )
-    assert len(rotated_reference_positions) == 5
-    assert rotated_reference_positions[1][0][1] == Quantity(75, 'degree')
-    assert rotated_reference_positions[2][1][1] == Quantity(150, 'degree')
+    assert len(rotated_reference_positions) == 5 + 1
+    assert rotated_reference_positions[1][0][1] == Quantity(70, 'degree')
+    assert rotated_reference_positions[2][1][1] == Quantity(140, 'degree')
 
-    # Case 2
+    # Case 3
     reference_positions = get_reference_positions(
         polar_position=(Quantity(2, 'pixel'), Quantity(0, 'degree')),
         aperture_radius=Quantity(2, 'pixel'),

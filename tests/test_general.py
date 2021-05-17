@@ -17,6 +17,7 @@ from hsr4hci.general import (
     pad_array_to_shape,
     prestack_array,
     rotate_position,
+    shift_image,
     set_in_nested_dict,
 )
 
@@ -222,3 +223,16 @@ def test__crop_or_pad() -> None:
     with pytest.raises(RuntimeError) as error:
         crop_or_pad(array=np.ones((5, 5)), size=(7, 3))
     assert 'Mixing of cropping and padding is not supported!' in str(error)
+
+
+def test__shift_image() -> None:
+
+    # Case 1
+    with pytest.raises(ValueError) as error:
+        shift_image(image=np.random.normal(0, 1, (2, 3, 4)), offset=(1, 1))
+    assert 'Input image must be 2D!' in str(error)
+
+    # Case 2
+    with pytest.raises(ValueError) as error:
+        shift_image(image=np.ones((3, 3)), offset=(1, 1), interpolation='abc')
+    assert 'The value of interpolation must be one' in str(error)
