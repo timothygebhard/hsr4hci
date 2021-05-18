@@ -180,7 +180,8 @@ def rotate_reference_positions(
 
     Returns:
         A list where each element is a list containing one rotated
-        version of the `reference_positions`.
+        version of the `reference_positions` (including the original
+        `reference_positions`, which corresponds to a zero rotation).
     """
 
     # Ensure that we have at least 2 reference positions
@@ -193,9 +194,13 @@ def rotate_reference_positions(
     # between the first two reference positions.
     opening_angle = abs(reference_positions[1][1] - reference_positions[0][1])
 
+    # Initialize the rotated reference positions by adding the un-rotated
+    # positions to the results list
+    rotated_reference_positions = [reference_positions]
+
     # Loop over offsets and compute rotated reference positions
-    rotated_reference_positions = []
-    for offset in np.linspace(Quantity(0, 'degree'), opening_angle, n_steps):
+    offsets = np.linspace(Quantity(0, 'degree'), opening_angle, n_steps + 2)
+    for offset in offsets[1:-1]:
         rotated_reference_positions.append(
             [(_, __ + offset) for _, __ in reference_positions[:-1]]
         )
