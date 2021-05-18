@@ -6,14 +6,188 @@ Functions for measuring fluxes.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Any, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 from astropy.modeling import models, fitting
+from astropy.units import Quantity
 from photutils import aperture_photometry, CircularAperture
 
 import numpy as np
 
-from hsr4hci.coordinates import get_center
+from hsr4hci.coordinates import get_center, polar2cartesian
+
+
+# -----------------------------------------------------------------------------
+# AUXILIARY FUNCTION DEFINITIONS
+# -----------------------------------------------------------------------------
+
+def _get_flux__as(
+    frame: np.ndarray,
+    position: Tuple[float, float],
+    aperture_radius: Quantity,
+) -> Tuple[Tuple[float, float], float]:
+    """
+    Auxiliary function to measure the flux using the "AS" mode.
+    See `get_flux()` for more details.
+    """
+
+    # Set up an aperture of the given size
+    aperture = CircularAperture(
+        positions=position, r=aperture_radius.to('pixel').value
+    )
+
+    # Compute the integrated flux for the aperture; get flux
+    photometry_table = aperture_photometry(frame, aperture)
+    flux = float(photometry_table['aperture_sum'][0])
+
+    return position, flux
+
+
+def _get_flux__ass(
+    frame: np.ndarray,
+    position: Tuple[float, float],
+    aperture_radius: Quantity,
+    search_radius: Quantity,
+) -> Tuple[Tuple[float, float], float]:
+    """
+    Auxiliary function to measure the flux using the "ASS" mode.
+    See `get_flux()` for more details.
+    """
+
+    # Construct a 2D grid of positions around the target position at which we
+    # will compute the flux in order to maximize it
+    offset = float(search_radius.to('pixel').value)
+    offsets = np.linspace(-offset, offset, 21)
+    positions_grid = np.meshgrid(offsets + position[0], offsets + position[1])
+    positions_grid = np.asarray(positions_grid).reshape(2, -1).T
+
+    # Set up a 2D grid of apertures of the given size
+    aperture = CircularAperture(
+        positions=positions_grid, r=aperture_radius.to('pixel').value
+    )
+
+    # Compute the integrated flux for each aperture in the 2D grid
+    photometry_table = aperture_photometry(frame, aperture)
+
+    # Find the optimum, that is, the position with the highest flux, as well
+    # as the corresponding flux
+    best_idx = np.argmax(photometry_table['aperture_sum'])
+    best_flux = float(photometry_table['aperture_sum'][best_idx])
+    best_position = (
+        float(photometry_table['xcenter'][best_idx].value),
+        float(photometry_table['ycenter'][best_idx].value),
+    )
+
+    return best_position, best_flux
+
+
+def _get_flux__p(
+    frame: np.ndarray,
+    position: Tuple[float, float],
+) -> Tuple[Tuple[float, float], float]:
+    """
+    Auxiliary function to measure the flux using the "P" mode.
+    See `get_flux()` for more details.
+    """
+
+    # Set up an aperture with a radius of 0.5 pixels
+    aperture = CircularAperture(positions=position, r=0.5)
+
+    # Compute the integrated flux for the aperture; get flux
+    photometry_table = aperture_photometry(frame, aperture)
+    flux = float(photometry_table['aperture_sum'][0])
+
+    return position, flux
+
+
+def _get_flux__f(
+    frame: np.ndarray,
+    position: Tuple[float, float],
+) -> Tuple[Tuple[float, float], float]:
+    """
+    Auxiliary function to measure the flux using the "F" mode.
+    See `get_flux()` for more details.
+    """
+
+    # Define the grid for the fit
+    x = np.arange(frame.shape[0])
+    y = np.arange(frame.shape[1])
+    x, y = np.meshgrid(x, y)
+
+    # Create a new Gaussian2D object
+    gaussian_model = models.Gaussian2D(x_mean=position[0], y_mean=position[1])
+
+    # Define auxiliary function for tieing the standard deviations
+    def tie_stddev(gaussian_model: Any) -> Any:
+        return gaussian_model.y_stddev
+
+    # Enforce symmetry: tie standard deviation parameters to same value to
+    # ensure that the resulting 2D Gaussian is always circular
+    gaussian_model.x_stddev.tied = tie_stddev
+
+    # Fix the position (= mean) of the 2D Gaussian
+    gaussian_model.x_mean.fixed = True
+    gaussian_model.y_mean.fixed = True
+
+    # Fit the model to the data
+    fit_p = fitting.LevMarLSQFitter()
+    gaussian_model = fit_p(gaussian_model, x, y, np.nan_to_num(frame))
+
+    # Get the final position of the Gaussian after the fit
+    final_position = (gaussian_model.x_mean.value, gaussian_model.y_mean.value)
+
+    # We cannot use the amplitude parameter of the Gaussian directly, as
+    # it is not comparable with the values estimated in pixel mode (due to
+    # the normalization of the Gaussian). Therefore, we create a new frame
+    # that contains *only* the Gaussian run "P"-mode style photometry.
+    return _get_flux__p(frame=gaussian_model(x, y), position=final_position)
+
+
+def _get_flux__fs(
+    frame: np.ndarray,
+    position: Tuple[float, float],
+    search_radius: Quantity,
+) -> Tuple[Tuple[float, float], float]:
+    """
+    Auxiliary function to measure the flux using the "FS" mode.
+    See `get_flux()` for more details.
+    """
+
+    # Define the grid for the fit
+    x = np.arange(frame.shape[0])
+    y = np.arange(frame.shape[1])
+    x, y = np.meshgrid(x, y)
+
+    # Create a new Gaussian2D object
+    gaussian_model = models.Gaussian2D(x_mean=position[0], y_mean=position[1])
+
+    # Define auxiliary function for tieing the standard deviations
+    def tie_stddev(gaussian_model: Any) -> Any:
+        return gaussian_model.y_stddev
+
+    # Enforce symmetry: tie standard deviation parameters to same value to
+    # ensure that the resulting 2D Gaussian is always circular
+    gaussian_model.x_stddev.tied = tie_stddev
+
+    # Define "search area" by setting minimum and maximum values for the mean
+    # of the Gaussian (i.e., the position)
+    gaussian_model.x_mean.min = position[0] - search_radius.to('pixel').value
+    gaussian_model.x_mean.max = position[0] + search_radius.to('pixel').value
+    gaussian_model.y_mean.min = position[1] - search_radius.to('pixel').value
+    gaussian_model.y_mean.max = position[1] + search_radius.to('pixel').value
+
+    # Fit the model to the data
+    fit_p = fitting.LevMarLSQFitter()
+    gaussian_model = fit_p(gaussian_model, x, y, np.nan_to_num(frame))
+
+    # Get the final position of the Gaussian after the fit
+    final_position = (gaussian_model.x_mean.value, gaussian_model.y_mean.value)
+
+    # We cannot use the amplitude parameter of the Gaussian directly, as
+    # it is not comparable with the values estimated in pixel mode (due to
+    # the normalization of the Gaussian). Therefore, we create a new frame
+    # that contains *only* the Gaussian run "P"-mode style photometry.
+    return _get_flux__p(frame=gaussian_model(x, y), position=final_position)
 
 
 # -----------------------------------------------------------------------------
@@ -24,155 +198,62 @@ def get_flux(
     frame: np.ndarray,
     position: Tuple[float, float],
     mode: str = 'AS',
-    aperture_radius: Optional[float] = None,
-    search_radius: Optional[float] = None,
+    aperture_radius: Optional[Quantity] = None,
+    search_radius: Optional[Quantity] = None,
 ) -> Tuple[Tuple[float, float], float]:
     """
-    This function estimates the flux at and / or around a given position
-    in a frame.
+    This function estimates the flux at or around a given position in
+    a frame. There are five different modes for how to do this:
+
+        1. "AS" (aperture sum):
+            Compute the integrated flux over a circular aperture with
+            radius `aperture_radius` at the given `position`. This is
+            perhaps the most "intuitive" way to compute the flux.
+        2. "ASS" (aperture sum + search):
+            Similar to "AS", except the `position` of the circular
+            aperture is varied in a circular region with radius
+            `search_radius` to find the position with the highest flux.
+        3. "P" (pixel):
+            Compute or interpolate the value of a single pixel at the
+            given `position`.
+        4. "F" (fit):
+            Compute the flux by fitting a 2D Gaussian to the given
+            position and returning its `amplitude`.
+        5. "FS" (fit + search):
+            Similar to "F", except the position of the 2D Gaussian is
+            also optimized within the given `search_radius`.
 
     Args:
         frame: A 2D numpy array of shape `(width, height)` containing
             the data on which to run the aperture photometry.
-        position: A tuple `(x, y)` specifying the position at which we
+        position: A tuple `(x, y)` specifying the position at which to
             estimate the flux.
-        mode: Five different modes are supported:
-            1.) "AS" (aperture sum): Compute the integrated flux over a
-                circular aperture with radius `aperture_radius` at the
-                given `position`. This is perhaps the most "intuitive"
-                way to compute the flux.
-            2.) "ASS" (aperture sum + search): Similar to "AS", except
-                the `position` of the circular aperture is varied in a
-                circular region with radius `search_radius` to find the
-                position with the highest flux.
-            3.) "P" (pixel): Compute or interpolate the value of a
-                single pixel at the given `position`.
-            4.) "F" (fit): Compute the flux by fitting a 2D Gaussian to
-                the given position and returning its `amplitude`.
-            5.) "FS" (fit + search): Similar to "F", except the position
-                of the 2D Gaussian is also optimized within the given
-                `search_radius`.
+        mode: See above.
         aperture_radius: Required for modes "AS" and "ASS". Defines the
-            radius of the circular aperture over which we integrate the
-            flux.
+            radius of the circular aperture over the flux is integrated.
         search_radius: Required for modes "ASS" and "FS". Defines the
-            radius of the circular region within which we vary the
-            position to optimize the flux.
+            size of the region within which we vary the position to find
+            the "optimal" (= highest) flux.
 
     Returns:
         A tuple `(final_position, flux)`, where the `final_position` is
-        a 2-tuple of floats.
+        a 2-tuple of floats (i.e., the Cartesian position using the
+        photutils coordinate convention).
     """
 
-    # -------------------------------------------------------------------------
-    # Modes based on apertures ('AS, 'ASS' and 'P')
-    # -------------------------------------------------------------------------
+    # Compute the flux according to the selected mode
+    if mode == 'AS':
+        return _get_flux__as(frame, position, aperture_radius)
+    if mode == 'ASS':
+        return _get_flux__ass(frame, position, aperture_radius, search_radius)
+    if mode == 'P':
+        return _get_flux__p(frame, position)
+    if mode == 'F':
+        return _get_flux__f(frame, position)
+    if mode == 'FS':
+        return _get_flux__fs(frame, position, search_radius)
 
-    if mode in ('AS', 'ASS', 'P'):
-
-        # In mode 'P', we use a circular aperture with a diameter of one pixel;
-        # for the other modes, the user needs to specify an aperture_radius
-        if mode == 'P':
-            aperture_radius = 0.5
-        elif mode in ('AS', 'ASS') and aperture_radius is None:
-            raise ValueError('Modes "AS" and "ASS" need an aperture_radius!')
-
-        # For search-based mode: Define a grid of positions at which we compute
-        # the flux for the brute force optimization
-        if mode == 'ASS':
-            if search_radius is not None:
-                offset = np.linspace(-search_radius, search_radius, 5)
-                new_positions = (
-                    np.array(
-                        np.meshgrid(offset + position[0], offset + position[1])
-                    )
-                    .reshape(2, -1)
-                    .T
-                )
-            else:
-                raise ValueError('Mode "ASS" needs a search_radius!')
-        else:
-            new_positions = np.array([position])
-
-        # Set up an aperture (or a grid of apertures, for search-based mode)
-        aperture = CircularAperture(positions=new_positions, r=aperture_radius)
-
-        # Run aperture photometry, that is, compute the integrated flux for the
-        # aperture (or each aperture on the grid)
-        photometry_table = aperture_photometry(frame, aperture)
-
-        # Find the optimum, that is, the position with the highest flux, and
-        # the corresponding flux. For modes that are not search-based, the
-        # photometry table only contains a single row, which is automatically
-        # the optimum.
-        best_idx = np.argmax(photometry_table['aperture_sum'])
-        best_aperture_sum = float(photometry_table['aperture_sum'][best_idx])
-        best_position = (
-            float(photometry_table['xcenter'][best_idx].value),
-            float(photometry_table['ycenter'][best_idx].value),
-        )
-
-        return best_position, best_aperture_sum
-
-    # -------------------------------------------------------------------------
-    # Modes based on fitting a 2D Gaussian ('F' and 'FS')
-    # -------------------------------------------------------------------------
-
-    if mode in ('F', 'FS'):
-
-        # Define the grid for the fit
-        x = np.arange(frame.shape[0])
-        y = np.arange(frame.shape[1])
-        x, y = np.meshgrid(x, y)
-
-        # Create a new Gaussian2D object
-        gaussian_model = models.Gaussian2D(
-            x_mean=position[0], y_mean=position[1]
-        )
-
-        # Enforce symmetry: tie standard deviation parameters to same value to
-        # ensure that the resulting 2D Gaussian is always circular
-        def tie_stddev(gaussian_model: Any) -> Any:
-            return gaussian_model.y_stddev
-
-        gaussian_model.x_stddev.tied = tie_stddev
-
-        # Either fix the position, or define an area of admissible positions
-        if mode == 'F':
-            gaussian_model.x_mean.fixed = True
-            gaussian_model.y_mean.fixed = True
-        elif mode == 'FS' and search_radius is not None:
-            gaussian_model.x_mean.min = position[0] - search_radius
-            gaussian_model.x_mean.max = position[0] + search_radius
-            gaussian_model.y_mean.min = position[1] - search_radius
-            gaussian_model.y_mean.max = position[1] + search_radius
-
-        # Fit the model to the data
-        fit_p = fitting.LevMarLSQFitter()
-        gaussian_model = fit_p(gaussian_model, x, y, np.nan_to_num(frame))
-
-        # Get the final position of the Gaussian after the fit
-        final_position = (
-            gaussian_model.x_mean.value,
-            gaussian_model.y_mean.value,
-        )
-
-        # We cannot use the amplitude parameter of the Gaussian directly, as
-        # it is not comparable with the values estimated in pixel mode (due to
-        # the normalization of the Gaussian).
-        # Therefore, we create a new frame that contains *only* the Gaussian
-        # and perform "P" mode-like aperture photometry on this new frame.
-        gaussian_frame = gaussian_model(x, y)
-        aperture = CircularAperture(positions=final_position, r=0.5)
-        photometry_table = aperture_photometry(gaussian_frame, aperture)
-        flux = photometry_table['aperture_sum'][0]
-
-        return final_position, flux
-
-    # -------------------------------------------------------------------------
     # All other values for mode result in an error
-    # -------------------------------------------------------------------------
-
     raise ValueError(f'Mode "{mode}" not supported!')
 
 
@@ -182,8 +263,8 @@ def get_stellar_flux(
     dit_psf_template: float,
     mode: str = 'FS',
     scaling_factor: float = 1.0,
-    aperture_radius: Optional[float] = None,
-    search_radius: float = 0.5,
+    aperture_radius: Optional[Quantity] = None,
+    search_radius: Optional[Quantity] = Quantity(1, 'pixel'),
 ) -> float:
     """
     This function takes the unsaturated PSF template and computes the
@@ -196,14 +277,10 @@ def get_stellar_flux(
         dit_psf_template: Integration time of the unsaturated PSF
             template.
         scaling_factor: A scaling factor to account for ND filters.
-        mode: The mode which is used to estimate the flux of the star.
-            5 different modes are supported. Mode "FS" recommended.
-            See `get_aperture_flux()` for more details.
-        aperture_radius: Needed for modes "AS" and "ASS". Gives the
-            aperture radius of the circular aperture over which the
-            flux is integrated.
-        search_radius: Needed for modes "ASS" and "FS". Gives the search
-            area which is considered to find the highest flux.
+        mode: See `get_aperture_flux()` for more details. For the
+            stellar flux, mode "FS" is recommended.
+        aperture_radius: See `get_aperture_flux()` for more details.
+        search_radius: See `get_aperture_flux()` for more details.
 
     Returns:
         The stellar flux, normalized relative to the DIT of the stack.
@@ -226,3 +303,57 @@ def get_stellar_flux(
     )
 
     return flux
+
+
+def get_fluxes_for_polar_positions(
+    polar_positions: List[Tuple[Quantity, Quantity]],
+    frame: np.ndarray,
+    mode: str = 'AS',
+    aperture_radius: Optional[float] = None,
+    search_radius: Optional[float] = None,
+) -> List[float]:
+    """
+    Auxiliary function for applying to `get_flux()` to a list of
+    positions that are given in ("astronomical") polar coordinates.
+
+    Args:
+        polar_positions: A list of positions in polar coordinates, that
+            is, every position is a tuple `(separation, angle)`, where
+            for the angle, 0 degrees is "up", not "right".
+        frame: The frame / image on which to perform the photometry.
+        mode: The `mode` parameter for `get_flux()`; see there for
+            more details.
+        aperture_radius: The `aperture_radius` parameter for
+            `get_flux()`; see there for more details.
+        search_radius: The `search_radius` parameter for
+            `get_flux()`; see there for more details.
+
+    Returns:
+        A list of the fluxes for each given polar position.
+    """
+
+    # Determine frame size
+    frame_size = (frame.shape[0], frame.shape[1])
+
+    # Loop over polar positions and measure the flux at each one
+    fluxes = []
+    for polar_position in polar_positions:
+
+        # Convert polar position to Cartesian one
+        cartesian_position = polar2cartesian(
+            separation=polar_position[0],
+            angle=polar_position[1],
+            frame_size=frame_size,
+        )
+
+        # Measure and store the flux for this position
+        _, flux = get_flux(
+            frame=np.nan_to_num(frame),
+            position=cartesian_position,
+            mode=mode,
+            aperture_radius=aperture_radius,
+            search_radius=search_radius,
+        )
+        fluxes.append(flux)
+
+    return fluxes
