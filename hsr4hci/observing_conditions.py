@@ -12,8 +12,7 @@ from typing import Dict, List, Tuple, Union
 import io
 import math
 
-from scipy.interpolate import interp1d, CubicSpline
-from scipy.signal import convolve
+from scipy.interpolate import CubicSpline
 
 import numpy as np
 import pandas as pd
@@ -308,12 +307,14 @@ def interpolate_observing_conditions(
     timestamps: np.ndarray,
     df: pd.DataFrame,
     parameter_key: str,
-    method: str = 'spline',
 ) -> np.ndarray:
     """
     Take the values of the observing conditions in the data frame `df`
-    and apply a special interpolation algorithm so that we can apply
-    them at the given frame `timestamps`.
+    and interpolate them temporally so that we get values for the
+    timestamp of each frame.
+
+    The interpolation procedure is based on Cubic splines (see
+    https://stats.stackexchange.com/a/511394 for the idea).
 
     Args:
         timestamps: A 1D numpy array of floats, containing the UTC
@@ -322,144 +323,35 @@ def interpolate_observing_conditions(
             the ESO archives (e.g., `query_meteo`).
         parameter_key: The key under which a parameter is available from
             the respective archive. (See also `query_archive()`).
-        method: Which interpolation method to use. The options are
-            "spline", for an interpolation based on Cubic splines (see
-            https://stats.stackexchange.com/a/511394 for the idea), or
-            "rymes-myers" to use the algorithm described in Rymes and
-            Myers (2001); see below for full reference.
-            The two methods generally give very similar results, but
-            the spline interpolation is *much* faster, and due to its
-            simplicity, it is also less likely to contain a bug :)
 
     Returns:
         A 1D numpy array (of length `n_frames`) which contains an
         interpolated value of the target parameter for every frame.
     """
 
-    # -------------------------------------------------------------------------
-    # Spline interpolation
-    # -------------------------------------------------------------------------
+    # Define shortcuts
+    avg = df[parameter_key].values
+    x = df['timestamp'].values
+    dx = x[1] - x[0]
 
-    if method == 'spline':
+    # Remove NaNs, because they break the spline interpolation
+    nan_idx = np.isnan(avg)
+    avg = avg[~nan_idx]
+    x = x[~nan_idx]
 
-        # Define shortcuts
-        avg = df[parameter_key].values
-        x = df['timestamp'].values
-        dx = x[1] - x[0]
+    # Compute y, which is essentially the cumulative sum of the parameter
+    y = np.zeros(len(x))
+    for i in range(1, len(x)):
+        y[i] = y[i - 1] + avg[i - 1] * (x[i] - x[i - 1])
 
-        # Remove NaNs, because they break the spline interpolation
-        nan_idx = np.isnan(avg)
-        avg = avg[~nan_idx]
-        x = x[~nan_idx]
+    # Set up an interpolation using splines. We use the first derivative
+    # here, because the cumulative sum above is basically an integral.
+    interpolator = CubicSpline(x, y).derivative(1)
 
-        # Compute y, which is essentially the cumulative sum of the parameter
-        y = np.zeros(len(x))
-        for i in range(1, len(x)):
-            y[i] = y[i - 1] + avg[i - 1] * (x[i] - x[i - 1])
-
-        # Set up an interpolation using splines. We use the first derivative
-        # here, because the cumulative sum above is basically an integral.
-        interpolator = CubicSpline(x, y).derivative(1)
-
-        # Evaluate the interpolator at the time of each frame. The additional
-        # "+ dx" seems necessary based on visual comparison of the original
-        # and the interpolated time series?
-        return np.asarray(interpolator(timestamps + dx))
-
-    # -------------------------------------------------------------------------
-    # Rymes-Myers interpolation (more complicated and much slower!)
-    # -------------------------------------------------------------------------
-
-    if method == 'rymes-myers':
-
-        # Get the start and end date for the query (as strings). We need an
-        # offset of the observation duration both before and after the first
-        # and last frame for interpolation purposes (see below).
-        duration = int(math.ceil(max(timestamps) - min(timestamps)))
-
-        # Find the intervals limits: by default, the ESO archive only returns
-        # the average over a 60 second interval for a parameter. Here, we
-        # compute the start and end timestamp for each of these intervals.
-        interval_limits = np.column_stack(
-            [
-                (df['timestamp'] - df['integration_time']).values[1:],
-                df['timestamp'].values[1:],
-            ]
-        ).astype(int)
-
-        # Create an "upsampled" version of the time series of the parameter of
-        # interest: the upsampled version has a temporal resolution of 1 second
-        # all points within one interval (see above) have the same value.
-        upsampler = interp1d(
-            x=df['timestamp'].values,
-            y=df[parameter_key].values,
-            kind='previous',
-        )
-        upsampled_timestamps = np.arange(
-            min(df['timestamp']), max(df['timestamp']) + 1
-        )
-        upsampled_values = upsampler(upsampled_timestamps)
-
-        # Determine the offset that is required to convert between timestamps
-        # and array indices
-        offset = int(upsampled_timestamps[0])
-
-        # In the following, we apply the mean-preserving interpolation
-        # algorithm from:
-        #
-        #   Rymes, M. D., & Myers, D. R. (2001). "Mean preserving algorithm
-        #       for smoothly interpolating averaged data." Solar Energy,
-        #       71(4), p. 225–231. DOI:10.1016/s0038-092x(01)00052-4.
-        #
-        # Essentially, what this algorithm does is to iteratively take the
-        # rolling average of the upsampled date, and then at each iteration
-        # correct the mean in every interval to the original value.
-        # This procedure is not particularly sophisticated and will probably
-        # not give us the true parameter values, but the result is reasonably
-        # smooth and if we do take the interval-wise average, we get back the
-        # original time series from the ESO archive.
-
-        # Prepare the kernel for the rolling average, and the array that we
-        # will iteratively convolve with the kernel
-        kernel = np.ones(3) / 3
-        interpolated = np.copy(upsampled_values)
-
-        # We have to repeat the procedure N times, where N is the number of
-        # time steps in the target time series
-        for i in range(int(duration)):
-
-            # Compute the rolling average
-            interpolated = convolve(interpolated, kernel, mode='same')
-
-            # Loop over the intervals and adjust their mean. Note that the
-            # original publication seems to have a sign error in the last
-            # step (they subtract C_k where they should add it).
-            for a, b in interval_limits:
-                avg_k = float(upsampled_values[int((a + b) / 2) - offset])
-                mean_k = float(
-                    np.mean(interpolated[(a - offset) : (b - offset)])
-                )
-                interpolated[(a - offset) : (b - offset)] += avg_k - mean_k
-
-        # Set up another interpolator that allows us the compute the value of
-        # the target parameter at an arbitrary time between the start and end
-        # of the observation.
-        # Note that this interpolator does, in principle, return values for
-        # the interval [start - duration, end + duration]. However, the ranges
-        # [start - duration, start] and [end, end + duration] must NOT be used
-        # as they contain unphysical values: basically, because of the use of
-        # `mode='same'`, these values get convolved with a lot of zeros from
-        # the (implicit) padding of the np.convolve() command.
-        interpolator = interp1d(upsampled_timestamps, interpolated)
-
-        # Evaluate the interpolator at the time of each frame
-        return np.asarray(interpolator(timestamps))
-
-    # -------------------------------------------------------------------------
-    # Value error for invalid methods
-    # -------------------------------------------------------------------------
-
-    raise ValueError(f'Invalid method: "{method}"!')
+    # Evaluate the interpolator at the time of each frame. The additional
+    # "+ dx" seems necessary based on visual comparison of the original
+    # and the interpolated time series?
+    return np.asarray(interpolator(timestamps + dx))
 
 
 def get_observing_conditions(
