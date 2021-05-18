@@ -42,28 +42,48 @@ class ObservingConditions:
     """
 
     def __init__(self, observing_conditions: Dict[str, np.ndarray]):
+
+        # Ensure that no observing condition is name 'all' (this is a protected
+        # keyword that is used to select all available observing conditions)
+        if 'all' in observing_conditions.keys():
+            raise KeyError('Illegal name: "all"!')
+
+        # Ensure that all observing conditions are numpy arrays
+        if not all(
+            isinstance(_, np.ndarray) for _ in observing_conditions.values()
+        ):
+            raise ValueError('All observing conditions must be numpy arrays!')
+
+        # Ensure that all observing conditions have the same length
+        n_time_steps = len(list(observing_conditions.values())[0])
+        if not all(
+            len(_) == n_time_steps for _ in observing_conditions.values()
+        ):
+            raise ValueError('All arrays must have the same length!')
+
         self.observing_conditions = observing_conditions
 
     def _verify_selected_keys(
         self, selected_keys: Union[List[str], str, None]
-    ) -> None:
+    ) -> bool:
         """
-        Make sure that the `selected_keys` constitute a valid subset
-        of the available observing conditions.
+        Check if the `selected_keys` constitute a valid subset of the
+        available observing conditions. Return True if yes, otherwise
+        raise a
         """
 
         # Check if `selected_keys` contains a valid subset selection
         if (not selected_keys) or (selected_keys is None):
-            return
+            return True
         if selected_keys == 'all':
-            return
+            return True
         if isinstance(selected_keys, list) and all(
             _ in self.available_keys for _ in selected_keys
         ):
-            return
+            return True
 
-        # Otherwise, raise an error
-        raise ValueError(
+        # Otherwise, raise a KeyError
+        raise KeyError(
             f'{selected_keys} is not a valid value for selected_keys!'
         )
 
