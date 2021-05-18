@@ -172,9 +172,7 @@ def adjust_luminosity(
     return rgb
 
 
-def disable_ticks(
-    ax: Any,
-) -> None:
+def disable_ticks(ax: Axes) -> None:
     """
     Disable the ticks and labels on the given matplotlib `ax`. This is
     similar to calling `ax.axis('off')`, except that the frame around
@@ -503,7 +501,7 @@ def zerocenter_plot(ax: Axes, which: str) -> None:
     if which == 'x':
         vmin, vmax = ax.get_xlim()
         limit = max(np.abs(vmin), np.abs(vmax))
-        ax.set_ylim(ymin=-limit, ymax=limit)
+        ax.set_xlim(xmin=-limit, xmax=limit)
     elif which == 'y':
         vmin, vmax = ax.get_ylim()
         limit = max(np.abs(vmin), np.abs(vmax))
