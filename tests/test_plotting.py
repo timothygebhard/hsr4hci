@@ -9,25 +9,37 @@ Note: Most of these unit tests only ensure if a function can be called
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from _pytest.tmpdir import TempPathFactory
 from matplotlib.colorbar import Colorbar
+
+from astropy.modeling import models
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
+# noinspection PyProtectedMember
 from hsr4hci.plotting import (
+    _add_apertures_and_labels,
+    _add_colorbar,
+    _add_scalebar,
+    _add_ticks,
+    _determine_limit,
     add_colorbar_to_ax,
     adjust_luminosity,
     disable_ticks,
     get_cmap,
     get_transparent_cmap,
-    zerocenter_plot,
+    plot_frame,
     zerocenter_imshow,
+    zerocenter_plot,
 )
+
 
 # -----------------------------------------------------------------------------
 # TESTS
 # -----------------------------------------------------------------------------
+
 
 def test_get_cmap() -> None:
 
@@ -145,3 +157,148 @@ def test_zerocenter_imshow() -> None:
     assert ax.get_images()[0].get_clim() == (-12, 12)
 
     plt.close()
+
+
+def test__determine_limit() -> None:
+
+    # Case 1
+    frame = np.arange(10_000).reshape(100, 100)
+    limit = _determine_limit(frame=frame, positions=[])
+    assert limit == 9989.001
+
+    # Case 2
+    frame_size = (51, 51)
+    positions = [(11.0, 8.2), (30.2, 20.5), (10.0, 30.0)]
+    amplitudes = [1, 2, 3]
+    frame = np.zeros(frame_size)
+    x, y = np.meshgrid(np.arange(frame_size[0]), np.arange(frame_size[1]))
+    for a, (x_mean, y_mean) in zip(amplitudes, positions):
+        gaussian = models.Gaussian2D(x_mean=x_mean, y_mean=y_mean, amplitude=a)
+        frame += gaussian(x, y)
+    limit = _determine_limit(frame=frame, positions=positions)
+    assert np.isclose(limit, 3)
+
+
+def test__add_apertures_and_labels() -> None:
+
+    fig, ax = plt.subplots()
+    ax.imshow(np.zeros((50, 50)))
+
+    # Case 1
+    _add_apertures_and_labels(
+        ax=ax,
+        positions=[],
+        labels=[],
+        aperture_radius=0,
+        draw_color='red',
+    )
+
+    # Case 2
+    _add_apertures_and_labels(
+        ax=ax,
+        positions=[(15, 15), (30, 8)],
+        labels=['Label 1', 'Label 2'],
+        aperture_radius=2,
+        draw_color='red',
+    )
+
+    plt.close()
+
+
+def test__add_scalebar() -> None:
+
+    fig, ax = plt.subplots()
+    ax.imshow(np.zeros((50, 50)))
+
+    # Case 1
+    scalebar_size = _add_scalebar(ax=ax, frame_size=(50, 50), pixscale=0.0271)
+    assert np.isclose(scalebar_size, 9.22509225)
+
+    # Case 1
+    scalebar_size = _add_scalebar(ax=ax, frame_size=(70, 70), pixscale=0.0271)
+    assert np.isclose(scalebar_size, 18.4501845)
+
+    plt.close()
+
+
+def test__add_ticks() -> None:
+
+    fig, ax = plt.subplots()
+    ax.imshow(np.zeros((50, 50)))
+
+    # Case 1
+    _add_ticks(ax=ax, frame_size=(50, 50), scalebar_size=9.22509225)
+
+    plt.close()
+
+
+def test__add_colorbar() -> None:
+
+    fig, ax = plt.subplots()
+    img = ax.imshow(np.random.normal(0, 1, (50, 50)))
+
+    # Case 1
+    _add_colorbar(img=img, limit=3, fig=fig, ax=ax, use_logscale=True)
+
+    # Case 2
+    _add_colorbar(img=img, limit=5, fig=fig, ax=ax, use_logscale=False)
+
+    plt.close()
+
+
+def test_plot_frame(tmp_path_factory: TempPathFactory) -> None:
+
+    test_dir = tmp_path_factory.mktemp('plotting', numbered=False)
+    frame = np.random.normal(0, 1, (51, 51))
+
+    # Case 1
+    fig = plot_frame(
+        frame=frame,
+        positions=[],
+        labels=[],
+        pixscale=0.0271,
+        figsize=(4.0, 4.0),
+        aperture_radius=2,
+        draw_color='darkgreen',
+        limit=None,
+        use_logscale=False,
+        add_colorbar=True,
+        add_scalebar=True,
+        file_path=None
+    )
+    plt.close(fig)
+
+    # Case 1
+    fig = plot_frame(
+        frame=frame,
+        positions=[(20, 20)],
+        labels=['test'],
+        pixscale=0.0271,
+        figsize=(4.0, 4.0),
+        aperture_radius=2,
+        draw_color='darkgreen',
+        limit=None,
+        use_logscale=True,
+        add_colorbar=False,
+        add_scalebar=True,
+        file_path=test_dir / 'test.pdf'
+    )
+    plt.close(fig)
+
+
+    # Case 2
+    fig = plot_frame(
+        frame=frame,
+        positions=[(20, 20), (10, 10)],
+        labels=['test', 'test 2'],
+        pixscale=0.0271,
+        figsize=(4.0, 4.0),
+        aperture_radius=2,
+        draw_color='darkgreen',
+        limit=None,
+        use_logscale=True,
+        add_colorbar=False,
+        add_scalebar=False,
+        file_path=test_dir / 'test.png'
+    )
+    plt.close(fig)
