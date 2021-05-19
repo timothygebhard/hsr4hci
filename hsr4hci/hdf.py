@@ -12,8 +12,6 @@ Parts of the code in the module are based on:
 from pathlib import Path
 from typing import Any, Union
 
-from tqdm.auto import tqdm
-
 import h5py
 import numpy as np
 
@@ -40,23 +38,6 @@ H5PY_SUPPORTED_TYPES = (
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def is_hdf_file(file_path: Union[Path, str]) -> bool:
-    """
-    Check the ending of a file_path to determine if it is an HDF file.
-
-    Args:
-        file_path: Path to the target file to be checked.
-
-    Returns:
-        True if the given file is a HDF file; False otherwise.
-    """
-
-    endswith_hdf = Path(file_path).name.endswith('.hdf')
-    endswith_hdf5 = Path(file_path).name.endswith('.hdf5')
-
-    return endswith_hdf or endswith_hdf5
-
-
 def save_data_to_hdf(
     hdf_file: h5py.File,
     location: str,
@@ -81,7 +62,7 @@ def save_data_to_hdf(
 
     # Ensure that we only try to save supported types
     if not isinstance(data, H5PY_SUPPORTED_TYPES):
-        raise ValueError(f'Type "{type(data)}" not supported by HDF format!')
+        raise TypeError(f'Type "{type(data)}" not supported by HDF format!')
 
     # Check if the data set already exists
     if (location in hdf_file) and (name in hdf_file[location]):
@@ -237,25 +218,4 @@ def recursively_load_dict_contents_from_group(
                 path=new_path,
             )
 
-    return results
-
-
-def load_residuals(file_path: Union[str, Path]) -> dict:
-    """
-    Auxiliary function load only the residuals (and not the predictions)
-    from a given results.hdf file.
-
-    Args:
-        file_path: Path to target results.hdf file.
-
-    Returns:
-        A dictionary containing only the residuals.
-    """
-
-    results = {}
-    with h5py.File(file_path, 'r') as hdf_file:
-        for key in tqdm(list(hdf_file.keys()), ncols=80):
-            if key == 'signal_times':
-                continue
-            results[key] = {'residuals': np.array(hdf_file[key]['residuals'])}
     return results
