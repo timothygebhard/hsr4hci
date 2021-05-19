@@ -109,8 +109,8 @@ if __name__ == '__main__':
     # Load signal estimate
     print('Loading signal estimate...', end=' ', flush=True)
     file_path = results_dir / 'signal_estimate.fits'
-    signal_estimate = np.asarray(read_fits(file_path=file_path))
-    frame_size = signal_estimate.shape
+    signal_estimate = read_fits(file_path=file_path, return_header=False)
+    frame_size = (signal_estimate.shape[0], signal_estimate.shape[1])
     print('Done!', flush=True)
 
     # Load information about the planets in the dataset
@@ -192,11 +192,11 @@ if __name__ == '__main__':
     plot_frame(
         frame=signal_estimate,
         file_path=file_path,
-        aperture_radius=(psf_fwhm / 2),
-        expand_radius=2,
+        aperture_radius=psf_fwhm,
+        pixscale=float(metadata['PIXSCALE']),
         positions=list(results_df.loc['new_position'].values),
-        snrs=list(results_df.loc['snr'].values),
-        use_colorbar=True,
+        labels=list(results_df.loc['snr'].values),
+        add_colorbar=True,
         use_logscale=False,
     )
     print('Done!', flush=True)

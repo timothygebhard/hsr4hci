@@ -8,11 +8,10 @@ Utility functions for plotting.
 
 from copy import copy
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import colorsys
 
-from astropy.units import Quantity
 from astropy.modeling import models, fitting
 from matplotlib.axes import Axes
 from matplotlib.cm import get_cmap as original_get_cmap
@@ -22,14 +21,14 @@ from matplotlib.figure import Figure
 from matplotlib.image import AxesImage
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from photutils import CircularAperture
 
-import bottleneck as bn
 import matplotlib.colors as mc
 import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import numpy as np
+
+from hsr4hci.coordinates import get_center
 
 
 # -----------------------------------------------------------------------------
@@ -194,282 +193,6 @@ def disable_ticks(ax: Axes) -> None:
     )
 
 
-def plot_frame(
-    frame: np.ndarray,
-    file_path: Optional[Union[Path, str]] = None,
-    figsize: Tuple[float, float] = (4.0, 4.0),
-    aperture_radius: Optional[float] = None,
-    expand_radius: float = 2.5,
-    positions: Optional[List[Tuple[float, float]]] = None,
-    snrs: Optional[List[float]] = None,
-    draw_color: Optional[MatplotlibColor] = 'darkgreen',
-    limit: Optional[float] = None,
-    label_options: Optional[Dict[str, Any]] = None,
-    use_ticks: bool = True,
-    use_colorbar: bool = False,
-    use_logscale: bool = True,
-) -> Figure:
-    """
-    Plot a single frame (e.g., a signal estimate). If desired, also add
-    apertures and labels for the SNR at given positions.
-
-    Args:
-        frame: A 2D numpy array of shape `(width, height)` containing
-            the frame to be plotted.
-        file_path: A string containing the path at which to save the
-            resulting plot. If None is given, the plot is not saved.
-        figsize: A two-tuple `(x_size, y_size)` containing the size of
-            the figure in inches.
-        aperture_radius: If apertures are to be draw (see below), this
-            is the radius (in units of pixels) that is used for them.
-        expand_radius: Factor by which to multiply the `aperture_radius`
-            for drawing purposes.
-        positions: Optionally, a list of positions. At each position,
-            an aperture is drawn with the given aperture radius.
-        snrs: Optionally, each aperture can also be decorated with a
-            label containing the SNR. This list contains the values for
-            these SNR labels.
-        draw_color: The color to be used for drawing the aperture and
-            also the label.
-        limit: Range limit to be used for the plot (vmin, vmax).
-        label_options: Additional keyword arguments that are passed to
-            the `plt.text()` command that is used for the SNR labels.
-        use_ticks: Whether or not to place ticks around the borders of
-            the frame (to better understand the scale of the frame).
-        use_colorbar: Whether or not to place a (tiny) colorbar on the
-            frame (in the bottom right-hand corner).
-        use_logscale: Whether or not to use a (symmetric) log scale for
-            the color bar.
-
-    Returns:
-        A matplotlib figure containing the plot of the frame.
-    """
-
-    # -------------------------------------------------------------------------
-    # General set up, draw frame to canvas
-    # -------------------------------------------------------------------------
-
-    # Set up a new figure
-    fig, ax = plt.subplots(figsize=figsize)
-
-    # Initialize aperture
-    aperture: Optional[CircularAperture] = None
-
-    # Define the radius for drawing
-    if aperture_radius is not None:
-        draw_radius: Optional[float] = aperture_radius * expand_radius
-    else:
-        draw_radius = None
-
-    # If apertures are to be drawn, we can define them here and use the
-    # photometry values from them to define the value limits of the plot
-    if (aperture_radius is not None) and (positions is not None):
-
-        # Define aperture, because we need it for plotting later
-        aperture = CircularAperture(positions=positions, r=draw_radius)
-
-        # If no explicit plot limits are given, we fit the given position with
-        # a 2D Gaussian to determine the limit from the fit amplitude
-        if limit is None:
-
-            # Define the grid for the fit
-            x = np.arange(frame.shape[0])
-            y = np.arange(frame.shape[1])
-            x, y = np.meshgrid(x, y)
-
-            # Fit the given position with a 2D Gaussian
-            fit_p = fitting.LevMarLSQFitter()
-            gaussian_model = fit_p(
-                model=models.Gaussian2D(
-                    x_mean=positions[0], y_mean=positions[1]
-                ),
-                x=x,
-                y=y,
-                z=np.nan_to_num(frame),
-            )
-
-            # Compute the limit based on the amplitude of the 2D Gaussian
-            limit = float(gaussian_model.amplitude)
-
-    # If the limit is still None at this point (i.e., if no apertures were
-    # given, and there are also no explicit plot limits), just compute the
-    # limit based on the entire frame
-    if limit is None:
-        limit = np.around(1.1 * bn.nanmax(np.abs(frame)), 1)
-
-    # Prepare norm for the
-    if use_logscale:
-        norm = mc.SymLogNorm(
-            linthresh=0.1 * limit,
-            vmin=-1 * limit,
-            vmax=limit,
-            base=10,
-        )
-    else:
-        norm = mc.PowerNorm(
-            gamma=1,
-            vmin=-1 * limit,
-            vmax=limit,
-        )
-
-    # Prepare grid for the pcolormesh()
-    x_range = np.arange(frame.shape[0])
-    y_range = np.arange(frame.shape[1])
-    x, y = np.meshgrid(x_range, y_range)
-
-    # Create the actual plot and use the limit we just computed.
-    # Using pcolormesh() instead of imshow() avoids interpolation artifacts in
-    # most PDF viewers (otherwise, the PDF version will often look blurry).
-    img = ax.pcolormesh(
-        x,
-        y,
-        frame,
-        shading='nearest',
-        cmap=get_cmap(),
-        snap=True,
-        rasterized=True,
-        norm=norm,
-    )
-
-    # -------------------------------------------------------------------------
-    # Plot apertures and labels
-    # -------------------------------------------------------------------------
-
-    # Plot the desired apertures
-    if aperture is not None:
-        aperture.plot(axes=ax, **dict(color=draw_color, lw=2, ls='-'))
-
-    # Define default options for the SNR label
-    label_kwargs = dict(
-        ha='left',
-        va='center',
-        color='white',
-        fontsize=18,
-        bbox=dict(
-            facecolor=draw_color,
-            edgecolor='none',
-            boxstyle='square,pad=0.075',
-        ),
-    )
-
-    # Add or overwrite options that were passed using the `label_kwargs`
-    if label_options is not None:
-        for key, value in label_kwargs.items():
-            label_options[key] = value
-
-    # Add labels for their respective SNR
-    if (
-        (snrs is not None)
-        and (positions is not None)
-        and (draw_radius is not None)
-    ):
-        for snr, position in zip(snrs, positions):
-
-            ax.annotate(
-                text=f'{snr:.1f}',
-                xy=(position[0] + draw_radius, position[1]),
-                xytext=(8, 0),
-                textcoords='offset pixels',
-                arrowprops=dict(
-                    arrowstyle='-',
-                    shrinkA=0,
-                    shrinkB=0,
-                    lw=2,
-                    color=draw_color,
-                ),
-                **label_kwargs,
-            )
-
-    # -------------------------------------------------------------------------
-    # Add stellar position and scale bar
-    # -------------------------------------------------------------------------
-
-    # Place a "+"-marker at the center for the frame
-    center = (frame.shape[0] / 2, frame.shape[1] / 2)
-    ax.plot(center[0], center[1], '+', ms=10, color='black')
-
-    # Compute size of the scale bar, and define its label accordingly
-    scalebar_size = Quantity(1.0, 'arcsec').to('pixel').value
-    scalebar_label_value = 1.0
-    while scalebar_size > 0.3 * frame.shape[0]:
-        scalebar_size /= 2
-        scalebar_label_value /= 2
-    scalebar_label = f'{scalebar_label_value}"'
-
-    # Create the scale bar and add it to the frame (loc=1 means "upper right")
-    scalebar = AnchoredSizeBar(
-        transform=ax.transData,
-        size=scalebar_size,
-        label=scalebar_label,
-        loc=1,
-        pad=1,
-        color='white',
-        frameon=False,
-        size_vertical=0,
-        fontproperties=fm.FontProperties(size=12),
-    )
-    ax.add_artist(scalebar)
-
-    # -------------------------------------------------------------------------
-    # Add color bar
-    # -------------------------------------------------------------------------
-
-    if use_colorbar:
-
-        # Create new ax object for colorbar
-        cax = inset_axes(
-            parent_axes=ax,
-            width="18%",
-            height="2%",
-            loc='lower right',
-            borderpad=2,
-        )
-
-        # Set up the rest of the colorbar options
-        cbar = fig.colorbar(img, cax=cax, orientation='horizontal')
-        cbar.set_ticks([-limit, 0, limit])
-        cbar.ax.yaxis.set_tick_params(color='white')
-        plt.setp(plt.getp(cbar.ax.axes, 'xticklabels'), color='white')
-        cbar.outline.set_edgecolor('white')
-        cbar.ax.tick_params(labelsize=8, pad=1, length=3, color='white')
-        cbar.ax.set_xticklabels(["{:.1f}".format(i) for i in cbar.get_ticks()])
-
-    # -------------------------------------------------------------------------
-    # Set plot options and save result
-    # -------------------------------------------------------------------------
-
-    # Define tick positions
-    delta = scalebar_size / 2
-    xticks, yticks = [], []
-    for i in range(5):
-        xticks += [center[0] - i * delta, center[0] + i * delta]
-        yticks += [center[1] - i * delta, center[1] + i * delta]
-    xticks = list(filter(lambda _: 0 < _ < frame.shape[0], xticks))
-    yticks = list(filter(lambda _: 0 < _ < frame.shape[0], yticks))
-    ax.set_xticks(xticks)
-    ax.set_yticks(yticks)
-
-    # Define which ticks to show
-    ax.tick_params(
-        axis='both',
-        which='both',
-        direction='in',
-        color='white',
-        top=use_ticks,
-        bottom=use_ticks,
-        left=use_ticks,
-        right=use_ticks,
-        labelleft=False,
-        labelbottom=False,
-    )
-
-    # Save the results
-    if file_path is not None:
-        plt.savefig(file_path, bbox_inches='tight', pad_inches=0, dpi=600)
-
-    return fig
-
-
 def zerocenter_imshow(ax: Axes) -> None:
     """
     Make sure that he `(vmin, vmax)` range of the `imshow()` plot in
@@ -508,3 +231,302 @@ def zerocenter_plot(ax: Axes, which: str) -> None:
         ax.set_ylim(ymin=-limit, ymax=limit)
     else:
         raise ValueError('Parameter which must be "x" or "y"!')
+
+
+# -----------------------------------------------------------------------------
+# AUXILIARY FUNCTION DEFINITIONS AND PLOT_FRAME()
+# -----------------------------------------------------------------------------
+
+def _determine_limit(
+    frame: np.ndarray,
+    positions: Optional[List[Tuple[float, float]]],
+) -> float:
+    """
+    Auxiliary function to determine the plot limits for plot_frame().
+    """
+
+    # If no positions are given, simply use the 99.9th percentile of the
+    # entire frame as the "global" limit
+    if (positions is None) or (not positions):
+        return float(np.nanpercentile(np.abs(frame), 99.9))
+
+    # Otherwise, loop over the positions, fit the frame at each position with
+    # a 2D Gaussian, and set the limit to the maximum amplitude we find.
+
+    # Define a grid for the fit
+    x, y = np.meshgrid(np.arange(frame.shape[0]), np.arange(frame.shape[1]))
+
+    # Keep track of the maximum amplitude (= the limit we will return)
+    limit = -np.infty
+
+    # Loop over all given positions
+    for position in positions:
+
+        # Set up the model (and keep the mean = position fixed)
+        model = models.Gaussian2D(x_mean=position[0], y_mean=position[1])
+        model.x_mean.fixed = True
+        model.y_mean.fixed = True
+
+        # Fit the frame and update the limit
+        fit_p = fitting.LevMarLSQFitter()
+        model = fit_p(model=model, x=x, y=y, z=np.nan_to_num(frame))
+        limit = max(limit, model.amplitude.value)
+
+    return limit
+
+
+def _add_apertures_and_labels(
+    ax: Axes,
+    positions: List[Tuple[float, float]],
+    labels: List[Union[str, float]],
+    aperture_radius: float,
+    draw_color: MatplotlibColor,
+) -> None:
+    """
+    Auxiliary function for `plot_frame()` to add apertures and labels
+    to mark planet positions and indicate the SNR / FPF / ...
+    """
+
+    # Define default options for the label
+    label_kwargs = dict(
+        ha='left',
+        va='center',
+        color='white',
+        fontsize=12,
+        bbox=dict(
+            facecolor=draw_color,
+            edgecolor='none',
+            boxstyle='square,pad=0.075',
+        ),
+    )
+
+    # Draw apertures at positions (if positions are given)
+    if positions:
+        aperture = CircularAperture(positions=positions, r=aperture_radius)
+        # noinspection PyTypeChecker
+        aperture.plot(axes=ax, lw=2, color=draw_color)
+
+    # Add labels for positions (if labels are given)
+    if labels and positions:
+        for position, label in zip(positions, labels):
+            ax.annotate(
+                text=label,
+                xy=(position[0] + aperture_radius, position[1]),
+                xytext=(8, 0),
+                textcoords='offset pixels',
+                arrowprops=dict(
+                    arrowstyle='-',
+                    shrinkA=0,
+                    shrinkB=0,
+                    lw=2,
+                    color=draw_color,
+                ),
+                **label_kwargs,
+            )
+
+
+def _add_scalebar(
+    ax: Axes,
+    frame_size: Tuple[int, int],
+    pixscale: float,
+) -> float:
+    """
+    Auxiliary function for `plot_frame()` to add a scale bar.
+    """
+
+    # Compute size of the scale bar, and define its label accordingly
+    scalebar_size = 1 / pixscale
+    scalebar_label_value = 1.0
+    while scalebar_size > 0.3 * frame_size[0]:
+        scalebar_size /= 2
+        scalebar_label_value /= 2
+
+    # Create the scale bar and add it to the frame (loc=1 means "upper right")
+    scalebar = AnchoredSizeBar(
+        transform=ax.transData,
+        size=scalebar_size,
+        label=str(scalebar_label_value),
+        loc=1,
+        pad=1,
+        color='white',
+        frameon=False,
+        size_vertical=0,
+        fontproperties=fm.FontProperties(size=12),
+    )
+    ax.add_artist(scalebar)
+
+    return scalebar_size
+
+
+def _add_ticks(
+    ax: Axes, frame_size: Tuple[int, int], scalebar_size: float
+) -> None:
+    """
+    Auxiliary function for `plot_frame()` to add ticks to the frame.
+    """
+
+    # Define shortcut for the center
+    center = get_center(frame_size)
+
+    # Define tick positions
+    delta = scalebar_size / 2
+    xticks, yticks = [], []
+    for i in range(10):
+        xticks += [center[0] - i * delta, center[0] + i * delta]
+        yticks += [center[1] - i * delta, center[1] + i * delta]
+    xticks = list(filter(lambda _: 0 < _ < frame_size[0], xticks))
+    yticks = list(filter(lambda _: 0 < _ < frame_size[1], yticks))
+
+    # Add ticks to the axis
+    ax.set_xticks(xticks)
+    ax.set_yticks(yticks)
+
+    # Define which ticks to show
+    ax.tick_params(
+        axis='both',
+        which='both',
+        direction='in',
+        color='white',
+        top=True,
+        bottom=True,
+        left=True,
+        right=True,
+        labelleft=False,
+        labelbottom=False,
+    )
+
+
+def _add_colorbar(
+    img: AxesImage,
+    limit: float,
+    fig: Figure,
+    ax: Axes,
+    use_logscale: bool,
+) -> None:
+    """
+    Auxiliary function for `plot_frame()` to add a colorbar.
+    """
+
+    # Create a color bar at the bottom of the axis
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes('bottom', size='5%', pad=0.05)
+    cbar = fig.colorbar(img, cax=cax, orientation='horizontal')
+
+    # Set up the rest of the colorbar options
+    if use_logscale:
+        cbar.set_ticks([-limit, -limit / 10, 0, limit / 10, limit])
+    else:
+        cbar.set_ticks([-limit, -limit / 2, 0, limit / 2, limit])
+    cbar.ax.set_xticklabels(["{:.1f}".format(i) for i in cbar.get_ticks()])
+
+
+def plot_frame(
+    frame: np.ndarray,
+    positions: List[Tuple[float, float]],
+    labels: List[Union[str, float]],
+    pixscale: float,
+    figsize: Tuple[float, float] = (4.0, 4.0),
+    aperture_radius: float = 0,
+    draw_color: MatplotlibColor = 'darkgreen',
+    limit: Optional[float] = None,
+    use_logscale: bool = False,
+    add_colorbar: bool = True,
+    add_scalebar: bool = True,
+    file_path: Optional[Union[Path, str]] = None,
+) -> Figure:
+    """
+    Plot a single frame (e.g., a signal estimate) with various options.
+
+    Args:
+        frame: A 2D numpy array of shape `(x_size, y_size)` containing
+            the frame to be plotted (e.g., a signal estimate).
+        positions: A list of positions (which may be empty). At each
+            position, an aperture is drawn with the given radius.
+        labels: A list of labels (which may be empty) that are placed
+            next to the apertures drawn at the `positions`. Can be
+            used, for example, to add the SNR or FPF to the plot.
+        pixscale: The pixel scale, in units of arcsecond / pixel. Only
+            needed if `add_scalebar` is True.
+        figsize: A two-tuple `(x_size, y_size)` containing the size of
+            the figure in inches.
+        aperture_radius: The radius of the apertures to be drawn at the
+            given `positions`. If `positions` is empty, this value is
+            never used.
+        draw_color: The color that is used for drawing the apertures and
+            also labels.
+        limit: If given, `(-limit, limit)` is used as `(vmin, vmax)` for
+            the plot limits. If None, this value is estimated from the
+            data automatically.
+        use_logscale: Whether or not to use a (symmetric) log scale for
+            the plot / color bar.
+        add_colorbar: Whether or not to add a colorbar at the bottom of
+            the frame.
+        add_scalebar: Whether or not to add a scale bar and a grid of
+            ticks around the borders of the frame (to better understand
+            the scale of the frame).
+        file_path: The path at which to save the resulting plot. The
+            path should include the file name plus file ending. If None
+            is given, the plot is not saved.
+
+    Returns:
+        A matplotlib figure containing the plot of the frame.
+    """
+
+    # Define shortcuts
+    frame_size = (frame.shape[0], frame.shape[1])
+    center = get_center(frame_size)
+
+    # In case no explicit plot limit is specified, determine it from the data
+    if limit is None:
+        limit = _determine_limit(frame=frame, positions=positions)
+
+    # Set up the `norm`, which determines whether we use linear or log scale
+    if use_logscale:
+        norm = mc.SymLogNorm(linthresh=0.1 * limit, vmin=-limit, vmax=limit)
+    else:
+        norm = mc.PowerNorm(gamma=1, vmin=-limit, vmax=limit)
+
+    # Prepare grid for the pcolormesh()
+    x, y = np.meshgrid(np.arange(frame.shape[0]), np.arange(frame.shape[1]))
+
+    # # Set up a new figure and create the actual plot
+    # Using pcolormesh() instead of imshow() avoids interpolation artifacts in
+    # most PDF viewers (otherwise, the PDF version will often look blurry).
+    fig, ax = plt.subplots(figsize=figsize)
+    img = ax.pcolormesh(
+        x,
+        y,
+        frame,
+        shading='nearest',
+        cmap=get_cmap(),
+        snap=True,
+        rasterized=True,
+        norm=norm,
+    )
+    ax.set_aspect('equal')
+
+    # Place a "+"-marker at the center for the frame
+    ax.plot(center[0], center[1], '+', ms=10, color='black')
+
+    # Plot apertures and add labels
+    if positions:
+        _add_apertures_and_labels(
+            ax, positions, labels, aperture_radius, draw_color
+        )
+
+    # If desired, add a scale bar and a grid of ticks
+    if add_scalebar:
+        scalebar_size = _add_scalebar(ax, frame_size, pixscale)
+        _add_ticks(ax, frame_size, scalebar_size)
+    else:
+        disable_ticks(ax)
+
+    # If desired, add a color bar
+    if add_colorbar:
+        _add_colorbar(img, limit, fig, ax, use_logscale)
+
+    # Save the results, if desired
+    if file_path is not None:
+        plt.savefig(file_path, bbox_inches='tight', pad_inches=0, dpi=600)
+
+    return fig
