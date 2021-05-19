@@ -260,7 +260,7 @@ def test_plot_frame(tmp_path_factory: TempPathFactory) -> None:
         figsize=(4.0, 4.0),
         aperture_radius=2,
         draw_color='darkgreen',
-        limit=None,
+        limit=5,
         use_logscale=False,
         add_colorbar=True,
         add_scalebar=True,

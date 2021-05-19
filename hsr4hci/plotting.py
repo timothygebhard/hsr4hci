@@ -256,8 +256,9 @@ def _determine_limit(
     # Define a grid for the fit
     x, y = np.meshgrid(np.arange(frame.shape[0]), np.arange(frame.shape[1]))
 
-    # Keep track of the maximum amplitude (= the limit we will return)
-    limit = -np.infty
+    # Keep track of the maximum amplitude (= the limit we will return). This
+    # limit should always be positive!
+    limit = float(np.nanmin(np.abs(frame)))
 
     # Loop over all given positions
     for position in positions:
