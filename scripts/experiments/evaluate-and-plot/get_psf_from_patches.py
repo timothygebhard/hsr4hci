@@ -7,12 +7,14 @@ Cut patches from each residual frame to estimate planetary PSF.
 # -----------------------------------------------------------------------------
 
 from pathlib import Path
+from typing import Tuple
 
 import argparse
 import os
 import time
 
 from astropy.units import Quantity
+from scipy.interpolate import RegularGridInterpolator
 
 import h5py
 import numpy as np
@@ -25,9 +27,51 @@ from hsr4hci.data import (
     load_planets,
 )
 from hsr4hci.fits import read_fits, save_fits
-from hsr4hci.general import crop_around_position_with_interpolation
 from hsr4hci.masking import get_positions_from_mask
 from hsr4hci.units import set_units_for_instrument
+
+
+# -----------------------------------------------------------------------------
+# FUNCTION DEFINITIONS
+# -----------------------------------------------------------------------------
+
+def crop_around_position_with_interpolation(
+    array: np.ndarray, position: Tuple[float, ...], size: Tuple[int, ...]
+) -> np.ndarray:
+    """
+    Crop an n-dimensional `array` to the given `size` around a specified
+    `position`, which can also be an n-tuple of floats. In the latter
+    case, bilinear / bicubic / ... interpolation is used to "resample"
+    the original `array`.
+
+    Args:
+        array: An n-dimensional numpy array.
+        position: An n-tuple specifying a position inside the array.
+        size: An n-tuple of integers, specifying the target size of the
+            crop. Must be smaller or equal to `array.shape` in every
+            dimension.
+
+    Returns:
+        The original input `array`, cropped to the target `size` around
+        the specified `position` (using interpolation).
+    """
+
+    # Create interpolator for data
+    interpolator = RegularGridInterpolator(
+        points=tuple([np.arange(_) for _ in array.shape]), values=array
+    )
+
+    # Create a meshgrid of the positions at which we evaluate the interpolator
+    # and flatten it into array of n-tuples (necessary for interpolator)
+    meshgrid = np.meshgrid(
+        *[np.linspace(-_ / 2, _ / 2, _) + __ for _, __ in zip(size, position)]
+    )
+    positions = np.array([np.array(_).flatten() for _ in meshgrid])
+
+    # Evaluate interpolator and reshape to target size
+    result = interpolator(positions.T).reshape(*size)
+
+    return np.asarray(result)
 
 
 # -----------------------------------------------------------------------------
@@ -103,7 +147,7 @@ if __name__ == '__main__':
 
         print('\nLoading selection mask from FITS...', end=' ', flush=True)
         file_path = results_dir / 'residuals.fits'
-        residuals = np.asarray(read_fits(file_path))
+        residuals = read_fits(file_path, return_header=False)
         print('Done!', flush=True)
 
     # Otherwise (e.g., for HSR), we need to (re-)construct the residuals
@@ -112,13 +156,13 @@ if __name__ == '__main__':
         # Load selection mask from FITS
         print('\nLoading selection mask from FITS...', end=' ', flush=True)
         file_path = results_dir / 'selection_mask.fits'
-        selection_mask = np.asarray(read_fits(file_path))
+        selection_mask = read_fits(file_path, return_header=False)
         print('Done!', flush=True)
 
         # Load hypotheses from FITS
         print('Loading hypotheses from FITS...', end=' ', flush=True)
         file_path = experiment_dir / 'hypotheses' / 'hypotheses.fits'
-        hypotheses = np.asarray(read_fits(file_path))
+        hypotheses = read_fits(file_path, return_header=False)
         print('Done!', flush=True)
 
         # Load residuals from HDF (based on hypotheses and selection mask)
@@ -185,7 +229,7 @@ if __name__ == '__main__':
         print(f'\nCropping patches for planet {name}...', end=' ', flush=True)
 
         # Store patches for this planet
-        patches = []
+        patches_list = []
 
         # Loop over residual frames and crop the
         for frame, position in zip(residuals, planet_positions[name]):
@@ -195,14 +239,14 @@ if __name__ == '__main__':
                     position=position,
                     size=(patch_size, patch_size),
                 )
-                patches.append(patch)
+                patches_list.append(patch)
             except ValueError as error:
                 if 'One of the requested xi is out of bounds' in str(error):
                     print('\n\nERROR: Patch size too large!\n')
                 raise
 
         # Convert the list of patches to a numpy array
-        patches = np.array(patches)
+        patches = np.array(patches_list)
 
         # Store the patches as a FITS file
         print('Saving patches to FITS...', end=' ', flush=True)
