@@ -213,6 +213,9 @@ class DAGFile:
     def independent_nodes(self) -> Set[Node]:
         return set(self.nodes).difference(self.dependent_nodes)
 
+    def get_node_by_name(self, node_name: str) -> Node:
+        return self.graph[node_name]
+
     def check_validity(self) -> None:
 
         # Make sure there's at least one independent node as a starting point
@@ -222,16 +225,21 @@ class DAGFile:
         # Make sure the graph is acyclic (this will raise a ValueError if not)
         self.topological_sort()
 
-    def add_submit_file(self, name: str, attributes: dict) -> None:
+    def add_submit_file(self, name: str, attributes: Optional[dict]) -> None:
 
         if name in self.node_names:
             raise KeyError(f'Node "{name}" already exists!')
 
         if attributes is None:
-            attributes = dict(file_path=None, bid=None)
+            attributes = dict(file_path=None, bid=1)
+        if attributes is not None and 'file_path' not in attributes.keys():
+            raise ValueError('attributes is missing file_path!')
+        if attributes is not None and 'bid' not in attributes.keys():
+            attributes['bid'] = 1
 
-        node = Node(name=name, attributes=attributes)
-        self.graph[name] = node
+        if attributes is not None:
+            node = Node(name=name, attributes=attributes)
+            self.graph[name] = node
 
     def add_dependency(
         self, parent_node_name: str, child_node_name: str
