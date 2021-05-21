@@ -236,3 +236,25 @@ def test__shift_image() -> None:
     with pytest.raises(ValueError) as error:
         shift_image(image=np.ones((3, 3)), offset=(1, 1), interpolation='abc')
     assert 'The value of interpolation must be one' in str(error)
+
+    # Case 3
+    image = np.random.normal(0, 1, (3, 3))
+    shifted = shift_image(
+        image=image,
+        offset=(1, 0),
+        interpolation='bilinear',
+    )
+    target = np.roll(image, shift=1, axis=1)
+    target[:, 0] = 0
+    assert np.allclose(shifted, target)
+
+    # Case 4
+    image = np.random.normal(0, 1, (3, 3))
+    shifted = shift_image(
+        image=image,
+        offset=(0, 1),
+        interpolation='spline',
+    )
+    target = np.roll(image, shift=1, axis=0)
+    target[0, :] = 0
+    assert np.allclose(shifted, target)
