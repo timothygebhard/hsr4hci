@@ -44,4 +44,16 @@ jobs:
         mypy tests/
     - name: Run pytest
       run: |
-        pytest --cov-report term-missing --cov=hsr4hci --verbose
+        SUMMARY="$(pytest --cov-report term-missing --cov=hsr4hci --verbose)" ;
+        echo $SUMMARY ;
+        COVERAGE=$(echo $SUMMARY | tail -n 4 | head -n 1 | awk '{print $4}') ;
+        echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV ;
+    - name: Create test coverage badge
+      uses: schneegans/dynamic-badges-action@v1.0.0
+      with:
+        auth: ${{ secrets.GIST_SECRET }}
+        gistID: 40d8bf48dcbaf33c99e8de35ad6161f2
+        filename: hsr4hci.json
+        label: Test Coverage
+        message: ${{ env.COVERAGE }}
+        color: green
