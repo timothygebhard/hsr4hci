@@ -6,42 +6,31 @@ Tests for psf.py
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from astropy.units import Quantity
+from astropy.modeling import models
 
 import numpy as np
 
-from hsr4hci.general import crop_center
-from hsr4hci.psf import get_psf_fwhm, get_artificial_psf
+from hsr4hci.psf import get_psf_fwhm
 
 
 # -----------------------------------------------------------------------------
 # TEST CASES
 # -----------------------------------------------------------------------------
 
-def test__get_artificial_psf() -> None:
-
-    artificial_psf = get_artificial_psf(
-        pixscale=Quantity(0.0271, 'arcsec / pixel'),
-        lambda_over_d=Quantity(0.0956, 'arcsec'),
-    )
-
-    assert artificial_psf.ndim == 2
-    assert artificial_psf.shape == (41, 41)
-    assert np.isclose(np.sum(artificial_psf), 1)
-
-
 def test__get_psf_fwhm() -> None:
 
-    psf_template = get_artificial_psf(
-        pixscale=Quantity(0.0271, 'arcsec / pixel'),
-        lambda_over_d=Quantity(0.0956, 'arcsec'),
-    )
-
-    # Test case 1
-    psf_fwhm = get_psf_fwhm(psf_template=psf_template)
-    assert np.isclose(psf_fwhm, 3.86723)
+    # Case 1
+    x, y = np.meshgrid(np.arange(33), np.arange(33))
+    gaussian = models.Gaussian2D(x_mean=16, y_mean=16)
+    psf_template = np.asarray(gaussian(x, y))
+    actual_psf_fwhm = get_psf_fwhm(psf_template=psf_template)
+    expected_psf_fwhm = 2 * np.sqrt(2 * np.log(2))
+    assert np.isclose(actual_psf_fwhm, expected_psf_fwhm)
 
     # Test case 2
-    psf_cropped = crop_center(psf_template, (31, 31))
-    psf_fwhm = get_psf_fwhm(psf_template=psf_cropped)
-    assert np.isclose(psf_fwhm, 3.86600)
+    x, y = np.meshgrid(np.arange(53), np.arange(53))
+    gaussian = models.Gaussian2D(x_mean=26, y_mean=26, x_stddev=2, y_stddev=2)
+    psf_template = np.asarray(gaussian(x, y))
+    actual_psf_fwhm = get_psf_fwhm(psf_template=psf_template)
+    expected_psf_fwhm = 2 * 2 * np.sqrt(2 * np.log(2))
+    assert np.isclose(actual_psf_fwhm, expected_psf_fwhm)
