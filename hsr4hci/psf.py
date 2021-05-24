@@ -6,12 +6,13 @@ Utility functions for working with point spread functions.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from astropy.convolution import AiryDisk2DKernel
-from astropy.units import Quantity
+from typing import Any
+
+from astropy.modeling import models, fitting
 
 import numpy as np
 
-from hsr4hci.fitting import CircularGauss2D
+from hsr4hci.coordinates import get_center
 from hsr4hci.general import crop_center
 
 
@@ -34,56 +35,32 @@ def get_psf_fwhm(psf_template: np.ndarray) -> float:
 
     # Crop PSF template: too large templates (which are mostly zeros) can
     # cause problems when fitting them with a 2D Gauss function
-    if psf_template.shape[0] >= 33 and psf_template.shape[1] >= 33:
-        psf_cropped = crop_center(psf_template, (33, 33))
-    else:
-        psf_cropped = psf_template
+    psf_cropped = np.copy(psf_template)
+    if psf_template.shape[0] >= 33 or psf_template.shape[1] >= 33:
+        psf_cropped = crop_center(psf_cropped, (33, 33))
 
     # Define the grid for the fit
-    x = np.arange(psf_cropped.shape[0])
-    y = np.arange(psf_cropped.shape[1])
-    meshgrid = (
-        np.array(np.meshgrid(x, y)[0]),
-        np.array(np.meshgrid(x, y)[1]),
-    )
+    x, y = np.meshgrid(psf_cropped.shape[0], psf_cropped.shape[1])
 
-    # Set up a 2D Gaussian and fit it to the PSF template
-    model = CircularGauss2D(
-        mu_x=psf_cropped.shape[0] / 2 - 0.5,
-        mu_y=psf_cropped.shape[1] / 2 - 0.5,
-    )
-    model.fit(meshgrid=meshgrid, target=psf_cropped)
+    # Create a new Gaussian2D object
+    center = get_center(psf_cropped.shape)
+    gaussian = models.Gaussian2D(x_mean=center[0], y_mean=center[1])
+
+    # Define auxiliary function for tieing the standard deviations
+    def tie_stddev(gaussian: Any) -> Any:
+        return gaussian.y_stddev
+
+    # Enforce symmetry: tie standard deviation parameters to same value to
+    # ensure that the resulting 2D Gaussian is always circular
+    gaussian.x_stddev.tied = tie_stddev
+
+    # Fix the position (= mean) of the 2D Gaussian
+    gaussian.x_mean.fixed = True
+    gaussian.y_mean.fixed = True
+
+    # Fit the model to the data
+    fit_p = fitting.LevMarLSQFitter()
+    gaussian_model = fit_p(gaussian, x, y, np.nan_to_num(psf_cropped))
 
     # Make sure the returned FWHM is positive
-    return abs(model.fwhm)
-
-
-def get_artificial_psf(
-    pixscale: Quantity,
-    lambda_over_d: Quantity,
-) -> np.ndarray:
-    """
-    Create an artificial PSF template based on a 2D Airy function which
-    can be used for data sets where no real PSF template is available.
-
-    Args:
-        pixscale: The PIXSCALE of the data set, usually in units of
-            arc seconds per pixel.
-        lambda_over_d: The ratio of the wavelength of the observation,
-            lambda, and the size of the primary mirror of the telescope.
-            Usually in units of arc seconds.
-
-    Returns:
-        A 2D numpy array containing an artificial PSF template.
-    """
-
-    # The factor of 1.383 is a "magic" number that was determined by
-    # comparing real PSFs (for which the PIXSCALE and LAMBDA_OVER_D were
-    # known) against the output of the AiryDisk2DKernel() function, and
-    # adjusting the radius of the latter by a factor to minimize the
-    # difference between the real and the fake PSF.
-    return np.asarray(
-        AiryDisk2DKernel(
-            radius=1.383 * (lambda_over_d / pixscale).to('pixel').value,
-        ).array
-    )
+    return abs(float(gaussian_model.x_fwhm))
