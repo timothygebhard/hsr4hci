@@ -37,7 +37,7 @@ setup(
         'numpy==1.20.2',
         'pandas==1.2.4',
         'photutils==1.1.0',
-        'polarTransform=2.0.0',
+        'polarTransform==2.0.0',
         'python-dateutil==2.8.1',
         'requests==2.25.1',
         'scikit-image==0.18.1',
