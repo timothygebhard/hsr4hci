@@ -264,7 +264,7 @@ def test_plot_frame(tmp_path_factory: TempPathFactory) -> None:
         use_logscale=False,
         add_colorbar=True,
         add_scalebar=True,
-        file_path=None
+        file_path=None,
     )
     plt.close(fig)
 
@@ -281,10 +281,9 @@ def test_plot_frame(tmp_path_factory: TempPathFactory) -> None:
         use_logscale=True,
         add_colorbar=False,
         add_scalebar=True,
-        file_path=test_dir / 'test.pdf'
+        file_path=test_dir / 'test.pdf',
     )
     plt.close(fig)
-
 
     # Case 2
     fig = plot_frame(
@@ -299,6 +298,6 @@ def test_plot_frame(tmp_path_factory: TempPathFactory) -> None:
         use_logscale=True,
         add_colorbar=False,
         add_scalebar=False,
-        file_path=test_dir / 'test.png'
+        file_path=test_dir / 'test.png',
     )
     plt.close(fig)
