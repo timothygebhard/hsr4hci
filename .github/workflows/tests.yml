@@ -45,8 +45,8 @@ jobs:
     - name: Run pytest
       run: |
         SUMMARY="$(pytest --cov-report term-missing --cov=hsr4hci --verbose)" ;
-        echo $SUMMARY ;
-        COVERAGE=$(echo $SUMMARY | tail -n 4 | head -n 1 | awk '{print $4}') ;
+        echo "$SUMMARY" ;
+        COVERAGE=$(echo "$SUMMARY" | tail -n 4 | head -n 1 | awk '{print $4}') ;
         echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV ;
     - name: Create test coverage badge
       uses: schneegans/dynamic-badges-action@v1.0.0
