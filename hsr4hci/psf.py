@@ -40,7 +40,9 @@ def get_psf_fwhm(psf_template: np.ndarray) -> float:
         psf_cropped = crop_center(psf_cropped, (33, 33))
 
     # Define the grid for the fit
-    x, y = np.meshgrid(psf_cropped.shape[0], psf_cropped.shape[1])
+    x, y = np.meshgrid(
+        np.arange(psf_cropped.shape[0]), np.arange(psf_cropped.shape[1])
+    )
 
     # Create a new Gaussian2D object
     center = get_center(psf_cropped.shape)
