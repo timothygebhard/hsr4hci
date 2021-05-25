@@ -21,7 +21,7 @@ from hsr4hci.coordinates import get_center, cartesian2polar
 from hsr4hci.data import load_parang, load_psf_template
 from hsr4hci.forward_modeling import add_fake_planet
 from hsr4hci.general import rotate_position
-from hsr4hci.masking import get_exclusion_mask, get_selection_mask
+from hsr4hci.masking import get_exclusion_mask, get_predictor_pixel_selection_mask
 from hsr4hci.plotting import get_transparent_cmap, disable_ticks
 
 
@@ -92,7 +92,7 @@ if __name__ == '__main__':
     y_range = np.arange(frame_size[1])
     x, y = np.meshgrid(x_range, y_range)
 
-    selection_mask = get_selection_mask(
+    selection_mask = get_predictor_pixel_selection_mask(
         mask_size=frame_size,
         position=position,
         parang=parang,

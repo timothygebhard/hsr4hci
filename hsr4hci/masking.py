@@ -378,7 +378,7 @@ def get_exclusion_mask(
     return exclusion_mask
 
 
-def get_selection_mask(
+def get_predictor_pixel_selection_mask(
     mask_size: Tuple[int, int],
     position: Tuple[int, int],
     signal_time: Optional[int],

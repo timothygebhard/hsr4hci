@@ -17,8 +17,11 @@ import numpy as np
 
 from hsr4hci.base_models import BaseModelCreator
 from hsr4hci.forward_modeling import get_time_series_for_position
-from hsr4hci.masking import get_selection_mask, get_positions_from_mask
-from hsr4hci.signal_masking import get_signal_times
+from hsr4hci.masking import (
+    get_predictor_pixel_selection_mask,
+    get_positions_from_mask,
+)
+
 from hsr4hci.splitting import AlternatingSplit
 
 
@@ -447,11 +450,11 @@ def train_model(
     )
 
     # Define the selection mask
-    # Note: get_selection_mask() expects the position to be in the astropy
+    # Note: get_predictor_pixel_selection_mask() expects the position to be in the astropy
     # coordinate convention, but `position` (since it is usually produced by
     # get_positions_from_mask()) is in numpy coordinates; therefore we need
     # to flip it.
-    selection_mask = get_selection_mask(
+    selection_mask = get_predictor_pixel_selection_mask(
         mask_size=frame_size,
         position=position[::-1],
         signal_time=signal_time,
