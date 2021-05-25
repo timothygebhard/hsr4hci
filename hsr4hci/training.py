@@ -29,6 +29,26 @@ from hsr4hci.splitting import AlternatingSplit
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
+def get_signal_times(n_frames: int, n_signal_times: int) -> np.ndarray:
+    """
+    Simple function to generate a temporal grid of signal times; mostly
+    to ensure consistency everywhere.
+
+    Args:
+        n_frames: The total number of frames in the stack.
+        n_signal_times: The number of positions on the temporal grid
+            that we create.
+
+    Returns:
+        A 1D numpy array of shape `(n_signal_times, )` containing the
+        temporal grid (i.e., signal times) as integers.
+    """
+
+    # Generate `n_signal_times` different possible points in time (distributed
+    # uniformly over the observation) at which we planet signal could be
+    return np.linspace(0, n_frames - 1, n_signal_times).astype(int)
+
+
 def train_all_models(
     roi_mask: np.ndarray,
     stack: np.ndarray,
