@@ -278,7 +278,6 @@ def get_exclusion_mask(
 
     # Prepare the unsaturated PSF template (crop it, normalize it)
     psf_resized = np.copy(psf_template)
-    psf_resized -= np.min(psf_resized)
     psf_resized /= np.max(psf_resized)
     psf_resized = crop_or_pad(psf_resized, mask_size)
 
@@ -371,7 +370,7 @@ def get_exclusion_mask(
     # Apply a morphological filter to the exclusion mask and return it
     # -------------------------------------------------------------------------
 
-    # Dilate the mask by one pixel for a little extra "safety margin"
+    # Dilate the mask by two pixel for a little extra "safety margin"
     selem = disk(radius=2)
     exclusion_mask = binary_dilation(image=exclusion_mask, selem=selem)
 
