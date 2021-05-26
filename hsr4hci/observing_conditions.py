@@ -265,6 +265,9 @@ def query_archive(
         'order': 'start_date',
     }
 
+    # Define names of columns that we expect to retrieve
+    names = ['datetime', 'integration_time', parameter_key]
+
     # Define the URL for query based on the archive
     if archive == 'meteo':
         url = 'https://archive.eso.org/wdb/wdb/asm/meteo_paranal/query'
@@ -276,8 +279,10 @@ def query_archive(
         url = 'https://archive.eso.org/wdb/wdb/asm/mass_paranal/query'
     elif archive == 'lhatpro':
         url = 'https://archive.eso.org/wdb/wdb/asm/lhatpro_paranal/query'
+        names = ['platform'] + names
     elif archive == 'lhatpro_irt':
         url = 'https://archive.eso.org/wdb/wdb/asm/lhatpro_irt_paranal/query'
+        names = ['platform'] + names
     else:
         raise ValueError(f'Invalid archive: "{archive}"!')
 
@@ -289,7 +294,7 @@ def query_archive(
     # Parse response (which is a CSV) to a pandas data frame
     df = pd.read_csv(
         filepath_or_buffer=io.StringIO(response.content.decode('utf-8')),
-        names=['datetime', 'integration_time', parameter_key],
+        names=names,
         header=0,
         parse_dates=['datetime'],
         date_parser=pd.to_datetime,
