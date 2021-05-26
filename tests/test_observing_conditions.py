@@ -10,15 +10,17 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from hsr4hci.observing_conditions import ObservingConditions
+from hsr4hci.observing_conditions import (
+    ObservingConditions,
+    query_archive,
+)
 
 
 # -----------------------------------------------------------------------------
 # TESTS
 # -----------------------------------------------------------------------------
 
-
-def test_observing_conditions() -> None:
+def test__observing_conditions() -> None:
 
     # Case 1: illegal name for observing condition
     input_dict = {'all': np.random.normal(0, 1, 10)}
@@ -89,3 +91,92 @@ def test_observing_conditions() -> None:
         'air_pressure',
         'wind_speed_u',
     ]
+
+
+def test__query_archive() -> None:
+
+    # Case 1
+    with pytest.raises(ValueError) as value_error:
+        query_archive(
+            start_date='2016-04-10T00:00:00',
+            end_date='2016-04-10T00:00:05',
+            archive='illegal',
+            parameter_key='wind_speedu',
+        )
+    assert 'Invalid archive' in str(value_error)
+
+    # Case 2
+    df = query_archive(
+        start_date='2016-04-10T00:00:00',
+        end_date='2016-04-10T00:00:05',
+        archive='meteo',
+        parameter_key='wind_speedu',
+    )
+    assert len(df) == 1
+    assert df.loc[0]['integration_time'] == 60
+    assert df.loc[0]['wind_speedu'] == -3.63
+    assert df.loc[0]['timestamp'] == 1460246403
+
+    # Case 3
+    df = query_archive(
+        start_date='2015-04-10T00:00:00',
+        end_date='2015-04-10T00:10:000',
+        archive='dimm_old',
+        parameter_key='airmass',
+    )
+    assert len(df) == 3
+    assert df.loc[0]['integration_time'] == 57
+    assert df.loc[1]['airmass'] == 1.7
+    assert df.loc[2]['timestamp'] == 1428624572
+
+    # Case 4
+    df = query_archive(
+        start_date='2018-06-07T00:00:00',
+        end_date='2018-06-07T00:02:00',
+        archive='dimm_new',
+        parameter_key='fwhm'
+    )
+    assert len(df) == 1
+    assert df.loc[0]['integration_time'] == 60
+    assert df.loc[0]['fwhm'] == 0.575
+    assert df.loc[0]['timestamp'] == 1528329652
+
+    # Case 5
+    df = query_archive(
+        start_date='2018-06-07T00:00:00',
+        end_date='2018-06-07T00:02:00',
+        archive='mass',
+        parameter_key='tau'
+    )
+    assert len(df) == 1
+    assert df.loc[0]['integration_time'] == 62
+    assert df.loc[0]['tau'] == 0.002541
+    assert df.loc[0]['timestamp'] == 1528329652
+
+    # Case 6
+    df = query_archive(
+        start_date='2018-06-07T00:00:00',
+        end_date='2018-06-07T00:01:00',
+        archive='lhatpro',
+        parameter_key='irt0'
+    )
+    assert len(df) == 1
+    assert df.loc[0]['platform'] == 'A'
+    assert df.loc[0]['integration_time'] == 92
+    assert df.loc[0]['irt0'] == -95.840
+    assert df.loc[0]['timestamp'] == 1528329600
+
+    # Case 7
+    df = query_archive(
+        start_date='2018-06-07T00:00:00',
+        end_date='2018-06-07T00:01:00',
+        archive='lhatpro_irt',
+        parameter_key='irt'
+    )
+    assert len(df) == 8
+    assert np.unique(df['platform'].values) == np.array(['A'])
+    assert np.unique(df['integration_time'].values) == np.array([5])
+    assert df.loc[0]['irt'] == -95.51
+    assert df.loc[1]['irt'] == -96.02
+    assert df.loc[0]['timestamp'] == 1528329624
+    assert df.loc[1]['timestamp'] == 1528329629
