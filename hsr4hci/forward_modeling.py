@@ -6,7 +6,8 @@ Utility functions for forward modeling.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, overload
+from typing_extensions import Literal
 
 from astropy.units import Quantity
 from scipy.interpolate import RegularGridInterpolator
@@ -29,6 +30,38 @@ from hsr4hci.utils import (
 # -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
+
+@overload
+def add_fake_planet(
+    stack: np.ndarray,
+    parang: np.ndarray,
+    psf_template: np.ndarray,
+    polar_position: Tuple[Quantity, Quantity],
+    magnitude: float,
+    extra_scaling: float,
+    dit_stack: float,
+    dit_psf_template: float,
+    return_planet_positions: Literal[True],
+    interpolation: str = 'bilinear',
+) -> Tuple[np.ndarray, List[Tuple[float, float]]]:
+    ...  # pragma: no cover
+
+
+@overload
+def add_fake_planet(
+    stack: np.ndarray,
+    parang: np.ndarray,
+    psf_template: np.ndarray,
+    polar_position: Tuple[Quantity, Quantity],
+    magnitude: float,
+    extra_scaling: float,
+    dit_stack: float,
+    dit_psf_template: float,
+    return_planet_positions: Literal[False],
+    interpolation: str = 'bilinear',
+) -> np.ndarray:
+    ...  # pragma: no cover
+
 
 def add_fake_planet(
     stack: np.ndarray,
