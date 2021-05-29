@@ -125,7 +125,7 @@ def get_hypothesis_for_position(
 
         # Select residual for this position
         residual = np.asarray(
-            results[str(signal_time)]['residuals'][:, position[0], position[1]]
+            results['residuals'][str(signal_time)][:, position[0], position[1]]
         )
 
         # If the residual is NaN, we can't compute the metric function

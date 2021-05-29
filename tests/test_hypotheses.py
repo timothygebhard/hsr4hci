@@ -6,6 +6,8 @@ Tests for hypotheses.py
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from typing import Dict
+
 from astropy.modeling import models
 
 import numpy as np
@@ -19,6 +21,7 @@ from hsr4hci.training import get_signal_times
 # -----------------------------------------------------------------------------
 # TEST CASES
 # -----------------------------------------------------------------------------
+
 
 def test_get_hypothesis_for_position() -> None:
 
@@ -35,7 +38,7 @@ def test_get_hypothesis_for_position() -> None:
     parang = np.linspace(0, 90, n_frames)
     n_signal_times = 5
     signal_times = get_signal_times(n_frames, n_signal_times)
-    results = {}
+    results: Dict[str, Dict[str, np.ndarray]] = {'residuals': {}}
     for i, signal_time in enumerate(signal_times):
 
         # For all cases
@@ -63,7 +66,7 @@ def test_get_hypothesis_for_position() -> None:
             psf_template=psf_template,
         )
 
-        results[str(signal_time)] = {'residuals': residuals}
+        results['residuals'][str(signal_time)] = residuals
 
     # Case 1
     signal_time, similarity = get_hypothesis_for_position(
@@ -134,7 +137,7 @@ def test__get_all_hypotheses() -> None:
     n_signal_times = 5
     signal_times = get_signal_times(n_frames, n_signal_times)
     roi_mask = get_circle_mask((x_size, y_size), 6)
-    results = {}
+    results: Dict[str, Dict[str, np.ndarray]] = {'residuals': {}}
     for i, signal_time in enumerate(signal_times):
 
         # For all cases
@@ -167,7 +170,7 @@ def test__get_all_hypotheses() -> None:
                 psf_template=psf_template,
             )
 
-        results[str(signal_time)] = {'residuals': residuals}
+        results['residuals'][str(signal_time)] = residuals
 
     # Case 1
     hypotheses, similarities = get_all_hypotheses(

@@ -46,11 +46,10 @@ def test__get_match_fraction_for_position() -> None:
         dit_psf_template=1,
         return_planet_positions=False,
     )
-    results = {'50': {'residuals': residuals}}
+    results = {'residuals': {'50': residuals}}
 
-    signal_times = np.array(
-        sorted(list(map(int, filter(lambda _: _.isdigit(), results.keys()))))
-    )
+    _digit_keys = filter(lambda _: _.isdigit(), results['residuals'].keys())
+    signal_times = np.array(sorted(list(map(int, _digit_keys))))
 
     # Case 1
     mean_mf, median_mf, affected_pixels = get_match_fraction_for_position(
@@ -81,7 +80,7 @@ def test__get_match_fraction_for_position() -> None:
     assert np.sum(affected_pixels) == 95
 
     # Case 3
-    results = {'50': {'residuals': np.full(residuals.shape, np.nan)}}
+    results = {'residuals': {'50': np.full(residuals.shape, np.nan)}}
     mean_mf, median_mf, affected_pixels = get_match_fraction_for_position(
         position=(26, 16),
         hypothesis=int(n_frames / 2),
@@ -120,7 +119,7 @@ def test__get_all_match_fraction() -> None:
         dit_psf_template=1,
         return_planet_positions=False,
     )
-    results = {'50': {'residuals': residuals}}
+    results = {'residuals': {'50': residuals}}
 
     # Define hypotheses
     hypotheses = np.full(frame_size, np.nan)

@@ -46,9 +46,8 @@ def get_all_match_fractions(
     positions = get_positions_from_mask(roi_mask)[roi_split::n_roi_splits]
 
     # Get signal times based on the keys of the given results dictionary
-    signal_times = np.array(
-        sorted(list(map(int, filter(lambda _: _.isdigit(), results.keys()))))
-    )
+    _digit_keys = filter(lambda _: _.isdigit(), results['residuals'].keys())
+    signal_times = np.array(sorted(list(map(int, _digit_keys))))
 
     # Loop over (subset of) ROI and compute match fractions
     for position in tqdm(positions, ncols=80):
@@ -147,7 +146,7 @@ def get_match_fraction_for_position(
 
         # Define shortcuts for the time series that we compare
         a = expected_stack[:, x, y]
-        b = np.asarray(results[str(peak_time)]['residuals'][:, x, y])
+        b = np.asarray(results['residuals'][str(peak_time)][:, x, y])
 
         # In case we do not have a signal masking residual for the
         # current affected position, we skip it
