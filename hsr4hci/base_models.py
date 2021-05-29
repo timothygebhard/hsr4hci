@@ -51,7 +51,10 @@ class BaseModelCreator:
         # Augment the model parameters:
         # For RidgeCV models, we have to parse the `alphas` parameter (i.e.,
         # the regularization strengths) into a geometrically spaced array
-        if self.class_name in ('RidgeCV', 'LassoCV'):
+        if (
+            self.class_name in ('RidgeCV', 'LassoCV')
+            and 'alphas' in model_parameters.keys()
+        ):
             model_parameters['alphas'] = np.geomspace(
                 *model_parameters['alphas']
             )
