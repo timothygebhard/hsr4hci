@@ -128,42 +128,33 @@ def get_roi_mask(
 def get_predictor_mask(
     mask_size: Tuple[int, int],
     position: Tuple[int, int],
-    annulus_width: Quantity,
     radius_position: Quantity,
-    radius_mirror_position: Quantity,
+    radius_opposite: Quantity,
 ) -> np.ndarray:
     """
     Create a mask that selects the potential predictors for a position.
 
     For a given position (x, y), this mask selects all pixels in a
-    circular region with radius `circular_radius` around the position,
-    all pixels on an annulus at the same separation as (x, y) of width
-    `annulus_width`, and finally yet another circular region with radius
-    `circular_radius` centered on (-x, -y), where the center of the
-    frame is taken as the origin of the coordinate system.
-
-    If we remove an exclusion region from this region, we get the
-    selection mask, that is, the mask that actually selects the pixels
-    to be used as predictors for a given position.
+    circular region with radius `radius_position` around the position,
+    and another circular region with radius `radius_opposite` centered
+    on (-x, -y), where the center of the frame is taken as the origin
+    of the coordinate system.
 
     Note: This function uses the *astropy convention* for coordinates!
 
     Args:
-        mask_size: A tuple (width, height) that specifies the size of
-            the mask to be created in pixels.
-        position: A tuple (x, y) specifying the position for which this
-            mask is created, i.e., the mask selects the pixels that are
-            used as predictors for (x, y).
-        annulus_width: The width (as an astropy.units.Quantity that can
-            be converted to pixels) of the annulus used to select
-            potential predictor pixels.
-        radius_position: The radius (as an astropy.units.Quantity that
+        mask_size: A tuple `(x_size, y_size)` that specifies the size
+            of the mask to be created in pixels.
+        position: A tuple `(x, y)` specifying the position / pixel for
+            which this mask is created. The `position` is specified in
+            astropy / matplotlib coordinates, *not* numpy coordinates!
+        radius_position: The radius (as an `astropy.units.Quantity` that
             can be converted to pixels) of the circular region around
             the `position` that is used to select potential predictors.
-        radius_mirror_position: The radius (as an astropy.units.Quantity
-            that can be converted to pixels) of the circular region
-            around the mirrored `position` that is used to select
-            potential predictors.
+        radius_opposite: The radius (as an `astropy.units.Quantity` that
+            can be converted to pixels) of the circular region around
+            the opposite `position`, that is, the position that we get
+            if we mirror `position` across the center of the frame.
 
     Returns:
         A 2D numpy array containing a mask that contains all potential
@@ -172,46 +163,27 @@ def get_predictor_mask(
         not causally disconnected
     """
 
-    # Compute mask center and separation of `position` from the center
-    center = get_center(mask_size)
-    separation = np.hypot((position[0] - center[0]), (position[1] - center[1]))
-
-    # Initialize an empty mask of the desired size
-    mask = np.full(mask_size, False)
-
     # Add circular selection mask at position (x, y)
     # We need to flip the `position` because get_circle_mask() uses the numpy
     # convention whereas `position` is assumed to be in the astropy convention
-    circular_mask = get_circle_mask(
+    predictor_mask = get_circle_mask(
         mask_size=mask_size,
         radius=radius_position.to('pixel').value,
         center=position[::-1],
     )
-    mask = np.logical_or(mask, circular_mask)
 
-    # Add circular selection mask at mirror position (-x, -y)
-    # We also need to flip the coordinates here to get to the numpy convention
-    mirror_position = (
-        2 * center[1] - position[1],
-        2 * center[0] - position[0],
-    )
+    # Add circular selection mask at opposite (= mirror) position (-x, -y) by
+    # first creating a circle at the `position` (flip for numpy coordinates)
+    # and then rotating the entire mask by 180 degree
     circular_mask = get_circle_mask(
         mask_size=mask_size,
-        radius=radius_mirror_position.to('pixel').value,
-        center=mirror_position,
+        radius=radius_opposite.to('pixel').value,
+        center=position[::-1],
     )
-    mask = np.logical_or(mask, circular_mask)
+    circular_mask = np.rot90(circular_mask, k=2)
+    predictor_mask = np.logical_or(predictor_mask, circular_mask)
 
-    # Add annulus-shaped selection mask of given width at the given separation
-    half_width = annulus_width.to('pixel').value / 2
-    annulus = get_annulus_mask(
-        mask_size=mask_size,
-        inner_radius=(separation - half_width),
-        outer_radius=(separation + half_width),
-    )
-    mask = np.logical_or(mask, annulus)
-
-    return mask
+    return predictor_mask
 
 
 def get_exclusion_mask(
@@ -382,9 +354,8 @@ def get_predictor_pixel_selection_mask(
     position: Tuple[int, int],
     signal_time: Optional[int],
     parang: np.ndarray,
-    annulus_width: Quantity,
     radius_position: Quantity,
-    radius_mirror_position: Quantity,
+    radius_opposite: Quantity,
     psf_template: np.ndarray,
 ) -> np.ndarray:
     """
@@ -400,16 +371,14 @@ def get_predictor_pixel_selection_mask(
             used as predictors for (x, y).
         signal_time: FIXME
         parang: FIXME
-        annulus_width: The width (as an astropy.units.Quantity that can
-            be converted to pixels) of the annulus used in the
-            get_predictor_mask() function.
         radius_position: The radius (as an astropy.units.Quantity that
             can be converted to pixels) of the circular region around
             the `position` (and the mirrored position) that is used in
             the get_predictor_mask() function.
-        radius_mirror_position: The radius (as an astropy.units.Quantity
-            that can be converted to pixels) of the circular region
-            around the mirrored `position`.
+        radius_opposite: The radius (as an astropy.units.Quantity that
+            can be converted to pixels) of the circular region around
+            the opposite `position`, that is, the position that we get
+            if we mirror `position` across the center of the frame.
         psf_template:  FIXME
 
     Returns:
@@ -421,9 +390,8 @@ def get_predictor_pixel_selection_mask(
     predictor_mask = get_predictor_mask(
         mask_size=mask_size,
         position=position,
-        annulus_width=annulus_width,
         radius_position=radius_position,
-        radius_mirror_position=radius_mirror_position,
+        radius_opposite=radius_opposite,
     )
 
     # Get exclusion mask (i.e., pixels we must not use as predictors)
