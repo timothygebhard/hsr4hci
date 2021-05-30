@@ -309,8 +309,8 @@ def get_fluxes_for_polar_positions(
     polar_positions: List[Tuple[Quantity, Quantity]],
     frame: np.ndarray,
     mode: str = 'AS',
-    aperture_radius: Optional[float] = None,
-    search_radius: Optional[float] = None,
+    aperture_radius: Optional[Quantity] = None,
+    search_radius: Optional[Quantity] = None,
 ) -> List[float]:
     """
     Auxiliary function for applying to `get_flux()` to a list of
