@@ -433,6 +433,37 @@ def get_positions_from_mask(mask: np.ndarray) -> List[Tuple[int, int]]:
     return sorted(list((x, y) for x, y in zip(*np.where(mask))))
 
 
+def get_partial_roi_mask(
+    roi_mask: np.ndarray, roi_split: int, n_roi_splits: int
+) -> np.ndarray:
+    """
+    Take a `roi_mask` and return a mask that selects only a subset of
+    the ROI that is specified by the number of `n_roi_splits` and the
+    index `roi_split`. This function processing data in parallel, for
+    example on a cluster.
+
+    Args:
+        roi_mask: A 2D numpy array containing a binary mask.
+        roi_split: The index of the split for which to return the mask.
+        n_roi_splits: The (total) number of splits into which the ROI
+            should be divided.
+
+    Returns:
+        A 2D numpy array containing a mask that selects a subset of the
+        original ROI mask, as specified above.
+    """
+
+    # Get the positions in the ROI that correspond to the current split
+    positions = get_positions_from_mask(roi_mask)[roi_split::n_roi_splits]
+
+    # Create a new mask where only those positions are True
+    roi_split_mask = np.full_like(roi_mask, False)
+    for (x, y) in positions:
+        roi_split_mask[x, y] = True
+
+    return roi_split_mask
+
+
 def remove_connected_components(
     mask: np.ndarray,
     minimum_size: Optional[int] = None,
