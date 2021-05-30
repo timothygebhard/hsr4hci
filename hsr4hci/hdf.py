@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Union
 
 import os
+import shutil
 
 import h5py
 import numpy as np
@@ -280,6 +281,6 @@ def create_hdf_dir(experiment_dir: Path, create_on_work: bool = False) -> Path:
         if file_path.is_file():
             file_path.unlink()
         elif file_path.is_dir():
-            file_path.rmdir()
+            shutil.rmtree(file_path)
 
     return home_hdf_dir
