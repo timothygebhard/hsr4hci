@@ -8,7 +8,7 @@ Utility functions for plotting.
 
 from copy import copy
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import Optional, Sequence, Tuple, Union
 
 import colorsys
 
@@ -239,7 +239,7 @@ def zerocenter_plot(ax: Axes, which: str) -> None:
 
 def _determine_limit(
     frame: np.ndarray,
-    positions: Optional[List[Tuple[float, float]]],
+    positions: Optional[Sequence[Tuple[float, float]]],
 ) -> float:
     """
     Auxiliary function to determine the plot limits for plot_frame().
@@ -278,8 +278,8 @@ def _determine_limit(
 
 def _add_apertures_and_labels(
     ax: Axes,
-    positions: List[Tuple[float, float]],
-    labels: List[Union[str, float]],
+    positions: Sequence[Tuple[float, float]],
+    labels: Sequence[Union[str, float]],
     aperture_radius: float,
     draw_color: MatplotlibColor,
 ) -> None:
@@ -423,8 +423,8 @@ def _add_colorbar(
 
 def plot_frame(
     frame: np.ndarray,
-    positions: List[Tuple[float, float]],
-    labels: List[Union[str, float]],
+    positions: Sequence[Tuple[float, float]],
+    labels: Sequence[Union[str, float]],
     pixscale: float,
     figsize: Tuple[float, float] = (4.0, 4.0),
     aperture_radius: float = 0,
