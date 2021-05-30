@@ -12,6 +12,8 @@ Parts of the code in the module are based on:
 from pathlib import Path
 from typing import Any, Union
 
+import os
+
 import h5py
 import numpy as np
 
@@ -219,3 +221,65 @@ def recursively_load_dict_contents_from_group(
             )
 
     return results
+
+
+def create_hdf_dir(experiment_dir: Path, create_on_work: bool = False) -> Path:
+    """
+    Create a directory in which the HDF results files for an HSR
+    experiment can be stores and return the Path to the directory.
+
+    This is slightly complicated, because the exact location depends on
+    the machine on which this code is running. When running locally, it
+    should simply be created directly in the `experiment_dir`; however,
+    when this code is running on the MPI-IS cluster, we want to store
+    the (large) HDF files on /work, with a symlink connecting it to the
+    rest of the `experiment_dir`.
+
+    Additionally, this function also ensures that the HDF directory that
+    is returned is actually empty, to avoid problems when re-running an
+    experiment.
+
+    Args:
+        experiment_dir: The Path to the experiment directory for which
+            we are going to create a `hdf` results directory.
+        create_on_work: If True, the HDF directory is created on /work
+            and a symlink is created in the `experiment_dir`; if False,
+            the HDF directory is created directly in `experiment_dir`.
+
+    Returns:
+        The Path to the `hdf` directory for the given `experiment_dir`.
+    """
+
+    # In case we are creating the directory locally, things are easy
+    if not create_on_work:
+
+        home_hdf_dir = experiment_dir / 'hdf'
+        home_hdf_dir.mkdir(exist_ok=True)
+
+    # Otherwise, we need to create a directory on /work and symlink it
+    else:  # pragma: no cover
+
+        # First, recreate the structure of the experiment directory in /work
+        work_dir = Path(experiment_dir.as_posix().replace('/home/', '/work/'))
+        work_dir.mkdir(exist_ok=True, parents=True)
+
+        # Now, create a HDF directory on /work
+        work_hdf_dir = work_dir / 'hdf'
+        work_hdf_dir.mkdir(exist_ok=True)
+
+        # Then, create the corresponding symlink in the experiment_dir
+        home_hdf_dir = experiment_dir / 'hdf'
+        if not home_hdf_dir.exists():
+            home_hdf_dir.symlink_to(work_hdf_dir, target_is_directory=True)
+
+    # Finally, we should make sure that the directory that we return is empty;
+    # otherwise, this can lead to issues when re-running experiments.
+    # For this, we simply loop over the contents of the folder and delete them.
+    for file_name in os.listdir(home_hdf_dir):
+        file_path = home_hdf_dir / file_name
+        if file_path.is_file():
+            file_path.unlink()
+        elif file_path.is_dir():
+            file_path.rmdir()
+
+    return home_hdf_dir
