@@ -106,12 +106,12 @@ def two_sample_t_test(
 def compute_metrics(
     frame: np.ndarray,
     polar_position: Tuple[Quantity, Quantity],
+    aperture_radius: Quantity,
     planet_mode: str = 'FS',
     noise_mode: str = 'P',
-    aperture_radius: Quantity = None,
     search_radius: Optional[Quantity] = Quantity(1, 'pixel'),
     exclusion_angle: Optional[Quantity] = None,
-    n_rotation_steps: int = 10,
+    n_rotation_steps: int = 100,
 ) -> Tuple[Dict[str, Dict[str, float]], Dict[str, Dict[str, Any]]]:
     """
     Compute evaluation metrics (SNR, FPF, ...) at a given position.
@@ -123,6 +123,11 @@ def compute_metrics(
             2-tuple `(separation, angle)` using "astronomical" polar
             coordinates (i.e., 0 degrees = North = "up", not "right",
             as in mathematical polar coordinates).
+        aperture_radius: If the planet / noise mode is aperture-based,
+            this parameter controls the size of the apertures.
+            Regardless of the mode, this value is required to determine
+            the number of reference positions; therefore it cannot be
+            optional. (Usually set this to 1/2 of the FWHM of the PSF.)
         planet_mode: The `mode` to be used to measure the flux of the
             planet / signal. See `hsr4hci.photometry.get_flux()` for
             more details.
@@ -132,11 +137,6 @@ def compute_metrics(
             the choice for the `planet_mode`; i.e., if the mode for the
             planet is "FS", the mode for the noise should be "P", and
             if the planet mode is "ASS", the noise mode should be "AS".
-        aperture_radius: If the planet / noise mode is aperture-based,
-            this parameter controls the size of the apertures.
-            Regardless of the mode, this value is required to determine
-            the number of reference positions; therefore it cannot be
-            optional. (Usually set this to 1/2 of the FWHM of the PSF.)
         search_radius: If the planet mode is search-based (mode "ASS"
             or "FS"), this parameter controls how big the area is that
             should be considered for maximizing the planet flux.
@@ -206,6 +206,10 @@ def compute_metrics(
         aperture_radius=aperture_radius,
         exclusion_angle=exclusion_angle,
     )
+
+    # Check that we have enough reference positions to continue computation
+    if len(reference_positions) < 2:
+        raise RuntimeError('Too few reference positions (i.e., < 2)!')
 
     # Create rotated versions of the reference positions so that we can
     # estimate how much the final metrics depend on the exact placement of
