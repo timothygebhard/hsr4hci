@@ -167,6 +167,10 @@ def test__create_hdf_dir(hdf_dir: Path) -> None:
     file_path.touch()
     dir_path = test_dir / 'dummy_dir'
     dir_path.mkdir()
+    dir_path = test_dir / 'dummy_dir_2'
+    dir_path.mkdir()
+    file_path = dir_path / 'dummy_2.hdf'
+    file_path.touch()
     test_dir = create_hdf_dir(experiment_dir=hdf_dir, create_on_work=False)
     assert test_dir.exists()
     assert not os.listdir(test_dir)
