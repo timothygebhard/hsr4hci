@@ -11,6 +11,7 @@ from astropy.units import Quantity
 from skimage.filters import gaussian
 
 import numpy as np
+import pytest
 
 from hsr4hci.metrics import two_sample_t_test, compute_metrics
 
@@ -91,3 +92,18 @@ def test__compute_metrics() -> None:
     assert np.isclose(results['snr']['median'], 36.61052751305583)
     assert np.isclose(results['snr']['min'], 35.92801806912074)
     assert np.isclose(results['snr']['std'], 0.4230403938588033)
+
+
+    # Case 2
+    with pytest.raises(RuntimeError) as runtime_error:
+        compute_metrics(
+            frame=signal_estimate,
+            polar_position=(Quantity(2, 'pixel'), Quantity(270, 'degree')),
+            planet_mode='FS',
+            noise_mode='P',
+            aperture_radius=Quantity(2.35, 'pixel'),
+            search_radius=Quantity(1, 'pixel'),
+            exclusion_angle=None,
+            n_rotation_steps=10,
+        )
+    assert 'Too few reference positions' in str(runtime_error)

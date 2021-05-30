@@ -6,6 +6,8 @@ Tests for masking.py
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from itertools import combinations
+
 from astropy.modeling import models
 from astropy.units import Quantity
 
@@ -19,6 +21,7 @@ from hsr4hci.masking import (
     get_positions_from_mask,
     get_predictor_mask,
     get_roi_mask,
+    get_partial_roi_mask,
     get_predictor_pixel_selection_mask,
     remove_connected_components,
 )
@@ -184,9 +187,8 @@ def test__get_predictor_mask() -> None:
     predictor_mask = get_predictor_mask(
         mask_size=(11, 11),
         position=(3, 3),
-        annulus_width=Quantity(0, 'pixel'),
         radius_position=Quantity(2, 'pixel'),
-        radius_mirror_position=Quantity(1, 'pixel'),
+        radius_opposite=Quantity(1, 'pixel'),
     )
     assert np.array_equal(
         predictor_mask,
@@ -211,9 +213,8 @@ def test__get_predictor_mask() -> None:
     predictor_mask = get_predictor_mask(
         mask_size=(11, 11),
         position=(5, 2),
-        annulus_width=Quantity(1, 'pixel'),
         radius_position=Quantity(3, 'pixel'),
-        radius_mirror_position=Quantity(3, 'pixel'),
+        radius_opposite=Quantity(3, 'pixel'),
     ).astype(int)
     assert np.array_equal(
         predictor_mask,
@@ -223,9 +224,9 @@ def test__get_predictor_mask() -> None:
                 [0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0],
                 [0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0],
                 [0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0],
-                [0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0],
-                [0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0],
-                [0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0],
+                [0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0],
                 [0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0],
                 [0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0],
                 [0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0],
@@ -296,9 +297,8 @@ def test__get_predictor_pixel_selection_mask(psf_template: np.ndarray) -> None:
         position=(15, 19),
         signal_time=20,
         parang=np.linspace(20, 120, 50),
-        annulus_width=Quantity(0, 'pixel'),
         radius_position=Quantity(3, 'pixel'),
-        radius_mirror_position=Quantity(3, 'pixel'),
+        radius_opposite=Quantity(3, 'pixel'),
         psf_template=psf_template,
     )
     assert np.sum(mask) == 28
@@ -311,6 +311,18 @@ def test__get_positions_from_mask() -> None:
     mask[2, 8] = True
 
     assert get_positions_from_mask(mask) == [(2, 8), (3, 7)]
+
+
+def test__get_partial_roi_mask() -> None:
+
+    roi_mask = get_circle_mask((101, 101), 45)
+    partial_roi_masks = [
+        get_partial_roi_mask(roi_mask, i, 10) for i in range(10)
+    ]
+
+    assert np.array_equal(roi_mask, np.nansum(partial_roi_masks, axis=0))
+    for mask_1, mask_2 in combinations(partial_roi_masks, 2):
+        assert np.sum(np.logical_and(mask_1, mask_2)) == 0
 
 
 def test__remove_connected_components() -> None:
