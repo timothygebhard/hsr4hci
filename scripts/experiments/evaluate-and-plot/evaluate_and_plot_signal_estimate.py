@@ -9,18 +9,17 @@ Evaluate (compute SNR) and plot signal estimate.
 from pathlib import Path
 
 import argparse
+import json
 import os
 import time
 
 from astropy.units import Quantity
 
 import numpy as np
-import pandas as pd
 
 from hsr4hci.config import load_config
-from hsr4hci.coordinates import polar2cartesian
 from hsr4hci.data import load_psf_template, load_metadata, load_planets
-from hsr4hci.evaluation import compute_optimized_snr
+from hsr4hci.metrics import compute_metrics
 from hsr4hci.fits import read_fits
 from hsr4hci.masking import get_roi_mask
 from hsr4hci.plotting import plot_frame
@@ -116,64 +115,44 @@ if __name__ == '__main__':
     # Load information about the planets in the dataset
     planets = load_planets(**config['dataset'])
 
+    # Store labels and positions for plot
+    labels = []
+    positions = []
+
     # Loop over all planets in the data set
-    print('Computing (optimized) SNR...', end=' ', flush=True)
-    results = dict()
+    print('Computing metrics...', end=' ', flush=True)
     for name, parameters in planets.items():
 
         # Compute the expected planet position in Cartesian coordinates
-        planet_position = polar2cartesian(
-            separation=Quantity(parameters['separation'], 'arcsec'),
-            angle=Quantity(parameters['position_angle'], 'degree'),
-            frame_size=frame_size,
+        planet_position = (
+            Quantity(parameters['separation'], 'arcsec'),
+            Quantity(parameters['position_angle'], 'degree'),
         )
 
-        # Compute the figures of merit. The try/except is required for planets
-        # that are so close to the star that we cannot drop any neighboring
-        # apertures when computing the reference values for the noise.
-        try:
-            ignore_neighbors = 1
-            results_dict = compute_optimized_snr(
-                frame=signal_estimate,
-                position=planet_position,
-                aperture_radius=Quantity(psf_fwhm / 2, 'pixel'),
-                ignore_neighbors=ignore_neighbors,
-            )
-        except ValueError:
-            ignore_neighbors = 0
-            results_dict = compute_optimized_snr(
-                frame=signal_estimate,
-                position=planet_position,
-                aperture_radius=Quantity(psf_fwhm / 2, 'pixel'),
-                ignore_neighbors=ignore_neighbors,
-            )
-
-        # Store relevant subset of the results dict
-        results[name] = dict(
-            signal=results_dict['signal'],
-            noise=results_dict['noise'],
-            snr=results_dict['snr'],
-            fpf=results_dict['fpf'],
-            old_position=tuple(
-                map(lambda _: round(_, 2), results_dict['old_position'])
-            ),
-            new_position=results_dict['new_position'],
-            success=results_dict['success'],
-            ignore_neighbors=ignore_neighbors,
+        # Compute the metrics
+        metrics, positions_ = compute_metrics(
+            frame=signal_estimate,
+            polar_position=planet_position,
+            aperture_radius=Quantity(psf_fwhm / 2, 'pixel'),
+            exclusion_angle=None,
         )
+
+        # Create label and store it
+        log_fpf = metrics["log_fpf"]
+        label = (
+            rf'${log_fpf["mean"]:.1f}'
+            rf'^{{+{log_fpf["max"] - log_fpf["mean"]:.1f}}}'
+            rf'_{{-{log_fpf["mean"] - log_fpf["min"]:.1f}}}$'
+        )
+        labels.append(label)
+        positions.append(positions_['final']['cartesian'])
+
+        # Save metrics to JSON in results directory
+        file_path = results_dir / f'metrics__{name}.json'
+        with open(file_path, 'w') as json_file:
+            json.dump(metrics, json_file, indent=2)
 
     print('Done!\n', flush=True)
-
-    # Convert results to a data frame and print results
-    results_df = pd.DataFrame(results)
-    print('RESULTS:')
-    print(results_df, '\n')
-
-    # Save data frame to TSV file in results directory
-    print('Saving figures of merit to TSV...', end=' ', flush=True)
-    file_path = results_dir / 'figures_of_merit.tsv'
-    results_df.to_csv(file_path, sep='\t')
-    print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
     # Create plot of signal estimate
@@ -193,9 +172,9 @@ if __name__ == '__main__':
         frame=signal_estimate,
         file_path=file_path,
         aperture_radius=psf_fwhm,
-        pixscale=float(metadata['PIXSCALE']),
-        positions=list(results_df.loc['new_position'].values),
-        labels=list(results_df.loc['snr'].values),
+        pixscale=metadata['PIXSCALE'],
+        positions=positions,
+        labels=labels,
         add_colorbar=True,
         use_logscale=False,
     )
