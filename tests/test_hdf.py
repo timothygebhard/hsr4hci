@@ -8,6 +8,8 @@ Tests for hdf.py
 
 from pathlib import Path
 
+import os
+
 from _pytest.tmpdir import TempPathFactory
 from deepdiff import DeepDiff
 
@@ -15,7 +17,12 @@ import h5py
 import numpy as np
 import pytest
 
-from hsr4hci.hdf import save_data_to_hdf, save_dict_to_hdf, load_dict_from_hdf
+from hsr4hci.hdf import (
+    create_hdf_dir,
+    load_dict_from_hdf,
+    save_data_to_hdf,
+    save_dict_to_hdf,
+)
 
 
 # -----------------------------------------------------------------------------
@@ -146,3 +153,20 @@ def test__load_dict_from_hdf(
 
     # Make sure that nothing has changed
     assert not deepdiff
+
+
+def test__create_hdf_dir(hdf_dir: Path) -> None:
+
+    # Case 1
+    test_dir = create_hdf_dir(experiment_dir=hdf_dir, create_on_work=False)
+    assert test_dir.exists()
+    assert not os.listdir(test_dir)
+
+    # Case 2
+    file_path = test_dir / 'dummy.hdf'
+    file_path.touch()
+    dir_path = test_dir / 'dummy_dir'
+    dir_path.mkdir()
+    test_dir = create_hdf_dir(experiment_dir=hdf_dir, create_on_work=False)
+    assert test_dir.exists()
+    assert not os.listdir(test_dir)
