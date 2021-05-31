@@ -46,7 +46,7 @@ def fits_data(fits_dir: Path) -> Tuple[Path, np.ndarray, List[Path]]:
     # Create some test data
     n_files = 10
     file_paths = []
-    array = np.random.normal(0, 1, (101, 101))
+    array = np.random.normal(0, 1, (101, 101)).astype(np.float32)
     mask = np.random.randint(0, n_files, (101, 101))
     for i in range(n_files):
         file_path = fits_dir / f'dummy_{i + 1}-{n_files}.fits'
@@ -60,7 +60,7 @@ def fits_data(fits_dir: Path) -> Tuple[Path, np.ndarray, List[Path]]:
 
 
 @pytest.fixture(scope="session")
-def hdf_data(fits_dir: Path) -> Tuple[Path, dict, List[Path]]:
+def hdf_data__partial(fits_dir: Path) -> Tuple[Path, dict, List[Path]]:
 
     np.random.seed(42)
 
@@ -68,38 +68,83 @@ def hdf_data(fits_dir: Path) -> Tuple[Path, dict, List[Path]]:
     n_files = 10
     stack_shape = (17, 51, 51)
     file_paths = []
-    array_default = np.random.normal(0, 1, stack_shape)
-    array_0 = np.random.normal(0, 1, stack_shape)
-    array_1 = np.random.normal(0, 1, stack_shape)
-    array_2 = np.random.normal(0, 1, stack_shape)
+    array_default = np.random.normal(0, 1, stack_shape).astype(np.float32)
+    array_0 = np.random.normal(0, 1, stack_shape).astype(np.float32)
+    array_1 = np.random.normal(0, 1, stack_shape).astype(np.float32)
+    array_2 = np.random.normal(0, 1, stack_shape).astype(np.float32)
     mask = np.random.randint(0, n_files, stack_shape[1:])
     for i in range(n_files):
-        file_path = fits_dir / f'results_{i + 1}-{n_files}.hdf'
+        file_path = fits_dir / f'residuals_{i + 1}-{n_files}.hdf'
         file_paths.append(file_path)
         tmp_mask = mask == i
-        tmp_array_default = array_default[:, tmp_mask]
-        tmp_array_0 = array_0[:, tmp_mask]
-        tmp_array_1 = array_1[:, tmp_mask]
-        tmp_array_2 = array_2[:, tmp_mask]
-        results = {
+        residuals = {
             'stack_shape': np.array([17, 51, 51]),
-            'results': {
-                'default': {'mask': tmp_mask, 'residuals': tmp_array_default},
-                '0': {'mask': tmp_mask, 'residuals': tmp_array_0},
-                '1': {'mask': tmp_mask, 'residuals': tmp_array_1},
-                '2': {'mask': tmp_mask, 'residuals': tmp_array_2},
+            'roi_mask': tmp_mask,
+            'residuals': {
+                'default': array_default[:, tmp_mask],
+                '0': array_0[:, tmp_mask],
+                '1': array_1[:, tmp_mask],
+                '2': array_2[:, tmp_mask],
             },
         }
-        save_dict_to_hdf(dictionary=results, file_path=file_path)
+        save_dict_to_hdf(dictionary=residuals, file_path=file_path)
 
-    full_results = {
-        'default': {'residuals': array_default},
-        '0': {'residuals': array_0},
-        '1': {'residuals': array_1},
-        '2': {'residuals': array_2},
+    full_residuals = {
+        'default': array_default,
+        '0': array_0,
+        '1': array_1,
+        '2': array_2,
     }
 
-    return fits_dir, full_results, sorted(file_paths)
+    return fits_dir, full_residuals, sorted(file_paths)
+
+
+@pytest.fixture(scope="session")
+def hdf_data__full(fits_dir: Path) -> Tuple[Path, dict, List[Path]]:
+
+    np.random.seed(42)
+
+    # Create some test data
+    n_files = 10
+    stack_shape = (17, 51, 51)
+    file_paths = []
+    array_default = np.random.normal(0, 1, stack_shape).astype(np.float32)
+    array_0 = np.random.normal(0, 1, stack_shape).astype(np.float32)
+    array_1 = np.random.normal(0, 1, stack_shape).astype(np.float32)
+    array_2 = np.random.normal(0, 1, stack_shape).astype(np.float32)
+    mask = np.random.randint(0, n_files, stack_shape[1:])
+    for i in range(n_files):
+        file_path = fits_dir / f'residuals_{i + 1}-{n_files}.hdf'
+        file_paths.append(file_path)
+        tmp_mask = mask == i
+        tmp_array_default = np.copy(array_default)
+        tmp_array_default[:, ~tmp_mask] = np.nan
+        tmp_array_0 = np.copy(array_0)
+        tmp_array_0[:, ~tmp_mask] = np.nan
+        tmp_array_1 = np.copy(array_1)
+        tmp_array_1[:, ~tmp_mask] = np.nan
+        tmp_array_2 = np.copy(array_2)
+        tmp_array_2[:, ~tmp_mask] = np.nan
+        residuals = {
+            'stack_shape': np.array([17, 51, 51]),
+            'roi_mask': tmp_mask,
+            'residuals': {
+                'default': tmp_array_default,
+                '0': tmp_array_0,
+                '1': tmp_array_1,
+                '2': tmp_array_2,
+            },
+        }
+        save_dict_to_hdf(dictionary=residuals, file_path=file_path)
+
+    full_residuals = {
+        'default': array_default,
+        '0': array_0,
+        '1': array_1,
+        '2': array_2,
+    }
+
+    return fits_dir, full_residuals, sorted(file_paths)
 
 
 def test__get_list_of_fits_file_paths(
@@ -133,17 +178,17 @@ def test__merge_fits_files(
 
 
 def test__get_list_of_hdf_file_paths(
-    hdf_data: Tuple[Path, np.ndarray, List[Path]]
+    hdf_data__partial: Tuple[Path, np.ndarray, List[Path]]
 ) -> None:
 
-    hdf_dir, full_results, expected_file_paths = hdf_data
+    hdf_dir, full_results, expected_file_paths = hdf_data__partial
 
     # Case 1
     actual_file_paths = get_list_of_hdf_file_paths(hdf_dir)
     assert actual_file_paths == expected_file_paths
 
     # Case 2
-    file_path = hdf_dir / 'results_unexpected.hdf'
+    file_path = hdf_dir / 'residuals_unexpected.hdf'
     file_path.touch()
     with pytest.warns(UserWarning, match='(Naming convention suggests).*'):
         get_list_of_hdf_file_paths(hdf_dir)
@@ -151,11 +196,28 @@ def test__get_list_of_hdf_file_paths(
     assert not file_path.exists()
 
 
-def test__merge_hdf_files(
-    hdf_data: Tuple[Path, np.ndarray, List[Path]]
+def test__merge_hdf_files__partial(
+    hdf_data__partial: Tuple[Path, np.ndarray, List[Path]]
 ) -> None:
 
-    hdf_dir, full_results, file_paths = hdf_data
+    hdf_dir, full_results, file_paths = hdf_data__partial
+
+    # Case 1
+    merged = merge_hdf_files(hdf_file_paths=file_paths)
+    deepdiff = DeepDiff(
+        t1=full_results,
+        t2=merged,
+        ignore_type_in_groups=[(float, np.float64)],
+        ignore_nan_inequality=True,
+    )
+    assert not deepdiff
+
+
+def test__merge_hdf_files__full(
+    hdf_data__full: Tuple[Path, np.ndarray, List[Path]]
+) -> None:
+
+    hdf_dir, full_results, file_paths = hdf_data__full
 
     # Case 1
     merged = merge_hdf_files(hdf_file_paths=file_paths)
