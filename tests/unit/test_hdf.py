@@ -61,7 +61,7 @@ def test__save_data_to_hdf(hdf_dir: Path) -> None:
                 hdf_file=hdf_file,
                 location='test_group',
                 name='test_dataset',
-                data=Path('.'),
+                data=Path('..'),
                 overwrite=True,
             )
         assert 'not supported by HDF format' in str(type_error)
@@ -119,7 +119,7 @@ def test__save_dict_to_hdf(
 
     # Case 3
     with pytest.raises(TypeError) as type_error:
-        save_dict_to_hdf(dictionary={'path': Path('.')}, file_path=file_path)
+        save_dict_to_hdf(dictionary={'path': Path('..')}, file_path=file_path)
     assert 'Unsupported type' in str(type_error)
 
 
