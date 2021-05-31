@@ -93,7 +93,6 @@ def test__compute_metrics() -> None:
     assert np.isclose(results['snr']['min'], 35.92801806912074)
     assert np.isclose(results['snr']['std'], 0.4230403938588033)
 
-
     # Case 2
     with pytest.raises(RuntimeError) as runtime_error:
         compute_metrics(

@@ -498,7 +498,7 @@ def _train_signal_fitting_model(
     # after training. This only works for linear models and neural networks
     # with a special network architecture; this implementation only supports
     # the former.
-    if not 'linear_model' in model.__module__:
+    if 'linear_model' not in model.__module__:
         raise RuntimeError('Signal fitting only works with linear models!')
 
     # In "signal fitting" mode, we add the expected signal as an additional
