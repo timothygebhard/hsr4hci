@@ -86,7 +86,7 @@ def load_parang(
 
     # Read in the data set from the HDF file
     with h5py.File(file_path, 'r') as hdf_file:
-        parang = np.array(hdf_file['parang'])
+        parang = np.array(hdf_file['parang'], dtype=np.float32)
 
     # Temporally bin the parallactic angles
     parang = prestack_array(array=parang, stacking_factor=binning_factor)
@@ -111,7 +111,8 @@ def load_psf_template(name_or_path: Union[str, Path], **_: Any) -> np.ndarray:
 
     # Read in the data set from the HDF file
     with h5py.File(file_path, 'r') as hdf_file:
-        psf_template = np.array(hdf_file['psf_template']).squeeze()
+        psf_template = np.array(hdf_file['psf_template'], dtype=np.float32)
+        psf_template = psf_template.squeeze()
 
     # Ensure that the PSF template is two-dimensional now; otherwise this
     # can result in weird errors that are hard to debug
@@ -150,7 +151,8 @@ def load_observing_conditions(
         _observing_conditions = dict()
         for key in hdf_file['observing_conditions']['interpolated'].keys():
             _observing_conditions[key] = np.array(
-                hdf_file['observing_conditions']['interpolated'][key]
+                hdf_file['observing_conditions']['interpolated'][key],
+                dtype=np.float32,
             )
 
     # Apply temporal binning to the observing conditions
@@ -280,7 +282,7 @@ def load_stack(
             slices.append(slice(start, end))
 
         # Finally, load only the cropped stack into a numpy array
-        stack = np.array(hdf_file['stack'][tuple(slices)])
+        stack = np.array(hdf_file['stack'][tuple(slices)], dtype=np.float32)
 
     # Remove planets from stack, if desired
     if remove_planets:

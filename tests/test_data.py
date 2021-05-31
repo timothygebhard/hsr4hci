@@ -37,12 +37,12 @@ from hsr4hci.data import (
 @pytest.fixture(scope="session")
 def test_data() -> Any:
 
-    stack = np.random.normal(0, 1, (100, 51, 51))
-    parang = np.random.normal(0, 1, (100,))
-    psf_template = np.random.normal(0, 1, (33, 33))
+    stack = np.random.normal(0, 1, (100, 51, 51)).astype(np.float32)
+    parang = np.random.normal(0, 1, (100,)).astype(np.float32)
+    psf_template = np.random.normal(0, 1, (33, 33)).astype(np.float32)
     observing_conditions = {
-        'air_pressure': np.random.normal(0, 1, (100,)),
-        'wind_speed_u': np.random.normal(0, 1, (100,)),
+        'air_pressure': np.random.normal(0, 1, (100,)).astype(np.float32),
+        'wind_speed_u': np.random.normal(0, 1, (100,)).astype(np.float32),
     }
     metadata = {
         'INSTRUMENT': 'NACO',
