@@ -24,7 +24,6 @@ from hsr4hci.hdf import load_dict_from_hdf
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-
 def get_list_of_fits_file_paths(fits_dir: Path, prefix: str) -> List[Path]:
     """
     Get a list of all FITS files in a given `fits_dir` whose file name
@@ -62,7 +61,7 @@ def get_list_of_fits_file_paths(fits_dir: Path, prefix: str) -> List[Path]:
 
 
 def get_list_of_hdf_file_paths(
-    hdf_dir: Path, prefix: str = 'results'
+    hdf_dir: Path, prefix: str = 'residuals'
 ) -> List[Path]:
     """
     Get a list of all HDF files in a given `hdf_dir` whose file name
@@ -71,7 +70,7 @@ def get_list_of_hdf_file_paths(
     Args:
         hdf_dir: Path to directory in which to look for HDF files.
         prefix: Only consider HDF files whose names begin with this.
-            Usually, we only need HDF files starting with "results".
+            Usually, we only need HDF files starting with "residuals".
 
     Returns:
         A list of Paths to the matching HDF files in `hdf_dir`.
@@ -100,7 +99,7 @@ def get_list_of_hdf_file_paths(
 
 def merge_hdf_files(
     hdf_file_paths: Sequence[Path],
-) -> Dict[str, Dict[str, np.ndarray]]:
+) -> Dict[str, np.ndarray]:
     """
     Take a list of HDF files and merge all of them into a single dict.
 
@@ -117,7 +116,7 @@ def merge_hdf_files(
     """
 
     # Instantiate the dictionary which will hold the final results
-    results: Dict[str, Dict[str, np.ndarray]] = dict()
+    residuals: Dict[str, np.ndarray] = {}
 
     # Loop over all HDF files that we need to merge
     for hdf_file_path in tqdm(sorted(hdf_file_paths), ncols=80):
@@ -125,32 +124,40 @@ def merge_hdf_files(
         # Load the HDF file to be merged
         hdf_file = load_dict_from_hdf(file_path=hdf_file_path)
 
-        # Get the expected dimensions of the stack
-        stack_shape = (
-            int(hdf_file['stack_shape'][0]),
-            int(hdf_file['stack_shape'][1]),
-            int(hdf_file['stack_shape'][2]),
-        )
+        # Get the expected dimensions of the stack and the ROI mask
+        stack_shape = tuple(hdf_file['stack_shape'])
+        roi_mask = np.asarray(hdf_file['roi_mask'])
 
         # Loop over the actual results in the HDF file:
         # The `key` is going to be either "default", or "0", ... "N" (i.e.,
-        # the different signal_times for which we have trained a model).
-        # The `value` is going to be a dictionary containing a `mask` as
-        # well as the `residuals` (i.e., the partial results).
-        for key, value in hdf_file['results'].items():
+        # the different signal_times for which we have trained a model); the
+        # `value` is going to a numpy array containing (partial) residuals.
+        for key, value in hdf_file['residuals'].items():
 
             # If necessary, create a new sub-dictionary in the results dict
-            if key not in results.keys():
-                results[key] = {'residuals': np.full(stack_shape, np.nan)}
+            if key not in residuals.keys():
+                residuals[key] = np.full(stack_shape, np.nan, dtype=np.float32)
 
-            # Define shortcuts
-            mask = value['mask']
-            residuals = value['residuals']
+            # If the residuals are 2D (return_format == "partial"), we need to
+            # use the (partial) ROI mask to store them at the correct location
+            if value.ndim == 2:
+                residuals[key][:, roi_mask] = value
 
-            # Store the (partial) residuals in the correct location
-            results[key]['residuals'][:, mask] = residuals
+            # If the residuals are 3D (return_format == "full"), we basically
+            # need to take the "NaN union" of all HDF files
+            elif value.ndim == 3:
+                with catch_warnings():
+                    filterwarnings('ignore', r'Mean of empty slice')
+                    residuals[key] = np.nanmean(
+                        [residuals[key], value], axis=0
+                    )
 
-    return results
+            # Any other case will raise an error (the residuals in the HDF
+            # files should *always* be either 2D or 3D)
+            else:  # pragma: no cover
+                raise RuntimeError('ndim must be either 2 or 3!')
+
+    return residuals
 
 
 def merge_fits_files(fits_file_paths: List[Path]) -> np.ndarray:
