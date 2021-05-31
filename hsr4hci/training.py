@@ -6,8 +6,7 @@ Utility functions training half-sibling regression models.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from bisect import insort_left
-from typing import Any, cast, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 from astropy.units import Quantity
 from sklearn.preprocessing import StandardScaler
@@ -20,9 +19,12 @@ from hsr4hci.forward_modeling import get_time_series_for_position
 from hsr4hci.masking import (
     get_predictor_pixel_selection_mask,
     get_positions_from_mask,
+    get_partial_roi_mask,
 )
 
 from hsr4hci.splitting import AlternatingSplit
+from hsr4hci.typehinting import RegressorModel
+from hsr4hci.utils import check_consistent_size
 
 
 # -----------------------------------------------------------------------------
@@ -56,525 +58,260 @@ def train_all_models(
     obscon_array: np.ndarray,
     selection_mask_config: Dict[str, Any],
     base_model_creator: BaseModelCreator,
-    n_signal_times: int,
     psf_template: np.ndarray,
-    n_splits: int,
-    mode: str,
+    train_mode: str,
+    n_train_splits: int = 3,
+    n_signal_times: int = 30,
     n_roi_splits: int = 1,
     roi_split: int = 0,
     return_format: str = 'full',
 ) -> Dict[str, Union[np.ndarray, Dict[str, np.ndarray]]]:
     """
-    This function wraps the loop over the ROI and runs the default and
-    signal masking-based training procedures for every pixel.
-
-    It also wraps the special provisions that are required when running
-    the training process in parallel, meaning it can return the results
-    in the special "partial" format which is more space-efficient but
-    requires an additional merging step.
+    Loop over all positions selected by the `roi_mask` (or rather, the
+    subset given by `roi_split` and `n_roi_splits`), train a model for
+    each pixel (using `train_model_for_position()`) and each potential
+    signal time from the temporal grid, and return the results formatted
+    according to the requested `return_format`.
 
     Args:
-        roi_mask:
-        stack:
-        parang:
-        obscon_array:
-        selection_mask_config:
-        base_model_creator:
-        n_signal_times:
-        psf_template:
-        n_splits:
-        mode:
-        n_roi_splits: Number of splits for the region of interest (ROI).
-            If this number if greater than one, this function does not
-            process the entire ROI, but only every `n_roi_splits`-th
-            pixel in it. This can be used to parallelize the training.
-        roi_split: If the ROI is split into `n_roi_splits` parts for
-            training, this parameter controls which of the splits is
-            processed by this function (namely, the `roi_split`-th).
-            Example: if `n_roi_splits` == 4`, then we need to call this
-            function with four times with `roi_split == 0, ..., 3` to
-            really process all pixels in the ROI.
-        return_format: The format in which the results are returned.
-            Must be either "partial" or "full". The difference are
-            as follows:
-                partial: The returned arrays do not have the same shape
-                    as the stack (i.e., `(n_frames, width, height)`),
-                    but are 2D arrays that have the shape:
-                        `(n_frames, n_pixels_in_split)`
-                    where `n_pixels_in_split` is approximately equal to
-                    `pixels_in_roi / n_splits`. This format is useful
-                    when the training procedure is run in parallel. In
-                    this case, the results (from this function) of each
-                    node can be stored as its own HDF file (without too
-                    much overhead), and then merged into the "proper"
-                    results file.
-                full:
+        roi_mask: A 2D numpy array of shape `(x_size, y_size)` that
+            contains a binary mask to select the region of interest,
+            that is, the pixels for which to train noise models.
+        stack: A 3D numpy array of shape `(n_frames, x_size, y_size)`
+            containing the data on which to train the noise models.
+        parang: A 1D numpy array of shape `(n_frames, )` containing the
+            corresponding parallactic angle for each frame.
+        obscon_array: A 2D numpy array of shape `(n_frames, n_features)`
+            containing the observing conditions that should be used as
+            additional predictors.
+        train_mode: The mode to use for training; must be one of the
+            following: "default", "signal_fitting" or "signal_masking".
+        selection_mask_config: A dictionary containing two keys (namely
+            "radius_position" and "radius_opposite") that define the
+            mask that is used to select the predictor pixels. The values
+            of the dict should be tuples of the form `(value, "unit")`.
+        psf_template: A 2D numpy array containing the unsaturated PSF
+            template.
+        n_train_splits: The number of training / test splits to use.
+        base_model_creator: An instance of `BaseModelCreator` that can
+            be used to instantiate new base models.
+        n_signal_times: The size of the temporal grid, that is, the
+            number of different (temporal) signal positions that are
+            assumed for each pixel.
+        n_roi_splits: The (total) number of splits into which the ROI
+            should be divided.
+        roi_split: The index of the split for which to return the mask.
+        return_format: The format in which the residuals are returned.
+            If "full", the residuals are 3D arrays that have the same
+            size as the `stack`. If "partial", the residuals are 2D
+            arrays that have the shape `(n_frames, n_pixels_in_split)`.
+            The latter is recommended when training in parallel, because
+            otherwise we waste a *lot* of storage for storing NaNs in
+            the intermediate result files.
 
     Returns:
-        A dictionary that contains the training results. Depending on
-        the `return_format`, it can take two different forms.
-
-        For `return_format == "partial"`:
-
-        ```
-        {
-            "stack_shape": A 3-tuple containing the shape of the
-                original stack. This is necessary when partial results
-                that have been saved as HDF files should be merged
-                again later on.
-            "signal_times": A numpy array with shape `(n_signal_times,)`
-                containing the signal times.
-            "default": {
-                "residuals": A 2D numpy array with shape `(n_frames,
-                    n_pixels_in_split)` that contains the residuals
-                    for the "default" case (i.e., no signal masking).
-                "mask": A 2D numpy array with shape `(width, height)`
-                    that contains a binary mask indicating the subset
-                    of the ROI that was processed by this function.
-                    This mask can be used to insert the `residuals` at
-                    the correct positions in a `stack`-shaped array.
-            }
-            "0": {
-                "residuals": A 2D numpy array with shape `(n_frames,
-                    n_pixels_in_split)` that contains the residuals
-                    based on signal masking for `signal_time == 0`.
-                "mask": A 2D numpy array with shape `(width, height)`
-                    that contains a binary mask indicating the subset
-                    of the ROI that was processed by this function for
-                    `signal_time == 0` (this mask can be different for
-                    all signal times!).
-            }
-            "X": {
-                (Same as above, but for `signal_time == X`)
-            }
-            ...
-            "n_frames": {
-                (Same as above, but for `signal_time == n_frames`)
-            }
-        }
-        ```
-
-        For `return_format == "full"`:
-
-        ```
-        {
-            "signal_times": A numpy array with shape `(n_signal_times,)`
-                containing the signal times.
-            "default": {
-                "residuals": A 3D numpy array (same shape as `stack`)
-                    that contains the residuals for the "default"
-                    case (i.e., no signal masking).
-            }
-            "0": {
-                "residuals": A 3D numpy array (same shape as `stack`)
-                    that contains the residuals based on signal
-                    masking for `signal_time == 0`.
-            }
-            "X": {
-                (Same as above, but for `signal_time == X`)
-            }
-            ...
-            "n_frames": {
-                (Same as above, but for `signal_time == n_frames`)
-            }
-        }
-        ```
+        A dictionary containing three keys:
+        (1) "stack_shape": the shape of the original stack; required
+            when merging partial result files.
+        (2 "roi_mask": the *PARTIAL* ROI mask that was used for
+            training; also required when merging partial result files.
+        (3) "residuals": a dictionary with keys "default", "0", ...,
+            "N", where the latter are the signal times for which we have
+            trained models. Each key maps onto a numpy array containing
+            the residuals for the respective model.
     """
 
-    # -------------------------------------------------------------------------
-    # Sanity checks; define shortcuts
-    # -------------------------------------------------------------------------
-
-    # Perform sanity checks on function arguments
+    # Run some basic sanity checks
+    check_consistent_size(stack, parang, axis=0)
+    if train_mode not in ('default', 'signal_fitting', 'signal_masking'):
+        raise ValueError('Illegal value for train_mode!')
     if return_format not in ('full', 'partial'):
-        raise ValueError('return_format must be "full" or "partial"!')
-    if not 0 <= roi_split < n_roi_splits:
-        raise ValueError('roi_split must be in [0, n_roi_splits)!')
+        raise ValueError('Illegal value for return_format!')
+    if not (isinstance(n_roi_splits, int) and n_roi_splits > 0):
+        raise ValueError('n_roi_splits must be a positive integer!')
+    if not (isinstance(roi_split, int) and 0 <= roi_split < n_roi_splits):
+        raise ValueError('roi_split must be an integer in [0, n_roi_splits)!')
 
     # Define shortcuts
     n_frames, x_size, y_size = stack.shape
-    frame_size = (x_size, y_size)
     signal_times = get_signal_times(n_frames, n_signal_times)
 
-    # -------------------------------------------------------------------------
-    # Prepare the results directory and the lookup table for indices
-    # -------------------------------------------------------------------------
+    # Get the partial ROI mask (that selects the subset of the ROI defined by
+    # `roi_split` and `n_roi_splits`) and count the number of models to train
+    partial_roi_mask = get_partial_roi_mask(roi_mask, roi_split, n_roi_splits)
+    n_models = int((n_signal_times + 1) * np.sum(partial_roi_mask))
 
-    # Initialize dictionary that will hold the results. We initialize it with
-    # an array holding the signal times for which we have computed model with
-    # signal masking, as well as a mask in which we keep track of the pixels
-    # that we have processed with this script. This is useful if we are running
-    # multiple instances of the training script in parallel, because it allows
-    # us to save the data more space-efficient.
-    #
-    # NOTE: We do need a separate mask for every `signal_time`, because the
-    #   pixels for which we can even train a model using signal masking may
-    #   depend on the signal time (because for signal masking, we have a
-    #   threshold for the minimum fraction / amount of training data).
-    tmp_results: Dict[
-        str, Union[np.ndarray, Dict[str, Union[List, np.ndarray]]]
-    ] = dict(
-        stack_shape=np.array(stack.shape),
-        signal_times=signal_times,
-        default=dict(residuals=[], mask=np.full(frame_size, False)),
-    )
-    for signal_time in signal_times:
-        tmp_results[str(signal_time)] = dict(
-            residuals=[], mask=np.full(frame_size, False)
-        )
+    # Set up a progress bar to keep track of the training progress
+    with tqdm(ncols=80, total=n_models) as progressbar:
 
-    # Create an auxiliary array which tells us the index that each spatial
-    # position will end up at when we reshape a stack-shaped 3D array to a 2D
-    # array by flattening the spatial dimensions.
-    lookup_column_indices = np.arange(x_size * y_size).astype(int)
-    lookup_column_indices = lookup_column_indices.reshape(frame_size)
+        # Initialize dictionary in which we will collect *all* residuals
+        residuals: Dict[str, np.ndarray] = {}
 
-    # Keep track of the indices of the columns we are processing
-    processed_column_indices: List[int] = list()
+        # Loop over both the default model, as well as the temporal grid,
+        # train the respective models, compute the residuals, and store them
+        for key in ['default'] + list(signal_times):
 
-    # -------------------------------------------------------------------------
-    # Loop over positions in the ROI and process each pixel individually
-    # -------------------------------------------------------------------------
+            # Initialize temporary array for residuals for the current key
+            key_residuals = np.full_like(stack, np.nan)
 
-    # Convert ROI mask into a list of positions
-    roi_positions = get_positions_from_mask(roi_mask)
+            # Define train mode and signal time
+            train_mode_ = 'default' if key == 'default' else train_mode
+            signal_time = None if key == 'default' else int(key)
 
-    # Loop over the subset of positions in the ROI (or a subset of the ROI).
-    # Note: The coordinates `position` will be in the numpy convention.
-    for position in tqdm(roi_positions[roi_split::n_roi_splits], ncols=80):
+            # Loop over the pixels in the ROI split and train a model for each
+            for x, y in get_positions_from_mask(partial_roi_mask):
+                residual, _ = train_model_for_position(
+                    stack=stack,
+                    parang=parang,
+                    obscon_array=obscon_array,
+                    position=(x, y),
+                    train_mode=train_mode_,
+                    signal_time=signal_time,
+                    selection_mask_config=selection_mask_config,
+                    psf_template=psf_template,
+                    n_train_splits=n_train_splits,
+                    base_model_creator=base_model_creator,
+                )
+                key_residuals[:, x, y] = residual
+                progressbar.update()
 
-        # ---------------------------------------------------------------------
-        # Preliminaries: Define shortcuts, get indices
-        # ---------------------------------------------------------------------
+            # Store the residuals either in the full or partial format
+            if return_format == 'full':
+                residuals[str(key)] = key_residuals
+            elif return_format == 'partial':
+                residuals[str(key)] = key_residuals[:, partial_roi_mask]
 
-        # Get the column index of the current position
-        column_idx = lookup_column_indices[position[0], position[1]]
-
-        # Get the index at which we have to insert the results for the current
-        # position in the lists in which we keep track of the results
-        insert_idx = np.searchsorted(processed_column_indices, column_idx)
-
-        # Add this index to the list of indices that we have processed and
-        # make sure that the list stays sorted (insort_left() works in-place!)
-        insort_left(processed_column_indices, insert_idx)
-
-        # ---------------------------------------------------------------------
-        # Get the "default" results (= "no planet" assumption)
-        # ---------------------------------------------------------------------
-
-        # Get default results
-        residuals, _ = train_model(
-            stack=stack,
-            parang=parang,
-            obscon_array=obscon_array,
-            position=position,
-            mode=None,
-            signal_time=None,
-            expected_signal=None,
-            selection_mask_config=selection_mask_config,
-            psf_template=psf_template,
-            n_splits=n_splits,
-            base_model_creator=base_model_creator,
-        )
-
-        # Now insert the results for this (spatial) position at the correct
-        # position in the results list; "correct" meaning that if we turn this
-        # list into a 2D numpy array and use the `results['mask']` to assign
-        # it to a subset of a stack-shaped 3D array, everything ends up at the
-        # expected position.
-        cast(list, tmp_results['default']['residuals']).insert(
-            insert_idx, residuals
-        )
-        cast(np.ndarray, tmp_results['default']['mask'])[
-            position[0], position[1]
-        ] = 1
-
-        # ---------------------------------------------------------------------
-        # Get results based on masking / fitting a potential signal
-        # ---------------------------------------------------------------------
-
-        # Loop over different possible signal times and train models
-        for signal_time in signal_times:
-
-            # Compute expected signal based on position and signal_time
-            expected_signal = get_time_series_for_position(
-                position=position,
-                signal_time=signal_time,
-                frame_size=frame_size,
-                parang=parang,
-                psf_template=psf_template,
-            )
-
-            # Get results based on signal masking
-            residuals, _ = train_model(
-                stack=stack,
-                parang=parang,
-                obscon_array=obscon_array,
-                position=position,
-                mode=mode,
-                signal_time=signal_time,
-                expected_signal=expected_signal,
-                selection_mask_config=selection_mask_config,
-                psf_template=psf_template,
-                n_splits=n_splits,
-                base_model_creator=base_model_creator,
-            )
-
-            cast(list, tmp_results[str(signal_time)]['residuals']).insert(
-                insert_idx, residuals
-            )
-            cast(np.ndarray, tmp_results[str(signal_time)]['mask'])[
-                position[0], position[1]
-            ] = 1
-
-    # -------------------------------------------------------------------------
-    # Loop over the (temporary) results dictionary and convert lists to arrays
-    # -------------------------------------------------------------------------
-
-    # Initialize a new results dictionary with the "correct" return type
-    results: Dict[str, Union[np.ndarray, Dict[str, np.ndarray]]] = dict()
-
-    # Loop over the temporary results dictionary
-    for key, value in tmp_results.items():
-
-        # First-level elements (i.e., `stack_shape`, `signal_times` and
-        # `positions_mask`) are simply copied
-        if not isinstance(value, dict):
-            results[key] = np.array(value)
-
-        # Second-level elements (i.e., the `residuals` in "default" or
-        # "<signal_time>") are converted from lists to numpy arrays. The
-        # transpose is necessary to allow reconstructing the 3D
-        # `stack`-like shape from the 2D arrays using the `mask`.
-        else:
-            results[key] = dict()
-            results[key]['residuals'] = np.array(
-                tmp_results[key]['residuals']
-            ).T
-            results[key]['mask'] = np.array(tmp_results[key]['mask'])
-
-    # -------------------------------------------------------------------------
-    # Return results; convert to stack-shape first if desired
-    # -------------------------------------------------------------------------
-
-    # In case we want the results in the "partial" format, return them now
-    if return_format == 'partial':
-        return results
-
-    # Otherwise, we need to reshape the results to the desired target format by
-    # converting back the space-efficient 2D arrays to stack-like 3D arrays.
-
-    # Initialize a dictionary for these reshaped results
-    new_results: Dict[str, Union[np.ndarray, Dict[str, np.ndarray]]] = dict(
-        signal_times=signal_times
-    )
-
-    # Loop over the different result groups to reshape them
-    for group_name, group in results.items():
-
-        # Loop only over second-level dictionaries:
-        # Effectively, this means that `group_name` will either be "default"
-        # or a signal time, and `group` will be the corresponding dictionary
-        # holding the `residuals` array (which are 2D).
-        if not isinstance(group, dict):
-            continue
-        new_results[group_name] = dict()
-
-        # Define a shortcut to the positions mask
-        mask = group['mask']
-
-        # Create a new `stack`-like array for the residuals and add results
-        new_results[group_name]['residuals'] = np.full(stack.shape, np.nan)
-        new_results[group_name]['residuals'][:, mask] = group['residuals']
-
-    return new_results
+    # Return the residuals together with the stack shape and the mask for
+    # the (subset of) the ROI that we processed here
+    return {
+        'stack_shape': np.array(stack.shape),
+        'roi_mask': partial_roi_mask,
+        'residuals': residuals,
+    }
 
 
-def train_model(
+def train_model_for_position(
     stack: np.ndarray,
     parang: np.ndarray,
     obscon_array: np.ndarray,
     position: Tuple[int, int],
-    mode: Optional[str],
+    train_mode: str,
     signal_time: Optional[int],
-    expected_signal: Optional[np.ndarray],
     selection_mask_config: Dict[str, Any],
     psf_template: np.ndarray,
-    n_splits: int,
+    n_train_splits: int,
     base_model_creator: BaseModelCreator,
-    signal_masking_threshold: float = 0.5,
 ) -> Tuple[np.ndarray, Dict[str, np.ndarray]]:
     """
-    Train a set of models (using a cross validation-like splitting
-    scheme with `n_splits` splits) for a given spatial `position`
-    and a given `signal_time`, and return the residuals and model
-    parameters.
+    Train a model (or rather: a set of models, because of the train /
+    test splitting scheme) for a given position.
 
     Args:
-        stack:
-        parang:
-        obscon_array:
-        position:
-        mode:
-        signal_time:
-        expected_signal:
-        selection_mask_config:
-        psf_template:
-        n_splits:
-        base_model_creator:
-        signal_masking_threshold:
+        stack: A 3D numpy array of shape `(n_frames, x_size, y_size)`
+            containing the data on which to train the noise models.
+        parang: A 1D numpy array of shape `(n_frames, )` containing the
+            corresponding parallactic angle for each frame.
+        obscon_array: A 2D numpy array of shape `(n_frames, n_features)`
+            containing the observing conditions that should be used as
+            additional predictors.
+        position: A tuple `(x, y)` of integers containing the position
+            for which to train the model(s).
+        train_mode: The mode to use for training; must be one of the
+            following: "default", "signal_fitting" or "signal_masking".
+        signal_time: If `train_mode` is "default", this should be None.
+            Otherwise, this should contain the time at which the planet
+            signal is assumed to peak at the given `position` (we need
+            this value to be able to compute the forward model for
+            signal fitting / masking).
+        selection_mask_config: A dictionary containing two keys (namely
+            "radius_position" and "radius_opposite") that define the
+            mask that is used to select the predictor pixels. The values
+            of the dict should be tuples of the form `(value, "unit")`.
+        psf_template: A 2D numpy array containing the unsaturated PSF
+            template.
+        n_train_splits: The number of training / test splits to use.
+        base_model_creator: An instance of `BaseModelCreator` that can
+            be used to instantiate new base models.
 
     Returns:
-
+        A 2-tuple consisting of:
+        (1) the residual time series for the given `position`,
+        (2) a dictionary containing additional debugging information
+            about the model(s) that we have trained; for example, the
+            values of the coefficients or regularization coefficients.
     """
 
     # -------------------------------------------------------------------------
-    # Preliminaries: define a few useful shortcuts; run sanity checks
+    # Construct predictor pixel selection mask; select predictor pixels
     # -------------------------------------------------------------------------
 
     # Define a few useful shortcuts
     n_frames = stack.shape[0]
     frame_size = (stack.shape[1], stack.shape[2])
-    x, y = position
 
-    # Make sure that `mode`, `signal_time` and `expected_signal` are either all
-    # None (this is the "default" case where we basically train a model under
-    # the assumption that there is no planet signal at `position`) or are all
-    # not None (in case we are training with signal masking or signal fitting).
-    if not (
-        (
-            (mode is None)
-            and (signal_time is None)
-            and (expected_signal is None)
-        )
-        or (
-            (mode is not None)
-            and (signal_time is not None)
-            and (expected_signal is not None)
-        )
-    ):
-        raise ValueError(
-            'Invalid combination of mode, signal_time and expected_signal! '
-            'Either all three must be None, or all three must be not None!'
-        )
-
-    # -------------------------------------------------------------------------
-    # Construct the (spatial) selection mask for choosing the predictor pixels
-    # -------------------------------------------------------------------------
-
-    # Define shortcuts to selection_mask_config
-    annulus_width = Quantity(*selection_mask_config['annulus_width'])
-    radius_position = Quantity(*selection_mask_config['radius_position'])
-    radius_mirror_position = Quantity(
-        *selection_mask_config['radius_mirror_position']
-    )
-
-    # Define the selection mask
-    # Note: get_predictor_pixel_selection_mask() expects the position to be in the astropy
-    # coordinate convention, but `position` (since it is usually produced by
-    # get_positions_from_mask()) is in numpy coordinates; therefore we need
-    # to flip it.
+    # Construct the selection mask for the pixel predictors.
+    # Note: `get_predictor_pixel_selection_mask()` expects the position to be
+    # in the astropy coordinate convention, but `position` (since it is usually
+    # produced by `get_positions_from_mask()`) is in numpy coordinates;
+    # therefore we need to flip it.
     selection_mask = get_predictor_pixel_selection_mask(
         mask_size=frame_size,
         position=position[::-1],
         signal_time=signal_time,
         parang=parang,
-        annulus_width=annulus_width,
-        radius_position=radius_position,
-        radius_mirror_position=radius_mirror_position,
+        radius_position=Quantity(*selection_mask_config['radius_position']),
+        radius_opposite=Quantity(*selection_mask_config['radius_opposite']),
         psf_template=psf_template,
     )
 
     # Compute the number of predictor *pixels* (since we might still add the
     # observing conditions, this is not necessarily the number of predictors)
-    n_predictor_pixels = int(np.sum(selection_mask))
-
-    # -------------------------------------------------------------------------
-    # Select targets and pixel predictors; add observing conditions
-    # -------------------------------------------------------------------------
+    n_pred_pixels = int(np.sum(selection_mask))
 
     # Select the full targets and predictors for the current position
     full_predictors = stack[:, selection_mask]
-    full_targets = stack[:, x, y].reshape(-1, 1)
+    full_targets = stack[:, position[0], position[1]].reshape(-1, 1)
 
     # Add observing conditions to the predictors
+    # Note: the obscon_array can be empty (i.e., shape == (n_frames, 0))
     full_predictors = np.hstack((full_predictors, obscon_array))
 
     # -------------------------------------------------------------------------
     # Prepare result variables
     # -------------------------------------------------------------------------
 
-    # Prepare arrays for predictions and residuals
+    # Prepare array for predictions
     full_predictions = np.full(n_frames, np.nan)
-    full_residuals = np.full(n_frames, np.nan)
 
     # Keep track of several model parameters
-    alphas = np.full(n_splits, np.nan)
-    pixel_coefs = np.full((n_splits, n_predictor_pixels), np.nan)
-    planet_coefs = np.full(n_splits, np.nan)
+    alphas = np.full(n_train_splits, np.nan)
+    pixel_coefs = np.full((n_train_splits, n_pred_pixels), np.nan)
+    planet_coefs = np.full(n_train_splits, np.nan)
 
     # -------------------------------------------------------------------------
-    # Prepare mask to ignore signal OR prepare signal as additional predictor
+    # Compute the expected signal (if required)
     # -------------------------------------------------------------------------
 
-    # The default choice for the signal mask (= sample_weights) corresponds
-    # to "use all available training data equally".
-    signal_mask = np.ones_like(full_targets)
+    # Always initialize the expected signal
+    expected_signal = np.full(n_frames, np.nan)
 
-    # This part is only relevant if the mode / signal_time / expected_signal
-    # are not None, that is, if we are training with signal masking / fitting
-    if expected_signal is not None:
+    # Only compute it if we are not training a default model. This happens
+    # here so we don't have to re-compute it in each train / test-split.
+    if train_mode in ('signal_fitting', 'signal_masking'):
 
-        # In "signal masking" mode, we ignore the part of the training data
-        # which, according to the `expected_signal` time series, contains a
-        # significant amount of signal. We realize this by thresholding the
-        # expected signal to obtain a binary mask (where 0 = contains signal,
-        # 1 = does not contain signal) which we can use as a `sample_weight`
-        # when fitting the model.
-        if mode == 'signal_masking':
+        # Ensure that the signal time is not None
+        if signal_time is None:
+            raise RuntimeError('signal_time must not be None!')
 
-            # The value of 0.2 as a threshold is of course somewhat arbitrary.
-            # We have to use "<" because we want the mask to be True for all
-            # frames that do NOT contain signal (= can be used for training).
-            signal_mask = expected_signal < 0.2
-
-            # Check if the signal mask excludes more than a given fraction of
-            # the training data (again, this threshold is somewhat arbitrary).
-            # In this case, we cannot train a model, and we immediately return
-            # the default result values.
-            if np.mean(signal_mask) < signal_masking_threshold:
-                return (
-                    full_residuals,
-                    dict(
-                        alphas=alphas,
-                        pixel_coefs=pixel_coefs,
-                        planet_coefs=planet_coefs,
-                        selection_mask=selection_mask,
-                    ),
-                )
-
-        # In "signal fitting" mode, we add the expected signal as an additional
-        # predictor to a (linear) model. Usually, we are using regularized
-        # models, such as ridge regression, and choose the regularization
-        # strength via cross-validation. In this case, we do not want the
-        # coefficient that belongs to the planet signal (i.e., the expected
-        # signal) to affect the choice of the regularization strength, or
-        # rather, we do not want the model to choose a "too small" coefficient
-        # for the planet signal because of the regularization. A simple (but
-        # somewhat hacky...) solution is to multiply the expected signal with
-        # a large number, meaning that the corresponding coefficient can be
-        # small (compared to the "noise part" of the model) and will thus have
-        # negligible influence on the regularization term of the loss function.
-        elif mode == 'signal_fitting':
-            expected_signal = expected_signal.reshape(-1, 1)
-            expected_signal /= np.max(expected_signal)
-            expected_signal *= 1_000_000
-
-        else:
-            raise ValueError(
-                'Illegal value for mode! Must be "signal_masking" or'
-                '"signal_fitting"!'
-            )
+        # Compute expected signal based on position and signal_time.
+        # The resulting time series is already normalized to a maximum of 1.
+        expected_signal = get_time_series_for_position(
+            position=position,
+            signal_time=signal_time,
+            frame_size=frame_size,
+            parang=parang,
+            psf_template=psf_template,
+        )
 
     # -------------------------------------------------------------------------
     # Train model(s)
@@ -589,19 +326,18 @@ def train_model(
     # prediction, which otherwise can happen even for simple models in cases
     # where we have more predictors than time steps.
 
-    splitter = AlternatingSplit(n_splits=n_splits)
+    splitter = AlternatingSplit(n_splits=n_train_splits)
 
     for i, (train_idx, apply_idx) in enumerate(splitter.split(full_targets)):
 
         # ---------------------------------------------------------------------
-        # Select and prepare (i.e., scale) training data
+        # Select and prepare (i.e., scale / whiten) the training data
         # ---------------------------------------------------------------------
 
         # Select predictors, targets and sample weights for training
         train_predictors = full_predictors[train_idx]
         apply_predictors = full_predictors[apply_idx]
         train_targets = full_targets[train_idx]
-        sample_weight = signal_mask[train_idx].ravel()
 
         # Apply a scaler to the predictors
         p_scaler = StandardScaler()
@@ -616,151 +352,74 @@ def train_model(
         # Train the model (which, in the end, should only predict noise!)
         # ---------------------------------------------------------------------
 
-        # Instantiate a new model
-        model: Any = base_model_creator.get_model_instance()
-
-        # The following part is split based on the "mode"; this leads to some
-        # code duplication, but should make the control flow more clear.
-
-        # Case 1: We are training a "default" model ("no planet" assumption)
-        if mode is None:
-
-            # Fit the model to the (full) training data
-            try:
-                model.fit(X=train_predictors, y=train_targets)
-            except np.linalg.LinAlgError:
-                return (
-                    full_residuals,
-                    dict(
-                        alphas=alphas,
-                        pixel_coefs=pixel_coefs,
-                        planet_coefs=planet_coefs,
-                        selection_mask=selection_mask,
-                    ),
-                )
-
-        # Case 2: We are training the model with "signal masking"
-        elif mode == 'signal_masking':
-
-            # Fit the model to the training data selected by the sample_weight
-            try:
-                model.fit(
-                    X=train_predictors,
-                    y=train_targets,
-                    sample_weight=sample_weight,
-                )
-            except np.linalg.LinAlgError:
-                return (
-                    full_residuals,
-                    dict(
-                        alphas=alphas,
-                        pixel_coefs=pixel_coefs,
-                        planet_coefs=planet_coefs,
-                        selection_mask=selection_mask,
-                    ),
-                )
-
-        # Case 3: We are training the model with "signal fitting"
-        elif mode == 'signal_fitting' and expected_signal is not None:
-
-            # Note: the extra "and" clause is necessary for mypy; if we have
-            # gotten to this point, it should always be true.
-
-            # Add expected signal to the train predictors
-            # Note that we do this *after* the "regular" `train_predictors`
-            # have already been normalized! The "signal predictor" (i.e.,
-            # the expected signal) is NOT normalized again!
-            train_predictors_ = np.column_stack(
-                [train_predictors, expected_signal[train_idx]]
+        # Either train a default model...
+        if train_mode == 'default':
+            model = _train_default_model(
+                base_model_creator=base_model_creator,
+                train_predictors=train_predictors,
+                train_targets=train_targets,
             )
 
-            # Fit the model to the (full) training data, including the extra
-            # predictor in form of the expected signal
-            try:
-                model.fit(X=train_predictors_, y=train_targets)
-            except np.linalg.LinAlgError:
-                return (
-                    full_residuals,
-                    dict(
-                        alphas=alphas,
-                        pixel_coefs=pixel_coefs,
-                        planet_coefs=planet_coefs,
-                        selection_mask=selection_mask,
-                    ),
-                )
+        # ... or a model with signal fitting / fitting
+        elif train_mode == 'signal_fitting':
+            model, planet_coefficient = _train_signal_fitting_model(
+                base_model_creator=base_model_creator,
+                train_predictors=train_predictors,
+                train_targets=train_targets,
+                expected_signal=expected_signal[train_idx],
+            )
+            planet_coefs[i] = planet_coefficient
 
-            # Ideally, we would constrain the coefficient of the expected
-            # signal (and ONLY this coefficient) to be non-negative. After
-            # all, there is no such thing as a "negative planet". However,
-            # such a constrained model does not have an analytic solution
-            # anymore (unlike "normal" linear models) and can only be learned
-            # used optimization / quadratic programming, which would require
-            # a custom model class (sklearn do not provide linear models where
-            # you can place constraints on individual coefficients) and also
-            # increase training time.
-            # For these reasons, we use the following simple (and, again,
-            # somewhat hacky...) solution: We simply  check if the coefficient
-            # that belongs to the expected signal is negative. In this case,
-            # we train the model again, this time WITHOUT the expected signal
-            # as a predictor (effectively forcing the coefficient to 0).
-            if model.coef_[-1] < 0:
-                try:
-                    model.fit(X=train_predictors, y=train_targets)
-                except np.linalg.LinAlgError:
-                    return (
-                        full_residuals,
-                        dict(
-                            alphas=alphas,
-                            pixel_coefs=pixel_coefs,
-                            planet_coefs=planet_coefs,
-                            selection_mask=selection_mask,
-                        ),
-                    )
+        # ... or a model with signal masking
+        elif train_mode == 'signal_masking':
+            model = _train_signal_masking_model(
+                base_model_creator=base_model_creator,
+                train_predictors=train_predictors,
+                train_targets=train_targets,
+                expected_signal=expected_signal[train_idx],
+            )
 
-            # If the coefficient that belongs to the expected_signal was NOT
-            # negative, we can create a "noise only"-model by simply dropping
-            # the last coefficient from the model.
-            else:
-                planet_coefs[i] = float(model.coef_[-1])
-                model.coef_ = model.coef_[:-1]
-
-        # All other cases result in an error (this should never happen,
-        # because we have already checked for this case before)
         else:
-            raise ValueError
+            raise ValueError('Illegal value for train_mode!')
 
         # ---------------------------------------------------------------------
         # Apply the model to the hold-out data to get the predictions
         # ---------------------------------------------------------------------
 
-        # Use the model learned on the `train_predictors` to get a prediction
-        # on the `apply_predictors`, and undo the target normalization
-        predictions = model.predict(X=apply_predictors).reshape(-1, 1)
-        predictions = t_scaler.inverse_transform(predictions).ravel()
+        # If the model is None, training did not succeed for some reason (for
+        # example, the signal masked would have excluded a too large fraction
+        # of the data). In this case, we do not get any predictions.
+        # Otherwise---that if the training succeeded---we can apply the model
+        # to the data that were held out by the split to get the predictions.
+        if model is not None:
 
-        # Store the predictions for the current split; compute residuals
-        full_predictions[apply_idx] = predictions
-        full_residuals[apply_idx] = (
-            full_targets[apply_idx].ravel() - predictions
-        ).ravel()
+            # Use the model (that we learned on the `train_predictors`) to
+            # get a prediction on the `apply_predictors`, and undo the target
+            # normalization
+            predictions = model.predict(X=apply_predictors).reshape(-1, 1)
+            predictions = t_scaler.inverse_transform(predictions).ravel()
 
-        # ---------------------------------------------------------------------
-        # Store additional parameters / information about the model
-        # ---------------------------------------------------------------------
+            # Store the predictions for the current split
+            full_predictions[apply_idx] = predictions
 
-        # Store regularization strength of this split
-        if hasattr(model, 'alpha_'):
-            alphas[i] = float(model.alpha_)
+            # For regularized models: store the regularization strength of
+            # this split (for debugging purposes)
+            if hasattr(model, 'alpha_'):
+                alphas[i] = float(model.alpha_)  # type: ignore
 
-        # Store pixel coefficients. In the case of a linear model, this is
-        # basically "the model" (up to the intercept).
-        if hasattr(model, 'coef_'):
-            pixel_coefs[i] = model.coef_[:n_predictor_pixels]
+            # For linear models: store pixel coefficients. In the case of a
+            # linear model, this is basically the model (up to the intercept).
+            if hasattr(model, 'coef_'):
+                pixel_coefs[i] = model.coef_[:n_pred_pixels]  # type: ignore
 
     # -------------------------------------------------------------------------
-    # Return results (residuals and model information)
+    # Compute residuals and return results
     # -------------------------------------------------------------------------
 
+    # After loop over all train/test splits is complete, compute residuals
+    full_residuals = full_targets.ravel() - full_predictions.ravel()
+
+    # Finally, return the residuals and the information about the model
     return (
         full_residuals,
         dict(
@@ -770,3 +429,195 @@ def train_model(
             selection_mask=selection_mask,
         ),
     )
+
+
+def _train_default_model(
+    base_model_creator: BaseModelCreator,
+    train_predictors: np.ndarray,
+    train_targets: np.ndarray,
+) -> Optional[RegressorModel]:
+    """
+    Train a default model (i.e., no signal fitting or masking).
+
+    Args:
+        base_model_creator: Instance of `BaseModelCreator` that can be
+            used to instantiate a new model.
+        train_predictors: A 2D numpy array containing the (normalized)
+            predictors. Shape: `(n_time_steps, n_features)`.
+        train_targets: A 1D numpy array containing the (normalized)
+            targets. Shape `(n_time_steps, )`.
+
+    Returns:
+        The trained model instance, or None, if the training failed
+        with a `np.linalg.LinAlgError`.
+    """
+
+    # Instantiate a new model
+    model = base_model_creator.get_model_instance()
+
+    # Fit the model to the (full) training data
+    try:
+        model.fit(X=train_predictors, y=train_targets)
+        return model
+    except np.linalg.LinAlgError:  # pragma: no cover
+        return None
+
+
+def _train_signal_fitting_model(
+    base_model_creator: BaseModelCreator,
+    train_predictors: np.ndarray,
+    train_targets: np.ndarray,
+    expected_signal: np.ndarray,
+) -> Tuple[Optional[RegressorModel], float]:
+    """
+    Train a model with signal fitting.
+
+    Args:
+        base_model_creator: Instance of `BaseModelCreator` that can be
+            used to instantiate a new model.
+        train_predictors: A 2D numpy array containing the (normalized)
+            predictors. Shape: `(n_time_steps, n_features)`.
+        train_targets: A 1D numpy array containing the (normalized)
+            targets. Shape: `(n_time_steps, )`.
+        expected_signal: A 1D numpy array containing the expected signal
+            for the hypothesis under which we are training the current
+            model. Shape: `(n_time_steps, )`.
+
+    Returns:
+        A 2-tuple, consisting of (1) the trained noise model instance
+        (i.e., with the planet coefficient removed), and (2) the value
+        of the planet coefficient that was removed. In case the training
+        fails with a `np.linalg.LinAlgError`, return `(None, np.nan)`.
+    """
+
+    # Instantiate a new model
+    model: Any = base_model_creator.get_model_instance()
+
+    # Check that we have instantiated a linear model: signal fitting is only
+    # possible if we can remove the coefficient that corresponds to the signal
+    # after training. This only works for linear models and neural networks
+    # with a special network architecture; this implementation only supports
+    # the former.
+    if not 'linear_model' in model.__module__:
+        raise RuntimeError('Signal fitting only works with linear models!')
+
+    # In "signal fitting" mode, we add the expected signal as an additional
+    # predictor to a (linear) model. Usually, we are using regularized models,
+    # such as ridge regression, and choose the regularization strength via
+    # cross-validation. In this case, we do not want the coefficient that
+    # belongs to the planet signal (i.e., the expected signal) to affect the
+    # choice of the regularization strength, or rather, we do not want the
+    # model to choose a "too small" coefficient for the planet signal because
+    # of the regularization.
+    # A simple (but somewhat hacky...) solution is to multiply the expected
+    # signal with a large number, meaning that the corresponding coefficient
+    # can be small (compared to the "noise part" of the model) and will thus
+    # have only negligible influence on the regularization term of the loss
+    # function.
+    # Note: the scaling factor should also not be *too large*, because in this
+    # case you get "RuntimeWarning: invalid value encountered in multiply" for
+    # many pixels, and the residuals are starting to look worse.
+    expected_signal_ = np.copy(expected_signal)
+    expected_signal_ *= 1_000
+    expected_signal_ = expected_signal_.reshape(-1, 1)
+
+    # Add the expected signal to the train predictors. We add it as the last
+    # column in the predictors-matrix, meaning that we know that we can access
+    # the corresponding coefficient of the model as `model.coef_[-1]`.
+    # Note also that we do this *after* the "regular" `train_predictors` have
+    # already been normalized / whitened! We do *not* normalize the expected
+    # signal again after the above re-scaling procedure!
+    train_predictors_ = np.column_stack([train_predictors, expected_signal_])
+
+    # Fit the model to the (full) training data, including the extra predictor
+    # in form of the expected signal
+    try:
+        model.fit(X=train_predictors_, y=train_targets)
+    except np.linalg.LinAlgError:  # pragma: no cover
+        return None, np.nan
+
+    # Ideally, we would constrain the coefficient of the expected signal (and
+    # ONLY this coefficient) to be non-negative. After all, there is no such
+    # thing as a "negative planet". However, such a constrained model does not
+    # have an analytic solution anymore (unlike "normal" linear models) and can
+    # only be learned used optimization / quadratic programming, which would
+    # require a custom model class (sklearn do not provide linear models where
+    # you can place constraints on individual coefficients) and also increase
+    # training time.
+    # For these reasons, we use the following simple (and, again, somewhat
+    # hacky...) solution: We simply  check if the coefficient that belongs to
+    # the expected signal is negative. In this case, we train the model again,
+    # this time WITHOUT the expected signal as a predictor (effectively forcing
+    # the coefficient to 0).
+
+    # Get the coefficient that belongs to the expected signal, and undo the
+    # scaling that we applied to the expected signal due to the regularization
+    planet_coefficient = float(model.coef_[-1]) * 1_000
+
+    # If the planet coefficient is negative, re-train the model *without* the
+    # expected signal as a predictor
+    if planet_coefficient < 0:
+        try:
+            model.fit(X=train_predictors, y=train_targets)
+        except np.linalg.LinAlgError:  # pragma: no cover
+            return None, np.nan
+
+    # If the planet coefficient is NOT negative, we can create a "noise
+    # only"-model by simply dropping the last coefficient from the model
+    else:
+        model.coef_ = model.coef_[:-1]
+
+    # Return the model and the planet coefficient
+    return model, planet_coefficient
+
+
+def _train_signal_masking_model(
+    base_model_creator: BaseModelCreator,
+    train_predictors: np.ndarray,
+    train_targets: np.ndarray,
+    expected_signal: np.ndarray,
+) -> Optional[RegressorModel]:
+    """
+    Train a model with signal masking.
+
+    Args:
+        base_model_creator: Instance of `BaseModelCreator` that can be
+            used to instantiate a new model.
+        train_predictors: A 2D numpy array containing the (normalized)
+            predictors. Shape: `(n_time_steps, n_features)`.
+        train_targets: A 1D numpy array containing the (normalized)
+            targets. Shape: `(n_time_steps, )`.
+        expected_signal: A 1D numpy array containing the expected signal
+            for the hypothesis under which we are training the current
+            model. Shape: `(n_time_steps, )`.
+
+    Returns:
+        The trained model instance, or None, if the training failed
+        with a `np.linalg.LinAlgError`.
+    """
+
+    # Threshold the expected signal to find the time steps that we must not use
+    # for training (the threshold value of 0.2 is, of course, a bit arbitrary).
+    # We have to use "<" because we want the mask to be True for all steps that
+    # do NOT contain signal (= *can* be used for training).
+    signal_mask = expected_signal < 0.2
+
+    # Check if the signal mask excludes more than a given fraction of the
+    # training data, namely, 50% of the data (again, this threshold is rather
+    # arbitrary). In this case, we cannot / should not train a model.
+    if np.mean(signal_mask) < 0.5:
+        return None
+
+    # Instantiate a new model
+    model = base_model_creator.get_model_instance()
+
+    # Fit the model to the training data to which we have apply the signal
+    # mask in order to ignore all parts that contain too much planet signal
+    try:
+        model.fit(
+            X=train_predictors[signal_mask],
+            y=train_targets[signal_mask],
+        )
+        return model
+    except np.linalg.LinAlgError:  # pragma: no cover
+        return None
