@@ -13,7 +13,7 @@ import pytest
 
 # noinspection PyProtectedMember
 from hsr4hci.residuals import (
-    assemble_residuals_from_hypotheses,
+    assemble_residual_stack_from_hypotheses,
     _get_radial_gradient_mask,
     _get_expected_signal,
     get_residual_selection_mask,
@@ -29,23 +29,24 @@ from hsr4hci.masking import get_circle_mask
 
 def test__assemble_residuals_from_hypotheses() -> None:
 
-    hypotheses = np.array([[1, 2], [3, 4]])
-    results = {
-        'signal_times': np.arange(3),
-        'residuals': {
-            'default': np.full((3, 2, 2), 0),
-            '1': np.full((3, 2, 2), 1),
-            '2': np.full((3, 2, 2), 2),
-            '3': np.full((3, 2, 2), 3),
-            '4': np.full((3, 2, 2), 4),
-        }
+    hypotheses = np.array([[1, 2, 4], [4, 1, 2], [3, 4, 1]])
+    selection_mask = np.array([[0, 1, 1], [0, 1, 1], [0, 1, 1]]).astype(bool)
+    residuals = {
+        'default': np.full((5, 3, 3), 0),
+        '1': np.full((5, 3, 3), 1),
+        '2': np.full((5, 3, 3), 2),
+        '3': np.full((5, 3, 3), 3),
+        '4': np.full((5, 3, 3), 4),
     }
 
-    residuals = assemble_residuals_from_hypotheses(
-        hypotheses=hypotheses, results=results
+    assembled = assemble_residual_stack_from_hypotheses(
+        hypotheses=hypotheses,
+        selection_mask=selection_mask,
+        residuals=residuals,
     )
     assert np.allclose(
-        residuals, np.tile(np.array([[1, 2], [3, 4]]), (3, 1, 1))
+        assembled,
+        np.tile(np.array([[0, 2, 4], [0, 1, 2], [0, 4, 1]]), (5, 1, 1)),
     )
 
 

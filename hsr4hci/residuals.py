@@ -8,7 +8,7 @@ Utility functions that are related to dealing with residuals.
 
 from itertools import product
 from math import fmod
-from typing import Dict, Tuple, Union
+from typing import Dict, Tuple
 
 from photutils.centroids import centroid_com
 from polarTransform import convertToPolarImage
@@ -24,46 +24,56 @@ from hsr4hci.general import shift_image, crop_or_pad
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def assemble_residuals_from_hypotheses(
+def assemble_residual_stack_from_hypotheses(
     hypotheses: np.ndarray,
-    results: Dict[str, Union[np.ndarray, Dict[str, np.ndarray]]],
+    selection_mask: np.ndarray,
+    residuals: Dict[str, np.ndarray],
 ) -> np.ndarray:
     """
-    Assemble the signal masking results based on the `hypotheses`, that
-    is, for each spatial pixel use the residual that was obtained when
-    assuming the signal time that equals the hypothesis for this pixel.
+    Assemble the residual stack based on the `selection_mask` and the
+    `hypotheses`: For each spatial pixel where the `selection_mask` is
+    True, use the residual from the model given by the respective entry
+    in `hypotheses`; for all other pixels, use the "default" residual.
 
     Args:
-        hypotheses: A 2D numpy array of shape `(width, height)`. Each
+        hypotheses: A 2D numpy array of shape `(x_size, y_size)`. Each
             position contains an integers which represents the signal
             time which appears to be the best hypothesis for this pixel
             (i.e., "if there ever is a planet in this pixel, it should
             be at this time").
-        results: The dictionary which contains the full results from
-            training both the "default" and the signal masking based
-            models.
+        selection_mask: A 2D numpy array of shape `(x_size, y_size)`
+            which contains a mask that determines for which pixels the
+            default residual is used and for which pixel the residual
+            based on signal fitting / masking is used.
+        residuals: The dictionary which contains the full results from
+            training both the "default" and the models based on signal
+            fitting / masking.
 
     Returns:
         A 3D numpy array (whose shape matches the stack) containing the
-        "best" signal masking-based residuals given the `hypotheses`.
+        "best" residuals based on the given the `hypotheses`.
     """
 
-    # Get stack shape from default residuals
-    n_frames, x_size, y_size = results['residuals']['default'].shape
-
-    # Initialize the signal masking residuals as all-NaN
-    signal_masking_residuals = np.full((n_frames, x_size, y_size), np.nan)
+    # Initialize the result as the default residuals
+    result = np.array(residuals['default'])
+    n_frames, x_size, y_size = result.shape
 
     # Loop over all spatial positions and pick the signal masking-based
     # residual based on the the respective hypothesis for the pixel
-    for x, y in product(range(x_size), range(y_size)):
-        signal_time = hypotheses[x, y]
-        if not np.isnan(signal_time):
-            signal_masking_residuals[:, x, y] = np.array(
-                results['residuals'][str(int(signal_time))][:, x, y]
-            )
+    for x, y in product(np.arange(x_size), np.arange(y_size)):
 
-    return signal_masking_residuals
+        # If we do not have a hypothesis, or the selection mask did not select
+        # this pixel, do nothing (i.e., keep the "default" residual)
+        if np.isnan(hypotheses[x, y]) or (not selection_mask[x, y]):
+            continue
+
+        # Otherwise (if the selection mask is True), replace the "default"
+        # residual with the one that matches the hypothesis for this pixel
+        else:
+            signal_time = str(int(hypotheses[x, y]))
+            result[:, x, y] = np.array(residuals[signal_time][:, x, y])
+
+    return result
 
 
 def _get_radial_gradient_mask(
