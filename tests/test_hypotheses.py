@@ -22,7 +22,6 @@ from hsr4hci.training import get_signal_times
 # TEST CASES
 # -----------------------------------------------------------------------------
 
-
 def test_get_hypothesis_for_position() -> None:
 
     # Fix random seed
@@ -38,15 +37,16 @@ def test_get_hypothesis_for_position() -> None:
     parang = np.linspace(0, 90, n_frames)
     n_signal_times = 5
     signal_times = get_signal_times(n_frames, n_signal_times)
-    results: Dict[str, Dict[str, np.ndarray]] = {'residuals': {}}
+    residuals: Dict[str, np.ndarray] = {}
     for i, signal_time in enumerate(signal_times):
 
         # For all cases
-        residuals = np.random.normal(0, 1, (n_frames, x_size, y_size))
+        tmp_residuals = np.random.normal(0, 1, (n_frames, x_size, y_size))
+        tmp_residuals = tmp_residuals.astype(np.float32)
 
         # For case 1
         if i == 2:
-            residuals[:, 3, 4] = get_time_series_for_position(
+            tmp_residuals[:, 3, 4] = get_time_series_for_position(
                 position=(3, 4),
                 signal_time=signal_time,
                 frame_size=(x_size, y_size),
@@ -55,10 +55,10 @@ def test_get_hypothesis_for_position() -> None:
             )
 
         # For case 2
-        residuals[3, 2, 7] = np.nan
+        tmp_residuals[3, 2, 7] = np.nan
 
         # For case 4
-        residuals[:, 8, 2] = -1 * get_time_series_for_position(
+        tmp_residuals[:, 8, 2] = -1 * get_time_series_for_position(
             position=(8, 2),
             signal_time=signal_time,
             frame_size=(x_size, y_size),
@@ -66,11 +66,11 @@ def test_get_hypothesis_for_position() -> None:
             psf_template=psf_template,
         )
 
-        results['residuals'][str(signal_time)] = residuals
+        residuals[str(signal_time)] = tmp_residuals
 
     # Case 1
     signal_time, similarity = get_hypothesis_for_position(
-        results=results,
+        residuals=residuals,
         position=(3, 4),
         parang=parang,
         n_signal_times=n_signal_times,
@@ -83,7 +83,7 @@ def test_get_hypothesis_for_position() -> None:
 
     # Case 2
     signal_time, similarity = get_hypothesis_for_position(
-        results=results,
+        residuals=residuals,
         position=(2, 7),
         parang=parang,
         n_signal_times=n_signal_times,
@@ -96,7 +96,7 @@ def test_get_hypothesis_for_position() -> None:
 
     # Case 3
     signal_time, similarity = get_hypothesis_for_position(
-        results=results,
+        residuals=residuals,
         position=(4, 4),
         parang=parang,
         n_signal_times=n_signal_times,
@@ -109,7 +109,7 @@ def test_get_hypothesis_for_position() -> None:
 
     # Case 4
     signal_time, similarity = get_hypothesis_for_position(
-        results=results,
+        residuals=residuals,
         position=(8, 2),
         parang=parang,
         n_signal_times=n_signal_times,
@@ -137,16 +137,17 @@ def test__get_all_hypotheses() -> None:
     n_signal_times = 5
     signal_times = get_signal_times(n_frames, n_signal_times)
     roi_mask = get_circle_mask((x_size, y_size), 6)
-    results: Dict[str, Dict[str, np.ndarray]] = {'residuals': {}}
+    residuals: Dict[str, np.ndarray] = {}
     for i, signal_time in enumerate(signal_times):
 
         # For all cases
-        residuals = np.random.normal(0, 0.0001, (n_frames, x_size, y_size))
-        residuals[:, ~roi_mask] = np.nan
+        tmp_residuals = np.random.normal(0, 0.0001, (n_frames, x_size, y_size))
+        tmp_residuals = tmp_residuals.astype(np.float32)
+        tmp_residuals[:, ~roi_mask] = np.nan
 
         # For case 1
         if i == 2:
-            residuals[:, 7, 7] = get_time_series_for_position(
+            tmp_residuals[:, 7, 7] = get_time_series_for_position(
                 position=(7, 7),
                 signal_time=signal_time,
                 frame_size=(x_size, y_size),
@@ -154,7 +155,7 @@ def test__get_all_hypotheses() -> None:
                 psf_template=psf_template,
             )
         if i == 3:
-            residuals[:, 8, 2] = get_time_series_for_position(
+            tmp_residuals[:, 8, 2] = get_time_series_for_position(
                 position=(8, 2),
                 signal_time=signal_time,
                 frame_size=(x_size, y_size),
@@ -162,7 +163,7 @@ def test__get_all_hypotheses() -> None:
                 psf_template=psf_template,
             )
         if i == 4:
-            residuals[:, 11, 5] = get_time_series_for_position(
+            tmp_residuals[:, 11, 5] = get_time_series_for_position(
                 position=(11, 5),
                 signal_time=signal_time,
                 frame_size=(x_size, y_size),
@@ -170,12 +171,12 @@ def test__get_all_hypotheses() -> None:
                 psf_template=psf_template,
             )
 
-        results['residuals'][str(signal_time)] = residuals
+        residuals[str(signal_time)] = tmp_residuals
 
     # Case 1
     hypotheses, similarities = get_all_hypotheses(
         roi_mask=roi_mask,
-        results=results,
+        residuals=residuals,
         parang=parang,
         n_signal_times=n_signal_times,
         frame_size=(x_size, y_size),

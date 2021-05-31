@@ -35,7 +35,7 @@ def test__get_match_fraction_for_position() -> None:
     parang = np.linspace(-45, 45, n_frames)
 
     # Create fake minimal results
-    residuals = add_fake_planet(
+    tmp_residuals = add_fake_planet(
         stack=np.zeros((n_frames, x_size, y_size)),
         parang=parang,
         psf_template=psf_template,
@@ -46,30 +46,30 @@ def test__get_match_fraction_for_position() -> None:
         dit_psf_template=1,
         return_planet_positions=False,
     )
-    results = {'residuals': {'50': residuals}}
+    residuals = {'50': tmp_residuals}
 
-    _digit_keys = filter(lambda _: _.isdigit(), results['residuals'].keys())
+    _digit_keys = filter(lambda _: _.isdigit(), residuals.keys())
     signal_times = np.array(sorted(list(map(int, _digit_keys))))
 
     # Case 1
     mean_mf, median_mf, affected_pixels = get_match_fraction_for_position(
         position=(26, 16),
         hypothesis=np.nan,
-        results=results,
+        residuals=residuals,
         parang=parang,
         psf_template=psf_template,
         signal_times=signal_times,
         frame_size=frame_size,
     )
-    assert mean_mf == 0
-    assert median_mf == 0
+    assert np.isnan(mean_mf)
+    assert np.isnan(median_mf)
     assert np.array_equal(affected_pixels, np.full(frame_size, False))
 
     # Case 2
     mean_mf, median_mf, affected_pixels = get_match_fraction_for_position(
         position=(26, 16),
         hypothesis=int(n_frames / 2),
-        results=results,
+        residuals=residuals,
         parang=parang,
         psf_template=psf_template,
         signal_times=signal_times,
@@ -80,18 +80,18 @@ def test__get_match_fraction_for_position() -> None:
     assert np.sum(affected_pixels) == 95
 
     # Case 3
-    results = {'residuals': {'50': np.full(residuals.shape, np.nan)}}
+    residuals = {'50': np.full((n_frames, x_size, y_size), np.nan)}
     mean_mf, median_mf, affected_pixels = get_match_fraction_for_position(
         position=(26, 16),
         hypothesis=int(n_frames / 2),
-        results=results,
+        residuals=residuals,
         parang=parang,
         psf_template=psf_template,
         signal_times=signal_times,
         frame_size=frame_size,
     )
-    assert mean_mf == 0
-    assert median_mf == 0
+    assert np.isnan(mean_mf)
+    assert np.isnan(median_mf)
 
 
 def test__get_all_match_fraction() -> None:
@@ -108,7 +108,7 @@ def test__get_all_match_fraction() -> None:
     parang = np.linspace(-45, 45, n_frames)
 
     # Create fake minimal results
-    residuals = add_fake_planet(
+    tmp_residuals = add_fake_planet(
         stack=np.zeros((n_frames, x_size, y_size)),
         parang=parang,
         psf_template=psf_template,
@@ -119,7 +119,7 @@ def test__get_all_match_fraction() -> None:
         dit_psf_template=1,
         return_planet_positions=False,
     )
-    results = {'residuals': {'50': residuals}}
+    residuals = {'50': tmp_residuals}
 
     # Define hypotheses
     hypotheses = np.full(frame_size, np.nan)
@@ -128,7 +128,7 @@ def test__get_all_match_fraction() -> None:
 
     # Case 1
     mean_mf, median_mf, affected_pixels = get_all_match_fractions(
-        results=results,
+        residuals=residuals,
         roi_mask=np.full(frame_size, True),
         hypotheses=hypotheses,
         parang=parang,

@@ -6,7 +6,7 @@ Utility functions for computing match fractions.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Tuple
+from typing import Dict, Tuple
 
 from sklearn.metrics.pairwise import cosine_similarity
 from tqdm.auto import tqdm
@@ -24,7 +24,7 @@ from hsr4hci.masking import get_positions_from_mask
 # -----------------------------------------------------------------------------
 
 def get_all_match_fractions(
-    results: dict,
+    residuals: Dict[str, np.ndarray],
     roi_mask: np.ndarray,
     hypotheses: np.ndarray,
     parang: np.ndarray,
@@ -46,7 +46,7 @@ def get_all_match_fractions(
     positions = get_positions_from_mask(roi_mask)[roi_split::n_roi_splits]
 
     # Get signal times based on the keys of the given results dictionary
-    _digit_keys = filter(lambda _: _.isdigit(), results['residuals'].keys())
+    _digit_keys = filter(lambda _: _.isdigit(), residuals.keys())
     signal_times = np.array(sorted(list(map(int, _digit_keys))))
 
     # Loop over (subset of) ROI and compute match fractions
@@ -54,7 +54,7 @@ def get_all_match_fractions(
         mean_mf, median_mf, affected_mask = get_match_fraction_for_position(
             position=position,
             hypothesis=hypotheses[position[0], position[1]],
-            results=results,
+            residuals=residuals,
             parang=parang,
             psf_template=psf_template,
             signal_times=signal_times,
@@ -70,7 +70,7 @@ def get_all_match_fractions(
 def get_match_fraction_for_position(
     position: Tuple[int, int],
     hypothesis: float,
-    results: dict,
+    residuals: Dict[str, np.ndarray],
     parang: np.ndarray,
     psf_template: np.ndarray,
     signal_times: np.ndarray,
@@ -86,7 +86,7 @@ def get_match_fraction_for_position(
     # If we do not have a hypothesis for the current position, we can
     # directly return the match fraction as 0
     if np.isnan(hypothesis):
-        return 0, 0, np.full(frame_size, False)
+        return np.nan, np.nan, np.full(frame_size, False)
 
     # Compute the expect final position based on the hypothesis that the
     # signal is at `position` at time `signal_time`
@@ -146,7 +146,7 @@ def get_match_fraction_for_position(
 
         # Define shortcuts for the time series that we compare
         a = expected_stack[:, x, y]
-        b = np.asarray(results['residuals'][str(peak_time)][:, x, y])
+        b = np.asarray(residuals[str(peak_time)][:, x, y])
 
         # In case we do not have a signal masking residual for the
         # current affected position, we skip it
@@ -169,7 +169,7 @@ def get_match_fraction_for_position(
         match_fraction__mean = np.nanmean(matches)
         match_fraction__median = np.nanmedian(matches)
     else:
-        match_fraction__mean = 0
-        match_fraction__median = 0
+        match_fraction__mean = np.nan
+        match_fraction__median = np.nan
 
     return match_fraction__mean, match_fraction__median, affected_mask

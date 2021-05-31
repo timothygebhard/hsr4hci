@@ -7,7 +7,7 @@ seems to contain a planet signal at time T.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Tuple
+from typing import Dict, Tuple
 
 from sklearn.metrics.pairwise import cosine_similarity
 from tqdm.auto import tqdm
@@ -25,7 +25,7 @@ from hsr4hci.training import get_signal_times
 
 def get_all_hypotheses(
     roi_mask: np.ndarray,
-    results: dict,
+    residuals: Dict[str, np.ndarray],
     parang: np.ndarray,
     n_signal_times: int,
     frame_size: Tuple[int, int],
@@ -51,7 +51,7 @@ def get_all_hypotheses(
     # for the current position, and store them
     for position in tqdm(positions, ncols=80):
         signal_time, similarity = get_hypothesis_for_position(
-            results=results,
+            residuals=residuals,
             position=position,
             parang=parang,
             n_signal_times=n_signal_times,
@@ -66,7 +66,7 @@ def get_all_hypotheses(
 
 
 def get_hypothesis_for_position(
-    results: dict,
+    residuals: Dict[str, np.ndarray],
     position: Tuple[int, int],
     parang: np.ndarray,
     n_signal_times: int,
@@ -81,14 +81,12 @@ def get_hypothesis_for_position(
     the residuals look like the contain a planet, return NaN.
 
     Args:
-        results: A dictionary containing the full training results. In
-            particular, we expect that for each signal time T on the
-            temporal grid that was used during training, there is a key
-            T (as a string) that maps to another dictionary which has a
-            key `residuals`, which is a 3D numpy array consisting of the
-            residuals that were obtained when trained the signal masking
-            models under the hypothesis that there is a planet at T (for
-            each spatial position).
+        residuals: A dictionary containing the residuals of all models
+            that we have trained. The keys should be "default", "0",
+            ..., "N", where the latter are the signal times of the
+            temporal grid that was used during training, and each key
+            should map to a 3D numpy array consisting of the residuals
+            for the respective model.
         position: A tuple `(x, y)` specifying the position for which we
             want to find the best hypothesis (i.e., the best guess for
             the time at which this pixel contains a planet).
@@ -125,7 +123,7 @@ def get_hypothesis_for_position(
 
         # Select residual for this position
         residual = np.asarray(
-            results['residuals'][str(signal_time)][:, position[0], position[1]]
+            residuals[str(signal_time)][:, position[0], position[1]]
         )
 
         # If the residual is NaN, we can't compute the metric function
