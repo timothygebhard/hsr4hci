@@ -12,9 +12,6 @@ Parts of the code in the module are based on:
 from pathlib import Path
 from typing import Any, Union
 
-import os
-import shutil
-
 import h5py
 import numpy as np
 
@@ -236,10 +233,6 @@ def create_hdf_dir(experiment_dir: Path, create_on_work: bool = False) -> Path:
     the (large) HDF files on /work, with a symlink connecting it to the
     rest of the `experiment_dir`.
 
-    Additionally, this function also ensures that the HDF directory that
-    is returned is actually empty, to avoid problems when re-running an
-    experiment.
-
     Args:
         experiment_dir: The Path to the experiment directory for which
             we are going to create a `hdf` results directory.
@@ -273,14 +266,8 @@ def create_hdf_dir(experiment_dir: Path, create_on_work: bool = False) -> Path:
         if not home_hdf_dir.exists():
             home_hdf_dir.symlink_to(work_hdf_dir, target_is_directory=True)
 
-    # Finally, we should make sure that the directory that we return is empty;
-    # otherwise, this can lead to issues when re-running experiments.
-    # For this, we simply loop over the contents of the folder and delete them.
-    for file_name in os.listdir(home_hdf_dir):
-        file_path = home_hdf_dir / file_name
-        if file_path.is_file():
-            file_path.unlink()
-        elif file_path.is_dir():
-            shutil.rmtree(file_path)
+    # Note: We do *not* ensure that the directory is empty here, because this
+    # function may be called by multiple parallel jobs, and we do not want
+    # these jobs to delete each other's results ...
 
     return home_hdf_dir
