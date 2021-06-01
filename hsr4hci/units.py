@@ -1,114 +1,99 @@
 """
-Utility functions related to using units and quantities (astropy.units)
+Utility functions related to using units and quantities (astropy.units).
 """
 
 # -----------------------------------------------------------------------------
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Any, Dict, Tuple, Union
+from contextlib import nullcontext
+from typing import Any, Union
 
 from astropy import units
 
 import numpy as np
 
-from hsr4hci.general import get_from_nested_dict, set_in_nested_dict
+
+# -----------------------------------------------------------------------------
+# CLASS DEFINITIONS
+# -----------------------------------------------------------------------------
+
+class InstrumentUnitsContext:
+    """
+    Context manager that allows to provide local, instrument-specific
+    values for the `pixscale` and `lambda_over_d` to `astropy.units`.
+
+    In order to convert between pixels and arc seconds, one has to
+    define a pixel scale; this value, however, is instrument-specific.
+    For VLT/NACO, it is typically 0.0271 arcsec / pixel, whereas for
+    VLT/SPHERE, the value is 0.1221 arcsec / pixel.
+    Similarly, the value of lambda / D obviously depends both on the
+    wavelength $lambda$ of the observation, as well as the diameter D
+    of the primary mirror. If we want to use lambda / D as a unit (as
+    it is a characteristic scale, e.g., for the PSF size), we need to
+    define its value in terms of other units somewhere.
+    This class provides a context manager that is initialized with
+    values for the pixel scale and lambda over D, and it then provides
+    a (re-usable!) context inside which an `astropy.units.Quantity` can
+    be freely converted between pixels, arcseconds, and lambda over D.
+
+    Args:
+        pixscale: An `astropy.units.Quantity` with units arcsec / pixel
+            that defines the pixel scale of the context. For NACO, this
+            value is typically `pixscale == 0.0271 arcsec / pixel`.
+        lambda_over_d: An `astropy.units.Quantity` with units arcsec
+            that defines the ratio between the wavelength lambda of the
+            observation and the diameter D of the primary mirror. For
+            L'-band data (lambda = 3800 nm) at the VLT (D = 8.2 m), this
+            value is, for example: `lambda_over_d == 0.0956 arcsec`.
+    """
+
+    @units.quantity_input(
+        pixscale=units.Unit('arcsec / pixel'),
+        lambda_over_d=units.Unit('arcsec'),
+    )
+    def __init__(
+        self, pixscale: units.Quantity, lambda_over_d: units.Quantity
+    ) -> None:
+
+        # Store the values of the pixel scale and lambda over D
+        self.pixel_scale = units.pixel_scale(pixscale)
+        self.lod_unit = units.def_unit(
+            s=['lod', 'lambda_over_d'], represents=lambda_over_d
+        )
+
+        # Initialize contexts for units and equivalencies (as empty contexts)
+        self.context_units = nullcontext()
+        self.context_equivalencies = nullcontext()
+
+    def __enter__(self) -> None:
+
+        # (Re)-create contexts both for the unit (i.e., lambda_over_d) and the
+        # equivalency (i.e., pixel and arcseconds).
+        # We cannot create these contexts in the constructor, because they are
+        # not re-usable, meaning we cannot simply re-enter them after having
+        # used their __exit__() method. By re-creating these contexts everytime
+        # we call __enter__() on the InstrumentUnitsContext, we ensure that the
+        # latter is indeed re-usable.
+        self.context_units = units.add_enabled_units(self.lod_unit)
+        self.context_equivalencies = units.add_enabled_equivalencies(
+            self.pixel_scale
+        )
+
+        # Enter the unit conversion contexts we have just created
+        self.context_equivalencies.__enter__()
+        self.context_units.__enter__()
+
+    def __exit__(self, *exc_details: Any) -> None:
+
+        # Exit the unit conversion context in the order in which we entered
+        self.context_units.__exit__(*exc_details)
+        self.context_equivalencies.__exit__(*exc_details)
 
 
 # -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
-
-def convert_to_quantity(
-    config: Dict[str, Any],
-    key_tuple: Tuple[str, ...],
-) -> Dict[str, Any]:
-    """
-    Auxiliary function to convert a entry in a given configuration
-    dictionary to an `astropy.units.Quantity` object.
-
-    Args:
-        config: The (possibly nested) dictionary containing the raw
-            configuration.
-        key_tuple: The path (within the nested dictionary) to the entry
-            that we want to convert to a astro.units.Quantity. This
-            entry is assumed to be a Sequence of the for (value, unit),
-            where value is an integer or a float, and unit is a string
-            specifying the unit. Example: (0.5, "arcsec").
-
-    Returns:
-        The original `config` dictionary, with the entry specified by
-        the `key_tuple` converted to an `astropy.units.Quantity` object.
-    """
-
-    # Get raw value from nested dictionary with the configuration
-    value = get_from_nested_dict(nested_dict=config, location=key_tuple)
-
-    # Write the converted value back to the configuration dictionary
-    set_in_nested_dict(
-        nested_dict=config, location=key_tuple, value=units.Quantity(*value)
-    )
-
-    return config
-
-
-@units.quantity_input(
-    pixscale=units.Unit('arcsec / pixel'),
-    lambda_over_d=units.Unit('arcsec'),
-)
-def set_units_for_instrument(
-    pixscale: units.Quantity,
-    lambda_over_d: units.Quantity,
-    verbose: bool = True,
-) -> None:
-    """
-    Define instrument-specific units and conversions.
-
-    This function makes the pixscale available as a global conversion
-    factor, allowing to convert between pixels and arc seconds. It also
-    introduces a new unit, lambda_over_d, which is actually equivalent
-    to arc seconds up to a constant factor determined by the instrument
-    geometry and the wavelength of the filter that is being used.
-
-    After calling this function, we should be able to convert freely
-    between units of pixels, arcseconds and lambda_over_d, always using
-    the correct instrument-specific conversion factors.
-
-    Args:
-        pixscale: The pixel scale of the instrument as an
-            astropy.units.Quantity in units of arc seconds per pixel.
-        lambda_over_d: The instrument constant lambda over D, as an
-            astropy.units.Quantity in units of arc seconds.
-        verbose: Whether or not to print a message about the instrument-
-            specific unit conversion context that was activated by
-            calling this function.
-    """
-
-    # Construct a new Unit for lambda_over_d and add it to the unit registry.
-    lod_unit = units.def_unit(
-        s=['lod', 'lambda_over_d'],
-        represents=lambda_over_d.value * units.arcsec,
-    )
-    try:
-        units.add_enabled_units(units=lod_unit)
-    except ValueError:
-        raise RuntimeError('Overwriting units is currently not possible!')
-
-    # Construct an Equivalency object for the pixel scale and add it to the
-    # global unit registry. This object will be used by astropy.units to
-    # convert between pixels and arc seconds.
-    pixel_scale = units.pixel_scale(pixscale=pixscale)
-    units.add_enabled_equivalencies(equivalencies=pixel_scale)
-
-    # This line seems to be necessary to make our units and equivalencies
-    # available also outside of the scope of this function
-    units.set_enabled_equivalencies(equivalencies=[])
-
-    if verbose:
-        print('Activated instrument-specific unit conversion context:')
-        print('  PIXSCALE      =', pixscale)
-        print('  LAMBDA_OVER_D =', lambda_over_d, '\n')
-
 
 def flux_ratio_to_magnitudes(
     flux_ratio: Union[float, np.ndarray]
