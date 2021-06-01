@@ -6,6 +6,7 @@ Tests for data.py
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from getpass import getuser
 from pathlib import Path
 from typing import Any
 
@@ -103,11 +104,19 @@ def test__resolve_name_or_path() -> None:
     assert file_path.name == 'test.hdf'
 
     # Case 2
+    file_path = _resolve_name_or_path(name_or_path='path/to/test.hdf')
+    assert file_path.name == 'test.hdf'
+
+    # Case 3
+    file_path = _resolve_name_or_path(name_or_path='~/test.hdf')
+    assert getuser() in file_path.as_posix()
+
+    # Case 4
     name_or_path = Path('path', 'to', 'file.hdf')
     file_path = _resolve_name_or_path(name_or_path=name_or_path)
     assert file_path.name == 'file.hdf'
 
-    # Case 3
+    # Case 5
     with pytest.raises(ValueError) as value_error:
         # noinspection PyTypeChecker
         _resolve_name_or_path(name_or_path=5)  # type: ignore

@@ -32,17 +32,24 @@ def _resolve_name_or_path(name_or_path: Union[str, Path]) -> Path:
         name_or_path: Either a string or a Path. In case it is a string,
             it is assumed it is the name of a data set in the hsr4hci
             `datasets` directory, and the corresponding file path is
-            constructed. In case it is a Path, it is assumed that this
-            is the path to the target HDF file, so we return it without
-            any modifications. In all other cases, an error is raised.
+            constructed. In case it is a Path (or a string that contains
+            a slash), it is assumed that this is the path to the target
+            HDF file, so we return it without any modifications. In all
+            other cases, an error is raised.
 
     Returns:
         File path to an HDF file containing a data set.
     """
 
-    # If `name_or_path` is a string, its the name of a data set, and we can
-    # resolve it to the (expected) location of the data set
-    if isinstance(name_or_path, str):
+    # Define shortcuts for conditions
+    is_path = isinstance(name_or_path, Path)
+    is_string = isinstance(name_or_path, str)
+    has_slash = False if is_path else ('/' in str(name_or_path))
+
+    # If `name_or_path` is a string that does not contain any slashes, we
+    # assume it to be the name of a data set, and we can resolve it to the
+    # (expected) location of the data set
+    if is_string and not has_slash:
         return (
             get_datasets_dir()
             / name_or_path
@@ -50,10 +57,10 @@ def _resolve_name_or_path(name_or_path: Union[str, Path]) -> Path:
             / f'{name_or_path}.hdf'
         )
 
-    # If it is a Path, we assume that it is the Path to the HDF file which
-    # contains the data set
-    if isinstance(name_or_path, Path):
-        return name_or_path
+    # If it is a Path (or a string with slashes), we assume that it is the
+    # Path to the HDF file which contains the data set
+    if is_path or (is_string and has_slash):
+        return Path(name_or_path).expanduser()
 
     # In any other case, we raise an error
     raise ValueError('name_or_path must be a string or a Path!')
