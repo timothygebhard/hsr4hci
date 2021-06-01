@@ -399,7 +399,7 @@ def _add_ticks(
 
 def _add_colorbar(
     img: AxesImage,
-    limit: float,
+    limits: Tuple[float, float],
     fig: Figure,
     ax: Axes,
     use_logscale: bool,
@@ -413,11 +413,14 @@ def _add_colorbar(
     cax = divider.append_axes('bottom', size='5%', pad=0.05)
     cbar = fig.colorbar(img, cax=cax, orientation='horizontal')
 
+    # Unpack the limits
+    vmin, vmax = limits
+
     # Set up the rest of the colorbar options
     if use_logscale:
-        cbar.set_ticks([-limit, -limit / 10, 0, limit / 10, limit])
+        cbar.set_ticks([vmin, vmin / 10, 0, vmax / 10, vmax])
     else:
-        cbar.set_ticks([-limit, -limit / 2, 0, limit / 2, limit])
+        cbar.set_ticks([vmin, vmin / 2, 0, vmax / 2, vmax])
     cbar.ax.set_xticklabels(["{:.1f}".format(i) for i in cbar.get_ticks()])
 
 
@@ -429,12 +432,13 @@ def plot_frame(
     figsize: Tuple[float, float] = (4.0, 4.0),
     aperture_radius: float = 0,
     draw_color: MatplotlibColor = 'darkgreen',
-    limit: Optional[float] = None,
+    cmap: str = 'RdBu_r',
+    limits: Optional[Tuple[float, float]] = None,
     use_logscale: bool = False,
     add_colorbar: bool = True,
     add_scalebar: bool = True,
     file_path: Optional[Union[Path, str]] = None,
-) -> Figure:
+) -> Tuple[Figure, Axes]:
     """
     Plot a single frame (e.g., a signal estimate) with various options.
 
@@ -455,9 +459,9 @@ def plot_frame(
             never used.
         draw_color: The color that is used for drawing the apertures and
             also labels.
-        limit: If given, `(-limit, limit)` is used as `(vmin, vmax)` for
-            the plot limits. If None, this value is estimated from the
-            data automatically.
+        cmap: Name of the color map to be used for plotting.
+        limits: A tuple `(vmin, vmax)` that is used for the plot limits.
+            If None, the limits are estimated from the data.
         use_logscale: Whether or not to use a (symmetric) log scale for
             the plot / color bar.
         add_colorbar: Whether or not to add a colorbar at the bottom of
@@ -470,7 +474,9 @@ def plot_frame(
             is given, the plot is not saved.
 
     Returns:
-        A matplotlib figure containing the plot of the frame.
+        A 2-tuple containing:
+        (1) the current matplotlib figure, and
+        (2) the current axis containing the plot of the frame.
     """
 
     # Define shortcuts
@@ -478,14 +484,17 @@ def plot_frame(
     center = get_center(frame_size)
 
     # In case no explicit plot limit is specified, determine it from the data
-    if limit is None:
-        limit = _determine_limit(frame=frame, positions=positions)
+    if limits is None:
+        vmax = _determine_limit(frame=frame, positions=positions)
+        vmin = -vmax
+    else:
+        vmin, vmax = limits
 
     # Set up the `norm`, which determines whether we use linear or log scale
     if use_logscale:
-        norm = mc.SymLogNorm(linthresh=0.1 * limit, vmin=-limit, vmax=limit)
+        norm = mc.SymLogNorm(linthresh=0.1 * vmax, vmin=vmin, vmax=vmax)
     else:
-        norm = mc.PowerNorm(gamma=1, vmin=-limit, vmax=limit)
+        norm = mc.PowerNorm(gamma=1, vmin=vmin, vmax=vmax)
 
     # Prepare grid for the pcolormesh()
     x, y = np.meshgrid(np.arange(frame.shape[0]), np.arange(frame.shape[1]))
@@ -499,7 +508,7 @@ def plot_frame(
         y,
         frame,
         shading='nearest',
-        cmap=get_cmap(),
+        cmap=get_cmap(cmap),
         snap=True,
         rasterized=True,
         norm=norm,
@@ -524,10 +533,10 @@ def plot_frame(
 
     # If desired, add a color bar
     if add_colorbar:
-        _add_colorbar(img, limit, fig, ax, use_logscale)
+        _add_colorbar(img, (vmin, vmax), fig, ax, use_logscale)
 
     # Save the results, if desired
     if file_path is not None:
         plt.savefig(file_path, bbox_inches='tight', pad_inches=0, dpi=600)
 
-    return fig
+    return fig, ax
