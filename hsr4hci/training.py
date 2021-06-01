@@ -201,6 +201,7 @@ def train_model_for_position(
     psf_template: np.ndarray,
     n_train_splits: int,
     base_model_creator: BaseModelCreator,
+    expected_signal: Optional[np.ndarray] = None,
 ) -> Tuple[np.ndarray, Dict[str, np.ndarray]]:
     """
     Train a model (or rather: a set of models, because of the train /
@@ -232,6 +233,19 @@ def train_model_for_position(
         n_train_splits: The number of training / test splits to use.
         base_model_creator: An instance of `BaseModelCreator` that can
             be used to instantiate new base models.
+        expected_signal: If the `train_mode` is signal fitting or signal
+            masking, you can *optionally* also pass the expected signal
+            explicitly to this function to avoid computing it here.
+            This option may be useful when the HSR is used "hypothesis-
+            based" instead of for a blind search, that is, we already
+            have a hypothesis about the planet position from which we
+            can compute the expected signal stack, meaning we do not
+            need to loop over a temporal grid but only train a single
+            model per pixel (either "default" or "signal_fitting" /
+            "signal_masking").
+            Note that the `expected_signal` should be consistent with
+            the given `signal_time`; otherwise the mask that is used for
+            the pixel predictor selection will be wrong.
 
     Returns:
         A 2-tuple consisting of:
@@ -289,29 +303,33 @@ def train_model_for_position(
     planet_coefs = np.full(n_train_splits, np.nan)
 
     # -------------------------------------------------------------------------
-    # Compute the expected signal (if required)
+    # Compute the expected signal (if needed)
     # -------------------------------------------------------------------------
 
-    # Always initialize the expected signal
-    expected_signal = np.full(n_frames, np.nan)
+    # If we have already received an expected_signal (e.g., because we are
+    # running the HSR in "hypothesis-based mode"), we do not compute it here
+    if expected_signal is None:
 
-    # Only compute it if we are not training a default model. This happens
-    # here so we don't have to re-compute it in each train / test-split.
-    if train_mode in ('signal_fitting', 'signal_masking'):
-
-        # Ensure that the signal time is not None
-        if signal_time is None:
-            raise RuntimeError('signal_time must not be None!')
-
-        # Compute expected signal based on position and signal_time.
-        # The resulting time series is already normalized to a maximum of 1.
-        expected_signal = get_time_series_for_position(
-            position=position,
-            signal_time=signal_time,
-            frame_size=frame_size,
-            parang=parang,
-            psf_template=psf_template,
-        )
+        # Always initialize the expected signal
+        expected_signal = np.full(n_frames, np.nan)
+    
+        # Only compute it if we are not training a default model. This happens
+        # here so we don't have to re-compute it in each train / test-split.
+        if train_mode in ('signal_fitting', 'signal_masking'):
+    
+            # Ensure that the signal time is not None
+            if signal_time is None:
+                raise RuntimeError('signal_time must not be None!')
+    
+            # Compute expected signal based on position and signal_time.
+            # The resulting time series is already normalized to a maximum of 1.
+            expected_signal = get_time_series_for_position(
+                position=position,
+                signal_time=signal_time,
+                frame_size=frame_size,
+                parang=parang,
+                psf_template=psf_template,
+            )
 
     # -------------------------------------------------------------------------
     # Train model(s)
