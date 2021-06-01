@@ -45,7 +45,8 @@ jobs:
         mypy tests/
     - name: Run pytest
       run: |
-        SUMMARY="$(pytest --cov-report term-missing --cov=hsr4hci --verbose | tee /dev/tty)" ;
+        exec 5>&1 ;
+        SUMMARY="$(pytest --cov-report term-missing --cov=hsr4hci --verbose | tee >(cat - >&5))" ;
         COVERAGE=$(echo "$SUMMARY" | tail -n 4 | head -n 1 | awk '{print $4}') ;
         echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV ;
     - name: Create test coverage badge
