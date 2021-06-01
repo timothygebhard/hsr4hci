@@ -1,0 +1,347 @@
+"""
+Integration test for the full HSR pipeline.
+"""
+
+# -----------------------------------------------------------------------------
+# IMPORTS
+# -----------------------------------------------------------------------------
+
+from pathlib import Path
+from typing import Dict
+
+import json
+
+from _pytest.tmpdir import TempPathFactory
+from astropy.modeling import models
+from astropy.units import Quantity
+
+import numpy as np
+import pytest
+
+from hsr4hci.base_models import BaseModelCreator
+from hsr4hci.config import load_config
+from hsr4hci.data import load_dataset
+from hsr4hci.derotating import derotate_combine
+from hsr4hci.forward_modeling import add_fake_planet
+from hsr4hci.hypotheses import get_all_hypotheses
+from hsr4hci.hdf import save_dict_to_hdf
+from hsr4hci.masking import get_roi_mask
+from hsr4hci.metrics import compute_metrics
+from hsr4hci.match_fraction import get_all_match_fractions
+from hsr4hci.plotting import plot_frame
+from hsr4hci.psf import get_psf_fwhm
+from hsr4hci.residuals import (
+    assemble_residual_stack_from_hypotheses,
+    get_residual_selection_mask,
+)
+from hsr4hci.training import train_all_models
+from hsr4hci.units import InstrumentUnitsContext
+
+
+# -----------------------------------------------------------------------------
+# TEST CASES
+# -----------------------------------------------------------------------------
+
+@pytest.fixture(scope="session")
+def test_dir(tmp_path_factory: TempPathFactory) -> Path:
+    """
+    Create a directory in which all the integration test data is stored.
+    """
+
+    return tmp_path_factory.mktemp('integration_test', numbered=False)
+
+
+@pytest.fixture(scope="session")
+def data_dir(test_dir: Path) -> Path:
+    """
+    Create a directory for storing the mock data set.
+    """
+
+    _data_dir = test_dir / 'data'
+    _data_dir.mkdir(exist_ok=True)
+    return _data_dir
+
+
+@pytest.fixture(scope="session")
+def experiment_dir(test_dir: Path) -> Path:
+    """
+    Create a directory for storing the mock data set.
+    """
+
+    _experiment_dir = test_dir / 'experiment_dir'
+    _experiment_dir.mkdir(exist_ok=True)
+    return _experiment_dir
+
+
+@pytest.fixture(scope="session")
+def test_data_path(data_dir: Path) -> Path:
+    """
+    Create an HDF file with a mock data set.
+    """
+
+    np.random.seed(42)
+
+    # Define global parameters
+    n_frames, x_size, y_size = (50, 25, 25)
+
+    # Create fake PSF template
+    x, y = np.meshgrid(np.arange(33), np.arange(33))
+    gaussian = models.Gaussian2D(x_mean=16, y_mean=16)
+    psf_template = gaussian(x, y)
+
+    # Create fake parallactic angles
+    parang = np.linspace(17, 137, n_frames)
+
+    # Create a fake stack
+    stack = np.random.normal(0, 1, (n_frames, x_size, y_size))
+    stack += np.rot90(stack, k=2, axes=(1, 2))
+    stack = add_fake_planet(
+        stack=stack,
+        parang=parang,
+        psf_template=psf_template,
+        polar_position=(Quantity(5, 'pixel'), Quantity(45, 'degree')),
+        magnitude=1,
+        extra_scaling=15,
+        dit_stack=1,
+        dit_psf_template=1,
+        return_planet_positions=False,
+    )
+
+    # Create fake observing conditions
+    observing_conditions = {
+        'array_1': np.random.normal(0, 1, n_frames),
+        'array_2': np.random.normal(0, 1, n_frames),
+        'array_3': np.random.normal(0, 1, n_frames),
+    }
+
+    # Create fake meta data
+    metadata = {
+        "CENTRAL_LAMBDA": "3800 nm",
+        "CORONAGRAPH": "",
+        "DATE": "2021-05-31",
+        "DIT_PSF_TEMPLATE": 1,
+        "DIT_STACK": 1,
+        "ESO_PROGRAM_ID": "UNKNOWN",
+        "FILTER": "L'",
+        "INSTRUMENT": "NACO",
+        "LAMBDA_OVER_D": 0.0956,
+        "ND_FILTER": 1.0,
+        "PIXSCALE": 0.0271,
+        "TARGET_STAR": "TEST",
+    }
+
+    # Collect everything in a properly structured dict
+    test_data = {
+        'stack': stack,
+        'parang': parang,
+        'psf_template': psf_template,
+        'metadata': metadata,
+        'observing_conditions': {'interpolated': observing_conditions},
+    }
+
+    # Save the test data to an HDF file
+    file_path = data_dir / 'test_data.hdf'
+    save_dict_to_hdf(dictionary=test_data, file_path=file_path)
+
+    return file_path
+
+
+@pytest.fixture(scope="session")
+def create_config_file(experiment_dir: Path, test_data_path: Path) -> None:
+    """
+    Create a mock config file for the integration test.
+    """
+
+    config_dict = {
+        "dataset": {
+            "name_or_path": test_data_path.as_posix(),
+            "binning_factor": 1,
+            "frame_size": [23, 23],
+        },
+        "observing_conditions": {"selected_keys": "all"},
+        "roi_mask": {
+            "inner_radius": [0, "pixel"],
+            "outer_radius": [10, "pixel"],
+        },
+        "selection_mask": {
+            "radius_position": [8.0, "pixel"],
+            "radius_opposite": [0.2168, "arcsec"],
+        },
+        "train_mode": "signal_masking",
+        "n_signal_times": 10,
+        "n_train_splits": 3,
+        "base_model": {
+            "module": "sklearn.linear_model",
+            "class": "RidgeCV",
+            "parameters": {"fit_intercept": True, "alphas": [1e-1, 1e2, 16]},
+        },
+    }
+
+    file_path = experiment_dir / 'config.json'
+    with open(file_path, 'w') as json_file:
+        json.dump(config_dict, json_file, indent=2)
+
+
+def test__integration(create_config_file: None, experiment_dir: Path) -> None:
+    """
+    Integration test that runs the entire HSR pipeline on mock data.
+    """
+
+    # -------------------------------------------------------------------------
+    # STEP 0: Load data, define shortcuts, set up unit conversions
+    # -------------------------------------------------------------------------
+
+    # Load experiment config from JSON
+    print('Loading experiment configuration...', end=' ', flush=True)
+    config = load_config(experiment_dir / 'config.json')
+    print('Done!', flush=True)
+
+    # Load frames, parallactic angles, etc. from HDF file
+    print('Loading data set...', end=' ', flush=True)
+    stack, parang, psf_template, observing_conditions, metadata = load_dataset(
+        **config['dataset']
+    )
+    print('Done!', flush=True)
+
+    # Quantities related to the size of the data set
+    n_frames, x_size, y_size = stack.shape
+    frame_size = (x_size, y_size)
+
+    # Metadata of the data set
+    pixscale = float(metadata['PIXSCALE'])
+    lambda_over_d = float(metadata['LAMBDA_OVER_D'])
+
+    # Other shortcuts
+    selected_keys = config['observing_conditions']['selected_keys']
+    n_signal_times = config['n_signal_times']
+
+    # Define the unit conversion context for this data set
+    instrument_unit_context = InstrumentUnitsContext(
+        pixscale=Quantity(pixscale, 'arcsec / pixel'),
+        lambda_over_d=Quantity(lambda_over_d, 'arcsec'),
+    )
+
+    # Construct the mask for the region of interest (ROI)
+    with instrument_unit_context:
+        roi_mask = get_roi_mask(
+            mask_size=frame_size,
+            inner_radius=Quantity(*config['roi_mask']['inner_radius']),
+            outer_radius=Quantity(*config['roi_mask']['outer_radius']),
+        )
+
+    # -------------------------------------------------------------------------
+    # STEP 1: Train HSR models
+    # -------------------------------------------------------------------------
+
+    with instrument_unit_context:
+        results = train_all_models(
+            roi_mask=roi_mask,
+            stack=stack,
+            parang=parang,
+            psf_template=psf_template,
+            obscon_array=observing_conditions.as_array(selected_keys),
+            selection_mask_config=config['selection_mask'],
+            base_model_creator=BaseModelCreator(**config['base_model']),
+            n_train_splits=config['n_train_splits'],
+            train_mode=config['train_mode'],
+            n_signal_times=n_signal_times,
+            n_roi_splits=1,
+            roi_split=0,
+            return_format='full',
+        )
+    residuals: Dict[str, np.ndarray] = dict(results['residuals'])
+
+    assert np.isclose(np.nansum(residuals['default']), 106.88051)
+    assert np.isclose(np.nansum(residuals['0']), 264.42383)
+
+    # -------------------------------------------------------------------------
+    # STEP 2: Find hypotheses
+    # -------------------------------------------------------------------------
+
+    hypotheses, similarities = get_all_hypotheses(
+        roi_mask=roi_mask,
+        residuals=residuals,
+        parang=parang,
+        n_signal_times=n_signal_times,
+        frame_size=frame_size,
+        psf_template=psf_template,
+    )
+    assert np.nansum(hypotheses) == 7114
+    assert np.isclose(np.nansum(similarities), 85.159)
+
+    # -------------------------------------------------------------------------
+    # STEP 3: Compute match fractions
+    # -------------------------------------------------------------------------
+
+    mean_mf, median_mf, _ = get_all_match_fractions(
+        residuals=residuals,
+        hypotheses=hypotheses,
+        parang=parang,
+        psf_template=psf_template,
+        roi_mask=roi_mask,
+        frame_size=frame_size,
+    )
+    assert np.isclose(np.nansum(mean_mf), 40.105386855478514)
+    assert np.isclose(np.nansum(median_mf), 29.55761872464271)
+
+    # -------------------------------------------------------------------------
+    # STEP 4: Find selection mask
+    # -------------------------------------------------------------------------
+
+    selection_mask, _, _, _, _ = get_residual_selection_mask(
+        match_fraction=mean_mf,
+        parang=parang,
+        psf_template=psf_template,
+    )
+    assert np.nansum(selection_mask) == 64
+
+    # -------------------------------------------------------------------------
+    # STEP 5: Assemble residual stack and compute signal estimate
+    # -------------------------------------------------------------------------
+
+    residual_stack = assemble_residual_stack_from_hypotheses(
+        residuals=residuals,
+        hypotheses=hypotheses,
+        selection_mask=selection_mask,
+    )
+    assert np.isclose(np.nansum(residual_stack), 1704.391)
+
+    signal_estimate = derotate_combine(
+        stack=residual_stack, parang=parang, mask=~roi_mask
+    )
+    assert np.isclose(np.nansum(signal_estimate), 34.21535099760513)
+
+    # -------------------------------------------------------------------------
+    # STEP 6: Compute metrics
+    # -------------------------------------------------------------------------
+
+    psf_fwhm = get_psf_fwhm(psf_template)
+    assert np.isclose(psf_fwhm, 2 * np.sqrt(2 * np.log(2)))
+
+    with instrument_unit_context:
+        metrics, positions = compute_metrics(
+            frame=signal_estimate,
+            polar_position=(
+                Quantity(0.1355, 'arcsecond'), Quantity(45, 'degree')
+            ),
+            aperture_radius=Quantity(psf_fwhm / 2, 'pixel'),
+        )
+    assert np.isclose(metrics['snr']['min'], 26.774604460653357)
+    assert np.isclose(metrics['snr']['max'], 49.895331203444755)
+    assert np.isclose(metrics['snr']['mean'], 35.434153185090466)
+
+    # -------------------------------------------------------------------------
+    # STEP 7: Create a plot
+    # -------------------------------------------------------------------------
+
+    file_path = experiment_dir / 'signal_estimate.pdf'
+    plot_frame(
+        frame=signal_estimate,
+        file_path=file_path,
+        aperture_radius=psf_fwhm,
+        pixscale=float(metadata['PIXSCALE']),
+        positions=[positions['final']['cartesian']],
+        labels=[f'SNR={metrics["snr"]["mean"]:.1f}'],
+        add_colorbar=True,
+        use_logscale=False,
+    )
