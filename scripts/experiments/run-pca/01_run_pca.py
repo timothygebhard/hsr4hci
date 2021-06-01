@@ -19,8 +19,9 @@ import numpy as np
 from hsr4hci.config import load_config
 from hsr4hci.data import load_dataset
 from hsr4hci.fits import save_fits
+from hsr4hci.masking import get_roi_mask
 from hsr4hci.pca import get_pca_signal_estimates
-from hsr4hci.units import set_units_for_instrument
+from hsr4hci.units import InstrumentUnitsContext
 
 
 # -----------------------------------------------------------------------------
@@ -87,11 +88,10 @@ if __name__ == '__main__':
     pixscale = float(metadata['PIXSCALE'])
     lambda_over_d = float(metadata['LAMBDA_OVER_D'])
 
-    # Activate the unit conversions for this instrument
-    set_units_for_instrument(
+    # Define a unit conversion context
+    instrument_unit_context = InstrumentUnitsContext(
         pixscale=Quantity(pixscale, 'arcsec / pixel'),
         lambda_over_d=Quantity(lambda_over_d, 'arcsec'),
-        verbose=False,
     )
 
     # Get minimum/maximum number of PCs, as well as the default value to
@@ -100,23 +100,33 @@ if __name__ == '__main__':
     max_n = int(config['pca']['max_n'])
     default_n = int(config['pca']['default_n'])
     default_idx = default_n - min_n
-    pca_numbers = np.arange(min_n, max_n)
+    n_components = [int(_) for _ in np.arange(min_n, max_n)]
+
+    # Compute ROI mask
+    with instrument_unit_context:
+        roi_mask = get_roi_mask(
+            mask_size=frame_size,
+            inner_radius=Quantity(*config['roi_mask']['inner_radius']),
+            outer_radius=Quantity(*config['roi_mask']['outer_radius']),
+        )
 
     # -------------------------------------------------------------------------
     # Run PCA to get signal estimates and principal components
     # -------------------------------------------------------------------------
 
-    # TODO: Should we use a ROI mask here?
-
     # Run PCA to get signal estimates and principal components
+    print('Computing PCA-based signal estimates...', end=' ', flush=True)
     signal_estimates, principal_components = get_pca_signal_estimates(
         stack=stack,
         parang=parang,
-        pca_numbers=pca_numbers,
-        roi_mask=None,
+        n_components=n_components,
         return_components=True,
-        verbose=True,
+        roi_mask=None,
     )
+    print('Done!\n', flush=True)
+
+    # Apply ROI mask *after* PCA
+    signal_estimates[:, ~roi_mask] = np.nan
 
     # Select "the" signal estimate
     signal_estimate = signal_estimates[default_idx]
@@ -125,7 +135,7 @@ if __name__ == '__main__':
     # Save results to FITS files
     # -------------------------------------------------------------------------
 
-    print('\nSaving results...', end=' ', flush=True)
+    print('Saving results...', end=' ', flush=True)
     file_path = results_dir / 'principal_components.fits'
     save_fits(array=principal_components, file_path=file_path)
     file_path = results_dir / 'signal_estimates.fits'
