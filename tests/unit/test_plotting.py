@@ -238,10 +238,10 @@ def test__add_colorbar() -> None:
     img = ax.imshow(np.random.normal(0, 1, (50, 50)))
 
     # Case 1
-    _add_colorbar(img=img, limit=3, fig=fig, ax=ax, use_logscale=True)
+    _add_colorbar(img=img, limits=(-3, 3), fig=fig, ax=ax, use_logscale=True)
 
     # Case 2
-    _add_colorbar(img=img, limit=5, fig=fig, ax=ax, use_logscale=False)
+    _add_colorbar(img=img, limits=(-5, 5), fig=fig, ax=ax, use_logscale=False)
 
     plt.close()
 
@@ -252,7 +252,7 @@ def test_plot_frame(tmp_path_factory: TempPathFactory) -> None:
     frame = np.random.normal(0, 1, (51, 51))
 
     # Case 1
-    fig = plot_frame(
+    fig, ax = plot_frame(
         frame=frame,
         positions=[],
         labels=[],
@@ -260,7 +260,8 @@ def test_plot_frame(tmp_path_factory: TempPathFactory) -> None:
         figsize=(4.0, 4.0),
         aperture_radius=2,
         draw_color='darkgreen',
-        limit=5,
+        cmap='RdBu_r',
+        limits=(-5, 5),
         use_logscale=False,
         add_colorbar=True,
         add_scalebar=True,
@@ -269,7 +270,7 @@ def test_plot_frame(tmp_path_factory: TempPathFactory) -> None:
     plt.close(fig)
 
     # Case 1
-    fig = plot_frame(
+    fig, ax = plot_frame(
         frame=frame,
         positions=[(20, 20)],
         labels=['test'],
@@ -277,7 +278,8 @@ def test_plot_frame(tmp_path_factory: TempPathFactory) -> None:
         figsize=(4.0, 4.0),
         aperture_radius=2,
         draw_color='darkgreen',
-        limit=None,
+        cmap='viridis',
+        limits=None,
         use_logscale=True,
         add_colorbar=False,
         add_scalebar=True,
@@ -286,7 +288,7 @@ def test_plot_frame(tmp_path_factory: TempPathFactory) -> None:
     plt.close(fig)
 
     # Case 2
-    fig = plot_frame(
+    fig, ax = plot_frame(
         frame=frame,
         positions=[(20, 20), (10, 10)],
         labels=['test', 'test 2'],
@@ -294,7 +296,8 @@ def test_plot_frame(tmp_path_factory: TempPathFactory) -> None:
         figsize=(4.0, 4.0),
         aperture_radius=2,
         draw_color='darkgreen',
-        limit=None,
+        cmap='magma',
+        limits=None,
         use_logscale=True,
         add_colorbar=False,
         add_scalebar=False,
