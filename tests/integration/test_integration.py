@@ -1,5 +1,5 @@
 """
-Integration test for the full HSR pipeline.
+Integration tests for the full HSR / PCA pipeline.
 """
 
 # -----------------------------------------------------------------------------
@@ -29,6 +29,7 @@ from hsr4hci.masking import get_roi_mask
 from hsr4hci.metrics import compute_metrics
 from hsr4hci.match_fraction import get_all_match_fractions
 from hsr4hci.plotting import plot_frame
+from hsr4hci.pca import get_pca_signal_estimates
 from hsr4hci.psf import get_psf_fwhm
 from hsr4hci.residuals import (
     assemble_residual_stack_from_hypotheses,
@@ -63,12 +64,23 @@ def data_dir(test_dir: Path) -> Path:
 
 
 @pytest.fixture(scope="session")
-def experiment_dir(test_dir: Path) -> Path:
+def pca_experiment_dir(test_dir: Path) -> Path:
     """
-    Create a directory for storing the mock data set.
+    Create an experiment directory for the PCA pipeline.
     """
 
-    _experiment_dir = test_dir / 'experiment_dir'
+    _experiment_dir = test_dir / 'pca_experiment_dir'
+    _experiment_dir.mkdir(exist_ok=True)
+    return _experiment_dir
+
+
+@pytest.fixture(scope="session")
+def hsr_experiment_dir(test_dir: Path) -> Path:
+    """
+    Create an experiment directory for the HSR pipeline.
+    """
+
+    _experiment_dir = test_dir / 'hsr_experiment_dir'
     _experiment_dir.mkdir(exist_ok=True)
     return _experiment_dir
 
@@ -147,9 +159,9 @@ def test_data_path(data_dir: Path) -> Path:
 
 
 @pytest.fixture(scope="session")
-def create_config_file(experiment_dir: Path, test_data_path: Path) -> None:
+def hsr_config_file(hsr_experiment_dir: Path, test_data_path: Path) -> None:
     """
-    Create a mock config file for the integration test.
+    Create a mock config file for the HSR pipeline.
     """
 
     config_dict = {
@@ -177,51 +189,168 @@ def create_config_file(experiment_dir: Path, test_data_path: Path) -> None:
         },
     }
 
-    file_path = experiment_dir / 'config.json'
+    file_path = hsr_experiment_dir / 'config.json'
     with open(file_path, 'w') as json_file:
         json.dump(config_dict, json_file, indent=2)
 
 
-def test__integration(create_config_file: None, experiment_dir: Path) -> None:
+@pytest.fixture(scope="session")
+def pca_config_file(pca_experiment_dir: Path, test_data_path: Path) -> None:
     """
-    Integration test that runs the entire HSR pipeline on mock data.
+    Create a mock config file for the PCA pipeline.
+    """
+
+    config_dict = {
+        "dataset": {
+            "name_or_path": test_data_path.as_posix(),
+            "binning_factor": 1,
+            "frame_size": [23, 23],
+        },
+        "roi_mask": {
+            "inner_radius": [0, "pixel"],
+            "outer_radius": [10, "pixel"],
+        },
+        "pca": {"min_n": 1, "max_n": 10, "default_n": 5},
+    }
+
+    file_path = pca_experiment_dir / 'config.json'
+    with open(file_path, 'w') as json_file:
+        json.dump(config_dict, json_file, indent=2)
+
+
+def test__integration_pca(
+    pca_config_file: None,
+    pca_experiment_dir: Path,
+) -> None:
+    """
+    Integration test that runs an entire PCA pipeline on mock data.
+    """
+
+    # -------------------------------------------------------------------------
+    # Load experiment configuration and data
+    # -------------------------------------------------------------------------
+
+    config = load_config(pca_experiment_dir / 'config.json')
+    stack, parang, psf_template, observing_conditions, metadata = load_dataset(
+        **config['dataset']
+    )
+
+    n_frames, x_size, y_size = stack.shape
+    frame_size = (x_size, y_size)
+
+    min_n = int(config['pca']['min_n'])
+    max_n = int(config['pca']['max_n'])
+    n_components = [int(_) for _ in np.arange(min_n, max_n)]
+    default_n = int(config['pca']['default_n'])
+    default_idx = default_n - min_n
+
+    pixscale = float(metadata['PIXSCALE'])
+    lambda_over_d = float(metadata['LAMBDA_OVER_D'])
+
+    instrument_unit_context = InstrumentUnitsContext(
+        pixscale=Quantity(pixscale, 'arcsec / pixel'),
+        lambda_over_d=Quantity(lambda_over_d, 'arcsec'),
+    )
+
+    with instrument_unit_context:
+        roi_mask = get_roi_mask(
+            mask_size=frame_size,
+            inner_radius=Quantity(*config['roi_mask']['inner_radius']),
+            outer_radius=Quantity(*config['roi_mask']['outer_radius']),
+        )
+
+    # -------------------------------------------------------------------------
+    # STEP 1: Run PCA to get signal estimates and principal components
+    # -------------------------------------------------------------------------
+
+    # Run PCA to get signal estimates and principal components
+    signal_estimates, principal_components = get_pca_signal_estimates(
+        stack=stack,
+        parang=parang,
+        n_components=n_components,
+        return_components=True,
+        roi_mask=None,
+    )
+    assert np.isclose(np.nansum(signal_estimates), 4.5674645930457345)
+    assert np.isclose(np.nansum(principal_components), -4.289586)
+
+    # Apply ROI mask after PCA
+    signal_estimates[:, ~roi_mask] = np.nan
+
+    # Select "default" signal estimate
+    signal_estimate = signal_estimates[default_idx]
+
+    # -------------------------------------------------------------------------
+    # STEP 2: Compute metrics
+    # -------------------------------------------------------------------------
+
+    psf_fwhm = get_psf_fwhm(psf_template)
+    assert np.isclose(psf_fwhm, 2 * np.sqrt(2 * np.log(2)))
+
+    with instrument_unit_context:
+        metrics, positions = compute_metrics(
+            frame=signal_estimate,
+            polar_position=(
+                Quantity(0.1355, 'arcsecond'),
+                Quantity(45, 'degree'),
+            ),
+            aperture_radius=Quantity(psf_fwhm / 2, 'pixel'),
+        )
+    assert np.isclose(metrics['snr']['min'], 6.593299696334281)
+    assert np.isclose(metrics['snr']['max'], 14.093937863225246)
+    assert np.isclose(metrics['snr']['mean'], 9.62031939013815)
+
+    # -------------------------------------------------------------------------
+    # STEP 3: Create a plot
+    # -------------------------------------------------------------------------
+
+    file_path = pca_experiment_dir / 'signal_estimate.pdf'
+    plot_frame(
+        frame=signal_estimate,
+        file_path=file_path,
+        aperture_radius=psf_fwhm,
+        pixscale=float(metadata['PIXSCALE']),
+        positions=[positions['final']['cartesian']],
+        labels=[f'SNR={metrics["snr"]["mean"]:.1f}'],
+        add_colorbar=True,
+        use_logscale=False,
+    )
+
+    print('\n\n')
+    print(pca_experiment_dir)
+
+
+def test__integration_hsr(
+    hsr_config_file: None,
+    hsr_experiment_dir: Path,
+) -> None:
+    """
+    Integration test that runs an entire HSR pipeline on mock data.
     """
 
     # -------------------------------------------------------------------------
     # STEP 0: Load data, define shortcuts, set up unit conversions
     # -------------------------------------------------------------------------
 
-    # Load experiment config from JSON
-    print('Loading experiment configuration...', end=' ', flush=True)
-    config = load_config(experiment_dir / 'config.json')
-    print('Done!', flush=True)
-
-    # Load frames, parallactic angles, etc. from HDF file
-    print('Loading data set...', end=' ', flush=True)
+    config = load_config(hsr_experiment_dir / 'config.json')
     stack, parang, psf_template, observing_conditions, metadata = load_dataset(
         **config['dataset']
     )
-    print('Done!', flush=True)
 
-    # Quantities related to the size of the data set
     n_frames, x_size, y_size = stack.shape
     frame_size = (x_size, y_size)
 
-    # Metadata of the data set
     pixscale = float(metadata['PIXSCALE'])
     lambda_over_d = float(metadata['LAMBDA_OVER_D'])
 
-    # Other shortcuts
     selected_keys = config['observing_conditions']['selected_keys']
     n_signal_times = config['n_signal_times']
 
-    # Define the unit conversion context for this data set
     instrument_unit_context = InstrumentUnitsContext(
         pixscale=Quantity(pixscale, 'arcsec / pixel'),
         lambda_over_d=Quantity(lambda_over_d, 'arcsec'),
     )
 
-    # Construct the mask for the region of interest (ROI)
     with instrument_unit_context:
         roi_mask = get_roi_mask(
             mask_size=frame_size,
@@ -322,7 +451,8 @@ def test__integration(create_config_file: None, experiment_dir: Path) -> None:
         metrics, positions = compute_metrics(
             frame=signal_estimate,
             polar_position=(
-                Quantity(0.1355, 'arcsecond'), Quantity(45, 'degree')
+                Quantity(0.1355, 'arcsecond'),
+                Quantity(45, 'degree'),
             ),
             aperture_radius=Quantity(psf_fwhm / 2, 'pixel'),
         )
@@ -334,7 +464,7 @@ def test__integration(create_config_file: None, experiment_dir: Path) -> None:
     # STEP 7: Create a plot
     # -------------------------------------------------------------------------
 
-    file_path = experiment_dir / 'signal_estimate.pdf'
+    file_path = hsr_experiment_dir / 'signal_estimate.pdf'
     plot_frame(
         frame=signal_estimate,
         file_path=file_path,
