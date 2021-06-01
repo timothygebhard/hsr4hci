@@ -24,7 +24,7 @@ from hsr4hci.fits import read_fits
 from hsr4hci.masking import get_roi_mask
 from hsr4hci.plotting import plot_frame
 from hsr4hci.psf import get_psf_fwhm
-from hsr4hci.units import set_units_for_instrument
+from hsr4hci.units import InstrumentUnitsContext
 
 
 # -----------------------------------------------------------------------------
@@ -78,13 +78,12 @@ if __name__ == '__main__':
     psf_fwhm = round(get_psf_fwhm(psf_template), 2)
     print(f'Done! (psf_radius = {psf_fwhm})', flush=True)
 
-    # Load the metadata and set up the unit conversions
+    # Load metadata and set up the unit conversion context for this data set
     print('Loading metadata and setting up units...', end=' ', flush=True)
     metadata = load_metadata(**config['dataset'])
-    set_units_for_instrument(
+    instrument_unit_context = InstrumentUnitsContext(
         pixscale=Quantity(metadata['PIXSCALE'], 'arcsec / pix'),
         lambda_over_d=Quantity(metadata['LAMBDA_OVER_D'], 'arcsec'),
-        verbose=False,
     )
     print('Done!', flush=True)
 
@@ -95,11 +94,12 @@ if __name__ == '__main__':
     )
 
     # Construct the mask for the region of interest (ROI)
-    roi_mask = get_roi_mask(
-        mask_size=frame_size,
-        inner_radius=Quantity(*config['roi_mask']['inner_radius']),
-        outer_radius=Quantity(*config['roi_mask']['outer_radius']),
-    )
+    with instrument_unit_context:
+        roi_mask = get_roi_mask(
+            mask_size=frame_size,
+            inner_radius=Quantity(*config['roi_mask']['inner_radius']),
+            outer_radius=Quantity(*config['roi_mask']['outer_radius']),
+        )
 
     # -------------------------------------------------------------------------
     # Load signal estimate from FITS and compute SNRs
@@ -130,12 +130,13 @@ if __name__ == '__main__':
         )
 
         # Compute the metrics
-        metrics, positions_ = compute_metrics(
-            frame=signal_estimate,
-            polar_position=planet_position,
-            aperture_radius=Quantity(psf_fwhm / 2, 'pixel'),
-            exclusion_angle=None,
-        )
+        with instrument_unit_context:
+            metrics, positions_ = compute_metrics(
+                frame=signal_estimate,
+                polar_position=planet_position,
+                aperture_radius=Quantity(psf_fwhm / 2, 'pixel'),
+                exclusion_angle=None,
+            )
 
         # Create label and store it
         log_fpf = metrics["log_fpf"]
