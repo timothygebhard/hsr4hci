@@ -1,6 +1,6 @@
-# hsr4hci: Half-Sibling Regression for High-Contrast Imaging
+# Half-Sibling Regression for High-Contrast Imaging
 
-![Python 3.7](https://img.shields.io/badge/python-v3.7-blue)
+![Python 3.7](https://img.shields.io/badge/python-3.7_|_3.8_|_3.9-blue)
 [![Code style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
 [![Checked with MyPy](https://img.shields.io/badge/mypy-checked-blue)](https://github.com/python/mypy)
 ![Tests](https://github.com/timothygebhard/hsr4hci/workflows/Tests/badge.svg?branch=master)
@@ -25,3 +25,12 @@ pip install .[develop]
 
 To run any experiments or reproduce our results, you will first need to create some data sets in the right format.
 Please check out the [README file in the `datasets` directory](https://github.com/timothygebhard/hsr4hci/tree/master/datasets) for more information on how to do this.
+
+
+## 🐭 Tests
+
+To improve reproducibility of our results, this repository comes with an extensive set of unit and integration tests (based on [`pytest`](https://pytest.org)). 
+After installing `hsr4hci`, the tests can be run as:
+```
+pytest tests
+```
