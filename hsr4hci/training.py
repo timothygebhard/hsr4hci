@@ -312,15 +312,15 @@ def train_model_for_position(
 
         # Always initialize the expected signal
         expected_signal = np.full(n_frames, np.nan)
-    
+
         # Only compute it if we are not training a default model. This happens
         # here so we don't have to re-compute it in each train / test-split.
         if train_mode in ('signal_fitting', 'signal_masking'):
-    
+
             # Ensure that the signal time is not None
             if signal_time is None:
                 raise RuntimeError('signal_time must not be None!')
-    
+
             # Compute expected signal based on position and signal_time.
             # The resulting time series is already normalized to a maximum of 1.
             expected_signal = get_time_series_for_position(
