@@ -8,60 +8,13 @@ into single FITS files.
 # -----------------------------------------------------------------------------
 
 from pathlib import Path
-from typing import List
 
 import argparse
 import os
 import time
-import warnings
 
-import numpy as np
-
-from hsr4hci.fits import read_fits, save_fits
-
-
-# -----------------------------------------------------------------------------
-# FUNCTION DEFINITIONS
-# -----------------------------------------------------------------------------
-
-def get_fits_file_list(fits_dir: Path, prefix: str) -> List[Path]:
-
-    # Get a list of the paths to all FITS files in the given FITS directory
-    # that start with the given prefix (e.g., "hypotheses" or "mean_mf")
-    fits_file_names = filter(
-        lambda _: _.endswith('.fits') and _.startswith(prefix),
-        os.listdir(fits_dir)
-    )
-    fits_file_paths = [fits_dir / _ for _ in fits_file_names]
-
-    # Perform a quick sanity check: Does the number of FITS files we found
-    # match the number that we would expect based on the naming convention?
-    # Reminder: The naming convention is "<prefix>_<split>-<n_splits>.fits".
-    expected_number = int(fits_file_paths[0].name.split('-')[1].split('.')[0])
-    actual_number = len(fits_file_paths)
-    if expected_number != actual_number:
-        warnings.warn(
-            f'Naming convention suggests there should be {expected_number} '
-            f'FITS files, but {actual_number} were found!'
-        )
-
-    return fits_file_paths
-
-
-def merge_fits_files(fits_file_paths: List[Path]) -> np.ndarray:
-
-    # Read in all FITS files as numpy arrays
-    arrays = []
-    for file_path in fits_file_paths:
-        array = np.asarray(read_fits(file_path))
-        arrays.append(array)
-
-    # Stack and merge them along the first axis
-    with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', r'Mean of empty slice')
-        array = np.nanmean(arrays, axis=0)
-
-    return array
+from hsr4hci.fits import save_fits
+from hsr4hci.merging import get_list_of_fits_file_paths, merge_fits_files
 
 
 # -----------------------------------------------------------------------------
@@ -107,7 +60,7 @@ if __name__ == '__main__':
 
     # Collect, merge and save hypotheses
     print('Collecting and merging hypotheses...', end=' ', flush=True)
-    fits_file_paths = get_fits_file_list(
+    fits_file_paths = get_list_of_fits_file_paths(
         fits_dir=partial_dir, prefix='hypotheses'
     )
     hypotheses = merge_fits_files(fits_file_paths=fits_file_paths)
@@ -117,7 +70,7 @@ if __name__ == '__main__':
 
     # Collect, merge and save similarities
     print('Collecting and merging similarities...', end=' ', flush=True)
-    fits_file_paths = get_fits_file_list(
+    fits_file_paths = get_list_of_fits_file_paths(
         fits_dir=partial_dir, prefix='similarities'
     )
     similarities = merge_fits_files(fits_file_paths=fits_file_paths)
@@ -135,7 +88,7 @@ if __name__ == '__main__':
 
     # Collect, merge and save hypotheses
     print('Collecting and merging mean MFs...', end=' ', flush=True)
-    fits_file_paths = get_fits_file_list(
+    fits_file_paths = get_list_of_fits_file_paths(
         fits_dir=partial_dir, prefix='mean_mf'
     )
     mean_mf = merge_fits_files(fits_file_paths=fits_file_paths)
@@ -145,7 +98,7 @@ if __name__ == '__main__':
 
     # Collect, merge and save similarities
     print('Collecting and merging median MFs...', end=' ', flush=True)
-    fits_file_paths = get_fits_file_list(
+    fits_file_paths = get_list_of_fits_file_paths(
         fits_dir=partial_dir, prefix='median_mf'
     )
     median_mf = merge_fits_files(fits_file_paths=fits_file_paths)

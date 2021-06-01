@@ -7,6 +7,7 @@ Run stage 2 of the pipeline (find hypotheses, compute match fractions).
 # -----------------------------------------------------------------------------
 
 from pathlib import Path
+from typing import Dict
 
 import argparse
 import os
@@ -14,14 +15,16 @@ import time
 
 from astropy.units import Quantity
 
+import numpy as np
+
 from hsr4hci.config import load_config
-from hsr4hci.consistency_checks import get_all_match_fractions
+from hsr4hci.match_fraction import get_all_match_fractions
 from hsr4hci.data import load_metadata, load_parang, load_psf_template
 from hsr4hci.fits import save_fits
-from hsr4hci.hdf import load_residuals
+from hsr4hci.hdf import load_dict_from_hdf
 from hsr4hci.hypotheses import get_all_hypotheses
 from hsr4hci.masking import get_roi_mask
-from hsr4hci.units import set_units_for_instrument
+from hsr4hci.units import InstrumentUnitsContext
 
 
 # -----------------------------------------------------------------------------
@@ -102,19 +105,19 @@ if __name__ == '__main__':
     roi_split = args.roi_split
     n_roi_splits = args.n_roi_splits
 
-    # Activate the unit conversions for this instrument
-    set_units_for_instrument(
+    # Define the unit conversion context for this data set
+    instrument_units_context = InstrumentUnitsContext(
         pixscale=Quantity(pixscale, 'arcsec / pixel'),
         lambda_over_d=Quantity(lambda_over_d, 'arcsec'),
-        verbose=False,
     )
 
     # Construct the mask for the region of interest (ROI)
-    roi_mask = get_roi_mask(
-        mask_size=frame_size,
-        inner_radius=Quantity(*config['roi_mask']['inner_radius']),
-        outer_radius=Quantity(*config['roi_mask']['outer_radius']),
-    )
+    with instrument_units_context:
+        roi_mask = get_roi_mask(
+            mask_size=frame_size,
+            inner_radius=Quantity(*config['roi_mask']['inner_radius']),
+            outer_radius=Quantity(*config['roi_mask']['outer_radius']),
+        )
 
     # -------------------------------------------------------------------------
     # STEP 1: Find hypotheses
@@ -123,15 +126,15 @@ if __name__ == '__main__':
     # Load results. This is very memory-intensive, but read-on-demand seems
     # orders of magnitude slower and thus infeasible
     print('\nLoading results from HDF...', end=' ', flush=True)
-    file_path = experiment_dir / 'hdf' / 'results.hdf'
-    results = load_residuals(file_path)
+    file_path = experiment_dir / 'hdf' / 'residuals.hdf'
+    residuals: Dict[str, np.ndarray] = load_dict_from_hdf(file_path)
     print('Done!', flush=True)
 
     # Find best hypothesis (for specified subset of ROI)
     print('\nFinding best hypothesis for each spatial pixel:', flush=True)
     hypotheses, similarities = get_all_hypotheses(
         roi_mask=roi_mask,
-        dict_or_path=results,
+        residuals=residuals,
         parang=parang,
         n_signal_times=n_signal_times,
         frame_size=frame_size,
@@ -146,19 +149,15 @@ if __name__ == '__main__':
 
     # Save hypotheses as a FITS file
     print('\nSaving hypotheses to FITS...', end=' ', flush=True)
-    file_path = (
-        hypotheses_dir
-        / f'hypotheses_{roi_split + 1:04d}-{n_roi_splits:04d}.fits'
-    )
+    file_name = f'hypotheses_{roi_split + 1:04d}-{n_roi_splits:04d}.fits'
+    file_path = hypotheses_dir / file_name
     save_fits(array=hypotheses, file_path=file_path)
     print('Done!', flush=True)
 
     # Save cosine similarities (of hypotheses) as a FITS file
     print('Saving similarities to FITS...', end=' ', flush=True)
-    file_path = (
-        hypotheses_dir
-        / f'similarities_{roi_split + 1:04d}-{n_roi_splits:04d}.fits'
-    )
+    file_name = f'similarities_{roi_split + 1:04d}-{n_roi_splits:04d}.fits'
+    file_path = hypotheses_dir / file_name
     save_fits(array=similarities, file_path=file_path)
     print('Done!', flush=True)
 
@@ -169,7 +168,7 @@ if __name__ == '__main__':
     # Compute match fraction (for specified subset of ROI)
     print('\nComputing match fractions:', flush=True)
     mean_mf, median_mf, _ = get_all_match_fractions(
-        dict_or_path=results,
+        residuals=residuals,
         roi_mask=roi_mask,
         hypotheses=hypotheses,
         parang=parang,
@@ -185,16 +184,14 @@ if __name__ == '__main__':
 
     # Save match fraction(s) as FITS file
     print('Saving mean match fractions to FITS...', end=' ', flush=True)
-    file_path = (
-        partial_dir / f'mean_mf_{roi_split + 1:04d}-{n_roi_splits:04d}.fits'
-    )
+    file_name = f'mean_mf_{roi_split + 1:04d}-{n_roi_splits:04d}.fits'
+    file_path = partial_dir / file_name
     save_fits(array=mean_mf, file_path=file_path)
     print('Done!', flush=True)
 
     print('Saving median match fractions to FITS...', end=' ', flush=True)
-    file_path = (
-        partial_dir / f'median_mf_{roi_split + 1:04d}-{n_roi_splits:04d}.fits'
-    )
+    file_name = f'median_mf_{roi_split + 1:04d}-{n_roi_splits:04d}.fits'
+    file_path = partial_dir / file_name
     save_fits(array=median_mf, file_path=file_path)
     print('Done!', flush=True)
 

@@ -16,15 +16,17 @@ import time
 from astropy.units import Quantity
 
 import h5py
-import numpy as np
 
 from hsr4hci.config import load_config
 from hsr4hci.data import load_metadata, load_parang, load_psf_template
 from hsr4hci.derotating import derotate_combine
 from hsr4hci.fits import read_fits, save_fits
-from hsr4hci.masking import get_roi_mask, get_positions_from_mask
-from hsr4hci.match_fraction import get_selection_mask
-from hsr4hci.units import set_units_for_instrument
+from hsr4hci.masking import get_roi_mask
+from hsr4hci.residuals import (
+    assemble_residual_stack_from_hypotheses,
+    get_residual_selection_mask,
+)
+from hsr4hci.units import InstrumentUnitsContext
 
 
 # -----------------------------------------------------------------------------
@@ -87,19 +89,19 @@ if __name__ == '__main__':
         int(config['dataset']['frame_size'][1]),
     )
 
-    # Activate the unit conversions for this instrument
-    set_units_for_instrument(
+    # Define the unit conversion context for this data set
+    instrument_units_context = InstrumentUnitsContext(
         pixscale=Quantity(metadata['PIXSCALE'], 'arcsec / pixel'),
         lambda_over_d=Quantity(metadata['LAMBDA_OVER_D'], 'arcsec'),
-        verbose=False,
     )
 
     # Construct the mask for the region of interest (ROI)
-    roi_mask = get_roi_mask(
-        mask_size=frame_size,
-        inner_radius=Quantity(*config['roi_mask']['inner_radius']),
-        outer_radius=Quantity(*config['roi_mask']['outer_radius']),
-    )
+    with instrument_units_context:
+        roi_mask = get_roi_mask(
+            mask_size=frame_size,
+            inner_radius=Quantity(*config['roi_mask']['inner_radius']),
+            outer_radius=Quantity(*config['roi_mask']['outer_radius']),
+        )
 
     # -------------------------------------------------------------------------
     # Load match fraction and construct selection mask
@@ -107,14 +109,14 @@ if __name__ == '__main__':
 
     # Load the median match fraction from FITS
     print('Loading match fraction from FITS...', end=' ', flush=True)
-    file_path = experiment_dir / 'match_fractions' / 'median_mf.fits'
-    median_mf = np.asarray(read_fits(file_path))
+    file_path = experiment_dir / 'match_fractions' / 'mean_mf.fits'
+    match_fraction = read_fits(file_path, return_header=False)
     print('Done!', flush=True)
 
     # Construct selection mask
     print('\nComputing selection mask...', end=' ', flush=True)
-    selection_mask, _, _, _ = get_selection_mask(
-        match_fraction=median_mf,
+    selection_mask, _, _, _, _ = get_residual_selection_mask(
+        match_fraction=match_fraction,
         parang=parang,
         psf_template=psf_template,
     )
@@ -141,24 +143,18 @@ if __name__ == '__main__':
     # Load hypotheses from FITS
     print('\nLoading hypotheses from FITS...', end=' ', flush=True)
     file_path = experiment_dir / 'hypotheses' / 'hypotheses.fits'
-    hypotheses = np.asarray(read_fits(file_path))
+    hypotheses = read_fits(file_path, return_header=False)
     print('Done!', flush=True)
 
     # Load residuals from HDF (based on hypotheses and selection mask)
     print('Constructing residuals...', end=' ', flush=True)
-    file_path = experiment_dir / 'hdf' / 'results.hdf'
-    with h5py.File(file_path, 'r') as hdf_file:
-
-        # Initialize everything to the default residuals
-        residuals = np.array(hdf_file['default']['residuals'])
-
-        # For the pixels where the selection mask is 1, choose the
-        # residuals based on the corresponding hypothesis
-        for (x, y) in get_positions_from_mask(selection_mask):
-            signal_time = str(int(hypotheses[x, y]))
-            residuals[:, x, y] = np.array(
-                hdf_file[signal_time]['residuals'][:, x, y]
-            )
+    file_path = experiment_dir / 'hdf' / 'residuals.hdf'
+    with h5py.File(file_path, 'r') as residuals:
+        residual_stack = assemble_residual_stack_from_hypotheses(
+            residuals=residuals,
+            hypotheses=hypotheses,
+            selection_mask=selection_mask,
+        )
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
@@ -168,7 +164,7 @@ if __name__ == '__main__':
     # Compute signal estimate
     print('Computing signal estimate...', end=' ', flush=True)
     signal_estimate = derotate_combine(
-        stack=residuals,
+        stack=residual_stack,
         parang=parang,
         mask=~roi_mask,
     )

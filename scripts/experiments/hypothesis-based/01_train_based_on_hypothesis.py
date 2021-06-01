@@ -25,9 +25,8 @@ from hsr4hci.derotating import derotate_combine
 from hsr4hci.fits import save_fits
 from hsr4hci.forward_modeling import add_fake_planet
 from hsr4hci.masking import get_roi_mask, get_positions_from_mask
-from hsr4hci.splitting import AlternatingSplit
-from hsr4hci.training import train_model
-from hsr4hci.units import set_units_for_instrument
+from hsr4hci.training import train_model_for_position
+from hsr4hci.units import InstrumentUnitsContext
 
 
 # -----------------------------------------------------------------------------
@@ -88,12 +87,12 @@ if __name__ == '__main__':
     # Other shortcuts
     selected_keys = config['observing_conditions']['selected_keys']
     selection_mask_config = config['selection_mask']
+    n_train_splits = int(config['n_train_splits'])
 
-    # Activate the unit conversions for this instrument
-    set_units_for_instrument(
+    # Define the unit conversion context for this data set
+    instrument_unit_context = InstrumentUnitsContext(
         pixscale=Quantity(metadata['PIXSCALE'], 'arcsec / pixel'),
         lambda_over_d=Quantity(metadata['LAMBDA_OVER_D'], 'arcsec'),
-        verbose=False,
     )
 
     # -------------------------------------------------------------------------
@@ -103,7 +102,6 @@ if __name__ == '__main__':
     print('Computing hypothesized stack...', end=' ', flush=True)
 
     # Make sure the PSF template is correctly normalized
-    psf_template -= np.min(psf_template)
     psf_template /= np.max(psf_template)
 
     # Initialize the hypothesized stack and mask of affected pixels
@@ -111,44 +109,46 @@ if __name__ == '__main__':
     hypotheses = np.zeros(frame_size)
     affected_mask = np.full(frame_size, False)
 
-    # Loop over potentially multiple planet hypotheses and add them
-    for name, parameters in config['hypothesis'].items():
+    with instrument_unit_context:
 
-        # Define hypothesized planet position
-        hypothesized_position = (
-            Quantity(*parameters['separation']),
-            Quantity(*parameters['position_angle']),
-        )
+        # Loop over potentially multiple planet hypotheses and add them
+        for name, parameters in config['hypothesis'].items():
 
-        # Compute the corresponding forward model and normalize it
-        hypothesized_stack = np.array(
-            add_fake_planet(
-                stack=hypothesized_stack,
-                parang=parang,
-                psf_template=psf_template,
-                polar_position=hypothesized_position,
-                magnitude=0,
-                extra_scaling=1,
-                dit_stack=1,
-                dit_psf_template=1,
-                return_planet_positions=False,
-                interpolation='bilinear',
+            # Define hypothesized planet position
+            hypothesized_position = (
+                Quantity(*parameters['separation']),
+                Quantity(*parameters['position_angle']),
             )
-        )
-        hypothesized_stack /= np.max(hypothesized_stack)
 
-        # Update the binary mask that we use to find pixels that contain a
-        # "reasonable" amount of planet signal (the threshold is somewhat
-        # arbitrary, of course)
-        affected_mask = np.logical_or(
-            affected_mask, (np.max(hypothesized_stack, axis=0) > 0.2)
-        )
+            # Compute the corresponding forward model and normalize it
+            hypothesized_stack = np.array(
+                add_fake_planet(
+                    stack=hypothesized_stack,
+                    parang=parang,
+                    psf_template=psf_template,
+                    polar_position=hypothesized_position,
+                    magnitude=0,
+                    extra_scaling=1,
+                    dit_stack=1,
+                    dit_psf_template=1,
+                    return_planet_positions=False,
+                    interpolation='bilinear',
+                )
+            )
+            hypothesized_stack /= np.max(hypothesized_stack)
 
-        # Find the hypotheses for the current stack, that is, the time at
-        # which the signal peaks in each pixel
-        hypotheses = np.maximum(
-            hypotheses, np.argmax(hypothesized_stack, axis=0)
-        )
+            # Update the binary mask that we use to find pixels that contain a
+            # "reasonable" amount of planet signal (the threshold is somewhat
+            # arbitrary, of course)
+            affected_mask = np.logical_or(
+                affected_mask, (np.max(hypothesized_stack, axis=0) > 0.2)
+            )
+
+            # Find the hypotheses for the current stack, that is, the time at
+            # which the signal peaks in each pixel
+            hypotheses = np.maximum(
+                hypotheses, np.argmax(hypothesized_stack, axis=0)
+            )
 
     # Only keep the hypothesis for pixels with enough planet signal
     hypotheses[~affected_mask] = np.nan
@@ -162,8 +162,6 @@ if __name__ == '__main__':
     print('Saving hypotheses...', end=' ', flush=True)
     file_path = results_dir / 'hypotheses.fits'
     save_fits(hypotheses, file_path=file_path)
-    file_path = results_dir / 'hypothesis_stack.fits'
-    save_fits(hypothesized_stack, file_path=file_path)
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
@@ -174,23 +172,22 @@ if __name__ == '__main__':
     base_model_creator = BaseModelCreator(**config['base_model'])
 
     # Construct the mask for the region of interest (ROI)
-    roi_mask = get_roi_mask(
-        mask_size=frame_size,
-        inner_radius=Quantity(*config['roi_mask']['inner_radius']),
-        outer_radius=Quantity(*config['roi_mask']['outer_radius']),
-    )
-
-    # Create splitter for indices
-    n_splits = int(config['n_splits'])
-    signal_masking_splitter = AlternatingSplit(n_splits=n_splits)
+    with instrument_unit_context:
+        roi_mask = get_roi_mask(
+            mask_size=frame_size,
+            inner_radius=Quantity(*config['roi_mask']['inner_radius']),
+            outer_radius=Quantity(*config['roi_mask']['outer_radius']),
+        )
 
     # Initialize full residuals
     full_residuals = np.full(stack.shape, np.nan)
     matches = np.full(frame_size, np.nan)
     fractions = np.full(frame_size, np.nan)
-    full_alphas = np.full((n_splits,) + frame_size, np.nan)
-    full_pixel_coefs = np.full(frame_size + (n_splits,) + frame_size, np.nan)
-    full_planet_coefs = np.full((n_splits,) + frame_size, np.nan)
+    full_alphas = np.full((n_train_splits,) + frame_size, np.nan)
+    full_pixel_coefs = np.full(
+        frame_size + (n_train_splits,) + frame_size, np.nan
+    )
+    full_planet_coefs = np.full((n_train_splits,) + frame_size, np.nan)
 
     # Loop over ROI, train models, and compute residuals
     # We use this manual loop here because we also want to access and store all
@@ -198,30 +195,31 @@ if __name__ == '__main__':
     print('\nTraining HSR models:', flush=True)
     for (x, y) in tqdm(get_positions_from_mask(roi_mask), ncols=80):
 
+        # Define values for train_mode, signal_time and expected_signal
         if np.isnan(hypotheses[x, y]):
-            mode = None
+            mode = 'default'
             signal_time = None
             expected_signal = None
         else:
-            mode = config['mode']
+            mode = config['train_mode']
             signal_time = int(hypotheses[x, y])
             expected_signal = hypothesized_stack[:, x, y]
 
         # Train the model for this pixel
-        residuals, model_params = train_model(
-            stack=stack,
-            parang=parang,
-            obscon_array=observing_conditions.as_array(selected_keys),
-            position=(x, y),
-            mode=mode,
-            signal_time=signal_time,
-            expected_signal=expected_signal,
-            selection_mask_config=selection_mask_config,
-            psf_template=psf_template,
-            n_splits=n_splits,
-            base_model_creator=base_model_creator,
-            signal_masking_threshold=0.1,
-        )
+        with instrument_unit_context:
+            residuals, model_params = train_model_for_position(
+                stack=stack,
+                parang=parang,
+                obscon_array=observing_conditions.as_array(selected_keys),
+                position=(x, y),
+                train_mode=mode,
+                signal_time=signal_time,
+                selection_mask_config=selection_mask_config,
+                psf_template=psf_template,
+                n_train_splits=n_train_splits,
+                base_model_creator=base_model_creator,
+                expected_signal=expected_signal,
+            )
 
         # Unpack model_params
         alphas = model_params['alphas']
@@ -233,7 +231,7 @@ if __name__ == '__main__':
         full_residuals[:, x, y] = residuals
         full_alphas[:, x, y] = alphas
         full_planet_coefs[:, x, y] = planet_coefs
-        for i in range(n_splits):
+        for i in range(n_train_splits):
             full_pixel_coefs[x, y, i][selection_mask] = pixel_coefs[i]
 
         # Compute the match between the residual and the hypothesized stack
@@ -277,7 +275,7 @@ if __name__ == '__main__':
 
     print('\nComputing signal estimate...', end=' ', flush=True)
     signal_estimate = derotate_combine(
-        stack=full_residuals, parang=parang, mask=~roi_mask, combine='median'
+        stack=full_residuals, parang=parang, mask=~roi_mask
     )
     print('Done!', flush=True)
 

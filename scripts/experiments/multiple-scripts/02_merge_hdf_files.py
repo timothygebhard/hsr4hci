@@ -14,7 +14,7 @@ import os
 import time
 
 from hsr4hci.hdf import save_dict_to_hdf
-from hsr4hci.merging import get_hdf_file_paths, merge_result_files
+from hsr4hci.merging import get_list_of_hdf_file_paths, merge_hdf_files
 
 
 # -----------------------------------------------------------------------------
@@ -63,18 +63,18 @@ if __name__ == '__main__':
 
     # Get a list of all HDF files in the HDF directory
     print('Collecting HDF files to be merged...', end=' ', flush=True)
-    hdf_file_paths = get_hdf_file_paths(hdf_dir=partial_dir)
+    hdf_file_paths = get_list_of_hdf_file_paths(hdf_dir=partial_dir)
     print('Done!', flush=True)
 
-    # Merge the partial HDF files
+    # Merge the partial HDF files to get residuals
     print('Merging HDF files:', end=' ', flush=True)
-    results = merge_result_files(hdf_file_paths=hdf_file_paths)
+    residuals = merge_hdf_files(hdf_file_paths=hdf_file_paths)
     print('', flush=True)
 
     # Save the final result
     print('\nSaving merged HDF file...', end=' ', flush=True)
-    file_path = hdf_dir / 'results.hdf'
-    save_dict_to_hdf(dictionary=results, file_path=file_path)
+    file_path = hdf_dir / 'residuals.hdf'
+    save_dict_to_hdf(dictionary=residuals, file_path=file_path)
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
