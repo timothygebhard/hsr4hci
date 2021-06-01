@@ -272,7 +272,7 @@ def test__integration_pca(
         roi_mask=None,
     )
     assert np.isclose(np.nansum(signal_estimates), 4.5674645930457345)
-    assert np.isclose(np.nansum(principal_components), -4.289586)
+    assert np.isclose(np.nansum(principal_components), -4.289586, atol=1e-3)
 
     # Apply ROI mask after PCA
     signal_estimates[:, ~roi_mask] = np.nan
