@@ -50,6 +50,11 @@ jobs:
         COVERAGE=$(echo "$SUMMARY" | tail -n 4 | head -n 1 | awk '{print $4}') ;
         COVERAGE="${COVERAGE:-unknown}" ;
         echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV ;
+        if [ "$COVERAGE" != "unknown" ]; then
+          echo "BADGECOLOR=\"brightgreen\"" >> $GITHUB_ENV ;
+        else
+          echo "BADGECOLOR=\"orange\"" >> $GITHUB_ENV ;
+        fi ;
     - name: Create test coverage badge
       uses: schneegans/dynamic-badges-action@v1.0.0
       with:
@@ -58,4 +63,4 @@ jobs:
         filename: hsr4hci.json
         label: Test Coverage
         message: ${{ env.COVERAGE }}
-        color: green
+        color: ${{ env.BADGECOLOR }}
