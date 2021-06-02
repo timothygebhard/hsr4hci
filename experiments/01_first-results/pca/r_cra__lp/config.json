@@ -1,8 +1,8 @@
 {
   "dataset": {
-    "name":           "r_cra__lp",
+    "name_or_path":   "r_cra__lp",
     "binning_factor": 1,
-    "frame_size":     [51, 51]
+    "frame_size":     [63, 63]
   },
   "roi_mask": {
     "inner_radius":   [0.00, "arcsec"],

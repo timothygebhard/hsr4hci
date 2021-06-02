@@ -1,8 +1,8 @@
 {
   "dataset": {
-    "name":           "beta_pictoris__mp",
+    "name_or_path":   "beta_pictoris__mp",
     "binning_factor": 1,
-    "frame_size":     [69, 69]
+    "frame_size":     [81, 81]
   },
   "roi_mask": {
     "inner_radius":   [0.00, "arcsec"],

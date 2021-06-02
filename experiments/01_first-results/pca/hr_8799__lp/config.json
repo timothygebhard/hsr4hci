@@ -1,12 +1,12 @@
 {
   "dataset": {
-    "name":           "hr_8799__lp",
+    "name_or_path":   "hr_8799__lp",
     "binning_factor": 1,
-    "frame_size":     [167, 167]
+    "frame_size":     [173, 173]
   },
   "roi_mask": {
     "inner_radius":   [0.00, "arcsec"],
-    "outer_radius":   [2.00, "arcsec"]
+    "outer_radius":   [1.90, "arcsec"]
   },
   "pca": {
     "min_n":          1,
