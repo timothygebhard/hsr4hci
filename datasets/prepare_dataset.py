@@ -52,7 +52,7 @@ from hsr4hci.time_conversion import (
     date_string_to_timestamp,
     timestamp_to_datetime,
 )
-from hsr4hci.units import set_units_for_instrument
+from hsr4hci.units import InstrumentUnitsContext
 
 
 # -----------------------------------------------------------------------------
@@ -604,20 +604,20 @@ if __name__ == '__main__':
         signal_estimate = get_pca_signal_estimates(
             stack=stack,
             parang=parang,
-            pca_numbers=[20],
+            n_components=20,
             return_components=False,
         )
         signal_estimate = np.asarray(signal_estimate).squeeze()
         print('Done!\n', flush=True)
 
-        # Activate unit conversions
+        # Define the unit conversion context for this data set
         pixscale = Quantity(config['metadata']['PIXSCALE'], 'arcsec / pixel')
         lambda_over_d = Quantity(config['metadata']['LAMBDA_OVER_D'], 'arcsec')
-        set_units_for_instrument(
-            pixscale=pixscale,
-            lambda_over_d=lambda_over_d,
-            verbose=False,
+        instrument_units_context = InstrumentUnitsContext(
+            pixscale=pixscale, lambda_over_d=lambda_over_d
         )
+
+        # Define shortcuts
         frame_size = (signal_estimate.shape[0], signal_estimate.shape[1])
         center = get_center(frame_size)
 
@@ -634,26 +634,27 @@ if __name__ == '__main__':
         fig.tight_layout()
 
         # Add the planet positions to the plot
-        for planet_name, planet_params in config['planets'].items():
-            position = polar2cartesian(
-                separation=Quantity(planet_params['separation'], 'arcsec'),
-                angle=Quantity(planet_params['position_angle'], 'degree'),
-                frame_size=frame_size,
-            )
-            aperture = CircularAperture(
-                positions=position,
-                r=lambda_over_d.to('pixel').value,
-            )
-            # noinspection PyTypeChecker
-            aperture.plot(axes=ax, color='black', ls='--')
-            ax.annotate(
-                text=planet_name,
-                xy=position,
-                ha='center',
-                va='center',
-                xytext=(20, 0),
-                textcoords='offset pixels',
-            )
+        with instrument_units_context:
+            for planet_name, planet_params in config['planets'].items():
+                position = polar2cartesian(
+                    separation=Quantity(planet_params['separation'], 'arcsec'),
+                    angle=Quantity(planet_params['position_angle'], 'degree'),
+                    frame_size=frame_size,
+                )
+                aperture = CircularAperture(
+                    positions=position,
+                    r=lambda_over_d.to('pixel').value,
+                )
+                # noinspection PyTypeChecker
+                aperture.plot(axes=ax, color='black', ls='--')
+                ax.annotate(
+                    text=planet_name,
+                    xy=position,
+                    ha='center',
+                    va='center',
+                    xytext=(20, 0),
+                    textcoords='offset pixels',
+                )
         file_path = plots_dir / 'signal_estimate.pdf'
         plt.savefig(file_path, bbox_inches='tight')
         print('Done!\n', flush=True)
