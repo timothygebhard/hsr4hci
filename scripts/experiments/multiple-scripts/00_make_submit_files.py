@@ -20,7 +20,7 @@ from hsr4hci.config import load_config, get_hsr4hci_dir
 from hsr4hci.data import load_parang, load_metadata
 from hsr4hci.htcondor import SubmitFile, DAGFile
 from hsr4hci.masking import get_roi_mask
-from hsr4hci.units import set_units_for_instrument
+from hsr4hci.units import InstrumentUnitsContext
 
 
 # -----------------------------------------------------------------------------
@@ -106,19 +106,19 @@ if __name__ == '__main__':
     pixscale = float(metadata['PIXSCALE'])
     lambda_over_d = float(metadata['LAMBDA_OVER_D'])
 
-    # Enable unit conversions
-    set_units_for_instrument(
+    # Define the unit conversion context for this data set
+    instrument_units_context = InstrumentUnitsContext(
         pixscale=Quantity(pixscale, 'arcsec / pixel'),
         lambda_over_d=Quantity(lambda_over_d, 'arcsec'),
-        verbose=False,
     )
 
     # Define a mask for the ROI
-    roi_mask = get_roi_mask(
-        mask_size=frame_size,
-        inner_radius=Quantity(*config['roi_mask']['inner_radius']),
-        outer_radius=Quantity(*config['roi_mask']['outer_radius']),
-    )
+    with instrument_units_context:
+        roi_mask = get_roi_mask(
+            mask_size=frame_size,
+            inner_radius=Quantity(*config['roi_mask']['inner_radius']),
+            outer_radius=Quantity(*config['roi_mask']['outer_radius']),
+        )
 
     # Compute the expected number of pixels per training job
     n_pixels_per_job = int(np.ceil(np.sum(roi_mask) / n_splits))
