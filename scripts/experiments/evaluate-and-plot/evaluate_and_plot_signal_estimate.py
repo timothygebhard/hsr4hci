@@ -87,20 +87,6 @@ if __name__ == '__main__':
     )
     print('Done!', flush=True)
 
-    # Define shortcut to frame_size
-    frame_size = (
-        int(config['dataset']['frame_size'][0]),
-        int(config['dataset']['frame_size'][1]),
-    )
-
-    # Construct the mask for the region of interest (ROI)
-    with instrument_unit_context:
-        roi_mask = get_roi_mask(
-            mask_size=frame_size,
-            inner_radius=Quantity(*config['roi_mask']['inner_radius']),
-            outer_radius=Quantity(*config['roi_mask']['outer_radius']),
-        )
-
     # -------------------------------------------------------------------------
     # Load signal estimate from FITS and compute SNRs
     # -------------------------------------------------------------------------
@@ -111,6 +97,14 @@ if __name__ == '__main__':
     signal_estimate = read_fits(file_path=file_path, return_header=False)
     frame_size = (signal_estimate.shape[0], signal_estimate.shape[1])
     print('Done!', flush=True)
+
+    # Construct the mask for the region of interest (ROI)
+    with instrument_unit_context:
+        roi_mask = get_roi_mask(
+            mask_size=frame_size,
+            inner_radius=Quantity(*config['roi_mask']['inner_radius']),
+            outer_radius=Quantity(*config['roi_mask']['outer_radius']),
+        )
 
     # Load information about the planets in the dataset
     planets = load_planets(**config['dataset'])
