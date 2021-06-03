@@ -8,12 +8,13 @@ Utility functions that are related to dealing with residuals.
 
 from itertools import product
 from math import fmod
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Union
 
 from photutils.centroids import centroid_com
 from polarTransform import convertToPolarImage
 from skimage.feature import blob_log, match_template
 
+import h5py
 import numpy as np
 
 from hsr4hci.coordinates import get_center
@@ -27,7 +28,7 @@ from hsr4hci.general import shift_image, crop_or_pad
 def assemble_residual_stack_from_hypotheses(
     hypotheses: np.ndarray,
     selection_mask: np.ndarray,
-    residuals: Dict[str, np.ndarray],
+    residuals: Union[h5py.File, Dict[str, np.ndarray]],
 ) -> np.ndarray:
     """
     Assemble the residual stack based on the `selection_mask` and the
@@ -45,9 +46,9 @@ def assemble_residual_stack_from_hypotheses(
             which contains a mask that determines for which pixels the
             default residual is used and for which pixel the residual
             based on signal fitting / masking is used.
-        residuals: The dictionary which contains the full results from
-            training both the "default" and the models based on signal
-            fitting / masking.
+        residuals: The dictionary, or an open HDF file, which contains
+            the full results from training both the "default" and the
+            models based on signal fitting / masking.
 
     Returns:
         A 3D numpy array (whose shape matches the stack) containing the
