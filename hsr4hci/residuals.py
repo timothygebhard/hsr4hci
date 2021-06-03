@@ -268,8 +268,8 @@ def get_residual_selection_mask(
         angleSize=grid_size,
         initialRadius=0,
         finalRadius=min(center[0], center[1]),
-        initialAngle=0,
-        finalAngle=2 * np.pi,
+        initialAngle=-np.pi,
+        finalAngle=np.pi,
     )
     polar = polar.T
     polar /= np.max(polar)
@@ -301,7 +301,7 @@ def get_residual_selection_mask(
     # have a planet signal that is "split into two", that, half the signal is
     # on the left-hand edge of the polar representation, and the other half is
     # on the right-hand edge. Therefore, we run with two different phases.
-    for global_phase_offset in (0, np.pi)[::-1]:
+    for global_phase_offset in (0, np.pi):
 
         # ---------------------------------------------------------------------
         # Run blob finder and construct signal mask
@@ -345,7 +345,7 @@ def get_residual_selection_mask(
 
             # Adjust for coordinate system conventions / scaling
             rho *= min(center[0], center[1]) / grid_size
-            phi = (2 * np.pi * phi / grid_size) + global_phase_offset
+            phi = (2 * np.pi * phi / grid_size) + global_phase_offset + np.pi
             phi = fmod(phi, 2 * np.pi)
 
             # Store the positions
