@@ -59,6 +59,13 @@ if __name__ == '__main__':
         type=str,
         required=True,
     )
+    parser.add_argument(
+        '--binning-factors',
+        nargs='+',
+        default=[2, 3, 4, 5, 6, 8, 10, 16, 25, 32, 64, 128],
+        type=float,
+        help='Binning factors for which to create experiments.',
+    )
     args = parser.parse_args()
 
     # Get arguments
@@ -66,22 +73,15 @@ if __name__ == '__main__':
     dataset = args.dataset
     n_splits = args.n_splits
     bid = args.bid
+    factors = args.binning_factors
 
     # -------------------------------------------------------------------------
     # Create experiments
     # -------------------------------------------------------------------------
 
-    # Define binning factors for which we want to create an experiment
-    # Note: We do not need 1 here, because we will symlink to the experiment
-    #       from 01_first-results to avoid computing anything twice. The
-    #       symlinking has to happen manually (for now).
-    factors = (
-        2, 3, 4, 5, 6, 8, 10, 16, 25, 32, 64, 128, 150, 200, 300, 400, 500
-    )
-
     # Read in the basic experiment configuration
-    # We basically copy over the version from "factor_1", which is symlinked
-    # to the 01_first-results directory (see above), and then only change the
+    # We basically copy over the version from "factor_1", which should be a
+    # symlink to the 01_first-results directory, and then only change the
     # binning factor in the "dataset" section of the configuration.
     main_dir = (
         get_hsr4hci_dir()
