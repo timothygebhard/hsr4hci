@@ -90,7 +90,6 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Quantities related to the size of the data set
-    n_frames = len(parang)
     frame_size = (
         int(config['dataset']['frame_size'][0]),
         int(config['dataset']['frame_size'][1]),

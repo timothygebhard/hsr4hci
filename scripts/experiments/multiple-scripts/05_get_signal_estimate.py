@@ -63,7 +63,7 @@ if __name__ == '__main__':
         raise NotADirectoryError(f'{experiment_dir} does not exist!')
 
     # -------------------------------------------------------------------------
-    # Load experiment configuration and
+    # Load experiment configuration; define unit conversion context
     # -------------------------------------------------------------------------
 
     # Load experiment config from JSON
@@ -78,30 +78,11 @@ if __name__ == '__main__':
     metadata = load_metadata(**config['dataset'])
     print('Done!', flush=True)
 
-    # -------------------------------------------------------------------------
-    # Define various useful shortcuts; activate unit conversions
-    # -------------------------------------------------------------------------
-
-    # Quantities related to the size of the data set
-    n_frames = len(parang)
-    frame_size = (
-        int(config['dataset']['frame_size'][0]),
-        int(config['dataset']['frame_size'][1]),
-    )
-
     # Define the unit conversion context for this data set
     instrument_units_context = InstrumentUnitsContext(
         pixscale=Quantity(metadata['PIXSCALE'], 'arcsec / pixel'),
         lambda_over_d=Quantity(metadata['LAMBDA_OVER_D'], 'arcsec'),
     )
-
-    # Construct the mask for the region of interest (ROI)
-    with instrument_units_context:
-        roi_mask = get_roi_mask(
-            mask_size=frame_size,
-            inner_radius=Quantity(*config['roi_mask']['inner_radius']),
-            outer_radius=Quantity(*config['roi_mask']['outer_radius']),
-        )
 
     # -------------------------------------------------------------------------
     # Load match fraction and construct selection mask
@@ -111,7 +92,16 @@ if __name__ == '__main__':
     print('Loading match fraction from FITS...', end=' ', flush=True)
     file_path = experiment_dir / 'match_fractions' / 'mean_mf.fits'
     match_fraction = read_fits(file_path, return_header=False)
+    frame_size = (match_fraction.shape[0], match_fraction.shape[1])
     print('Done!', flush=True)
+
+    # Construct the mask for the region of interest (ROI)
+    with instrument_units_context:
+        roi_mask = get_roi_mask(
+            mask_size=frame_size,
+            inner_radius=Quantity(*config['roi_mask']['inner_radius']),
+            outer_radius=Quantity(*config['roi_mask']['outer_radius']),
+        )
 
     # Construct selection mask
     print('\nComputing selection mask...', end=' ', flush=True)
@@ -130,10 +120,7 @@ if __name__ == '__main__':
     # does not support boolean masks, so we need to convert to integer first.
     print('Saving selection mask to FITS...', end=' ', flush=True)
     file_path = results_dir / 'selection_mask.fits'
-    save_fits(
-        array=selection_mask.astype(int),
-        file_path=file_path,
-    )
+    save_fits(array=selection_mask.astype(int), file_path=file_path)
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
@@ -164,9 +151,7 @@ if __name__ == '__main__':
     # Compute signal estimate
     print('Computing signal estimate...', end=' ', flush=True)
     signal_estimate = derotate_combine(
-        stack=residual_stack,
-        parang=parang,
-        mask=~roi_mask,
+        stack=residual_stack, parang=parang, mask=~roi_mask
     )
     print('Done!', flush=True)
 
