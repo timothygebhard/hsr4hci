@@ -8,7 +8,7 @@ General purpose utilities, e.g., cropping arrays.
 
 from bisect import bisect_left
 from functools import reduce
-from typing import Any, Callable, Sequence, Tuple, Union, TypeVar
+from typing import Any, Callable, List, Sequence, Tuple, Union, TypeVar
 
 import operator
 
@@ -381,3 +381,31 @@ def shift_image(
         )
 
     return np.asarray(shifted_image)
+
+
+def flatten_nested_dict(d: dict, parent_key: str = '', sep: str = '_') -> dict:
+    """
+    Flatten a nested dictionary into a dictionary with only 1 level.
+
+    Example: `flatten_nested_dict({'a': {'b': 5}, 'c': 2})` will produce
+    the following output: `{'a_b': 5, 'c': 2}`.
+
+    Original source: https://stackoverflow.com/a/6027615/4100721
+
+    Args:
+        d: Dictionary to be flattened.
+        parent_key: Key of the parent of `d`; this is needed because
+            the function calls itself recursively.
+        sep: The separator to use for merging keys.
+
+    Returns:
+        A flattened version of the input dictionary.
+    """
+    items: List[Tuple[str, Any]] = []
+    for k, v in d.items():
+        new_key = parent_key + sep + k if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_nested_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)

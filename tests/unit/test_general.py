@@ -13,6 +13,7 @@ from hsr4hci.general import (
     crop_center,
     crop_or_pad,
     find_closest,
+    flatten_nested_dict,
     get_from_nested_dict,
     pad_array_to_shape,
     prestack_array,
@@ -258,3 +259,19 @@ def test__shift_image() -> None:
     target = np.roll(image, shift=1, axis=0)
     target[0, :] = 0
     assert np.allclose(shifted, target)
+
+
+def test__flatten_nested_dict() -> None:
+
+    # Case 1
+    d = {'a': 5, 'b': 'foo', 'c': 2.7}
+    assert flatten_nested_dict(d) == d
+
+    # Case 2
+    d = {'a': 5, 'b': {'c': 2.7}}
+    assert flatten_nested_dict(d) == {'a': 5, 'b_c': 2.7}
+
+    # Case 3
+    d = {'a': 1, 'c': {'a': 2, 'b': {'x': 5, 'y': 10}}, 'd': [1, 2, 3]}
+    d_flat = {'a': 1, 'c_a': 2, 'c_b_x': 5, 'd': [1, 2, 3], 'c_b_y': 10}
+    assert flatten_nested_dict(d) == d_flat
