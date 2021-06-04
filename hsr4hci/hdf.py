@@ -263,8 +263,10 @@ def create_hdf_dir(experiment_dir: Path, create_on_work: bool = False) -> Path:
 
         # Then, create the corresponding symlink in the experiment_dir
         home_hdf_dir = experiment_dir / 'hdf'
-        if not home_hdf_dir.exists():
+        try:
             home_hdf_dir.symlink_to(work_hdf_dir, target_is_directory=True)
+        except FileExistsError:  # pragma: no cover
+            pass
 
     # Note: We do *not* ensure that the directory is empty here, because this
     # function may be called by multiple parallel jobs, and we do not want
