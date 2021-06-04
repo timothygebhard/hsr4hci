@@ -56,6 +56,7 @@ if __name__ == '__main__':
         '--algorithm',
         type=str,
         choices=['signal_fitting', 'signal_masking'],
+        required=True,
     )
     args = parser.parse_args()
 
@@ -81,7 +82,7 @@ if __name__ == '__main__':
     print('Loading PSF template...', end=' ', flush=True)
     psf_template = load_psf_template(name_or_path=dataset)
     psf_fwhm = get_psf_fwhm(psf_template)
-    print(f'Done! (psf_radius = {psf_fwhm:.2f})', flush=True)
+    print(f'Done! (psf_radius = {psf_fwhm:.2f})\n', flush=True)
 
     # -------------------------------------------------------------------------
     # Compute SNRs for each binning factor
