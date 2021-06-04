@@ -129,6 +129,7 @@ if __name__ == '__main__':
                 frame=signal_estimate,
                 polar_position=planet_position,
                 aperture_radius=Quantity(psf_fwhm / 2, 'pixel'),
+                search_radius=Quantity(2, 'pixel'),
                 exclusion_angle=None,
             )
 
