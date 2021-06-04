@@ -6,7 +6,7 @@ Utility classes and functions to work with the HTCondor cluster system.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Deque, Dict, List, Optional, Set, Union
+from typing import Deque, Dict, List, Optional, Sequence, Set, Union
 from pathlib import Path
 
 import sys
@@ -32,7 +32,7 @@ class SubmitFile:
         memory: int = 8192,
         cpus: int = 1,
         gpus: int = 0,
-        requirements: str = '',
+        requirements: Sequence[str] = (),
     ):
         """
         Initialize a new submit file object.
@@ -46,8 +46,11 @@ class SubmitFile:
             memory: How much memory (in MB) to request from the cluster.
             cpus: The number of CPUs to request from the cluster.
             gpus: The number of GPUs to request from the cluster.
-            requirements: Any additional requirements, e.g. limitations
-                on the available GPU memory ('CUDAGlobalMemoryMb').
+            requirements: A sequence (usually: a list) with any
+                additional requirements, for example, limitations on the
+                available GPU memory, or the machines on which to run
+                (e.g., "Target.CpuFamily =!= 21" to block certain types
+                of nodes from running the job).
         """
 
         # Store options for this submit file
@@ -56,6 +59,7 @@ class SubmitFile:
         self.memory = memory
         self.cpus = cpus
         self.gpus = gpus
+        self.requirements = requirements
         self.jobs: List[dict] = []
 
         # Make sure that the clusterlogs_dir exists
@@ -64,12 +68,6 @@ class SubmitFile:
             self.clusterlogs_dir.mkdir(exist_ok=True, parents=True)
         else:
             self.clusterlogs_dir = None
-
-        # Initialize list of requirements for this submit file
-        if requirements == '':
-            self.requirements = []
-        else:
-            self.requirements = [requirements]
 
     def add_job(
         self,
@@ -108,7 +106,7 @@ class SubmitFile:
             contents.append(f'request_gpus = {self.gpus}\n')
 
         # Add requirements (e.g. CUDAGlobalMemory, black hole machines, ...)
-        requirements_string = ' && '.join(self.requirements)
+        requirements_string = ' && '.join(list(self.requirements))
         if requirements_string != '':
             contents.append(f'requirements = {requirements_string}\n')
 

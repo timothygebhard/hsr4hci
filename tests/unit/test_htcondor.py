@@ -45,7 +45,7 @@ def test__submit_file(htcondor_dir: Path) -> None:
 
     # Case 2
     submit_file = SubmitFile(
-        clusterlogs_dir=None, requirements='Some requirements', gpus=2
+        clusterlogs_dir=None, requirements=['Some requirements'], gpus=2
     )
     submit_file.add_job(
         name='dummy_name',
