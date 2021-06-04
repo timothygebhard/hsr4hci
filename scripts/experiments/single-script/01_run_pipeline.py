@@ -239,7 +239,7 @@ if __name__ == '__main__':
     # or based on signal fitting / masking) is used for a pixel
     print('\nComputing selection mask for residuals...', end=' ', flush=True)
     selection_mask, _, _, _, _ = get_residual_selection_mask(
-        match_fraction=mean_mf,
+        match_fraction=median_mf,
         parang=parang,
         psf_template=psf_template,
     )

@@ -88,9 +88,9 @@ if __name__ == '__main__':
     # Load match fraction and construct selection mask
     # -------------------------------------------------------------------------
 
-    # Load the median match fraction from FITS
+    # Load the match fraction from FITS
     print('Loading match fraction from FITS...', end=' ', flush=True)
-    file_path = experiment_dir / 'match_fractions' / 'mean_mf.fits'
+    file_path = experiment_dir / 'match_fractions' / 'median_mf.fits'
     match_fraction = read_fits(file_path, return_header=False)
     frame_size = (match_fraction.shape[0], match_fraction.shape[1])
     print('Done!', flush=True)
