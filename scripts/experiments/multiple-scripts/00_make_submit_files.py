@@ -182,6 +182,7 @@ if __name__ == '__main__':
         clusterlogs_dir=clusterlogs_dir.as_posix(),
         memory=expected_job_memory,
         cpus=4,
+        requirements=['Target.CpuFamily =!= 21'],
     )
     submit_file.add_job(
         name=name,
