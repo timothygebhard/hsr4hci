@@ -422,6 +422,7 @@ def _add_colorbar(
     else:
         cbar.set_ticks([2 * vmin / 3, vmin / 3, 0, vmax / 3, 2 * vmax / 3])
     cbar.ax.set_xticklabels(["{:.1f}".format(i) for i in cbar.get_ticks()])
+    cbar.ax.tick_params(labelsize=8)
 
 
 def plot_frame(
