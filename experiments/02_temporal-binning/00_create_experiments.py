@@ -63,7 +63,7 @@ if __name__ == '__main__':
         '--binning-factors',
         nargs='+',
         default=[2, 3, 4, 5, 6, 8, 10, 16, 25, 32, 64, 128],
-        type=float,
+        type=int,
         help='Binning factors for which to create experiments.',
     )
     args = parser.parse_args()
