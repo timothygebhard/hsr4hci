@@ -418,9 +418,9 @@ def _add_colorbar(
 
     # Set up the rest of the colorbar options
     if use_logscale:
-        cbar.set_ticks([vmin, vmin / 10, 0, vmax / 10, vmax])
+        cbar.set_ticks([vmin / 2, vmin / 10, 0, vmax / 10, vmax / 2])
     else:
-        cbar.set_ticks([vmin, vmin / 2, 0, vmax / 2, vmax])
+        cbar.set_ticks([2 * vmin / 3, vmin / 3, 0, vmax / 3, 2 * vmax / 3])
     cbar.ax.set_xticklabels(["{:.1f}".format(i) for i in cbar.get_ticks()])
 
 
