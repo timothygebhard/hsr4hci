@@ -19,7 +19,7 @@ import time
 from hsr4hci.base_models import BaseModelCreator
 from hsr4hci.data import load_dataset
 from hsr4hci.fits import save_fits
-from hsr4hci.training import train_model
+from hsr4hci.training import train_model_for_position
 
 
 # -----------------------------------------------------------------------------
@@ -65,7 +65,7 @@ if __name__ == '__main__':
     # Load data set and remove planets
     print('Loading data set...', end=' ', flush=True)
     stack, parang, psf_template, obs_con, metadata = load_dataset(
-        name=dataset,
+        name_or_path=dataset,
         binning_factor=binning_factor,
         frame_size=(51, 51),
         remove_planets=True,
@@ -92,21 +92,19 @@ if __name__ == '__main__':
     ):
 
         # Train the model using ALL admissible pixels as predictors
-        _, debug_dict = train_model(
+        _, debug_dict = train_model_for_position(
             stack=stack,
             parang=parang,
             obscon_array=obs_con.as_array(None),
             position=(x, y),
-            mode=None,
+            train_mode='default',
             signal_time=None,
-            expected_signal=None,
             selection_mask_config={
-                "annulus_width": [0.0, "pixel"],
                 "radius_position": [1000.0, "pixel"],
-                "radius_mirror_position": [1000.0, "pixel"],
+                "radius_opposite": [1000.0, "pixel"],
             },
             psf_template=psf_template,
-            n_splits=3,
+            n_train_splits=3,
             base_model_creator=base_model_creator,
         )
 
