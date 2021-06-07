@@ -142,7 +142,7 @@ if __name__ == '__main__':
     expected_job_memory = stack_memory + (n_arrays * array_memory)
     expected_job_memory /= 1024 ** 2
     expected_job_memory *= 1
-    expected_job_memory += 4096
+    expected_job_memory += 6144
     expected_job_memory = int(expected_job_memory)
 
     # Compute the expected total memory for merging the HDF files (in MB)
