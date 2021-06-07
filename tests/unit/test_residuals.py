@@ -16,6 +16,7 @@ from hsr4hci.residuals import (
     assemble_residual_stack_from_hypotheses,
     _get_radial_gradient_mask,
     _get_expected_signal,
+    _prune_blobs,
     get_residual_selection_mask,
 )
 
@@ -113,6 +114,18 @@ def test___get_expected_signal() -> None:
     assert np.isclose(np.sum(expected_signal), 1315.9877084014645)
 
 
+def test___prune_blobs() -> None:
+
+    # Case 1
+    blobs = [
+        (10.2, 90.0, 12),
+        (11.4, 120.0, 14),
+        (18.0, 0.0, 5.0),
+    ]
+    pruned = _prune_blobs(blobs)
+    assert np.array_equal(pruned, np.array([[11.4, 120], [18.0, 0]]))
+
+
 def test__get_residual_selection_mask() -> None:
 
     # Create fake PSF template
@@ -164,9 +177,9 @@ def test__get_residual_selection_mask() -> None:
         psf_template=psf_template,
         grid_size=256,
     )
-    assert np.sum(selection_mask) == 230
-    assert np.isclose(np.sum(polar), 1660.1782130297945)
-    assert np.isclose(np.sum(matched), 1998.46240817288)
+    assert np.sum(selection_mask) == 224
+    assert np.isclose(np.sum(polar), 1374.056805604671)
+    assert np.isclose(np.sum(matched), 1836.4536669022002)
     assert len(positions) == 1
-    assert positions[0][0] == 16.015625
-    assert positions[0][1] == 146.25
+    assert np.isclose(positions[0][0], 15.8203125)
+    assert np.isclose(positions[0][1], 2.577087723647878)

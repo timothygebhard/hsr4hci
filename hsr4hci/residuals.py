@@ -8,17 +8,19 @@ Utility functions that are related to dealing with residuals.
 
 from itertools import product
 from math import fmod
-from typing import Dict, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 from photutils.centroids import centroid_com
 from polarTransform import convertToPolarImage
 from skimage.feature import blob_log, match_template
+from skimage.filters import gaussian
 
 import h5py
 import numpy as np
 
 from hsr4hci.coordinates import get_center
 from hsr4hci.general import shift_image, crop_or_pad
+from hsr4hci.photometry import get_flux
 
 
 # -----------------------------------------------------------------------------
@@ -78,7 +80,7 @@ def assemble_residual_stack_from_hypotheses(
 
 
 def _get_radial_gradient_mask(
-    mask_size: Tuple[int, int], power: float = 1.0
+    mask_size: Tuple[int, int], power: float = 0.5
 ) -> np.ndarray:
     """
     Compute radial gradient, that is, a array where the value is its
@@ -90,7 +92,7 @@ def _get_radial_gradient_mask(
     Args:
         mask_size: A tuple `(x_size, y_size)` specifying the size of
             the radial gradient mask.
-        power: The power to which the gradient is taken (default: 1).
+        power: The power to which the gradient is taken (default: 0.5).
 
     Returns:
         A radial gradient mask of the given size.
@@ -151,6 +153,58 @@ def _get_expected_signal(
     expected_signal_polar = shift_image(expected_signal_polar, (d_rho, d_phi))
 
     return np.asarray(expected_signal_polar)
+
+
+def _prune_blobs(blobs: List[Tuple[float, float, float]]) -> np.ndarray:
+    """
+    Prune a list of blobs: if there are two blobs at (approximately) the
+    same separation, we only keep the brighter blob.
+
+    Note: This is an extremely simple version of "pruning", and it does
+    *not* cover all corner cases. However, it seems sufficient for most
+    cases that will cause problems in practice.
+
+    Args:
+        blobs: A list of 3-tuples describing the blobs we want to prune,
+            where each tuple has the form `(separation, polar angle,
+            brightness)`.
+
+    Returns:
+        A 2D numpy array containing only the positions (separation and
+        polar angle) of the pruned list of blobs.
+    """
+
+    # Store the pruned blobs that we will return
+    pruned = []
+
+    # Loop over all blobs to check which of them we will keep
+    for i in range(len(blobs)):
+
+        # Unpack the reference blob; this is the blob for which we
+        # decide if we want to keep it or not
+        rho_1, phi_1, brightness_1 = blobs[i]
+
+        # Loop (again) over all blobs
+        for j in range(len(blobs)):
+
+            # We do not compare a blob with itself
+            if i == j:
+                continue
+
+            # Unpack the blob with which we will compare
+            rho_2, phi_2, brightness_2 = blobs[j]
+
+            # If the blob that we are comparing with is radially close and
+            # brighter than the reference blob, we break the inner loop
+            if abs(rho_1 - rho_2) <= 3 and brightness_2 > brightness_1:
+                break
+
+        # Only if the inner for-loop terminated normally, that is, not via the
+        # break command, do we add the reference blob
+        else:
+            pruned.append((rho_1, phi_1))
+
+    return np.array(pruned)
 
 
 def get_residual_selection_mask(
@@ -216,7 +270,8 @@ def get_residual_selection_mask(
         (5) The positions of the (centers) of the planet trace arcs,
             as found by the cross-correlation procedure, that is, a 2D
             numpy array of shape `(N, 2)` where `N` is the number of
-            found planet traces.
+            found planet traces. Each tuple consists of the separation
+            and the polar angle (in radian).
     """
 
     # -------------------------------------------------------------------------
@@ -240,7 +295,11 @@ def get_residual_selection_mask(
     # contribute to the match fraction, meaning it is "easier" to get a
     # high match fraction at small separations, whereas for pixels at larger
     # separation, this "uncertainty" is smaller.
-    cartesian *= _get_radial_gradient_mask(cartesian.shape)
+    cartesian *= _get_radial_gradient_mask(frame_size)
+
+    # Applying a mild Gaussian blur filter appears to give better results
+    # when projecting to polar coordinates
+    cartesian = gaussian(cartesian, sigma=1)
 
     # -------------------------------------------------------------------------
     # Prepare the template of the expected signal for the cross-correlation
@@ -272,6 +331,13 @@ def get_residual_selection_mask(
         finalAngle=np.pi,
     )
     polar = polar.T
+
+    # This removes a lot of "background noise" from the polar match fraction
+    # and yields cleaner planet signals that give better template matches
+    polar *= np.std(polar, axis=1, keepdims=True)
+    polar -= np.median(polar, axis=1, keepdims=True)
+
+    # Normalize the polar match fraction
     polar /= np.max(polar)
 
     # -------------------------------------------------------------------------
@@ -289,18 +355,15 @@ def get_residual_selection_mask(
     matched = np.clip(matched, a_min=0, a_max=None)
 
     # -------------------------------------------------------------------------
-    # Map to polar coordinates and cross-correlate with the expected signal
+    # Run blob finder, and prune blobs
     # -------------------------------------------------------------------------
-
-    # Initialize results variables
-    selection_mask = np.zeros(frame_size)
-    positions = []
 
     # Loop over two offset for the global phase: The choice of the phase for
     # the polar representation is arbitrary, and if we are unlucky, we might
     # have a planet signal that is "split into two", that, half the signal is
     # on the left-hand edge of the polar representation, and the other half is
     # on the right-hand edge. Therefore, we run with two different phases.
+    blobs: List[Tuple[float, float, float]] = []
     for global_phase_offset in (0, np.pi):
 
         # ---------------------------------------------------------------------
@@ -316,54 +379,70 @@ def get_residual_selection_mask(
         # Find blobs / peaks in the matched filter result
         # Depending on the data set and / or the hyper-parameters of the HSR,
         # the parameters of the blob finder might require additional tuning.
-        blobs = blob_log(
+        tmp_blobs = blob_log(
             image=phase_shifted_matched,
             max_sigma=grid_size / 4,
-            num_sigma=20,
-            threshold=0.1,
-            overlap=0,
+            num_sigma=32,
+            threshold=0.05,
+            overlap=0.0,
         )
 
-        # Resize the PSF template
-        psf_resized = crop_or_pad(psf_template, frame_size)
-        psf_resized /= np.max(psf_resized)
-        psf_resized = np.asarray(np.clip(psf_resized, 0.2, None)) - 0.2
-        psf_resized /= np.max(psf_resized)
-
-        # Initialize the selection mask
-        tmp_selection_mask = np.zeros(frame_size)
-
-        # Loop over blobs and and create and 1-pixel-wide arc for each
-        for blob in blobs:
+        # Process blobs: First, drop all blobs that are too close to the image
+        # border. Then replace the last column (by default the radius of the
+        # blob) by the brightness of the blob, and finally, convert the first
+        # two columns (the coordinates of the blob in the polar match fraction)
+        # to values for the radius  and separation in the original (Cartesian)
+        # match fraction.
+        for i in range(len(tmp_blobs)):
 
             # Unpack blob coordinates
-            rho, phi, _ = blob
-
+            rho, phi, _ = tmp_blobs[i]
+ 
             # Ignore blobs that are too close to the border
             if phi < grid_size / 4 or phi > 3 * grid_size / 4:
                 continue
+
+            # Measure blob brightness
+            _, brightness = get_flux(
+                frame=phase_shifted_matched, position=(rho, phi), mode='P'
+            )
 
             # Adjust for coordinate system conventions / scaling
             rho *= min(center[0], center[1]) / grid_size
             phi = (2 * np.pi * phi / grid_size) + global_phase_offset + np.pi
             phi = fmod(phi, 2 * np.pi)
 
-            # Store the positions
-            positions.append((rho, np.rad2deg(phi)))
+            blobs.append((rho, phi, brightness))
 
-            # Create an arc at the position defined by (rho, phi): place many
-            # shifted copies of the PSF template at the positions of the arc
-            alpha = np.deg2rad(field_rotation / 2)
-            for offset in np.linspace(-alpha, alpha, 2 * int(field_rotation)):
-                x = rho * np.cos(phi + offset)
-                y = rho * np.sin(phi + offset)
-                shifted = shift_image(psf_resized, (x, y))
-                tmp_selection_mask += shifted
+    # Prune the list of blobs: if there are two planet candidates at the same
+    # separation, we should only keep the brighter one
+    positions = _prune_blobs(blobs)
 
-        selection_mask += tmp_selection_mask
+    # -------------------------------------------------------------------------
+    # Finally, create the selection mask
+    # -------------------------------------------------------------------------
+
+    # Resize and normalize the PSF template
+    psf_resized = crop_or_pad(psf_template, frame_size)
+    psf_resized /= np.max(psf_resized)
+    psf_resized = np.asarray(np.clip(psf_resized, 0.2, None)) - 0.2
+    psf_resized /= np.max(psf_resized)
+
+    # Initialize the selection mask
+    selection_mask = np.zeros(frame_size)
+
+    # Loop over blobs and create an arc at the position defined by (rho, phi):
+    # place many shifted copies of the PSF template at the positions of the arc
+    for rho, phi in positions:
+        alpha = np.deg2rad(field_rotation / 2)
+        for offset in np.linspace(-alpha, alpha, 2 * int(field_rotation)):
+            x = rho * np.cos(phi + offset)
+            y = rho * np.sin(phi + offset)
+            shifted = shift_image(psf_resized, (x, y))
+            selection_mask += shifted
 
     # Finally, threshold the selection mask (which so far is a sum of shifted
     # PSF templates) to binarize it
-    selection_mask = selection_mask > 0.2
+    selection_mask = selection_mask * cartesian > 0.2
 
-    return selection_mask, polar, matched, expected_signal, np.array(positions)
+    return selection_mask, polar, matched, expected_signal, positions
