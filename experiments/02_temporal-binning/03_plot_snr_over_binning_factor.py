@@ -66,39 +66,61 @@ if __name__ == '__main__':
 
     # Load the metadata of the data set (e.g., because we need the DIT)
     print('Loading data set metadata...', end=' ', flush=True)
-    metadata = load_metadata(name=dataset)
+    metadata = load_metadata(name_or_path=dataset)
     dit = metadata['DIT_STACK']
     print('Done!', flush=True)
 
     # Initialize a new plot to which we will add everything
-    fig, ax1 = plt.subplots(figsize=(10, 5))
+    fig, ax1 = plt.subplots(figsize=(7.24551, 7.24551 / 2))
+    max_factor = 1
 
     # -------------------------------------------------------------------------
     # Load and plot the results for PCA
     # -------------------------------------------------------------------------
 
     # Read in the results for PCA into a pandas DataFrame
-    print('Reading in PCA results...', end=' ', flush=True)
-    file_path = pca_dir / f'snr__{planet}.tsv'
-    df = pd.read_csv(file_path, sep='\t')
-    print('Done!', flush=True)
+    print('Reading and plotting in PCA results...', end=' ', flush=True)
 
-    # Plot results for different numbers of principal components
-    for i, n_pc in enumerate([1, 3, 5, 10, 25, 50]):
+    try:
 
-        # Select the subset of the data frame that corresponds
-        df_selection = df[df['n_pc'] == n_pc]
+        # Read in the results for PCA into a pandas DataFrame
+        file_path = pca_dir / f'metrics__{planet}.tsv'
+        df = pd.read_csv(file_path, sep='\t')
 
-        # Plot the SNR over the binning factor
-        ax1.plot(df_selection.factor, df_selection.snr, color=f'C{i + 1}')
-        ax1.plot(
-            df_selection.factor,
-            df_selection.snr,
-            'o',
-            markerfacecolor=f'C{i + 1}',
-            markeredgecolor='white',
-            label=f'PCA (n = {n_pc})',
-        )
+        # Plot results for different numbers of principal components
+        for i, n_components in enumerate([1, 5, 10, 20, 50, 100]):
+
+            # Select the subset of the data frame that corresponds
+            df_selection = df[df['n_components'] == n_components]
+            max_factor = max(max_factor, df_selection.factor.max())
+
+            # Plot the SNR over the binning factor
+            ax1.plot(
+                df_selection.factor,
+                df_selection.log_fpf_mean,
+                color=f'C{i + 1}',
+            )
+            ax1.plot(
+                df_selection.factor,
+                df_selection.log_fpf_mean,
+                'o',
+                markerfacecolor=f'C{i + 1}',
+                markeredgecolor='white',
+                markersize=4,
+                label=f'PCA (n={n_components})',
+            )
+            # ax1.fill_between(
+            #     df_selection.factor,
+            #     df_selection.log_fpf_min,
+            #     df_selection.log_fpf_max,
+            #     facecolor=f'C{i + 1}',
+            #     alpha=0.25,
+            # )
+
+        print('Done!', flush=True)
+
+    except FileNotFoundError:
+        print('Failed!', flush=True)
 
     # -------------------------------------------------------------------------
     # Load and plot the results for HSR (signal fitting)
@@ -108,20 +130,29 @@ if __name__ == '__main__':
 
     try:
 
-        # Read in the results for PCA into a pandas DataFrame
-        file_path = signal_fitting_dir / f'snr__{planet}.tsv'
+        # Read in the results for signal fitting into a pandas DataFrame
+        file_path = signal_fitting_dir / f'metrics__{planet}.tsv'
         df = pd.read_csv(file_path, sep='\t')
+        max_factor = max(max_factor, df.factor.max())
 
         # Plot the SNR over the binning factor
-        ax1.plot(df.factor, df.snr, ls='-', color='C0')
+        ax1.plot(df.factor, df.log_fpf_mean, ls='-', color='C0')
         ax1.plot(
             df.factor,
-            df.snr,
+            df.log_fpf_mean,
             's',
             markerfacecolor='C0',
             markeredgecolor='white',
+            markersize=4,
             label='HSR (signal fitting)',
         )
+        # ax1.fill_between(
+        #     df.factor,
+        #     df.log_fpf_min,
+        #     df.log_fpf_max,
+        #     facecolor='C0',
+        #     alpha=0.25,
+        # )
 
         print('Done!', flush=True)
 
@@ -136,20 +167,31 @@ if __name__ == '__main__':
 
     try:
 
-        # Read in the results for PCA into a pandas DataFrame
-        file_path = signal_masking_dir / f'snr__{planet}.tsv'
+        # Read in the results for signal masking into a pandas DataFrame
+        file_path = signal_masking_dir / f'metrics__{planet}.tsv'
         df = pd.read_csv(file_path, sep='\t')
+        max_factor = max(max_factor, df.factor.max())
 
         # Plot the SNR over the binning factor
-        ax1.plot(df.factor, df.snr, ls='--', color=adjust_luminosity('C0'))
+        ax1.plot(
+            df.factor, df.log_fpf_mean, ls='--', color=adjust_luminosity('C0')
+        )
         ax1.plot(
             df.factor,
-            df.snr,
+            df.log_fpf_mean,
             's',
             markerfacecolor=adjust_luminosity('C0'),
             markeredgecolor='white',
+            markersize=4,
             label='HSR (signal masking)',
         )
+        # ax1.fill_between(
+        #     df.factor,
+        #     df.log_fpf_min,
+        #     df.log_fpf_max,
+        #     facecolor=adjust_luminosity('C0'),
+        #     alpha=0.25,
+        # )
 
         print('Done!', flush=True)
 
@@ -170,19 +212,37 @@ if __name__ == '__main__':
     )
 
     ax1.grid(which='both', color='lightgray', ls='--')
-    ax1.legend(loc='best')
+    ax1.legend(
+        loc='lower center',
+        ncol=8,
+        fontsize=6,
+        handletextpad=0.05,
+        mode="expand",
+        columnspacing=1.5,
+    )
 
-    ax1.set_xlim(0.9, 1.1 * df.factor.max())
+    # Set plot limits
+    ax1.set_xlim(0.9, 1.1 * max_factor)
     ax1.set_ylim(0.0, None)
 
+    # Set up font sizes
+    for ax in (ax1, ax2):
+        for item in (
+            [ax.title, ax.xaxis.label, ax.yaxis.label]
+            + ax.get_xticklabels()
+            + ax.get_yticklabels()
+        ):
+            item.set_fontsize(6)
+
+    # Add labels
     ax1.set_xlabel('Binning factor')
     ax2.set_xlabel('Effective Integration Time (s)')
-    ax1.set_ylabel('Signal-to-noise ratio (SNR)')
+    ax1.set_ylabel('-log(False Positive Fraction)')
     fig.tight_layout()
 
     # Save plot
-    file_path = dataset_dir / 'snr_over_binning_factor.pdf'
-    plt.savefig(file_path, bbox_inches='tight', pad_inches=0)
+    file_path = dataset_dir / 'log_fpf_over_binning_factor.pdf'
+    plt.savefig(file_path, bbox_inches='tight', pad_inches=0.025)
 
     # -------------------------------------------------------------------------
     # Postliminaries
