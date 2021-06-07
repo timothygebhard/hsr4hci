@@ -58,7 +58,7 @@ if __name__ == '__main__':
 
         # Load correlation coefficients from FITS
         file_path = fits_dir / f'{dataset}.fits'
-        correlations = np.asarray(read_fits(file_path=file_path))
+        correlations = read_fits(file_path=file_path, return_header=False)
 
         # Select CC map that we want to plot (flip coordinates because numpy!)
         cc_map = correlations[y, x]

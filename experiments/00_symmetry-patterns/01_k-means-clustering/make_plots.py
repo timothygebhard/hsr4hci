@@ -52,11 +52,11 @@ if __name__ == '__main__':
 
         # Load data set (and crop to some reasonable size)
         stack, parang, psf_template, obs_con, metadata = load_dataset(
-            name=dataset,
+            name_or_path=dataset,
             frame_size=(51, 51),
         )
         n_frames, x_size, y_size = stack.shape
-        center = get_center(stack.shape[1:])
+        center = get_center((stack.shape[1], stack.shape[2]))
 
         # Normalize / whiten the data
         # This is necessary, otherwise everything is just clustered based on

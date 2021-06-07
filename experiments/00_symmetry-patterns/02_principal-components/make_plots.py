@@ -56,7 +56,7 @@ if __name__ == '__main__':
 
         # Load data set (and crop to some reasonable size)
         stack, parang, psf_template, obs_con, metadata = load_dataset(
-            name=dataset,
+            name_or_path=dataset,
             frame_size=(51, 51),
             binning_factor=1,
         )
@@ -66,13 +66,15 @@ if __name__ == '__main__':
         _, components = get_pca_signal_estimates(
             stack=stack,
             parang=parang,
-            pca_numbers=[24],
+            n_components=24,
             return_components=True,
         )
 
         for n in range(24):
 
+            # Scale components to (-1, 1)
             plot_array = components[n]
+            plot_array /= np.nanpercentile(np.abs(plot_array), 99.99)
 
             # Prepare grid for the pcolormesh()
             x_range = np.arange(x_size)
@@ -80,8 +82,7 @@ if __name__ == '__main__':
             x, y = np.meshgrid(x_range, y_range)
 
             # Plot the result
-            fig, ax = plt.subplots(figsize=(3, 3))
-            limit = 1.1 * np.max(np.percentile(plot_array, 99.95))
+            fig, ax = plt.subplots(figsize=(2.4, 2.4))
             img = ax.pcolormesh(
                 x,
                 y,
@@ -89,10 +90,10 @@ if __name__ == '__main__':
                 shading='nearest',
                 cmap='RdBu_r',
                 rasterized=True,
-                vmin=-limit,
-                vmax=limit,
+                vmin=-1,
+                vmax=1,
             )
-            ax.plot(center[0], center[1], '+', color='black', ms=12)
+            ax.plot(center[0], center[1], '+', color='black', ms=8)
             disable_ticks(ax)
 
             # Create the scale bar and add it to the frame
@@ -100,14 +101,29 @@ if __name__ == '__main__':
                 transform=ax.transData,
                 size=0.5 / float(metadata['PIXSCALE']),
                 label='0.5"',
-                loc=2,
+                loc=1,
                 pad=1,
                 color='black',
                 frameon=False,
                 size_vertical=0,
-                fontproperties=fm.FontProperties(size=12),
+                fontproperties=fm.FontProperties(size=10),
             )
             ax.add_artist(scalebar)
+
+            # Use another size bar to add a label for the number of principal
+            # components that stylistically matches the scale bar
+            label = AnchoredSizeBar(
+                transform=ax.transData,
+                size=0,
+                label=f'PC #{n + 1}',
+                loc=4,
+                pad=1,
+                color='black',
+                frameon=False,
+                size_vertical=0,
+                fontproperties=fm.FontProperties(size=10),
+            )
+            ax.add_artist(label)
 
             # Ensure that the results directory for this data set exists
             dataset_dir = plots_dir / dataset
@@ -116,7 +132,9 @@ if __name__ == '__main__':
             # Save the plot as a PDF
             fig.tight_layout()
             file_path = dataset_dir / f'{dataset}__n_pc={n}.pdf'
-            plt.savefig(file_path, bbox_inches='tight', pad_inches=0.025)
+            plt.savefig(
+                file_path, bbox_inches='tight', dpi=600, pad_inches=0.005
+            )
             plt.close()
 
         print(f'Done! ({time.time() - start_time:.1f} seconds)', flush=True)
