@@ -113,7 +113,9 @@ if __name__ == '__main__':
     # Loop over the binning factors to compute the results
     for factor in factors:
 
-        print(f'Collecting SNR for factor = {factor}...', end=' ', flush=True)
+        print(
+            f'Computing metrics for factor = {factor}...', end=' ', flush=True
+        )
 
         # Define path to experiment directory; load experiment config
         experiment_dir = main_dir / f'factor_{factor}'
