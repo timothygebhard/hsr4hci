@@ -397,7 +397,7 @@ def get_residual_selection_mask(
 
             # Unpack blob coordinates
             rho, phi, _ = tmp_blobs[i]
- 
+
             # Ignore blobs that are too close to the border
             if phi < grid_size / 4 or phi > 3 * grid_size / 4:
                 continue
