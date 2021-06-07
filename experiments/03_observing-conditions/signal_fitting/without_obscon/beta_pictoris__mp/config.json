@@ -1,33 +1,29 @@
 {
   "dataset": {
-    "name":                    "beta_pictoris__mp",
-    "binning_factor":          25,
-    "frame_size":              [65, 65]
+    "name_or_path":         "beta_pictoris__mp",
+    "binning_factor":       64,
+    "frame_size":           [81, 81]
   },
   "observing_conditions": {
-    "selected_keys":           null
+    "selected_keys":        null
   },
   "roi_mask": {
-    "inner_radius":            [0.00, "arcsec"],
-    "outer_radius":            [0.65, "arcsec"]
+    "inner_radius":         [0.00, "arcsec"],
+    "outer_radius":         [0.65, "arcsec"]
   },
   "selection_mask": {
-    "annulus_width":           [ 0.0, "pixel"],
-    "radius_position":         [10.0, "pixel"],
-    "radius_mirror_position":  [10.0, "pixel"]
+    "radius_position":      [16.0, "pixel"],
+    "radius_opposite":      [16.0, "pixel"]
   },
-  "mode":                      "signal_fitting",
-  "n_signal_times":            30,
-  "n_splits":                  3,
+  "train_mode":             "signal_fitting",
+  "n_signal_times":         32,
+  "n_train_splits":         3,
   "base_model": {
-    "module":                  "sklearn.linear_model",
-    "class":                   "RidgeCV",
+    "module":               "sklearn.linear_model",
+    "class":                "RidgeCV",
     "parameters": {
-      "fit_intercept":         true,
-      "alphas":                [1e0, 1e6, 51]
+      "fit_intercept":      true,
+      "alphas":             [1e0, 1e6, 51]
     }
-  },
-  "consistency_checks": {
-    "filter_size":             1
   }
 }
