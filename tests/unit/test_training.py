@@ -28,7 +28,6 @@ from hsr4hci.masking import get_annulus_mask
 # TESTS
 # -----------------------------------------------------------------------------
 
-
 def test__get_signal_times() -> None:
 
     # Case 1
@@ -42,6 +41,10 @@ def test__get_signal_times() -> None:
     # Case 3
     signal_times = get_signal_times(n_frames=10, n_signal_times=3)
     assert np.array_equal(signal_times, np.array([0, 4, 9]))
+
+    # Case 4
+    signal_times = get_signal_times(n_frames=10, n_signal_times=0)
+    assert np.array_equal(signal_times, np.array([]))
 
 
 def test___train_default_model() -> None:
