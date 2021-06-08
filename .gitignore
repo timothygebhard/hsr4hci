@@ -1,3 +1,6 @@
+# Ignore .local folder
+.local
+
 # Ignore CSV and PDF files
 *.csv
 *.pdf
