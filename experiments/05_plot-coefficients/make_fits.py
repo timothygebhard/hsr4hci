@@ -119,12 +119,12 @@ if __name__ == '__main__':
         coefficients[x, y, selection_mask] = pixel_coefs
 
     # Ensure that the directory for the FITS files exists
-    fits_dir = Path('./fits')
-    fits_dir.mkdir(exist_ok=True)
+    fits_dir = Path(f'./{dataset}/fits')
+    fits_dir.mkdir(exist_ok=True, parents=True)
 
     # Save the coefficients to FITS
     print('\nSaving results to FITS...', end=' ', flush=True)
-    file_path = fits_dir / f'{dataset}__{binning_factor}.fits'
+    file_path = fits_dir / f'binning-factor_{binning_factor}.fits'
     save_fits(array=coefficients, file_path=file_path)
     print('Done!', flush=True)
 
