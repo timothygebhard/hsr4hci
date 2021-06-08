@@ -21,8 +21,9 @@ from hsr4hci.data import load_dataset
 from hsr4hci.fits import save_fits
 from hsr4hci.forward_modeling import add_fake_planet
 from hsr4hci.pca import get_pca_signal_estimates
+from hsr4hci.psf import get_psf_fwhm
 from hsr4hci.positions import get_injection_position
-from hsr4hci.units import set_units_for_instrument
+from hsr4hci.units import InstrumentUnitsContext
 
 
 # -----------------------------------------------------------------------------
@@ -90,12 +91,14 @@ if __name__ == '__main__':
     pixscale = float(metadata['PIXSCALE'])
     lambda_over_d = float(metadata['LAMBDA_OVER_D'])
 
-    # Activate the unit conversions for this instrument
-    set_units_for_instrument(
+    # Define the unit conversion context for this data set
+    instrument_units_context = InstrumentUnitsContext(
         pixscale=Quantity(pixscale, 'arcsec / pixel'),
         lambda_over_d=Quantity(lambda_over_d, 'arcsec'),
-        verbose=False,
     )
+
+    # Fit the FWHM of the PSF (in pixels)
+    psf_fwhm = get_psf_fwhm(psf_template)
 
     # -------------------------------------------------------------------------
     # Inject a fake planet into the stack
@@ -103,7 +106,7 @@ if __name__ == '__main__':
 
     # Get injection parameters
     contrast = config['injection']['contrast']
-    separation = config['injection']['separation']
+    separation = config['injection']['separation'] * psf_fwhm
     azimuthal_position = config['injection']['azimuthal_position']
 
     # If any parameter is None, skip the injection...
@@ -116,11 +119,11 @@ if __name__ == '__main__':
         # Compute position at which to inject the fake planet
         print('Computing injection position...', end=' ', flush=True)
         injection_position = get_injection_position(
-            separation=Quantity(separation, 'lambda_over_d'),
+            separation=Quantity(separation, 'pixel'),
             azimuthal_position=azimuthal_position,
         )
         print(
-            f'Done! (separation = {separation}, '
+            f'Done! (separation = {separation} pixel, '
             f'azimuthal_position = {azimuthal_position})',
             flush=True,
         )
@@ -149,16 +152,14 @@ if __name__ == '__main__':
 
     # Run PCA (for a fixed number of principal components)
     print('Running PCA...', end=' ', flush=True)
-    signal_estimate = np.asarray(
-        get_pca_signal_estimates(
+    with instrument_units_context:
+        signal_estimate = get_pca_signal_estimates(
             stack=stack,
             parang=parang,
-            pca_numbers=[int(config['n_components'])],
+            n_components=int(config['n_components']),
             roi_mask=None,
             return_components=False,
-        )
-    )
-    signal_estimate = signal_estimate.squeeze()
+        ).squeeze()
     print('Done!', flush=True)
 
     # Save signal estimate to FITS
