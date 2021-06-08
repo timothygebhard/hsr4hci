@@ -106,7 +106,7 @@ if __name__ == '__main__':
 
     # Get injection parameters
     contrast = config['injection']['contrast']
-    separation = config['injection']['separation'] * psf_fwhm
+    separation = config['injection']['separation']
     azimuthal_position = config['injection']['azimuthal_position']
 
     # If any parameter is None, skip the injection...
@@ -116,6 +116,9 @@ if __name__ == '__main__':
     # ... otherwise, add a fake planet with given parameters to the stack
     else:
 
+        # Convert separation from units of FWHM to pixel
+        separation *=  psf_fwhm
+
         # Compute position at which to inject the fake planet
         print('Computing injection position...', end=' ', flush=True)
         injection_position = get_injection_position(
@@ -123,7 +126,7 @@ if __name__ == '__main__':
             azimuthal_position=azimuthal_position,
         )
         print(
-            f'Done! (separation = {separation} pixel, '
+            f'Done! (separation = {separation:.1f} pixel, '
             f'azimuthal_position = {azimuthal_position})',
             flush=True,
         )
