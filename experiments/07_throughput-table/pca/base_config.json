@@ -1,8 +1,8 @@
 {
   "dataset": {
     "name":               "beta_pictoris__lp",
-    "binning_factor":     64,
-    "frame_size":         [75, 75],
+    "binning_factor":     128,
+    "frame_size":         [107, 107],
     "remove_planets":     true
   },
   "injection": {
@@ -10,5 +10,5 @@
     "contrast":           null,
     "azimuthal_position": null
   },
-  "n_components":         25
+  "n_components":         20
 }
