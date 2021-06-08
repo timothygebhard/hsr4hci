@@ -124,9 +124,9 @@ if __name__ == '__main__':
 
     # Define the the subset of the frame which we will process
     partial_roi_mask = get_partial_roi_mask(
-        roi_mask = np.full((x_size, y_size), True),
+        roi_mask=np.full((x_size, y_size), True),
         roi_split=roi_split,
-        n_roi_splits=n_roi_splits
+        n_roi_splits=n_roi_splits,
     )
 
     # Train models and get residuals for them
