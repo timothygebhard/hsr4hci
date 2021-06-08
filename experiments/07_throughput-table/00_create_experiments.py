@@ -100,7 +100,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--contrasts',
         nargs='+',
-        default=[5, 7.5, 10, 12.5],
+        default=[6, 8, 10, 12],
         type=float,
         help='Contrast values (in mag) for which to create experiments.',
     )
@@ -116,7 +116,7 @@ if __name__ == '__main__':
         nargs='+',
         default=[1, 2, 3, 4, 5, 6, 7, 8],
         type=float,
-        help='Separations (in lambda / D) for which to create experiments.',
+        help='Separations (in PSF FWHMs) for which to create experiments.',
     )
     parser.add_argument(
         '--no-baseline-experiment',
