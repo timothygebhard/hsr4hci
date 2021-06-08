@@ -1,0 +1,20 @@
+{
+  "dataset": {
+    "name_or_path":         "beta_pictoris__mp",
+    "binning_factor":       100,
+    "frame_size":           [51, 51],
+    "remove_planets":       true
+  },
+  "observing_conditions": {
+    "selected_keys":        null
+  },
+  "n_train_splits":         3,
+  "base_model": {
+    "module":               "sklearn.linear_model",
+    "class":                "RidgeCV",
+    "parameters": {
+      "fit_intercept":      true,
+      "alphas":             [1e0, 1e6, 51]
+    }
+  }
+}
