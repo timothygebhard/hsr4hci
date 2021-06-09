@@ -422,7 +422,7 @@ def test__integration_hsr(
         parang=parang,
         psf_template=psf_template,
     )
-    assert np.nansum(selection_mask) == 54
+    assert np.nansum(selection_mask) == 47
 
     # -------------------------------------------------------------------------
     # STEP 5: Assemble residual stack and compute signal estimate
@@ -433,12 +433,12 @@ def test__integration_hsr(
         hypotheses=hypotheses,
         selection_mask=selection_mask,
     )
-    assert np.isclose(np.nansum(residual_stack), 1648.7112)
+    assert np.isclose(np.nansum(residual_stack), 1602.8009)
 
     signal_estimate = derotate_combine(
         stack=residual_stack, parang=parang, mask=~roi_mask
     )
-    assert np.isclose(np.nansum(signal_estimate), 33.09916873817565)
+    assert np.isclose(np.nansum(signal_estimate), 32.17920799006242)
 
     # -------------------------------------------------------------------------
     # STEP 6: Compute metrics
@@ -456,9 +456,9 @@ def test__integration_hsr(
             ),
             aperture_radius=Quantity(psf_fwhm / 2, 'pixel'),
         )
-    assert np.isclose(metrics['snr']['min'], 27.318773899517815)
-    assert np.isclose(metrics['snr']['max'], 51.3596870001204)
-    assert np.isclose(metrics['snr']['mean'], 35.790890366307835)
+    assert np.isclose(metrics['snr']['min'], 26.932092860821648)
+    assert np.isclose(metrics['snr']['max'], 51.0694240208924)
+    assert np.isclose(metrics['snr']['mean'], 35.53277477320900)
 
     # -------------------------------------------------------------------------
     # STEP 7: Create a plot
