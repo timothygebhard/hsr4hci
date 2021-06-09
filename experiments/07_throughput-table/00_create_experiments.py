@@ -35,7 +35,7 @@ def create_submit_file(experiment_dir: Path, algorithm: str) -> Path:
 
     # Define algorithm-specific variables
     if algorithm == 'pca':
-        memory = 1024
+        memory = 10240
         cpus = 1
         job_script = scripts_dir / 'run_pca.py'
     elif algorithm in ('signal_fitting', 'signal_masking'):
