@@ -196,7 +196,7 @@ def _prune_blobs(blobs: List[Tuple[float, float, float]]) -> np.ndarray:
 
             # If the blob that we are comparing with is radially close and
             # brighter than the reference blob, we break the inner loop
-            if abs(rho_1 - rho_2) <= 3 and brightness_2 > brightness_1:
+            if abs(rho_1 - rho_2) <= 6 and brightness_2 > brightness_1:
                 break
 
         # Only if the inner for-loop terminated normally, that is, not via the
@@ -371,16 +371,23 @@ def get_residual_selection_mask(
         # ---------------------------------------------------------------------
 
         # Apply the global phase shift to the outputs of the template matching
+        # and pad it with zeros. The reason for the latter is that the blob
+        # finder below sometimes gives wrong results if a blob is too close to
+        # the border of the image, and padding with zeros seems like a simple
+        # solution for this problem.
         ratio = global_phase_offset / (2 * np.pi)
         phase_shifted_matched = np.roll(
             matched, shift=int(grid_size * ratio), axis=1
+        )
+        padded_phase_shifted_matched = crop_or_pad(
+            phase_shifted_matched, (3 * grid_size, 3 * grid_size)
         )
 
         # Find blobs / peaks in the matched filter result
         # Depending on the data set and / or the hyper-parameters of the HSR,
         # the parameters of the blob finder might require additional tuning.
         tmp_blobs = blob_log(
-            image=phase_shifted_matched,
+            image=padded_phase_shifted_matched,
             max_sigma=grid_size / 4,
             num_sigma=32,
             threshold=0.05,
@@ -398,13 +405,18 @@ def get_residual_selection_mask(
             # Unpack blob coordinates
             rho, phi, _ = tmp_blobs[i]
 
-            # Ignore blobs that are too close to the border
+            # Undo the zero-padding that we needed for the blob finder
+            rho -= grid_size
+            phi -= grid_size
+
+            # Ignore blobs that are too close to the border (these will be
+            # caught by the respective other `global_phase_offset`)
             if phi < grid_size / 4 or phi > 3 * grid_size / 4:
                 continue
 
-            # Measure blob brightness
+            # Measure the blob brightness for pruning purposes
             _, brightness = get_flux(
-                frame=phase_shifted_matched, position=(rho, phi), mode='P'
+                frame=phase_shifted_matched, position=(phi, rho), mode='P'
             )
 
             # Adjust for coordinate system conventions / scaling
@@ -414,8 +426,8 @@ def get_residual_selection_mask(
 
             blobs.append((rho, phi, brightness))
 
-    # Prune the list of blobs: if there are two planet candidates at the same
-    # separation, we should only keep the brighter one
+    # Prune the list of blobs to get the positions: if there are two planet
+    # candidates at the same separation, we should only keep the brighter one
     positions = _prune_blobs(blobs)
 
     # -------------------------------------------------------------------------
@@ -441,8 +453,9 @@ def get_residual_selection_mask(
             shifted = shift_image(psf_resized, (x, y))
             selection_mask += shifted
 
-    # Finally, threshold the selection mask (which so far is a sum of shifted
-    # PSF templates) to binarize it
-    selection_mask = selection_mask * cartesian > 0.2
+    # Finally, multiply the selection mask with the (normalized) original match
+    # fraction to drop any "bad pixels", and threshold to binarize it
+    selection_mask *= np.nan_to_num(match_fraction) / np.nanmax(match_fraction)
+    selection_mask = selection_mask > 0.2
 
     return selection_mask, polar, matched, expected_signal, positions
