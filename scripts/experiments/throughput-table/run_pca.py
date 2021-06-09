@@ -117,7 +117,7 @@ if __name__ == '__main__':
     else:
 
         # Convert separation from units of FWHM to pixel
-        separation *=  psf_fwhm
+        separation *= psf_fwhm
 
         # Compute position at which to inject the fake planet
         print('Computing injection position...', end=' ', flush=True)
