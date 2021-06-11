@@ -184,10 +184,8 @@ if __name__ == '__main__':
     # Save hypotheses to HDF
     print('Saving hypotheses...', end=' ', flush=True)
     file_path = fits_dir / 'hypotheses.fits'
-    try:
-        save_fits(hypotheses, file_path=file_path)
-    except FileExistsError:
-        pass
+    if not file_path.exists():
+        save_fits(hypotheses, file_path=file_path, overwrite=False)
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
