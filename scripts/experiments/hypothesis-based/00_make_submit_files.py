@@ -44,13 +44,13 @@ if __name__ == '__main__':
     parser.add_argument(
         '--cpus',
         type=int,
-        default=4,
+        default=2,
         help='Number of CPUs that the job should ask for.',
     )
     parser.add_argument(
         '--memory',
         type=int,
-        default=8192,
+        default=16384,
         help='Memory (in MB) that the job should ask for.',
     )
     parser.add_argument(
@@ -114,6 +114,7 @@ if __name__ == '__main__':
         clusterlogs_dir=clusterlogs_dir.as_posix(),
         memory=memory,
         cpus=cpus,
+        requirements=['Target.CpuFamily =!= 21'],
     )
     submit_file.add_job(
         name=name,
