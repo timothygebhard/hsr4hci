@@ -181,12 +181,12 @@ if __name__ == '__main__':
     partial_fits_dir = fits_dir / 'partial'
     partial_fits_dir.mkdir(exist_ok=True)
 
-    # Save hypotheses to HDF
-    print('Saving hypotheses...', end=' ', flush=True)
-    file_path = fits_dir / 'hypotheses.fits'
-    if not file_path.exists():
+    # Save hypotheses to FITS (only once)
+    if roi_split == 0:
+        print('Saving hypotheses...', end=' ', flush=True)
+        file_path = fits_dir / 'hypotheses.fits'
         save_fits(hypotheses, file_path=file_path, overwrite=False)
-    print('Done!', flush=True)
+        print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
     # STEP 2: Train HSR models
