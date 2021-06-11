@@ -216,10 +216,8 @@ if __name__ == '__main__':
     full_residuals = np.full(stack.shape, np.nan)
 
     # Loop over ROI, train models, and compute residuals
-    # We use this manual loop here because we also want to access and store all
-    # the "debugging" information, such as the coefficients, alphas, ...
     print('\nTraining HSR models:', flush=True)
-    for (x, y) in tqdm(get_positions_from_mask(roi_mask), ncols=80):
+    for (x, y) in tqdm(get_positions_from_mask(partial_roi_mask), ncols=80):
 
         # Define values for train_mode, signal_time and expected_signal
         if np.isnan(hypotheses[x, y]):
