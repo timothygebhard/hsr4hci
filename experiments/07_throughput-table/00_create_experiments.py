@@ -54,6 +54,7 @@ def create_submit_file(experiment_dir: Path, algorithm: str) -> Path:
         clusterlogs_dir=clusterlogs_dir,
         memory=memory,
         cpus=cpus,
+        requirements=['Target.CpuFamily =!= 21'],
     )
 
     # Add the experiment as a job
