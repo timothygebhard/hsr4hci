@@ -1,0 +1,35 @@
+{
+  "hypothesis": {
+    "b": {
+      "separation":         [0.44974, "arcsecond"],
+      "position_angle":     [210.26, "degree"],
+      "contrast":           7.85
+    }
+  },
+  "dataset": {
+    "name_or_path":         "beta_pictoris__lp",
+    "binning_factor":       1,
+    "frame_size":           [81, 81]
+  },
+  "observing_conditions": {
+    "selected_keys":        null
+  },
+  "roi_mask": {
+    "inner_radius":         [0.00, "arcsec"],
+    "outer_radius":         [0.65, "arcsec"]
+  },
+  "selection_mask": {
+    "radius_position":      [16.00, "pixel"],
+    "radius_opposite":      [16.00, "pixel"]
+  },
+  "train_mode":             "signal_fitting",
+  "n_train_splits":         3,
+  "base_model": {
+    "module":               "sklearn.linear_model",
+    "class":                "RidgeCV",
+    "parameters": {
+      "fit_intercept":      true,
+      "alphas":             [1e0, 1e6, 51]
+    }
+  }
+}
