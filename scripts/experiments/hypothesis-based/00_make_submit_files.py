@@ -59,6 +59,15 @@ if __name__ == '__main__':
         default=5,
         help='Amount of cluster dollars to bid for each job.',
     )
+    parser.add_argument(
+        '--n-splits',
+        type=int,
+        default=1,
+        help=(
+            'Number of splits into which the training data is divided to '
+            'parallelize the training.'
+        ),
+    )
     args = parser.parse_args()
 
     # -------------------------------------------------------------------------
@@ -78,6 +87,7 @@ if __name__ == '__main__':
     bid = args.bid
     cpus = args.cpus
     memory = args.memory
+    n_splits = args.n_splits
 
     # Define scripts directory
     scripts_dir = (
@@ -110,9 +120,11 @@ if __name__ == '__main__':
         job_script=(scripts_dir / f'{name}.py').as_posix(),
         arguments={
             'experiment-dir': experiment_dir.as_posix(),
+            'roi-split': '$(Process)',
+            'n-roi-splits': str(n_splits),
         },
         bid=bid,
-        queue=1,
+        queue=int(n_splits),
     )
     file_path = htcondor_dir / f'{name}.sub'
     submit_file.save(file_path=file_path.as_posix())
@@ -130,12 +142,12 @@ if __name__ == '__main__':
     # Create a submit file for creating a plot of the signal estimate
     # -------------------------------------------------------------------------
 
-    name = '02_get_contrast_and_snr'
+    name = '02_merge_residuals_and_get_signal_estimate'
 
     print(f'Creating {name}.sub...', end=' ', flush=True)
     submit_file = SubmitFile(
         clusterlogs_dir=clusterlogs_dir.as_posix(),
-        memory=1024,
+        memory=16384,
         cpus=1,
     )
     submit_file.add_job(
