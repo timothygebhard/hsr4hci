@@ -22,6 +22,7 @@ from hsr4hci.metrics import two_sample_t_test, compute_metrics
 
 def test__two_sample_t_test() -> None:
 
+    # Case 1
     signal, noise, snr, fpf, p_value = two_sample_t_test(
         planet_samples=[5],
         noise_samples=[-1, 1, 0, -1, 1],
@@ -31,6 +32,16 @@ def test__two_sample_t_test() -> None:
     assert np.isclose(snr, 5 / np.sqrt(1 + 1 / 5))
     assert np.isclose(fpf, 0.0051523818078138195)
     assert np.isclose(p_value, 0.9948476181921861)
+
+    # Case 2
+    with pytest.raises(ValueError) as value_error:
+        two_sample_t_test(planet_samples=[], noise_samples=[1, 2])
+    assert 'planet_samples must have at least 1' in str(value_error)
+
+    # Case 3
+    with pytest.raises(ValueError) as value_error:
+        two_sample_t_test(planet_samples=[1], noise_samples=[1])
+    assert 'noise_samples must have at least 2' in str(value_error)
 
 
 def test__compute_metrics() -> None:

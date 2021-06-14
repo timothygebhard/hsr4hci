@@ -61,6 +61,12 @@ def two_sample_t_test(
     n_1 = len(planet_samples)
     n_2 = len(noise_samples)
 
+    # Sanity checks
+    if n_1 < 1:
+        raise ValueError('planet_samples must have at least 1 entry!')
+    if n_2 < 2:
+        raise ValueError('noise_samples must have at least 2 entries!')
+
     # Compute the mean of the planet samples (generally, this is just the one
     # planet sample we have), and the mean of the noise / reference apertures
     mean_planet = float(np.mean(planet_samples))
