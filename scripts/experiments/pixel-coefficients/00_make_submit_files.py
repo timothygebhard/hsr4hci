@@ -111,7 +111,7 @@ if __name__ == '__main__':
     expected_job_memory = stack_memory + array_memory
     expected_job_memory /= 1024 ** 2
     expected_job_memory *= 1
-    expected_job_memory += 8192
+    expected_job_memory += 10240
     expected_job_memory = int(expected_job_memory)
 
     # -------------------------------------------------------------------------
@@ -167,7 +167,7 @@ if __name__ == '__main__':
     print(f'Creating {name}.sub...', end=' ', flush=True)
     submit_file = SubmitFile(
         clusterlogs_dir=clusterlogs_dir.as_posix(),
-        memory=8192,
+        memory=16384,
         cpus=1,
     )
     submit_file.add_job(
