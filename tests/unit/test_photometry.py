@@ -204,9 +204,9 @@ def test_get_flux() -> None:
 def test_get_stellar_flux() -> None:
 
     # Case 1
-    x, y = np.meshgrid(np.arange(33), np.arange(33))
+    x, y = np.meshgrid(np.arange(63), np.arange(63))
     gaussian = models.Gaussian2D(
-        x_mean=18, x_stddev=1, y_mean=18, y_stddev=1, amplitude=1
+        x_mean=32, x_stddev=1, y_mean=32, y_stddev=1, amplitude=1
     )
     flux = get_stellar_flux(
         psf_template=gaussian(x, y),
@@ -216,7 +216,7 @@ def test_get_stellar_flux() -> None:
         dit_psf_template=0.1,
         scaling_factor=0.02,
     )
-    assert np.isclose(flux, 0.2 * np.pi / 4)
+    assert np.isclose(flux, np.pi / 4 / 0.1 / 0.02)
 
 
 def test_get_fluxes_for_polar_positions() -> None:

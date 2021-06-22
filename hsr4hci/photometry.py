@@ -287,10 +287,10 @@ def get_stellar_flux(
     """
 
     # Normalize the PSF template to account for the different detector
-    # integration times (DIT) of the stack and the PSF template, as well as
-    # the usage of a neutral density filter
+    # integration times (DIT) of the stack and the PSF template, as well
+    # as for the usage of a neutral density filter
     psf_normalized = (
-        np.copy(psf_template) * dit_stack / dit_psf_template * scaling_factor
+        np.copy(psf_template) * dit_stack / dit_psf_template / scaling_factor
     )
 
     # Compute the flux at the center of the PSF template
