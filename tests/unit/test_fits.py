@@ -39,7 +39,7 @@ def test__save_fits(tmp_path_factory: TempPathFactory) -> None:
 
     # Save to FITS
     with pytest.warns(card.VerifyWarning) as record:
-        save_fits(array=array, file_path=str(file_path), header=header)
+        save_fits(array=array, file_path=file_path, header=header)
 
     # Catch astropy warnings about length of FITS keys
     assert len(record) == 3
@@ -49,6 +49,11 @@ def test__save_fits(tmp_path_factory: TempPathFactory) -> None:
             f"contains characters not allowed by the FITS standard; a "
             f"HIERARCH card will be created."
         )
+
+    # Case 2 (check if saving boolean arrays works)
+    array = np.identity(5).astype(bool)
+    file_path = test_dir / 'test_bool.fits'
+    save_fits(array=array, file_path=file_path)
 
 
 def test__read_fits(tmp_path_factory: TempPathFactory) -> None:

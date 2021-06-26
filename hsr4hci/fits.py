@@ -82,6 +82,10 @@ def save_fits(
     # Make sure that file_path is a proper Path
     file_path = Path(file_path)
 
+    # If the array is boolean, convert to integer (FITS does not support bool)
+    if array.dtype == 'bool':
+        array = array.astype(int)
+
     # Create a new HDU for the array
     hdu = fits.PrimaryHDU(array)
 
