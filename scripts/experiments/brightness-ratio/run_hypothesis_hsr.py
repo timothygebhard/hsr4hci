@@ -197,7 +197,7 @@ if __name__ == '__main__':
         else:
             mode = config['train_mode']
             signal_time = int(hypotheses[x, y])
-            expected_signal = signal_stack[:, x, y]
+            expected_signal = signal_stack[:, x, y] / np.max(signal_stack)
 
         # Train the model for this pixel and store the residuals
         with instrument_units_context:
