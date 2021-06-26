@@ -1,5 +1,5 @@
 """
-Create experiments for a given algorithm.
+Create experiments.
 """
 
 # -----------------------------------------------------------------------------
@@ -26,24 +26,56 @@ from hsr4hci.htcondor import SubmitFile
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def create_submit_file(experiment_dir: Path, algorithm: str) -> Path:
+def create_submit_file(
+    experiment_dir: Path,
+    search_mode: str,
+    algorithm: str,
+) -> Path:
+    """
+    Create the HTCondor submit file for an experiment.
+
+    Args:
+        experiment_dir: Path to the experiment directory for which to
+            create the submit file.
+        search_mode: Search mode (blind search or hypothesis-based).
+            Required to select the script that runs the experiment.
+        algorithm: The algorithm to use (PCA or HSR + signal fitting /
+            signal masking).
+
+    Returns:
+        Path to the *.sub file that runs the experiment.
+    """
 
     # Define path to scripts directory
     scripts_dir = (
-        get_hsr4hci_dir() / 'scripts' / 'experiments' / 'throughput-table'
+        get_hsr4hci_dir() / 'scripts' / 'experiments' / 'brightness-ratio'
     )
 
-    # Define algorithm-specific variables
-    if algorithm == 'pca':
-        memory = 10240
-        cpus = 1
-        job_script = scripts_dir / 'run_pca.py'
-    elif algorithm in ('signal_fitting', 'signal_masking'):
-        memory = 8192
-        cpus = 2
-        job_script = scripts_dir / 'run_hsr.py'
+    # Define script and requirements for blind-search PCA / HSR
+    if search_mode == 'blind_search':
+        if algorithm == 'pca':
+            memory = 10240
+            cpus = 1
+            job_script = scripts_dir / 'run_pca.py'
+        elif algorithm in ('signal_fitting', 'signal_masking'):
+            memory = 8192
+            cpus = 2
+            job_script = scripts_dir / 'run_hsr.py'
+        else:
+            raise ValueError(f'Illegal value "{algorithm}" for algorithm!')
+
+    # Define script and requirements for hypothesis-based HSR
+    elif search_mode == 'hypothesis_based':
+        if algorithm in ('signal_fitting', 'signal_masking'):
+            memory = 8192
+            cpus = 2
+            job_script = scripts_dir / 'run_hypothesis_hsr.py'
+        else:
+            raise ValueError(f'Illegal value "{algorithm}" for algorithm!')
+
+    # Raise error for illegal search_mode
     else:
-        raise ValueError(f'Illegal value "{algorithm}" for algorithm!')
+        raise ValueError(f'Illegal value "{search_mode}" for search_mode!')
 
     # Create the clusterlogs directory
     htcondor_dir = experiment_dir / 'htcondor'
@@ -99,9 +131,32 @@ if __name__ == '__main__':
         help='Name of the HCIpp algorithm for which to create experiments.',
     )
     parser.add_argument(
+        '--search-mode',
+        type=str,
+        choices=['blind_search', 'hypothesis_based'],
+        required=True,
+        help='Blind search or hypothesis-based (only relevant for HSR).',
+    )
+    parser.add_argument(
         '--contrasts',
         nargs='+',
-        default=[6, 8, 10, 12],
+        default=[
+            5.0,
+            5.5,
+            6.0,
+            6.5,
+            7.0,
+            7.5,
+            8.0,
+            8.5,
+            9.0,
+            9.5,
+            10.0,
+            10.5,
+            11.0,
+            11.5,
+            12.0,
+        ],
         type=float,
         help='Contrast values (in mag) for which to create experiments.',
     )
@@ -129,6 +184,7 @@ if __name__ == '__main__':
 
     # Define shortcuts to arguments
     algorithm = args.algorithm
+    search_mode = args.search_mode
     contrasts = sorted(args.contrasts)
     separations = sorted(args.separations)
     azimuthal_positions = sorted(args.azimuthal_positions)
@@ -138,12 +194,13 @@ if __name__ == '__main__':
     )
 
     # Define path to this algorithm's base directory and check if it exists
-    algorithm_dir = Path('.', algorithm).resolve()
+    algorithm_dir = Path('.', search_mode, algorithm).resolve()
     if not algorithm_dir.exists():
         raise RuntimeError(f'{algorithm_dir} does not exist!')
 
     # Confirm that the parameter space is okay
     print('I will create experiments for the following parameters:')
+    print(f'  search_mode:         {search_mode}')
     print(f'  algorithm:           {algorithm}')
     print(f'  contrasts:           {contrasts}')
     print(f'  separations:         {separations}')
@@ -197,7 +254,9 @@ if __name__ == '__main__':
 
         # Create a submit file for the experiment
         file_path = create_submit_file(
-            experiment_dir=no_fake_planets_dir, algorithm=algorithm
+            experiment_dir=no_fake_planets_dir,
+            search_mode=search_mode,
+            algorithm=algorithm,
         )
         submit_file_paths.append(file_path)
 
@@ -214,14 +273,12 @@ if __name__ == '__main__':
     # Loop over all combinations and create experiments
     for (contrast, separation, azimuthal_position) in combinations:
 
-        # Define experiment name
+        # Define experiment name and create the directory for this experiment
         name = f'{contrast:.2f}__{separation:.1f}__{azimuthal_position}'
-
-        print(f'Creating experiment: {name}...', end=' ', flush=True)
-
-        # Create the directory for this experiment
-        experiment_dir = experiments_dir / name
+        experiment_dir = (experiments_dir / name).resolve()
         experiment_dir.mkdir(exist_ok=True, parents=True)
+
+        print(f'Creating experiment_ {experiment_dir}...', end=' ', flush=True)
 
         # Create experiment configuration (by overwriting previous config)
         config['injection']['separation'] = separation
@@ -235,7 +292,9 @@ if __name__ == '__main__':
 
         # Create a submit file for the experiment
         file_path = create_submit_file(
-            experiment_dir=experiment_dir, algorithm=algorithm
+            experiment_dir=experiment_dir,
+            search_mode=search_mode,
+            algorithm=algorithm,
         )
         submit_file_paths.append(file_path)
 
