@@ -275,8 +275,9 @@ if __name__ == '__main__':
         # Get the hypothesis for this pixel, and store the hypothesis-based
         # residual for this pixel (i.e., the "best" residual that was obtained
         # with signal fitting / masking).
-        signal_time = str(int(hypotheses[x, y]))
-        hypothesis_residuals[:, x, y] = residuals[signal_time][:, x, y]
+        if not np.isnan(hypotheses[x, y]):
+            signal_time = str(int(hypotheses[x, y]))
+            hypothesis_residuals[:, x, y] = residuals[signal_time][:, x, y]
 
     # Save the default residuals to FITS
     print('Saving default residuals to FITS...', end=' ', flush=True)
