@@ -346,7 +346,7 @@ def _add_scalebar(
     scalebar = AnchoredSizeBar(
         transform=ax.transData,
         size=scalebar_size,
-        label=str(scalebar_label_value),
+        label=f'{scalebar_label_value}"',
         loc=1,
         pad=1,
         color='white',
