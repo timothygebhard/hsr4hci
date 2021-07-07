@@ -14,9 +14,8 @@ from skimage.morphology import binary_dilation, disk
 
 import numpy as np
 
-from hsr4hci.coordinates import cartesian2polar, get_center
-from hsr4hci.general import crop_or_pad, rotate_position, shift_image
-from hsr4hci.forward_modeling import add_fake_planet
+from hsr4hci.coordinates import get_center
+from hsr4hci.general import crop_or_pad, shift_image
 
 
 # -----------------------------------------------------------------------------
@@ -189,30 +188,16 @@ def get_predictor_mask(
 def get_exclusion_mask(
     mask_size: Tuple[int, int],
     position: Tuple[float, float],
-    parang: np.ndarray,
     psf_template: np.ndarray,
-    signal_time: Optional[int],
 ) -> np.ndarray:
     """
     Get a mask of the pixels that we must *not* use as predictors.
 
-    The idea of this function is the following: Instead of manually
-    constructing an exclusion region based on our knowledge of the
-    signal size and the planet movement (which is rather tedious),
-    we simply construct a signal stack (with a low temporal resolution,
-    to reduce the computational costs) for the hypothesis given by
-    the tuple (position, signal_time) and the exclude those pixels
-    that "know too much" about the target time series at `position`.
-    For this, we compute the elementwise product between the target
-    time series and all other time series and place a threshold on
-    the maximum. This then excludes time series with a bump that
-    overlaps too much with the bump in the target time series, which
-    is what we need for the HSR to work.
-
-    When no `signal_time` is given (for the "default" models, which work
-    under the assumption that no planet is present), we simply place the
-    PSF template at the given position and threshold it to determine the
-    exclusion region.
+    We use a rather simple heuristic here: We simply place the PSF
+    template at the given `position` and threshold it. This approach
+    does not take into account the movement of the planet; however,
+    previous experiments with more complicated versions of this function
+    have suggested that this does not make much of a difference anyway.
 
     Note: This function uses the *astropy convention* for coordinates!
 
@@ -223,124 +208,33 @@ def get_exclusion_mask(
             which to compute the exclusion mask. The exclusion mask will
             mark the pixels that we must not use as predictors for the
             pixel at `position`.
-        parang: A 1D numpy array containing the parallactic angles.
         psf_template: A 2D numpy array containing the (unsaturated) PSF
             template.
-        signal_time: An integer that specifies the index of the frame
-            in which the planet signal peaks at the given `position`.
-            If signal_time is None, the function assumes that there is
-            no planet signal in `position` at any time.
 
     Returns:
         A 2D numpy array containing the (binary) exclusion mask for the
         pixel at the given `position`.
     """
 
-    # -------------------------------------------------------------------------
-    # Sanity checks and preliminaries
-    # -------------------------------------------------------------------------
-
-    # Make sure that the options do not contradict each other
-    if (signal_time is not None) and (signal_time < 0):
-        raise ValueError('Negative signal times are not allowed!')
-
     # Defines shortcuts
-    n_frames = len(parang)
     center = get_center(mask_size)
 
     # Prepare the unsaturated PSF template (crop it, normalize it)
     psf_resized = np.copy(psf_template)
-    psf_resized /= np.max(psf_resized)
     psf_resized = crop_or_pad(psf_resized, mask_size)
+    psf_resized /= np.max(psf_resized)
 
-    # -------------------------------------------------------------------------
-    # CASE 1: Exclusion mask *without* signal time
-    # -------------------------------------------------------------------------
+    # Shift the PSF template so that it is centered on the given position
+    exclusion_mask = shift_image(
+        image=psf_resized,
+        offset=((position[0] - center[0]), (position[1] - center[1])),
+        interpolation='bilinear',
+        mode='constant',
+    )
 
-    # In this scenario, we compute the exclusion mask for a pixels without
-    # considering the field rotation: we only exclude pixels that are too
-    # close to the given `position`. This is the mask that is used for the
-    # "default" models (i.e., models that assume that no planet is present).
-    if signal_time is None:
-
-        # Shift the PSF template so that it is centered on the given position
-        exclusion_mask = shift_image(
-            image=psf_resized,
-            offset=(
-                float(position[0] - center[0]),
-                float(position[1] - center[1]),
-            ),
-            interpolation='bilinear',
-            mode='constant',
-        )
-
-        # Threshold the shifted PSF to get the exclusion mask
-        exclusion_mask = exclusion_mask > 0.025
-
-    # -------------------------------------------------------------------------
-    # CASE 2: Exclusion mask *with* signal time
-    # -------------------------------------------------------------------------
-
-    # In case we use the field rotation (for signal masking / fitting models),
-    # we (for now) simply exclude an arc with an opening angle that matches
-    # the field rotation.
-
-    else:
-
-        # Down-sample the parallactic angle: computing the signal stack can be
-        # expensive with a large number of frames, but the exclusion mask that
-        # we find using this method is not very sensitive to the temporal
-        # resolution anyway, so we can compute it using a quick approximation
-        # of the signal stack to speed things up.
-        if len(parang) > 100:
-            n = n_frames // 100
-            parang_resampled = parang[::n]
-        else:
-            parang_resampled = parang
-
-        # Compute final planet position under the hypothesis given by the
-        # tuple (position, signal_time)
-        final_position = rotate_position(
-            position=position,
-            center=get_center(mask_size),
-            angle=float(parang[int(signal_time)]),
-        )
-
-        # Compute full signal stack under our hypothesis and normalize it to 1
-        signal_stack = add_fake_planet(
-            stack=np.zeros(
-                (len(parang_resampled), mask_size[0], mask_size[1])
-            ),
-            parang=parang_resampled,
-            psf_template=psf_template,
-            polar_position=cartesian2polar(
-                position=(final_position[0], final_position[1]),
-                frame_size=mask_size,
-            ),
-            magnitude=1,
-            extra_scaling=1,
-            dit_stack=1,
-            dit_psf_template=1,
-            return_planet_positions=False,
-        )
-        signal_stack = np.asarray(signal_stack / np.max(signal_stack))
-
-        # Get the time series for the position
-        target = signal_stack[:, int(position[1]), int(position[0])]
-
-        # Compute the "overlap" of the target time series with every other
-        # time series. For this, we take the (element-wise) product of each
-        # pair of time series and find the maximum.
-        overlap_map = np.einsum('i,ijk->ijk', target, signal_stack)
-        overlap_map = np.max(overlap_map, axis=0)
-
-        # Threshold the overlap_map to get the exclusion map: all pixels whose
-        # time series "know too much" about the target time series are excluded
-        exclusion_mask = overlap_map > 0.05
-
-    # -------------------------------------------------------------------------
-    # Apply a morphological filter to the exclusion mask and return it
-    # -------------------------------------------------------------------------
+    # Threshold the shifted PSF to get the exclusion mask. The value of this
+    # threshold is, of course, somewhat arbitrarily chosen.
+    exclusion_mask = exclusion_mask > 0.05
 
     # Dilate the mask by two pixel for a little extra "safety margin"
     selem = disk(radius=2)
@@ -352,8 +246,6 @@ def get_exclusion_mask(
 def get_predictor_pixel_selection_mask(
     mask_size: Tuple[int, int],
     position: Tuple[int, int],
-    signal_time: Optional[int],
-    parang: np.ndarray,
     radius_position: Quantity,
     radius_opposite: Quantity,
     psf_template: np.ndarray,
@@ -369,8 +261,6 @@ def get_predictor_pixel_selection_mask(
         position: A tuple (x, y) specifying the position for which this
             mask is created, i.e., the mask selects the pixels that are
             used as predictors for (x, y).
-        signal_time: FIXME
-        parang: FIXME
         radius_position: The radius (as an astropy.units.Quantity that
             can be converted to pixels) of the circular region around
             the `position` (and the mirrored position) that is used in
@@ -379,7 +269,8 @@ def get_predictor_pixel_selection_mask(
             can be converted to pixels) of the circular region around
             the opposite `position`, that is, the position that we get
             if we mirror `position` across the center of the frame.
-        psf_template:  FIXME
+        psf_template: A 2D numpy array containing the unsaturated PSF
+            template.
 
     Returns:
         A 2D numpy array containing a mask that selects the pixels to
@@ -396,11 +287,7 @@ def get_predictor_pixel_selection_mask(
 
     # Get exclusion mask (i.e., pixels we must not use as predictors)
     exclusion_mask = get_exclusion_mask(
-        mask_size=mask_size,
-        position=position,
-        parang=parang,
-        signal_time=signal_time,
-        psf_template=psf_template,
+        mask_size=mask_size, position=position, psf_template=psf_template
     )
 
     # Create the actual selection mask by removing the exclusion mask
