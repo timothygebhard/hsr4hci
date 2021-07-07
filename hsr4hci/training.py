@@ -271,8 +271,6 @@ def train_model_for_position(
     selection_mask = get_predictor_pixel_selection_mask(
         mask_size=frame_size,
         position=position[::-1],
-        signal_time=signal_time,
-        parang=parang,
         radius_position=Quantity(*selection_mask_config['radius_position']),
         radius_opposite=Quantity(*selection_mask_config['radius_opposite']),
         psf_template=psf_template,
