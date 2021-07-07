@@ -36,7 +36,7 @@ def psf_template() -> np.ndarray:
 
     x, y = np.meshgrid(np.arange(33), np.arange(33))
     gaussian = models.Gaussian2D(
-        x_mean=17, x_stddev=1, y_mean=17, y_stddev=1, amplitude=1
+        x_mean=16, x_stddev=1, y_mean=16, y_stddev=1, amplitude=1
     )
     psf_template = np.asarray(gaussian(x, y))
     psf_template /= np.max(psf_template)
@@ -239,55 +239,20 @@ def test__get_predictor_mask() -> None:
 def test__get_exclusion_mask(psf_template: np.ndarray) -> None:
 
     # Case 1
-    with pytest.raises(ValueError) as value_error:
-        get_exclusion_mask(
-            mask_size=(11, 11),
-            position=(5, 5),
-            parang=np.linspace(0, 90, 200),
-            psf_template=np.ones((1, 1)),
-            signal_time=-1,
-        )
-    assert 'Negative signal times are not allowed!' in str(value_error)
-
-    # Case 2
     exclusion_mask = get_exclusion_mask(
         mask_size=(11, 11),
         position=(5, 5),
-        parang=np.linspace(0, 90, 200),
         psf_template=np.ones((1, 1)),
-        signal_time=None,
     )
     assert np.sum(exclusion_mask) == 13
 
-    # Case 3
+    # Case 2
     exclusion_mask = get_exclusion_mask(
         mask_size=(101, 101),
         position=(32, 21),
-        parang=np.linspace(0, 90, 200),
         psf_template=psf_template,
-        signal_time=None,
     )
     assert np.sum(exclusion_mask) == 57
-
-    # Case 4
-    exclusion_mask = get_exclusion_mask(
-        mask_size=(101, 101),
-        position=(32, 21),
-        parang=np.linspace(0, 120, 200),
-        psf_template=psf_template,
-        signal_time=100,
-    )
-    assert np.sum(exclusion_mask) == 55
-
-    # Case 4
-    exclusion_mask = get_exclusion_mask(
-        mask_size=(101, 101),
-        position=(15, 15),
-        parang=np.linspace(0, 90, 50),
-        psf_template=psf_template,
-        signal_time=20,
-    )
-    assert np.sum(exclusion_mask) == 45
 
 
 def test__get_predictor_pixel_selection_mask(psf_template: np.ndarray) -> None:
@@ -295,13 +260,11 @@ def test__get_predictor_pixel_selection_mask(psf_template: np.ndarray) -> None:
     mask = get_predictor_pixel_selection_mask(
         mask_size=(101, 101),
         position=(15, 19),
-        signal_time=20,
-        parang=np.linspace(20, 120, 50),
         radius_position=Quantity(3, 'pixel'),
         radius_opposite=Quantity(3, 'pixel'),
         psf_template=psf_template,
     )
-    assert np.sum(mask) == 28
+    assert np.sum(mask) == 25
 
 
 def test__get_positions_from_mask() -> None:
