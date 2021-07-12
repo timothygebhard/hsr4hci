@@ -171,7 +171,9 @@ if __name__ == '__main__':
     print('Saving residuals...', end=' ', flush=True)
     file_name = f'residuals_{roi_split + 1:04d}-{n_roi_splits:04d}.hdf'
     file_path = partial_dir / file_name
-    save_dict_to_hdf(dictionary=partial_residuals, file_path=file_path)
+    save_dict_to_hdf(
+        dictionary=partial_residuals, file_path=file_path, mode='w'
+    )
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
