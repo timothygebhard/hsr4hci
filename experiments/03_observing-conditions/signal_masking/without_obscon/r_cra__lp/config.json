@@ -1,7 +1,7 @@
 {
   "dataset": {
     "name_or_path":         "r_cra__lp",
-    "binning_factor":       64,
+    "binning_factor":       10,
     "frame_size":           [63, 63]
   },
   "observing_conditions": {
