@@ -74,7 +74,7 @@ if __name__ == '__main__':
     # Save the final result
     print('\nSaving merged HDF file...', end=' ', flush=True)
     file_path = hdf_dir / 'residuals.hdf'
-    save_dict_to_hdf(dictionary=residuals, file_path=file_path)
+    save_dict_to_hdf(dictionary=residuals, file_path=file_path, mode='w')
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
