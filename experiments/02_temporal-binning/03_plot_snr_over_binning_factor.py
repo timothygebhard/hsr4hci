@@ -71,7 +71,7 @@ if __name__ == '__main__':
     print('Done!', flush=True)
 
     # Initialize a new plot to which we will add everything
-    fig, ax1 = plt.subplots(figsize=(7.24551, 7.24551 / 2))
+    fig, ax1 = plt.subplots(figsize=(7.24551, 7.24551 / 2.5))
     max_factor = 1
 
     # -------------------------------------------------------------------------
@@ -109,14 +109,6 @@ if __name__ == '__main__':
                 markersize=4,
                 label=f'PCA (n={n_components})',
             )
-            # ax1.fill_between(
-            #     df_selection.factor,
-            #     df_selection.log_fpf_min,
-            #     df_selection.log_fpf_max,
-            #     facecolor=f'C{i + 1}',
-            #     alpha=0.25,
-            # )
-
         print('Done!', flush=True)
 
     except FileNotFoundError:
@@ -146,14 +138,6 @@ if __name__ == '__main__':
             markersize=4,
             label='HSR (signal fitting)',
         )
-        # ax1.fill_between(
-        #     df.factor,
-        #     df.log_fpf_min,
-        #     df.log_fpf_max,
-        #     facecolor='C0',
-        #     alpha=0.25,
-        # )
-
         print('Done!', flush=True)
 
     except FileNotFoundError:
@@ -185,14 +169,6 @@ if __name__ == '__main__':
             markersize=4,
             label='HSR (signal masking)',
         )
-        # ax1.fill_between(
-        #     df.factor,
-        #     df.log_fpf_min,
-        #     df.log_fpf_max,
-        #     facecolor=adjust_luminosity('C0'),
-        #     alpha=0.25,
-        # )
-
         print('Done!', flush=True)
 
     except FileNotFoundError:
