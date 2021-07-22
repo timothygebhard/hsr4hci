@@ -281,7 +281,10 @@ def get_residual_selection_mask(
     # Compute field rotation; check that it is physically meaningful
     field_rotation = abs(parang[-1] - parang[0])
     if field_rotation > 180:
-        raise RuntimeError('field_rotation is greater than 180 degrees!')
+        new_parang = (parang + 360) % 360
+        field_rotation = abs(new_parang[-1] - new_parang[0])
+        if field_rotation > 180:
+            raise RuntimeError('field_rotation is greater than 180 degrees!')
 
     # Prepare the Cartesian match fraction; define shortcuts
     cartesian = np.copy(match_fraction)
