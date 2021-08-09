@@ -31,6 +31,7 @@ from hsr4hci.plotting import (
     get_cmap,
     get_transparent_cmap,
     plot_frame,
+    set_fontsize,
     zerocenter_imshow,
     zerocenter_plot,
 )
@@ -156,6 +157,15 @@ def test_zerocenter_imshow() -> None:
     zerocenter_imshow(ax)
     assert ax.get_images()[0].get_clim() == (-12, 12)
 
+    plt.close()
+
+
+def test_set_fontsize() -> None:
+
+    fig, ax = plt.subplots()
+    ax.set_title('Test')
+    set_fontsize(ax=ax, fontsize=6)
+    assert ax.title.get_fontsize() == 6
     plt.close()
 
 

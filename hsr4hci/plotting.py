@@ -233,6 +233,24 @@ def zerocenter_plot(ax: Axes, which: str) -> None:
         raise ValueError('Parameter which must be "x" or "y"!')
 
 
+def set_fontsize(ax: Axes, fontsize: int) -> None:
+    """
+    Set the `fontsize` for all labels (title, x- and y-label, and tick
+    labels) of a target axis at once.
+
+    Args:
+        ax: The ax which contains the plot (e.g., `plt.gca()`).
+        fontsize: The target font size for the labels.
+    """
+
+    for item in (
+        [ax.title, ax.xaxis.label, ax.yaxis.label]
+        + ax.get_xticklabels()
+        + ax.get_yticklabels()
+    ):
+        item.set_fontsize(fontsize)
+
+
 # -----------------------------------------------------------------------------
 # AUXILIARY FUNCTION DEFINITIONS AND PLOT_FRAME()
 # -----------------------------------------------------------------------------
