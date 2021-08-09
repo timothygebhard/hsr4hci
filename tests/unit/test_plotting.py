@@ -262,55 +262,67 @@ def test_plot_frame(tmp_path_factory: TempPathFactory) -> None:
     frame = np.random.normal(0, 1, (51, 51))
 
     # Case 1
-    fig, ax = plot_frame(
+    fig, ax, cbar = plot_frame(
         frame=frame,
         positions=[],
         labels=[],
         pixscale=0.0271,
         figsize=(4.0, 4.0),
+        subplots_adjust=None,
         aperture_radius=2,
         draw_color='darkgreen',
+        scalebar_color='#00FF00',
         cmap='RdBu_r',
         limits=(-5, 5),
         use_logscale=False,
         add_colorbar=True,
         add_scalebar=True,
+        scalebar_loc=1,
         file_path=None,
     )
     plt.close(fig)
+    assert cbar is not None
 
     # Case 1
-    fig, ax = plot_frame(
+    fig, ax, cbar = plot_frame(
         frame=frame,
         positions=[(20, 20)],
         labels=['test'],
         pixscale=0.0271,
         figsize=(4.0, 4.0),
+        subplots_adjust=None,
         aperture_radius=2,
         draw_color='darkgreen',
+        scalebar_color='white',
         cmap='viridis',
         limits=None,
         use_logscale=True,
         add_colorbar=False,
         add_scalebar=True,
+        scalebar_loc=2,
         file_path=test_dir / 'test.pdf',
     )
     plt.close(fig)
+    assert cbar is None
 
     # Case 2
-    fig, ax = plot_frame(
+    fig, ax, cbar = plot_frame(
         frame=frame,
         positions=[(20, 20), (10, 10)],
         labels=['test', 'test 2'],
         pixscale=0.0271,
         figsize=(4.0, 4.0),
+        subplots_adjust=dict(left=0.005, top=1, right=0.995, bottom=0.105),
         aperture_radius=2,
         draw_color='darkgreen',
+        scalebar_color='red',
         cmap='magma',
         limits=None,
         use_logscale=True,
         add_colorbar=False,
         add_scalebar=False,
+        scalebar_loc=3,
         file_path=test_dir / 'test.png',
     )
     plt.close(fig)
+    assert cbar is None

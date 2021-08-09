@@ -8,7 +8,7 @@ Utility functions for plotting.
 
 from copy import copy
 from pathlib import Path
-from typing import Optional, Sequence, Tuple, Union
+from typing import Dict, Optional, Sequence, Tuple, Union
 
 import colorsys
 
@@ -313,19 +313,18 @@ def _add_apertures_and_labels(
         ha='left',
         va='center',
         color='white',
-        fontsize=12,
+        fontsize=6,
         bbox=dict(
             facecolor=draw_color,
             edgecolor='none',
-            boxstyle='square,pad=0.075',
+            boxstyle='square,pad=0.2',
         ),
     )
 
     # Draw apertures at positions (if positions are given)
     if positions:
         aperture = CircularAperture(positions=positions, r=aperture_radius)
-        # noinspection PyTypeChecker
-        aperture.plot(axes=ax, lw=2, color=draw_color)
+        aperture.plot(axes=ax, **dict(lw=1, color=draw_color))
 
     # Add labels for positions (if labels are given)
     if labels and positions:
@@ -339,7 +338,7 @@ def _add_apertures_and_labels(
                     arrowstyle='-',
                     shrinkA=0,
                     shrinkB=0,
-                    lw=2,
+                    lw=1,
                     color=draw_color,
                 ),
                 **label_kwargs,
@@ -350,6 +349,8 @@ def _add_scalebar(
     ax: Axes,
     frame_size: Tuple[int, int],
     pixscale: float,
+    color: MatplotlibColor = 'white',
+    loc: int = 1,
 ) -> float:
     """
     Auxiliary function for `plot_frame()` to add a scale bar.
@@ -362,17 +363,17 @@ def _add_scalebar(
         scalebar_size /= 2
         scalebar_label_value /= 2
 
-    # Create the scale bar and add it to the frame (loc=1 means "upper right")
+    # Create the scale bar and add it to the frame
     scalebar = AnchoredSizeBar(
         transform=ax.transData,
         size=scalebar_size,
         label=f'{scalebar_label_value}"',
-        loc=1,
+        loc=loc,
         pad=1,
-        color='white',
+        color=color,
         frameon=False,
         size_vertical=0,
-        fontproperties=fm.FontProperties(size=12),
+        fontproperties=fm.FontProperties(size=6),
     )
     ax.add_artist(scalebar)
 
@@ -380,7 +381,10 @@ def _add_scalebar(
 
 
 def _add_ticks(
-    ax: Axes, frame_size: Tuple[int, int], scalebar_size: float
+    ax: Axes,
+    frame_size: Tuple[int, int],
+    scalebar_size: float,
+    color: MatplotlibColor = 'white',
 ) -> None:
     """
     Auxiliary function for `plot_frame()` to add ticks to the frame.
@@ -407,7 +411,8 @@ def _add_ticks(
         axis='both',
         which='both',
         direction='in',
-        color='white',
+        color=color,
+        length=1.25,
         top=True,
         bottom=True,
         left=True,
@@ -423,14 +428,14 @@ def _add_colorbar(
     fig: Figure,
     ax: Axes,
     use_logscale: bool,
-) -> None:
+) -> Colorbar:
     """
     Auxiliary function for `plot_frame()` to add a colorbar.
     """
 
     # Create a color bar at the bottom of the axis
     divider = make_axes_locatable(ax)
-    cax = divider.append_axes('bottom', size='5%', pad=0.05)
+    cax = divider.append_axes('bottom', size='5%', pad=0.025)
     cbar = fig.colorbar(img, cax=cax, orientation='horizontal')
 
     # Unpack the limits
@@ -442,7 +447,9 @@ def _add_colorbar(
     else:
         cbar.set_ticks([2 * vmin / 3, vmin / 3, 0, vmax / 3, 2 * vmax / 3])
     cbar.ax.set_xticklabels(["{:.1f}".format(i) for i in cbar.get_ticks()])
-    cbar.ax.tick_params(labelsize=8)
+    cbar.ax.tick_params(labelsize=5)
+
+    return cbar
 
 
 def plot_frame(
@@ -450,16 +457,19 @@ def plot_frame(
     positions: Sequence[Tuple[float, float]],
     labels: Sequence[Union[str, float]],
     pixscale: float,
-    figsize: Tuple[float, float] = (4.0, 4.0),
+    figsize: Tuple[float, float] = (4.3 / 2.54, 5.0 / 2.54),
+    subplots_adjust: Optional[Dict[str, float]] = None,
     aperture_radius: float = 0,
     draw_color: MatplotlibColor = 'darkgreen',
+    scalebar_color: MatplotlibColor = 'white',
     cmap: str = 'RdBu_r',
     limits: Optional[Tuple[float, float]] = None,
     use_logscale: bool = False,
     add_colorbar: bool = True,
     add_scalebar: bool = True,
+    scalebar_loc: int = 1,
     file_path: Optional[Union[Path, str]] = None,
-) -> Tuple[Figure, Axes]:
+) -> Tuple[Figure, Axes, Optional[Colorbar]]:
     """
     Plot a single frame (e.g., a signal estimate) with various options.
 
@@ -475,11 +485,15 @@ def plot_frame(
             needed if `add_scalebar` is True.
         figsize: A two-tuple `(x_size, y_size)` containing the size of
             the figure in inches.
+        subplots_adjust: Dictionary with parameters that will be passed
+            to fig.subplots_adjust().
         aperture_radius: The radius of the apertures to be drawn at the
             given `positions`. If `positions` is empty, this value is
             never used.
         draw_color: The color that is used for drawing the apertures and
             also labels.
+        scalebar_color: The color that is used for the scale bar and the
+            ticks.
         cmap: Name of the color map to be used for plotting.
         limits: A tuple `(vmin, vmax)` that is used for the plot limits.
             If None, the limits are estimated from the data.
@@ -490,14 +504,17 @@ def plot_frame(
         add_scalebar: Whether or not to add a scale bar and a grid of
             ticks around the borders of the frame (to better understand
             the scale of the frame).
+        scalebar_loc: Location parameter for the scalebar. Example:
+            loc=1 means "upper right".
         file_path: The path at which to save the resulting plot. The
             path should include the file name plus file ending. If None
             is given, the plot is not saved.
 
     Returns:
-        A 2-tuple containing:
-        (1) the current matplotlib figure, and
-        (2) the current axis containing the plot of the frame.
+        A 3-tuple containing:
+        (1) the current matplotlib figure,
+        (2) the current axis containing the plot of the frame, and
+        (3) the colorbar object (or None, if add_colobar == False).
     """
 
     # Define shortcuts
@@ -520,10 +537,17 @@ def plot_frame(
     # Prepare grid for the pcolormesh()
     x, y = np.meshgrid(np.arange(frame.shape[0]), np.arange(frame.shape[1]))
 
-    # # Set up a new figure and create the actual plot
+    # Prepare parameters for the adjust_subplots() call
+    if subplots_adjust is None:
+        subplots_adjust = dict(left=0, top=1, right=1, bottom=0.075)
+
+    # Set up a new figure and adjust margins
+    fig, ax = plt.subplots(figsize=figsize)
+    fig.subplots_adjust(**subplots_adjust)
+
+    # Create the actual plot
     # Using pcolormesh() instead of imshow() avoids interpolation artifacts in
     # most PDF viewers (otherwise, the PDF version will often look blurry).
-    fig, ax = plt.subplots(figsize=figsize)
     img = ax.pcolormesh(
         x,
         y,
@@ -537,7 +561,7 @@ def plot_frame(
     ax.set_aspect('equal')
 
     # Place a "+"-marker at the center for the frame
-    ax.plot(center[0], center[1], '+', ms=10, color='black')
+    ax.plot(center[0], center[1], '+', ms=6, color='black')
 
     # Plot apertures and add labels
     if positions:
@@ -547,17 +571,21 @@ def plot_frame(
 
     # If desired, add a scale bar and a grid of ticks
     if add_scalebar:
-        scalebar_size = _add_scalebar(ax, frame_size, pixscale)
-        _add_ticks(ax, frame_size, scalebar_size)
+        scalebar_size = _add_scalebar(
+            ax, frame_size, pixscale, scalebar_color, scalebar_loc
+        )
+        _add_ticks(ax, frame_size, scalebar_size, scalebar_color)
     else:
         disable_ticks(ax)
 
     # If desired, add a color bar
     if add_colorbar:
-        _add_colorbar(img, (vmin, vmax), fig, ax, use_logscale)
+        cbar = _add_colorbar(img, (vmin, vmax), fig, ax, use_logscale)
+    else:
+        cbar = None
 
     # Save the results, if desired
     if file_path is not None:
-        plt.savefig(file_path, bbox_inches='tight', pad_inches=0, dpi=600)
+        plt.savefig(file_path, pad_inches=0, dpi=600)
 
-    return fig, ax
+    return fig, ax, cbar
