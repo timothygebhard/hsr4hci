@@ -124,7 +124,9 @@ def add_colorbar_to_ax(
 
     divider = make_axes_locatable(ax)
     cax = divider.append_axes(where, size='5%', pad=0.05)
-    cbar = fig.colorbar(img, cax=cax, orientation=orientation)
+    cbar = fig.colorbar(
+        img, cax=cax, orientation=orientation, ticklocation=where
+    )
 
     return cbar
 
