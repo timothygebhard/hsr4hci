@@ -155,7 +155,10 @@ def get_contrast(
 
     # Compute the *observed* flux ratio and contrast
     observed_flux_ratio = flux / stellar_flux
-    observed_contrast = flux_ratio_to_magnitudes(observed_flux_ratio)
+    if observed_flux_ratio > 0 and not np.isclose(observed_flux_ratio, 0):
+        observed_contrast = flux_ratio_to_magnitudes(observed_flux_ratio)
+    else:
+        observed_contrast = np.infty
 
     # Compute the *expected* flux ratio (if applicable)
     if expected_contrast is not None:
