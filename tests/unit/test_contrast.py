@@ -48,7 +48,7 @@ def test_get_contrast() -> None:
     assert np.isclose(results['observed_contrast'], 0)
     assert np.isnan(results['throughput'])
 
-    # Case 1
+    # Case 2
     signal_estimate = shift_image(psf_resized / 100, (0, 37))
     results = get_contrast(
         signal_estimate=signal_estimate,
@@ -97,3 +97,17 @@ def test_get_contrast() -> None:
     assert np.isclose(results['observed_flux_ratio'], 0.01057930735268089)
     assert np.isclose(results['observed_contrast'], 4.93885691363388)
     assert np.isclose(results['throughput'], 1.0579307352680893)
+
+    # Case 5
+    signal_estimate = np.zeros(frame_size)
+    results = get_contrast(
+        signal_estimate=signal_estimate,
+        polar_position=(Quantity(33, 'pixel'), Quantity(90, 'degree')),
+        psf_template=psf_template,
+        metadata={'DIT_STACK': 1, 'DIT_PSF_TEMPLATE': 1, 'ND_FILTER': 1},
+        no_fake_planets=None,
+        expected_contrast=0,
+    )
+    assert np.isclose(results['observed_flux_ratio'], 0)
+    assert np.isinf(results['observed_contrast'])
+    assert np.isclose(results['throughput'], 0)
