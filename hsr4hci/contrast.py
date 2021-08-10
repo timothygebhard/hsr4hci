@@ -65,8 +65,8 @@ def get_contrast(
     Returns:
         A dictionary containing the observed contrast and flux ratio,
         the expected contrast and flux ratio, the throughput, the raw
-        flux and the background flux, and the (optimized) position of
-        the planet candidate.
+        flux and the background flux, the stellar flux, and the
+        (optimized) Cartesian position of the planet candidate.
     """
 
     # Define shortcuts; convert polar position to Cartesian one
@@ -184,5 +184,4 @@ def get_contrast(
         raw_flux=raw_flux,
         background_flux=background_flux,
         final_position_cartesian=final_position_cartesian,
-        final_position_polar=final_position_polar,
     )
