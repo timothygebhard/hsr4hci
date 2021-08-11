@@ -1,5 +1,6 @@
 """
-Utility functions for estimating contrasts, flux ratios and throughputs.
+Utility functions for estimating contrasts, flux ratios and throughputs,
+as well as computing contrast curves (i.e., detection limits).
 """
 
 # -----------------------------------------------------------------------------
@@ -9,8 +10,11 @@ Utility functions for estimating contrasts, flux ratios and throughputs.
 from typing import Optional, Tuple
 
 from astropy.units import Quantity
+from scipy.interpolate import CubicSpline
+from scipy.stats import norm
 
 import numpy as np
+import pandas as pd
 
 from hsr4hci.coordinates import cartesian2polar, polar2cartesian
 from hsr4hci.photometry import (
@@ -202,3 +206,80 @@ def get_contrast(
         background_flux=background_flux,
         final_position_cartesian=final_position_cartesian,
     )
+
+
+def get_contrast_curve(
+    df: pd.DataFrame,
+    sigma_threshold: float = 5,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Given a data frame `df` with experiment results, compute a contrast
+    curve, that is, for each separation, determine the contrast value
+    until which we can detect a planet with a confidence that matches
+    the given `sigma_threshold`.
+
+    Args:
+        df: A pandas data frame with experiment results. In particular,
+            we need columns for the contrast, the separation and the
+            false positive fraction (FPF).
+        sigma_threshold: The significance threshold for what we still
+            want to accept as "detectable". The usual value of 5 sigma
+            (based on a standard normal distribution) corresponds to a
+            1 in 3.5 million chance of a false positive.
+
+    Returns:
+        A 2-tuple, (separations, detection_limits), which contains the
+        detection limit for each separation.
+    """
+
+    # Convert the target sigma threshold into a threshold value for the FPF
+    fpf_threshold = 1 - norm.cdf(sigma_threshold, 0, 1)
+
+    # Get the separation and contrast values for which we have results
+    separations = np.array(sorted(np.unique(df.separation.values)))
+    expected_contrasts = sorted(np.unique(df.expected_contrast.values))
+
+    # Store the detection limits (i.e., the threshold contrast value below
+    # which we can no longer detect the planet reliably) for each separation
+    detection_limits = np.full_like(separations, np.nan, dtype=np.float64)
+
+    # Loop over the separation values and compute the detection limits
+    for i, separation in enumerate(separations):
+
+        # Initialize lists in which we collect values for interpolator
+        average_fpf_values = []
+
+        # Loop over expected contrasts for which we have results
+        for expected_contrast in expected_contrasts:
+
+            # Select subset of the data frame that matches the separation and
+            # the expected contrast. This should usually contain 6 entries for
+            # the six azimuthal positions.
+            df_subset = df[
+                (df.separation == separation)
+                & (df.expected_contrast == expected_contrast)
+            ]
+
+            # Compute the average FPF for the current combination of the
+            # separation and the expected contrast
+            average_fpf = np.mean(df_subset['fpf_mean'].values)
+
+            # Store the expected contrast and the average FPF
+            average_fpf_values.append(average_fpf)
+
+        # Apply a cubic spline interpolation to the curve of expected contrast
+        # values and average FPF values, and find the point where this curve
+        # takes on the value of the desired `fpf_threshold`. This point (if it
+        # exists) is then stored as the value of the contrast curve for the
+        # current separation.
+        interpolator = CubicSpline(
+            x=expected_contrasts,
+            y=np.array(average_fpf_values) - fpf_threshold,
+            extrapolate=False,
+        )
+
+        # If multiple threshold points exist, store the maximum
+        if len(interpolator.roots()) > 0:
+            detection_limits[i] = max(interpolator.roots())
+
+    return separations, detection_limits
