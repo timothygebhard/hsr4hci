@@ -34,6 +34,9 @@ def get_contrast(
     metadata: dict,
     no_fake_planets: Optional[np.ndarray] = None,
     expected_contrast: Optional[float] = None,
+    planet_mode: str = 'FS',
+    noise_mode: str = 'P',
+    exclusion_angle: Optional[Quantity] = None,
 ) -> dict:
     """
     Compute the contrast and flux ratio for the planet at the given
@@ -54,13 +57,24 @@ def get_contrast(
             "DIT_STACK", "DIT_PSF_TEMPLATE" and "ND_FILTER".
         no_fake_planets: Optionally, a 2D numpy array with the same
             shape as the `signal_estimate` If you want to compute the
-            contrast using  the "classic" approach, you can use this
+            contrast using the "classic" approach, you can use this
             argument to pass a signal estimate that was obtained on the
-            data set without  any planets. This array will be subtracted
+            data set without any planets. This array will be subtracted
             from the signal estimate before measuring the planet flux.
         expected_contrast: Optionally, a float containing the expected
             contrast in magnitudes. If this value is given, the
             throughput is computed (otherwise the throughput is NaN).
+        planet_mode: Photometry mode that is used to measure the planet
+            flux. See `hsr4hci.photometry.get_flux()` for details.
+        noise_mode: Photometry mode that is used to measure the flux at
+            the reference positions. See `hsr4hci.photometry.get_flux()`
+            for details.
+        exclusion_angle: Exclusion angle that is used for determining
+            the reference positions (basically: whether or not to ignore
+            the positions left and right of the `polar_position` which
+            may contain self-subtraction "wings"). For more details,
+            see `hsr4hci.positions.get_reference_positions()`. This
+            option is only used if `no_fake_planets` is None.
 
     Returns:
         A dictionary containing the observed contrast and flux ratio,
@@ -88,7 +102,7 @@ def get_contrast(
         dit_stack=metadata['DIT_STACK'],
         dit_psf_template=metadata['DIT_PSF_TEMPLATE'],
         scaling_factor=metadata['ND_FILTER'],
-        mode='FS',
+        mode=planet_mode,
         aperture_radius=Quantity(psf_fwhm / 2, 'pixel'),
         search_radius=Quantity(1, 'pixel'),
     )
@@ -113,7 +127,7 @@ def get_contrast(
     final_position_cartesian, raw_flux = get_flux(
         frame=frame,
         position=cartesian_position,
-        mode='FS',
+        mode=planet_mode,
         aperture_radius=Quantity(psf_fwhm / 2, 'pixel'),
         search_radius=Quantity(1, 'pixel'),
     )
@@ -130,14 +144,14 @@ def get_contrast(
         reference_positions = get_reference_positions(
             polar_position=final_position_polar,
             aperture_radius=Quantity(psf_fwhm / 2, 'pixel'),
-            exclusion_angle=Quantity(0, 'degree'),
+            exclusion_angle=exclusion_angle,
         )
 
         # Compute the flux at the reference positions
         reference_fluxes = get_fluxes_for_polar_positions(
             polar_positions=reference_positions,
             frame=signal_estimate,
-            mode='P',
+            mode=noise_mode,
         )
 
         # Estimate the background flux by averaging the reference fluxes
