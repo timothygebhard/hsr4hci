@@ -185,7 +185,7 @@ if __name__ == '__main__':
     if roi_split == 0:
         print('Saving hypotheses...', end=' ', flush=True)
         file_path = fits_dir / 'hypotheses.fits'
-        save_fits(hypotheses, file_path=file_path, overwrite=False)
+        save_fits(hypotheses, file_path=file_path)
         print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
