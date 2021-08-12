@@ -180,15 +180,14 @@ def merge_fits_files(fits_file_paths: List[Path]) -> np.ndarray:
         A numpy array containing the merged arrays from all FITS files.
     """
 
-    # Read in all FITS files as numpy arrays
-    arrays = []
-    for file_path in fits_file_paths:
+    # Initialize the result with the first file
+    merged = read_fits(fits_file_paths[0], return_header=False)
+
+    # Loop over the remaining FITS files and merge them sequentially
+    for file_path in fits_file_paths[1:]:
         array = read_fits(file_path, return_header=False)
-        arrays.append(array)
+        with catch_warnings():
+            filterwarnings('ignore', r'Mean of empty slice')
+            merged = np.nanmean([merged, array], axis=0)
 
-    # Stack and merge them along the first axis
-    with catch_warnings():
-        filterwarnings('ignore', r'Mean of empty slice')
-        array = np.nanmean(arrays, axis=0)
-
-    return array
+    return merged
