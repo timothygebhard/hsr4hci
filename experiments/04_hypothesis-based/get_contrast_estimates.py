@@ -13,26 +13,14 @@ import time
 
 from astropy.units import Quantity
 
-import numpy as np
-
 import pandas as pd
 
 from hsr4hci.config import load_config
-from hsr4hci.coordinates import polar2cartesian, cartesian2polar
+from hsr4hci.contrast import get_contrast
 from hsr4hci.data import load_metadata, load_psf_template
 from hsr4hci.fits import read_fits
-from hsr4hci.photometry import (
-    get_stellar_flux,
-    get_fluxes_for_polar_positions,
-    get_flux,
-)
 from hsr4hci.psf import get_psf_fwhm
-from hsr4hci.positions import get_reference_positions
-from hsr4hci.units import (
-    flux_ratio_to_magnitudes,
-    magnitude_to_flux_ratio,
-    InstrumentUnitsContext,
-)
+from hsr4hci.units import InstrumentUnitsContext
 
 
 # -----------------------------------------------------------------------------
@@ -49,7 +37,7 @@ if __name__ == '__main__':
     print('\nCOMPUTE ESTIMATED CONTRAST FROM SIGNAL ESTIMATE\n', flush=True)
 
     # -------------------------------------------------------------------------
-    # Loop over different experiments to collect contrast values
+    # Loop over different experiments to collect contrast / throughput values
     # -------------------------------------------------------------------------
 
     # Initialize list for results
@@ -63,7 +51,7 @@ if __name__ == '__main__':
     ):
 
         # ---------------------------------------------------------------------
-        # STEP 1: Preliminaries
+        # Step 1: Preliminaries
         # ---------------------------------------------------------------------
 
         # Define experiment directory
@@ -83,6 +71,9 @@ if __name__ == '__main__':
         psf_template = load_psf_template(**config['dataset'])
         metadata = load_metadata(**config['dataset'])
 
+        # Fit the FWHM of the PSF
+        psf_fwhm = get_psf_fwhm(psf_template)
+
         # Load the signal estimate
         file_path = experiment_dir / 'results' / 'signal_estimate.fits'
         try:
@@ -99,104 +90,54 @@ if __name__ == '__main__':
         )
 
         # ---------------------------------------------------------------------
-        # STEP 2: Fit the PSF size and measure the stellar flux
+        # Step 2: Compute the contrast and throughput
         # ---------------------------------------------------------------------
 
-        # Fit the FWHM of the PSF
-        psf_fwhm = get_psf_fwhm(psf_template)
-
-        # Measure the stellar flux
-        stellar_flux = get_stellar_flux(
-            psf_template=psf_template,
-            dit_stack=float(metadata['DIT_STACK']),
-            dit_psf_template=float(metadata['DIT_PSF_TEMPLATE']),
-            scaling_factor=float(metadata['ND_FILTER']),
-            mode='FS',
-        )
-
-        # ---------------------------------------------------------------------
-        # STEP 3: Run photometry for planet (only use planet "b" for now)
-        # ---------------------------------------------------------------------
-
-        # Get the assumed position of the planet
-        initial_position_polar = (
-            Quantity(*config['hypothesis']['b']['separation']),
-            Quantity(*config['hypothesis']['b']['position_angle']),
-        )
-
-        # Compute the raw planet flux and optimize the position
         with instrument_unit_context:
-            final_position, raw_planet_flux = get_flux(
-                frame=np.nan_to_num(signal_estimate),
-                position=polar2cartesian(
-                    *initial_position_polar, frame_size=frame_size
-                ),
-                mode='FS',
-                aperture_radius=Quantity(psf_fwhm / 2, 'pixel'),
-                search_radius=Quantity(1, 'pixel'),
+
+            # Get the assumed position of the planet
+            initial_position_polar = (
+                Quantity(*config['hypothesis']['b']['separation']),
+                Quantity(*config['hypothesis']['b']['position_angle']),
             )
 
-        # Compute reference positions based on final position
-        with instrument_unit_context:
-            reference_positions = get_reference_positions(
-                polar_position=cartesian2polar(final_position, frame_size),
-                aperture_radius=Quantity(psf_fwhm / 2, 'pixel'),
-                exclusion_angle=None,
+            # Get the observed contrast
+            result = get_contrast(
+                signal_estimate=signal_estimate,
+                polar_position=initial_position_polar,
+                psf_template=psf_template,
+                metadata=metadata,
+                no_fake_planets=None,
+                expected_contrast=config['hypothesis']['b']['contrast'],
             )
 
-        # Measure the flux at the reference positions
-        reference_fluxes = get_fluxes_for_polar_positions(
-            polar_positions=reference_positions,
-            frame=signal_estimate,
-            mode='P',
-        )
-
-        # Compute the "background-corrected" flux estimate
-        planet_flux = raw_planet_flux - float(np.mean(reference_fluxes))
-
-        # Compute brightness ratio of the star and the planet in magnitudes;
-        # we call this the observed contrast
-        flux_ratio_observed = planet_flux / stellar_flux
-        contrast_observed = flux_ratio_to_magnitudes(flux_ratio_observed)
-
-        # Convert the expected contrast (from the literature) to a flux ratio
-        contrast_expected = config['hypothesis']['b']['contrast']
-        flux_ratio_expected = magnitude_to_flux_ratio(contrast_expected)
-
-        # Compute "throughput" (ratio of our magnitude vs. true magnitude)
-        throughput = flux_ratio_observed / flux_ratio_expected
-
-        # Store all results
-        results.append(
-            {
-                'train_mode': train_mode,
-                'binning_factor': binning_factor,
-                'dataset': dataset,
-                'stellar_flux': stellar_flux,
-                'raw_planet_flux': raw_planet_flux,
-                'planet_flux': planet_flux,
-                'mean_reference_flux': float(np.mean(reference_fluxes)),
-                'flux_ratio_observed': flux_ratio_observed,
-                'flux_ratio_expected': flux_ratio_expected,
-                'contrast_observed': contrast_observed,
-                'contrast_expected': contrast_expected,
-                'throughput': throughput,
-                'label': f'{contrast_observed:.2f} ({throughput:.2f})',
-            }
-        )
+            # Store all relevant results
+            results.append(
+                {
+                    'train_mode': train_mode,
+                    'binning_factor': binning_factor,
+                    'dataset': dataset,
+                    'observed_flux_ratio': result['observed_flux_ratio'],
+                    'observed_contrast': result['observed_contrast'],
+                    'expected_flux_ratio': result['expected_flux_ratio'],
+                    'expected_contrast': result['expected_contrast'],
+                    'throughput': result['throughput'],
+                    'label': (
+                        f'{result["observed_contrast"]:.2f} '
+                        f'({result["throughput"]:.2f})'
+                    ),
+                }
+            )
 
         print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
-    # STEP 5: Convert results to data frame and save them as a TSV
+    # Convert results to data frame and save them as a TSV
     # -------------------------------------------------------------------------
 
-    # Convert to data frame
+    # Convert to data frame and print it
     results_df = pd.DataFrame(results)
-
-    # Print results
-    print('\n')
-    print(results_df)
+    print('\n', results_df)
 
     # Store results as TSV file
     print('\nSaving results to TSV...', end=' ', flush=True)
@@ -204,7 +145,7 @@ if __name__ == '__main__':
     results_df.to_csv(file_path, sep='\t')
     print('Done!', flush=True)
 
-    # Create pivot table and save LaTeX code
+    # Create and print pivot table
     pivot_table = pd.pivot_table(
         results_df,
         values="label",
@@ -212,9 +153,9 @@ if __name__ == '__main__':
         columns=["dataset", "binning_factor"],
         aggfunc=lambda x: x,
     )
-    print()
-    print(pivot_table)
-    print()
+    print('\n\n', pivot_table, '\n')
+
+    # Save pivot table as LaTeX code
     latex_code = pivot_table.to_latex()
     with open('results-table.tex', 'w') as tex_file:
         tex_file.write(latex_code)
