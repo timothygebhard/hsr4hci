@@ -1,5 +1,6 @@
 """
-Create experiments.
+Create experiments based on a given base_config.json and the command
+line arguments passed to this script.
 """
 
 # -----------------------------------------------------------------------------
@@ -26,21 +27,15 @@ from hsr4hci.htcondor import SubmitFile
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def create_submit_file(
-    experiment_dir: Path,
-    search_mode: str,
-    algorithm: str,
-) -> Path:
+def create_submit_file(experiment_dir: Path, algorithm: str) -> Path:
     """
     Create the HTCondor submit file for an experiment.
 
     Args:
         experiment_dir: Path to the experiment directory for which to
             create the submit file.
-        search_mode: Search mode (blind search or hypothesis-based).
-            Required to select the script that runs the experiment.
-        algorithm: The algorithm to use (PCA or HSR + signal fitting /
-            signal masking).
+        algorithm: The algorithm to use: "pca" or "signal_fitting" or
+            "signal_masking".
 
     Returns:
         Path to the *.sub file that runs the experiment.
@@ -51,31 +46,17 @@ def create_submit_file(
         get_hsr4hci_dir() / 'scripts' / 'experiments' / 'brightness-ratio'
     )
 
-    # Define script and requirements for blind-search PCA / HSR
-    if search_mode == 'blind_search':
-        if algorithm == 'pca':
-            memory = 10240
-            cpus = 1
-            job_script = scripts_dir / 'run_pca.py'
-        elif algorithm in ('signal_fitting', 'signal_masking'):
-            memory = 8192
-            cpus = 2
-            job_script = scripts_dir / 'run_hsr.py'
-        else:
-            raise ValueError(f'Illegal value "{algorithm}" for algorithm!')
-
-    # Define script and requirements for hypothesis-based HSR
-    elif search_mode == 'hypothesis_based':
-        if algorithm in ('signal_fitting', 'signal_masking'):
-            memory = 8192
-            cpus = 2
-            job_script = scripts_dir / 'run_hypothesis_hsr.py'
-        else:
-            raise ValueError(f'Illegal value "{algorithm}" for algorithm!')
-
-    # Raise error for illegal search_mode
+    # Define script and requirements for different algorithms
+    if algorithm == 'pca':
+        memory = 10240
+        cpus = 1
+        job_script = scripts_dir / 'run_pca.py'
+    elif algorithm == 'hsr':
+        memory = 8192
+        cpus = 2
+        job_script = scripts_dir / 'run_hsr.py'
     else:
-        raise ValueError(f'Illegal value "{search_mode}" for search_mode!')
+        raise ValueError(f'Illegal value "{algorithm}" for algorithm!')
 
     # Create the clusterlogs directory
     htcondor_dir = experiment_dir / 'htcondor'
@@ -124,18 +105,10 @@ if __name__ == '__main__':
     # Set up a parser and get the algorithm for which to create experiments
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--algorithm',
+        '--directory',
         type=str,
-        choices=['signal_fitting', 'signal_masking', 'pca'],
         required=True,
-        help='Name of the HCIpp algorithm for which to create experiments.',
-    )
-    parser.add_argument(
-        '--search-mode',
-        type=str,
-        choices=['blind_search', 'hypothesis_based'],
-        required=True,
-        help='Blind search or hypothesis-based (only relevant for HSR).',
+        help='Main directory of the experiment set.',
     )
     parser.add_argument(
         '--contrasts',
@@ -170,7 +143,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--separations',
         nargs='+',
-        default=[1, 2, 3, 4, 5, 6, 7, 8],
+        default=[2, 3, 4, 5, 6, 7, 8],
         type=float,
         help='Separations (in PSF FWHMs) for which to create experiments.',
     )
@@ -183,8 +156,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Define shortcuts to arguments
-    algorithm = args.algorithm
-    search_mode = args.search_mode
+    main_dir = Path(args.directory).resolve()
     contrasts = sorted(args.contrasts)
     separations = sorted(args.separations)
     azimuthal_positions = sorted(args.azimuthal_positions)
@@ -193,15 +165,25 @@ if __name__ == '__main__':
         len(contrasts) * len(separations) * len(azimuthal_positions)
     )
 
-    # Define path to this algorithm's base directory and check if it exists
-    algorithm_dir = Path('.', search_mode, algorithm).resolve()
-    if not algorithm_dir.exists():
-        raise RuntimeError(f'{algorithm_dir} does not exist!')
+    # Make sure the main directory (where the base_config.json resides) exists
+    if not main_dir.exists():
+        raise RuntimeError(f'{main_dir} does not exist!')
+
+    # -------------------------------------------------------------------------
+    # Load base configuration and confirm creation of experiments
+    # -------------------------------------------------------------------------
+
+    # Load (base) configuration
+    file_path = main_dir / 'base_config.json'
+    config = load_config(file_path)
+
+    # Define some shortcuts
+    algorithm = config['algorithm']
+    algorithm_extra = f'({config["train_mode"]})' if algorithm == 'hsr' else ''
 
     # Confirm that the parameter space is okay
     print('I will create experiments for the following parameters:')
-    print(f'  search_mode:         {search_mode}')
-    print(f'  algorithm:           {algorithm}')
+    print(f'  algorithm:           {algorithm.upper()} {algorithm_extra}')
     print(f'  contrasts:           {contrasts}')
     print(f'  separations:         {separations}')
     print(f'  azimuthal_positions: {azimuthal_positions}')
@@ -213,16 +195,8 @@ if __name__ == '__main__':
         sys.exit('')
     print()
 
-    # -------------------------------------------------------------------------
-    # Load base configuration and create experiment directory
-    # -------------------------------------------------------------------------
-
-    # Load (base) configuration
-    file_path = algorithm_dir / 'base_config.json'
-    config = load_config(file_path)
-
     # Create experiments directory for this algorithm
-    experiments_dir = algorithm_dir / 'experiments'
+    experiments_dir = main_dir / 'experiments'
     experiments_dir.mkdir(exist_ok=True)
 
     # Keep track of all the submit files for the experiments
@@ -254,9 +228,7 @@ if __name__ == '__main__':
 
         # Create a submit file for the experiment
         file_path = create_submit_file(
-            experiment_dir=no_fake_planets_dir,
-            search_mode=search_mode,
-            algorithm=algorithm,
+            experiment_dir=no_fake_planets_dir, algorithm=algorithm
         )
         submit_file_paths.append(file_path)
 
@@ -278,7 +250,7 @@ if __name__ == '__main__':
         experiment_dir = (experiments_dir / name).resolve()
         experiment_dir.mkdir(exist_ok=True, parents=True)
 
-        print(f'Creating experiment_ {experiment_dir}...', end=' ', flush=True)
+        print(f'Creating experiment: {experiment_dir}...', end=' ', flush=True)
 
         # Create experiment configuration (by overwriting previous config)
         config['injection']['separation'] = separation
@@ -292,9 +264,7 @@ if __name__ == '__main__':
 
         # Create a submit file for the experiment
         file_path = create_submit_file(
-            experiment_dir=experiment_dir,
-            search_mode=search_mode,
-            algorithm=algorithm,
+            experiment_dir=experiment_dir, algorithm=algorithm
         )
         submit_file_paths.append(file_path)
 
@@ -305,7 +275,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     print('\nCreating shell script to start jobs...', end=' ', flush=True)
-    file_path = algorithm_dir / 'start_jobs.sh'
+    file_path = main_dir / 'start_jobs.sh'
     with open(file_path, 'w') as sh_file:
         for submit_file_path in submit_file_paths:
             sh_file.write(f'condor_submit_bid 5 {submit_file_path} ;\n')
