@@ -1,9 +1,10 @@
 # Ignore .local folder
 .local
 
-# Ignore CSV and PDF files
+# Ignore several types of result files
 *.csv
 *.pdf
+*.tsv
 
 # Ignore results, models, ... folders in experiment directories
 experiments/playground
