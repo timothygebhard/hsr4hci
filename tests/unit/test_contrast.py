@@ -117,7 +117,7 @@ def test_get_contrast() -> None:
 
 def test_get_contrast_curve() -> None:
 
-    # Define fake data frame for test
+    # Case 1
     df = pd.DataFrame(
         {
             'separation': 5 * np.ones(11),
@@ -129,10 +129,25 @@ def test_get_contrast_curve() -> None:
             ),
         }
     )
-
-    # Case 1
-    separations, detection_limits = get_contrast_curve(df, 5)
+    separations, detection_limits = get_contrast_curve(df, 5, False)
     assert np.array_equal(separations, np.array([5]))
     assert np.allclose(
-        detection_limits, np.array([15 - 2 * np.arctanh(0.5)]), atol=0.01
+        detection_limits, np.array([15 - 2 * np.arctanh(0.5)]), atol=0.05
+    )
+
+    # Case 2
+    df = pd.DataFrame(
+        {
+            'separation': 5 * np.ones(11),
+            'expected_contrast': np.linspace(5, 15, 11),
+            'fpf_mean': (
+                (1 - norm.cdf(5, 0, 1))
+                ** (2 * np.tanh(7.5 - 0.5 * np.arange(5, 16)))
+            ),
+        }
+    )
+    separations, detection_limits = get_contrast_curve(df, 5, True)
+    assert np.array_equal(separations, np.array([5]))
+    assert np.allclose(
+        detection_limits, np.array([15 - 2 * np.arctanh(0.5)]), atol=0.05
     )
