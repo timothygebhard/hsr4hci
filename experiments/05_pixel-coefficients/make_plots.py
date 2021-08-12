@@ -13,6 +13,7 @@ import time
 from photutils import CircularAperture
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 from hsr4hci.coordinates import get_center
 from hsr4hci.data import load_psf_template, load_metadata
@@ -68,8 +69,15 @@ if __name__ == '__main__':
         file_path = fits_dir / 'coefficients.fits'
         coefficients = read_fits(file_path=file_path, return_header=False)
 
-        # Select coefficients for plot (flip coordinates because numpy!)
-        frame = coefficients[y, x]
+        # Select coefficients for plot (flip coordinates because numpy!).
+        # This is a 3D array, where the first dimension corresponds to the
+        # number of training splits.
+        frames = coefficients[y, x]
+
+        # Average frames along the axis of the training splits and normalize
+        # such that the (absolute) maximum is 1
+        frame = np.asarray(np.mean(frames, axis=0))
+        frame /= np.nanmax(np.abs(frame))
 
         # Define shortcuts
         x_size, y_size = frame.shape
