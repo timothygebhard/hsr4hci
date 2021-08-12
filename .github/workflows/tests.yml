@@ -45,9 +45,14 @@ jobs:
         mypy tests/
     - name: Run pytest
       run: |
-        exec 5>&1 ;
-        SUMMARY="$(pytest --cov-report term-missing --cov=hsr4hci --verbose | tee >(cat - >&5))" ;
-        COVERAGE=$(echo "$SUMMARY" | tail -n 4 | head -n 1 | awk '{print $4}') ;
+        pytest --cov-report term-missing --cov=hsr4hci --verbose 2>&1 | tee test.log
+        result_code=${PIPESTATUS[0]}
+        echo "::set-output name=log::$(cat test.log)"
+        exit $result_code
+      id: run_pytest
+    - name: Get coverage and determine badge color
+      run: |
+        COVERAGE=$(cat test.log | tail -n 4 | head -n 1 | awk '{print $4}') ;
         COVERAGE="${COVERAGE:-unknown}" ;
         echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV ;
         if [ "$COVERAGE" != "unknown" ]; then
