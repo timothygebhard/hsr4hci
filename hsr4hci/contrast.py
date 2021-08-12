@@ -7,10 +7,10 @@ as well as computing contrast curves (i.e., detection limits).
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Any
 
 from astropy.units import Quantity
-from scipy.interpolate import CubicSpline
+from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.stats import norm
 
 import numpy as np
@@ -211,6 +211,7 @@ def get_contrast(
 def get_contrast_curve(
     df: pd.DataFrame,
     sigma_threshold: float = 5,
+    log_transform: bool = True,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Given a data frame `df` with experiment results, compute a contrast
@@ -226,14 +227,21 @@ def get_contrast_curve(
             want to accept as "detectable". The usual value of 5 sigma
             (based on a standard normal distribution) corresponds to a
             1 in 3.5 million chance of a false positive.
+        log_transform: Whether or not to apply a log transformation to
+            the FPF before interpolating it to determine the detection
+            limit (i.e., work with logFPF).
 
     Returns:
         A 2-tuple, (separations, detection_limits), which contains the
         detection limit for each separation.
     """
 
-    # Convert the target sigma threshold into a threshold value for the FPF
-    fpf_threshold = 1 - norm.cdf(sigma_threshold, 0, 1)
+    # Define an auxiliary function for transforming the FPF values
+    def transform(x: Any) -> Any:
+        return -np.log10(x) if log_transform else x
+
+    # Compute the target sigma threshold the FPF / logFPF
+    threshold = transform(1 - norm.cdf(sigma_threshold, 0, 1))
 
     # Get the separation and contrast values for which we have results
     separations = np.array(sorted(np.unique(df.separation.values)))
@@ -243,43 +251,49 @@ def get_contrast_curve(
     # which we can no longer detect the planet reliably) for each separation
     detection_limits = np.full_like(separations, np.nan, dtype=np.float64)
 
-    # Loop over the separation values and compute the detection limits
+    # Loop over the separation values and compute the detection limit
     for i, separation in enumerate(separations):
 
-        # Initialize lists in which we collect values for interpolator
-        average_fpf_values = []
+        # For each expected contrast, collect the (transformed) average
+        # FPF value (the average is taken over the azimuthal position)
+        average_values = [
+            transform(
+                np.median(
+                    df[
+                        (df.separation == separation)
+                        & (df.expected_contrast == expected_contrast)
+                    ]['fpf_mean']
+                )
+            )
+            for expected_contrast in expected_contrasts
+        ]
 
-        # Loop over expected contrasts for which we have results
-        for expected_contrast in expected_contrasts:
-
-            # Select subset of the data frame that matches the separation and
-            # the expected contrast. This should usually contain 6 entries for
-            # the six azimuthal positions.
-            df_subset = df[
-                (df.separation == separation)
-                & (df.expected_contrast == expected_contrast)
-            ]
-
-            # Compute the average FPF for the current combination of the
-            # separation and the expected contrast
-            average_fpf = np.mean(df_subset['fpf_mean'].values)
-
-            # Store the expected contrast and the average FPF
-            average_fpf_values.append(average_fpf)
-
-        # Apply a cubic spline interpolation to the curve of expected contrast
-        # values and average FPF values, and find the point where this curve
-        # takes on the value of the desired `fpf_threshold`. This point (if it
-        # exists) is then stored as the value of the contrast curve for the
-        # current separation.
-        interpolator = CubicSpline(
-            x=expected_contrasts,
-            y=np.array(average_fpf_values) - fpf_threshold,
-            extrapolate=False,
+        # Set up a linear (k=1) spline interpolator so that we can estimate
+        # the (transformed) FPF value at arbitrary contrast values
+        interpolator = InterpolatedUnivariateSpline(
+            x=expected_contrasts, y=np.array(average_values), k=1
         )
 
-        # If multiple threshold points exist, store the maximum
-        if len(interpolator.roots()) > 0:
-            detection_limits[i] = max(interpolator.roots())
+        # Define a grid of contrast values for the interpolator
+        grid = np.linspace(
+            min(expected_contrasts), max(expected_contrasts), 10_001
+        )
+
+        # Define a helper function to find the (maximum) index after
+        # which the values of `array` change their sign
+        # Source: https://stackoverflow.com/a/21468492/4100721
+        def get_root_idx(array: np.ndarray) -> Optional[int]:
+            a, b = array > 0, array <= 0
+            idx = ((a[:-1] & b[1:]) | (b[:-1] & a[1:])).nonzero()[0]
+            return int(np.max(idx)) if idx.size > 0 else None
+
+        # Get the index of the grid entry where the interpolated FPF
+        # or logFPF values cross the given `threshold`
+        idx = get_root_idx(np.array(interpolator(grid)) - threshold)
+        if idx is not None:
+
+            # If it exists, use this index to compute the *contrast* value
+            # at which the FPF / logFPF crosses the threshold
+            detection_limits[i] = 0.5 * (grid[idx] + grid[idx + 1])
 
     return separations, detection_limits
