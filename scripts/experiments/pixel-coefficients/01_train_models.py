@@ -103,6 +103,7 @@ if __name__ == '__main__':
 
     # Other shortcuts
     selected_keys = config['observing_conditions']['selected_keys']
+    n_train_splits = config['n_train_splits']
     roi_split = args.roi_split
     n_roi_splits = args.n_roi_splits
 
@@ -119,8 +120,10 @@ if __name__ == '__main__':
     # Set up a BaseModelCreator to create instances of our base model
     base_model_creator = BaseModelCreator(**config['base_model'])
 
-    # Prepare a 4D array in which we will store the pixel coefficients
-    coefficients = np.full((x_size, y_size, x_size, y_size), np.nan)
+    # Prepare a 5D array in which we will store the pixel coefficients
+    coefficients = np.full(
+        (x_size, y_size, n_train_splits, x_size, y_size), np.nan
+    )
 
     # Define the the subset of the frame which we will process
     partial_roi_mask = get_partial_roi_mask(
@@ -151,15 +154,13 @@ if __name__ == '__main__':
                 base_model_creator=base_model_creator,
             )
 
-        # Get the selection mask, that is, the mask of the pixels used
+        # Get the selection mask (i.e., the mask of the predictor pixels)
         selection_mask = debug_dict['selection_mask']
 
-        # Get the values of the coefficients and normalize to maximum
-        pixel_coefs = np.mean(debug_dict['pixel_coefs'], axis=0)
-        pixel_coefs /= np.nanmax(np.abs(pixel_coefs))
-
-        # Store the coefficients
-        coefficients[x, y, selection_mask] = pixel_coefs
+        # Store the values of the coefficient for each predictor pixel
+        pixel_coefs = debug_dict['pixel_coefs']
+        for i in range(n_train_splits):
+            coefficients[x, y, i, selection_mask] = pixel_coefs[i]
 
     print()
 
