@@ -1,4 +1,5 @@
 {
+  "algorithm":            "pca",
   "dataset": {
     "name_or_path":       "beta_pictoris__lp",
     "binning_factor":     128,
