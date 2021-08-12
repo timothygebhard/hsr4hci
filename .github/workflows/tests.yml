@@ -56,9 +56,9 @@ jobs:
         COVERAGE="${COVERAGE:-unknown}" ;
         echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV ;
         if [ "$COVERAGE" != "unknown" ]; then
-          echo "BADGECOLOR=\"brightgreen\"" >> $GITHUB_ENV ;
+          echo "BADGECOLOR=brightgreen" >> $GITHUB_ENV ;
         else
-          echo "BADGECOLOR=\"orange\"" >> $GITHUB_ENV ;
+          echo "BADGECOLOR=orange" >> $GITHUB_ENV ;
         fi ;
     - name: Create test coverage badge
       uses: schneegans/dynamic-badges-action@v1.0.0
