@@ -44,7 +44,7 @@ def get_list_of_fits_file_paths(fits_dir: Path, prefix: str) -> List[Path]:
         lambda _: _.endswith('.fits') and _.startswith(prefix),
         os.listdir(fits_dir),
     )
-    fits_file_paths = [fits_dir / _ for _ in fits_file_names]
+    fits_file_paths = sorted([fits_dir / _ for _ in fits_file_names])
 
     # Perform a quick sanity check: Does the number of FITS files we found
     # match the number that we would expect based on the naming convention?
@@ -81,7 +81,7 @@ def get_list_of_hdf_file_paths(
         lambda _: _.endswith('.hdf') and _.startswith(prefix),
         os.listdir(hdf_dir),
     )
-    hdf_file_paths = [hdf_dir / _ for _ in hdf_file_names]
+    hdf_file_paths = sorted([hdf_dir / _ for _ in hdf_file_names])
 
     # Perform a quick sanity check: Does the number of HDF files we found
     # match the number that we would expect based on the naming convention?
