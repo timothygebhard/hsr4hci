@@ -6,6 +6,7 @@ Merge partial residual FITS files and compute signal estimate.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from itertools import product
 from pathlib import Path
 
 import argparse
@@ -13,14 +14,16 @@ import os
 import time
 
 from astropy.units import Quantity
+from sklearn.metrics.pairwise import cosine_similarity
 from tqdm.auto import tqdm
 
 import numpy as np
 
 from hsr4hci.config import load_config
-from hsr4hci.data import load_parang, load_metadata
+from hsr4hci.data import load_parang, load_metadata, load_psf_template
 from hsr4hci.derotating import derotate_combine
 from hsr4hci.fits import read_fits, save_fits
+from hsr4hci.forward_modeling import add_fake_planet
 from hsr4hci.masking import get_roi_mask, get_partial_roi_mask
 from hsr4hci.merging import get_list_of_fits_file_paths
 from hsr4hci.units import InstrumentUnitsContext
@@ -64,9 +67,10 @@ if __name__ == '__main__':
     config = load_config(experiment_dir / 'config.json')
     print('Done!', flush=True)
 
-    # Load metadata and parallactic angles
+    # Load metadata, parallactic angles and PSF template
     metadata = load_metadata(**config['dataset'])
     parang = load_parang(**config['dataset'])
+    psf_template = load_psf_template(**config['dataset'])
 
     # Define the unit conversion context for this data set
     instrument_unit_context = InstrumentUnitsContext(
@@ -148,6 +152,78 @@ if __name__ == '__main__':
     print('Saving signal estimate to FITS...', end=' ', flush=True)
     file_path = results_dir / 'signal_estimate.fits'
     save_fits(array=signal_estimate, file_path=file_path)
+    print('Done!', flush=True)
+
+    # -------------------------------------------------------------------------
+    # Compute the hypothesized stack (for sanity check)
+    # -------------------------------------------------------------------------
+
+    print('\nComputing hypothesized stack...', end=' ', flush=True)
+
+    # Make sure the PSF template is correctly normalized
+    psf_template /= np.max(psf_template)
+
+    # Initialize the hypothesized stack
+    hypothesized_stack = np.zeros((n_frames, frame_size[0], frame_size[1]))
+
+    # Loop over planet hypotheses and add fake planets to the stack
+    with instrument_unit_context:
+        for name, parameters in config['hypothesis'].items():
+            hypothesized_stack = np.array(
+                add_fake_planet(
+                    stack=hypothesized_stack,
+                    parang=parang,
+                    psf_template=psf_template,
+                    polar_position=(
+                        Quantity(*parameters['separation']),
+                        Quantity(*parameters['position_angle']),
+                    ),
+                    magnitude=0,
+                    extra_scaling=1,
+                    dit_stack=1,
+                    dit_psf_template=1,
+                    return_planet_positions=False,
+                    interpolation='bilinear',
+                )
+            )
+            hypothesized_stack /= np.max(hypothesized_stack)
+
+    print('Done!', flush=True)
+
+    # -------------------------------------------------------------------------
+    # Compute cosine similarities with hypothesized stack
+    # -------------------------------------------------------------------------
+
+    # Here, we compute the pixel-wise cosine similarity between the residual
+    # stack and the hypothesized stack. If our hypothesis for the training
+    # were correct, the resulting similarity frame should take on values close
+    # to 1 everywhere on the trace of the planet.
+    # If the trace is not very consistent, or contains artifacts, this might
+    # indicate that our hypothesis was actually *incorrect*, and that the
+    # "planet" that we might be seeing in the signal estimate needs to be
+    # treated with caution as we might have just produced a false positive.
+
+    print('\nComputing similarities...', end=' ', flush=True)
+    similarities = np.full((x_size, y_size), np.nan)
+    for x, y in product(np.arange(x_size), np.arange(y_size)):
+
+        # Define shortcuts for the time series that we compare
+        a = hypothesized_stack[:, x, y]
+        b = residual_stack[:, x, y]
+
+        # Skip pixels with NaN values
+        if np.isnan(a).any() or np.isnan(b).any():
+            continue
+
+        # Compute the similarity between the expected signal and the residual
+        similarities[x, y] = float(
+            cosine_similarity(X=a.reshape(1, -1), Y=b.reshape(1, -1))
+        )
+    print('Done!', flush=True)
+
+    print('Saving similarities to FITS...', end=' ', flush=True)
+    file_path = results_dir / 'similarities.fits'
+    save_fits(array=similarities, file_path=file_path)
     print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
