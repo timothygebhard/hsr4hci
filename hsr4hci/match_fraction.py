@@ -148,21 +148,16 @@ def get_match_fraction_for_position(
         a = expected_stack[:, x, y]
         b = np.asarray(residuals[str(peak_time)][:, x, y])
 
-        # In case we do not have a signal masking residual for the
+        # In case we do not have a (signal masking) residual for the
         # current affected position, we skip it
         if np.isnan(b).any():
             continue
 
-        # Compute the similarity between the expected signal and the
-        # actual "best" residual (and make sure it is between 0 and 1)
-        similarity = float(
-            np.clip(
-                cosine_similarity(X=a.reshape(1, -1), Y=b.reshape(1, -1)),
-                a_min=0,
-                a_max=1,
-            )
-        )
-        matches.append(similarity)
+        # Compute the cosine similarity between the expected signal and the
+        # "best" residual as a measure for how well the current pixel (x, y)
+        # matches our hypothesis for `position`.
+        similarity = cosine_similarity(X=a.reshape(1, -1), Y=b.reshape(1, -1))
+        matches.append(float(similarity))
 
     # Compute mean and median match fraction for current position
     if matches:
