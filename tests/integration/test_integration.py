@@ -407,8 +407,8 @@ def test__integration_hsr(
         roi_mask=roi_mask,
         frame_size=frame_size,
     )
-    assert np.isclose(np.nansum(mean_mf), 40.08782356809112)
-    assert np.isclose(np.nansum(median_mf), 29.398606837221674)
+    assert np.isclose(np.nansum(mean_mf), 21.814918730410714)
+    assert np.isclose(np.nansum(median_mf), 21.60788388460061)
 
     # -------------------------------------------------------------------------
     # STEP 4: Find selection mask
@@ -430,12 +430,12 @@ def test__integration_hsr(
         hypotheses=hypotheses,
         selection_mask=selection_mask,
     )
-    assert np.isclose(np.nansum(residual_stack), 1593.6344)
+    assert np.isclose(np.nansum(residual_stack), 1593.5697)
 
     signal_estimate = derotate_combine(
         stack=residual_stack, parang=parang, mask=~roi_mask
     )
-    assert np.isclose(np.nansum(signal_estimate), 31.995344515977195)
+    assert np.isclose(np.nansum(signal_estimate), 31.994019077945268)
 
     # -------------------------------------------------------------------------
     # STEP 6: Compute metrics
@@ -453,9 +453,9 @@ def test__integration_hsr(
             ),
             aperture_radius=Quantity(psf_fwhm / 2, 'pixel'),
         )
-    assert np.isclose(metrics['snr']['min'], 27.066662545724643)
-    assert np.isclose(metrics['snr']['max'], 51.449247970749006)
-    assert np.isclose(metrics['snr']['mean'], 35.929501706958895)
+    assert np.isclose(metrics['snr']['min'], 27.195064075087824)
+    assert np.isclose(metrics['snr']['max'], 50.38192403003572)
+    assert np.isclose(metrics['snr']['mean'], 35.80127805774184)
 
     # -------------------------------------------------------------------------
     # STEP 7: Create a plot
