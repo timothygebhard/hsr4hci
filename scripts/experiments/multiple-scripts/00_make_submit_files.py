@@ -121,7 +121,8 @@ if __name__ == '__main__':
         )
 
     # Compute the expected number of pixels per training job
-    n_pixels_per_job = int(np.ceil(np.sum(roi_mask) / n_splits))
+    n_pixels = np.sum(roi_mask)
+    n_pixels_per_job = int(np.ceil(n_pixels / n_splits))
 
     # -------------------------------------------------------------------------
     # Compute the expected memory consumption of a training job
@@ -141,14 +142,14 @@ if __name__ == '__main__':
     # Compute the expected amount of memory that we need per job (in MB)
     expected_job_memory = stack_memory + (n_arrays * array_memory)
     expected_job_memory /= 1024 ** 2
-    expected_job_memory *= 1
+    expected_job_memory *= (1 if n_pixels < 4000 else 6)
     expected_job_memory += 6144
     expected_job_memory = int(expected_job_memory)
 
     # Compute the expected total memory for merging the HDF files (in MB)
     expected_total_memory = n_arrays * array_memory * n_splits
     expected_total_memory /= 1024 ** 2
-    expected_total_memory *= 2
+    expected_total_memory *= (2 if n_pixels < 4000 else 4)
     expected_total_memory += 8192
     expected_total_memory = int(expected_total_memory)
 
