@@ -254,11 +254,11 @@ def get_contrast_curve(
     # Loop over the separation values and compute the detection limit
     for i, separation in enumerate(separations):
 
-        # For each expected contrast, collect the (transformed) average
+        # For each expected contrast, collect the average (transformed)
         # FPF value (the average is taken over the azimuthal position)
         average_values = [
-            transform(
-                np.median(
+            np.mean(
+                transform(
                     df[
                         (df.separation == separation)
                         & (df.expected_contrast == expected_contrast)
