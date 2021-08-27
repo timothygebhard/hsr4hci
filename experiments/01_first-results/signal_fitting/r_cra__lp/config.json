@@ -17,13 +17,13 @@
   },
   "train_mode":             "signal_fitting",
   "n_signal_times":         32,
-  "n_train_splits":         5,
+  "n_train_splits":         3,
   "base_model": {
     "module":               "sklearn.linear_model",
     "class":                "RidgeCV",
     "parameters": {
       "fit_intercept":      true,
-      "alphas":             [1e0, 1e2, 21]
+      "alphas":             [1e-1, 1e3, 41]
     }
   }
 }
