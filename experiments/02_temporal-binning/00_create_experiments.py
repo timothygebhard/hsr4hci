@@ -1,5 +1,5 @@
 """
-Create experiments.
+Create experiments to study effect of temporal binning.
 """
 
 # -----------------------------------------------------------------------------
@@ -10,6 +10,8 @@ import argparse
 import json
 import os
 import time
+
+import numpy as np
 
 from hsr4hci.config import load_config, get_hsr4hci_dir
 
@@ -25,13 +27,13 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     script_start = time.time()
-    print('\nCREATE EXPERIMENTS FOR 02_TEMPORAL-BINNING\n', flush=True)
+    print('\nCREATE EXPERIMENTS FOR TEMPORAL BINNING\n', flush=True)
 
     # -------------------------------------------------------------------------
     # Set up parser and get command line arguments
     # -------------------------------------------------------------------------
 
-    # Set up argument parser
+    # Set up argument parser and parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--algorithm',
@@ -40,49 +42,39 @@ if __name__ == '__main__':
         required=True,
     )
     parser.add_argument(
-        '--n-splits',
-        type=int,
-        default=64,
-        help=(
-            'Number of splits into which the training data is divided to '
-            'parallelize the training.'
-        ),
-    )
-    parser.add_argument(
-        '--bid',
-        type=int,
-        default=5,
-        help='Amount of cluster dollars to bid for each job.',
-    )
-    parser.add_argument(
         '--dataset',
         type=str,
         required=True,
     )
-    parser.add_argument(
-        '--binning-factors',
-        nargs='+',
-        default=[2, 3, 4, 5, 6, 8, 10, 16, 25, 32, 64, 128],
-        type=int,
-        help='Binning factors for which to create experiments.',
-    )
     args = parser.parse_args()
 
-    # Get arguments
+    # Define shortcuts for arguments
     algorithm = args.algorithm
     dataset = args.dataset
-    n_splits = args.n_splits
-    bid = args.bid
-    factors = args.binning_factors
 
     # -------------------------------------------------------------------------
-    # Create experiments
+    # Define shortcuts and global constants
     # -------------------------------------------------------------------------
 
-    # Read in the basic experiment configuration
-    # We basically copy over the version from "factor_1", which should be a
-    # symlink to the 01_first-results directory, and then only change the
-    # binning factor in the "dataset" section of the configuration.
+    # Define binning factors (we exclude "1" here, because we can re-use the
+    # results for 01_first-results)
+    binning_factors = np.unique(np.geomspace(2, 2000, 21).astype(int))
+
+    # Define the directory that contains the script for creating the submit
+    # files for the experiments; fix number of jobs for the HSR experiments
+    scripts_dir = get_hsr4hci_dir() / 'scripts' / 'experiments'
+    if algorithm == 'pca':
+        scripts_dir /= 'run-pca'
+        n_splits_argument = ''
+    else:
+        scripts_dir /= 'multiple-scripts'
+        n_splits_argument = '--n-splits 128 '
+
+    # -------------------------------------------------------------------------
+    # Create experiments folder, symlink factor_1, and read in base config
+    # -------------------------------------------------------------------------
+
+    # Create the directory for the given combination of dataset and algorithm
     main_dir = (
         get_hsr4hci_dir()
         / 'experiments'
@@ -90,31 +82,53 @@ if __name__ == '__main__':
         / dataset
         / algorithm
     )
+    print(f'Creating directory: {main_dir} ...', end='', flush=True)
+    main_dir.mkdir(exist_ok=True, parents=True)
+    print('Done!', flush=True)
+
+    # Create the experiment with binning factor = 1. This should just be a
+    # symlink to the respective directory 01_first-results so that we do not
+    # have to run the most expensive experiment twice.
+    print('Creating experiment: binning_factor-1 ...', end='', flush=True)
+    src_dir = (
+        get_hsr4hci_dir()
+        / 'experiments'
+        / '01_first-results'
+        / dataset
+        / algorithm
+    )
+    dst_dir = main_dir / 'binning_factor-1'
+    os.symlink(src=src_dir, dst=dst_dir)
+    print('Done! (symlinked)', flush=True)
+
+    # Read in the base experiment configuration: We basically copy the config
+    # from the (symlinked) "factor_1" directory, and then only change the
+    # binning factor in the "dataset" section of the configuration.
     file_path = main_dir / 'factor_1' / 'config.json'
     experiment_config = load_config(file_path)
 
-    # Define the directory with the script for creating the submit files
-    if algorithm == 'pca':
-        scripts_dir = get_hsr4hci_dir() / 'scripts' / 'experiments' / 'run-pca'
-        n_splits_argument = ''
-    else:
-        scripts_dir = (
-            get_hsr4hci_dir() / 'scripts' / 'experiments' / 'multiple-scripts'
-        )
-        n_splits_argument = f'--n-splits {n_splits}'
+    # -------------------------------------------------------------------------
+    # Create experiment for each binning factor
+    # -------------------------------------------------------------------------
 
     # Keep track of lines that will be written to shell scripts
     create_submit_files = []
     start_jobs = []
 
     # Loop over different binning factors and create experiment folders
-    for factor in factors:
+    for binning_factor in binning_factors:
+
+        print(
+            f'Creating experiment: binning_factor-{binning_factor} ...',
+            end='',
+            flush=True,
+        )
 
         # Update the experiment configuration to the current binning factor
-        experiment_config['dataset']['binning_factor'] = factor
+        experiment_config['dataset']['binning_factor'] = binning_factor
 
         # Create the experiment folder
-        experiment_dir = main_dir / f'factor_{factor}'
+        experiment_dir = main_dir / f'binning_factor-{binning_factor}'
         experiment_dir.mkdir(exist_ok=True)
 
         # Save the experiment configuration
@@ -126,8 +140,8 @@ if __name__ == '__main__':
         file_path = scripts_dir / '00_make_submit_files.py'
         create_submit_files.append(
             f'python {file_path.as_posix()} '
-            f'--bid {bid} '
-            f'{n_splits_argument} '
+            f'--bid 5 '
+            f'{n_splits_argument}'
             f'--experiment-dir {experiment_dir.as_posix()} ;'
         )
 
@@ -135,23 +149,33 @@ if __name__ == '__main__':
         file_path = experiment_dir / 'htcondor' / 'run_experiment.dag'
         start_jobs.append(f'condor_submit_dag {file_path.as_posix()}')
 
+        print('Done!', flush=True)
+
+    # -------------------------------------------------------------------------
+    # Create shel scripts for creating submit file and starting the jobs
+    # -------------------------------------------------------------------------
+
     # Create the shell script to create submit files for all experiments;
     # use chmod() to make the script executable
+    print('Creating 00_create_submit_files.sh ...', end='', flush=True)
     file_path = main_dir / '00_create_submit_files.sh'
     with open(file_path, 'w') as sh_file:
         sh_file.write('#!/bin/zsh\n\n')
         for line in create_submit_files:
             sh_file.write(f'{line}\n')
     os.chmod(file_path, 0o755)
+    print('Done!', flush=True)
 
     # Create the shell script to launch the experiments on the cluster;
     # use chmod() to make the script executable
+    print('Creating 01_start_jobs.sh ...', end='', flush=True)
     file_path = main_dir / '01_start_jobs.sh'
     with open(file_path, 'w') as sh_file:
         sh_file.write('#!/bin/zsh\n\n')
         for line in start_jobs:
             sh_file.write(f'{line}\n')
     os.chmod(file_path, 0o755)
+    print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
     # Postliminaries
