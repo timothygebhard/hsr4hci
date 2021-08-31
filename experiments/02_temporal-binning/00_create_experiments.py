@@ -94,8 +94,8 @@ if __name__ == '__main__':
         get_hsr4hci_dir()
         / 'experiments'
         / '01_first-results'
-        / dataset
         / algorithm
+        / dataset
     )
     dst_dir = main_dir / 'binning_factor-1'
     os.symlink(src=src_dir, dst=dst_dir)
