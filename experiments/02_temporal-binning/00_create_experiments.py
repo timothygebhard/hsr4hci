@@ -125,7 +125,7 @@ if __name__ == '__main__':
         )
 
         # Update the experiment configuration to the current binning factor
-        experiment_config['dataset']['binning_factor'] = binning_factor
+        experiment_config['dataset']['binning_factor'] = int(binning_factor)
 
         # Create the experiment folder
         experiment_dir = main_dir / f'binning_factor-{binning_factor}'
