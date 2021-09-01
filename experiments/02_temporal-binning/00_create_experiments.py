@@ -102,9 +102,9 @@ if __name__ == '__main__':
     print('Done! (symlinked)', flush=True)
 
     # Read in the base experiment configuration: We basically copy the config
-    # from the (symlinked) "factor_1" directory, and then only change the
-    # binning factor in the "dataset" section of the configuration.
-    file_path = main_dir / 'factor_1' / 'config.json'
+    # from the (symlinked) "binning_factor_1" directory, and then only change
+    # the binning factor in the "dataset" section of the configuration.
+    file_path = main_dir / 'binning_factor-1' / 'config.json'
     experiment_config = load_config(file_path)
 
     # -------------------------------------------------------------------------
