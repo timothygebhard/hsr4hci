@@ -89,7 +89,7 @@ if __name__ == '__main__':
     # Create the experiment with binning factor = 1. This should just be a
     # symlink to the respective directory 01_first-results so that we do not
     # have to run the most expensive experiment twice.
-    print('Creating experiment: binning_factor-1 ...', end='', flush=True)
+    print('Creating experiment: binning_factor-0001 ...', end='', flush=True)
     src_dir = (
         get_hsr4hci_dir()
         / 'experiments'
@@ -128,7 +128,7 @@ if __name__ == '__main__':
         experiment_config['dataset']['binning_factor'] = int(binning_factor)
 
         # Create the experiment folder
-        experiment_dir = main_dir / f'binning_factor-{binning_factor}'
+        experiment_dir = main_dir / f'binning_factor-{binning_factor:04d}'
         experiment_dir.mkdir(exist_ok=True)
 
         # Save the experiment configuration
