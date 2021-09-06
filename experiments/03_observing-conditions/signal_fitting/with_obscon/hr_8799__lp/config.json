@@ -1,7 +1,7 @@
 {
   "dataset": {
     "name_or_path":         "hr_8799__lp",
-    "binning_factor":       64,
+    "binning_factor":       1,
     "frame_size":           [167, 167]
   },
   "observing_conditions": {
@@ -23,7 +23,7 @@
     "class":                "RidgeCV",
     "parameters": {
       "fit_intercept":      true,
-      "alphas":             [1e0, 1e6, 51]
+      "alphas":             [1e-1, 1e3, 41]
     }
   }
 }
