@@ -29,6 +29,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from hsr4hci.coordinates import get_center
+from hsr4hci.masking import mask_frame_around_position
 
 
 # -----------------------------------------------------------------------------
@@ -288,9 +289,14 @@ def _determine_limit(
         model.x_mean.fixed = True
         model.y_mean.fixed = True
 
+        # Mask the frame (set everything to zero that is too far from position)
+        masked_frame = mask_frame_around_position(
+            frame=np.nan_to_num(frame), position=position, radius=5
+        )
+
         # Fit the frame and update the limit
         fit_p = fitting.LevMarLSQFitter()
-        model = fit_p(model=model, x=x, y=y, z=np.nan_to_num(frame))
+        model = fit_p(model=model, x=x, y=y, z=masked_frame)
         limit = max(limit, model.amplitude.value)
 
     return limit
