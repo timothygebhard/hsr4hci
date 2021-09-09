@@ -23,6 +23,7 @@ from hsr4hci.masking import (
     get_roi_mask,
     get_partial_roi_mask,
     get_predictor_pixel_selection_mask,
+    mask_frame_around_position,
     remove_connected_components,
 )
 
@@ -307,3 +308,14 @@ def test__remove_connected_components() -> None:
     with pytest.raises(ValueError) as error:
         remove_connected_components(np.random.normal(0, 1, (5, 5)), None, None)
     assert 'Input image must be binary!' in str(error)
+
+
+def test__mask_around_position() -> None:
+
+    frame = np.ones((17, 17))
+    masked_frame = mask_frame_around_position(
+        frame=frame, position=(5, 9), radius=3,
+    )
+    assert np.sum(masked_frame) == 25
+    assert masked_frame[5, 9] == 0
+    assert masked_frame[9, 5] == 1

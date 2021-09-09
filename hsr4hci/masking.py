@@ -394,3 +394,44 @@ def remove_connected_components(
         output[remove_pixel] = 0
 
     return np.asarray(output).astype(bool)
+
+
+def mask_frame_around_position(
+    frame: np.ndarray,
+    position: Tuple[float, float],
+    radius: int = 5,
+) -> np.ndarray:
+    """
+    Create a circular mask with the given `radius` at the given position
+    and set the frame outside of this mask to zero. This is sometimes
+    required for the Gaussian2D-based photometry methods to prevent the
+    Gaussian to try and fit some part of the data that is far from the
+    target `position`.
+
+    Args:
+        frame: A 2D numpy array of shape `(width, height)` containing
+            the data on which to run the aperture photometry.
+        position: A tuple `(x, y)` specifying the position at which to
+            estimate the flux. The position should be in astropy /
+            photutils coordinates.
+        radius: The radius of the mask; this should approximately match
+            the size of a planet signal.
+
+    Returns:
+        A masked version of the given `frame` on which we can perform
+        photometry based on fitting a 2D Gaussian to the data.
+    """
+
+    # Define shortcuts
+    frame_size = (frame.shape[0], frame.shape[1])
+    masked_frame = np.array(np.copy(frame))
+
+    # Get get circle mask; flip the position because numpy convention
+    circle_mask = get_circle_mask(
+        mask_size=frame_size, radius=radius, center=position[::-1]
+    )
+
+    # Apply the mask
+    masked_frame[~circle_mask] = 0
+
+    return masked_frame
