@@ -294,7 +294,7 @@ def get_residual_selection_mask(
 
     # Apply normalization to cartesian match fraction; this appears to improve
     # the final results (better thresholding in the blob finding stage)
-    cartesian /= np.percentile(cartesian, 98)
+    cartesian /= np.percentile(cartesian, 99)
     cartesian = np.clip(cartesian, a_min=None, a_max=1)
 
     # Multiply the match fraction with a gradient mask that aims to (partially)
