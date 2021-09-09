@@ -500,6 +500,10 @@ if __name__ == '__main__':
     # Normalize the PSF template
     psf_template /= np.max(psf_template)
 
+    # Clip the PSF template for determination of affected pixels
+    clipped_psf_template = np.copy(psf_template)
+    clipped_psf_template[psf_template < 0.2] = 0
+
     # Down-sample the parallactic angle (to speed up the computation)
     n = n_frames // 10
     parang_resampled = parang[::n]
@@ -514,7 +518,7 @@ if __name__ == '__main__':
                 add_fake_planet(
                     stack=hypothesized_stack,
                     parang=parang_resampled,
-                    psf_template=psf_template,
+                    psf_template=clipped_psf_template,
                     polar_position=(
                         Quantity(parameters['separation'], 'arcsec'),
                         Quantity(parameters['position_angle'], 'degree'),
