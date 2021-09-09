@@ -310,7 +310,11 @@ def pad_array_to_shape(
     )
 
 
-def crop_or_pad(array: np.ndarray, size: Tuple[int, ...]) -> np.ndarray:
+def crop_or_pad(
+    array: np.ndarray,
+    size: Tuple[int, ...],
+    **kwargs: Any,
+) -> np.ndarray:
     """
     Take an `array` and a target `size` and either crop or pad the
     `array` to match the given size.
@@ -318,6 +322,9 @@ def crop_or_pad(array: np.ndarray, size: Tuple[int, ...]) -> np.ndarray:
     Args:
         array: A numpy array.
         size: A tuple of integers specifying the target size.
+        kwargs: Additional keyword arguments that are passed to
+            `pad_array_to_shape()`. For example, use `constant_values`
+            to specify the padding value (default: 0).
 
     Returns:
         The original `array`, cropped or padded to match the `size`.
@@ -329,7 +336,7 @@ def crop_or_pad(array: np.ndarray, size: Tuple[int, ...]) -> np.ndarray:
 
     # If all array dimensions are smaller than the target, we pad the array
     if all(array.shape[_] <= size[_] for _ in range(array.ndim)):
-        return pad_array_to_shape(array, size)
+        return pad_array_to_shape(array, size, **kwargs)
 
     # If some dimensions are larger and some are smaller, we raise an error
     raise RuntimeError('Mixing of cropping and padding is not supported!')
