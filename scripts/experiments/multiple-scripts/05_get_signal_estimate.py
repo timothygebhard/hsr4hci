@@ -16,6 +16,7 @@ import time
 from astropy.units import Quantity
 
 import h5py
+import numpy as np
 
 from hsr4hci.config import load_config
 from hsr4hci.data import load_metadata, load_parang, load_psf_template
@@ -77,6 +78,9 @@ if __name__ == '__main__':
     psf_template = load_psf_template(**config['dataset'])
     metadata = load_metadata(**config['dataset'])
     print('Done!', flush=True)
+
+    # Normalize the PSF template
+    psf_template /= np.max(psf_template)
 
     # Define the unit conversion context for this data set
     instrument_units_context = InstrumentUnitsContext(

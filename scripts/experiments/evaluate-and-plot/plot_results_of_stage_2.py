@@ -497,9 +497,8 @@ if __name__ == '__main__':
 
     print('Determining affected pixels...', end=' ', flush=True)
 
-    # Make sure the PSF template is correctly normalized
+    # Normalize the PSF template
     psf_template /= np.max(psf_template)
-    psf_template[psf_template < 0.2] = 0
 
     # Down-sample the parallactic angle (to speed up the computation)
     n = n_frames // 10
@@ -593,7 +592,7 @@ if __name__ == '__main__':
     plot_match_fraction_map(match_fraction, contours, plots_dir, pixscale)
     plot_selection_mask(selection_mask, contours, plots_dir, pixscale)
     plot_polar_match_fraction(polar, expected_signal, plots_dir)
-    plot_template_matching(matched, plots_dir, grid_size, dec_rac_center)
+    plot_template_matching(matched, plots_dir, 128, dec_rac_center)
 
     # -------------------------------------------------------------------------
     # Postliminaries
