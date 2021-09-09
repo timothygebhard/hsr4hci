@@ -561,7 +561,6 @@ if __name__ == '__main__':
 
     # Compute the selection mask (and intermediate quantities)
     print('Computing selection mask...', end=' ', flush=True)
-    grid_size = 128
     (
         selection_mask,
         polar,
@@ -572,7 +571,6 @@ if __name__ == '__main__':
         match_fraction=match_fraction,
         parang=parang,
         psf_template=psf_template,
-        grid_size=grid_size,
     )
     selection_mask = selection_mask.astype(float)
     selection_mask[~roi_mask] = np.nan

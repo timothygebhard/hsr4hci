@@ -210,7 +210,7 @@ def get_residual_selection_mask(
     match_fraction: np.ndarray,
     parang: np.ndarray,
     psf_template: np.ndarray,
-    grid_size: int = 256,
+    grid_size: int = 128,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Based on the `match_fraction`, determine the `selection_mask`, that
