@@ -177,9 +177,9 @@ def test__get_residual_selection_mask() -> None:
         psf_template=psf_template,
         grid_size=256,
     )
-    assert np.sum(selection_mask) == 196
-    assert np.isclose(np.sum(polar), 1374.056805604671)
-    assert np.isclose(np.sum(matched), 1836.4536669022002)
+    assert np.sum(selection_mask) == 195
+    assert np.isclose(np.sum(polar), 2839.9622497160194)
+    assert np.isclose(np.sum(matched), 2367.7669993158324)
     assert len(positions) == 1
-    assert np.isclose(positions[0][0], 15.8203125)
-    assert np.isclose(positions[0][1], 2.577087723647878)
+    assert np.isclose(positions[0][0], 16.2109375)
+    assert np.isclose(positions[0][1], 2.552544031041707)
