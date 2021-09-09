@@ -59,7 +59,7 @@ def assemble_residual_stack_from_hypotheses(
 
     # Initialize the result as the default residuals
     result = np.array(residuals['default'])
-    n_frames, x_size, y_size = result.shape
+    _, x_size, y_size = result.shape
 
     # Loop over all spatial positions and pick the signal masking-based
     # residual based on the the respective hypothesis for the pixel
@@ -72,9 +72,8 @@ def assemble_residual_stack_from_hypotheses(
 
         # Otherwise (if the selection mask is True), replace the "default"
         # residual with the one that matches the hypothesis for this pixel
-        else:
-            signal_time = str(int(hypotheses[x, y]))
-            result[:, x, y] = np.array(residuals[signal_time][:, x, y])
+        signal_time = str(int(hypotheses[x, y]))
+        result[:, x, y] = np.array(residuals[signal_time][:, x, y])
 
     return result
 
@@ -178,21 +177,21 @@ def _prune_blobs(blobs: List[Tuple[float, float, float]]) -> np.ndarray:
     pruned = []
 
     # Loop over all blobs to check which of them we will keep
-    for i in range(len(blobs)):
+    for i, blob_1 in enumerate(blobs):
 
         # Unpack the reference blob; this is the blob for which we
         # decide if we want to keep it or not
-        rho_1, phi_1, brightness_1 = blobs[i]
+        rho_1, phi_1, brightness_1 = blob_1
 
         # Loop (again) over all blobs
-        for j in range(len(blobs)):
+        for j, blob_2 in enumerate(blobs):
 
             # We do not compare a blob with itself
             if i == j:
                 continue
 
             # Unpack the blob with which we will compare
-            rho_2, phi_2, brightness_2 = blobs[j]
+            rho_2, _, brightness_2 = blob_2
 
             # If the blob that we are comparing with is radially close and
             # brighter than the reference blob, we break the inner loop
@@ -408,10 +407,10 @@ def get_residual_selection_mask(
         # two columns (the coordinates of the blob in the polar match fraction)
         # to values for the radius  and separation in the original (Cartesian)
         # match fraction.
-        for i in range(len(tmp_blobs)):
+        for blob in tmp_blobs:
 
             # Unpack blob coordinates
-            rho, phi, _ = tmp_blobs[i]
+            rho, phi, _ = blob
 
             # Undo the zero-padding that we needed for the blob finder
             rho -= grid_size
