@@ -111,8 +111,34 @@ def test__get_flux__fs() -> None:
         position=(16, 16),
         search_radius=Quantity(2, 'pixel'),
     )
-    assert position == (17, 17)
+    assert np.allclose(position, (17, 17))
     assert np.isclose(flux, np.pi / 4)
+
+    # Case 2 (ensure that signals "in the distance" do not affect the fit)
+    x, y = np.meshgrid(np.arange(33), np.arange(33))
+    frame = np.zeros((33, 33))
+    frame += models.Gaussian2D(
+        x_mean=17,
+        x_stddev=1,
+        y_mean=17,
+        y_stddev=1,
+        amplitude=1,
+    )(x, y)
+    frame += models.Gaussian2D(
+        x_mean=24,
+        x_stddev=1,
+        y_mean=24,
+        y_stddev=1,
+        amplitude=1e4,
+    )(x, y)
+    position, flux = _get_flux__fs(
+        frame=frame,
+        position=(16, 16),
+        search_radius=Quantity(2, 'pixel'),
+    )
+    assert np.allclose(position, (17, 17))
+    assert np.isclose(flux, np.pi / 4)
+
 
 
 def test_get_flux() -> None:

@@ -15,6 +15,7 @@ from photutils import aperture_photometry, CircularAperture
 import numpy as np
 
 from hsr4hci.coordinates import get_center, polar2cartesian
+from hsr4hci.masking import mask_frame_around_position
 
 
 # -----------------------------------------------------------------------------
@@ -129,9 +130,12 @@ def _get_flux__f(
     gaussian_model.x_mean.fixed = True
     gaussian_model.y_mean.fixed = True
 
+    # Mask the frame (set everything to zero that is too far from position)
+    masked_frame = mask_frame_around_position(np.nan_to_num(frame), position)
+
     # Fit the model to the data
     fit_p = fitting.LevMarLSQFitter()
-    gaussian_model = fit_p(gaussian_model, x, y, np.nan_to_num(frame))
+    gaussian_model = fit_p(gaussian_model, x, y, masked_frame)
 
     # Get the final position of the Gaussian after the fit
     final_position = (gaussian_model.x_mean.value, gaussian_model.y_mean.value)
@@ -176,9 +180,16 @@ def _get_flux__fs(
     gaussian_model.y_mean.min = position[1] - search_radius.to('pixel').value
     gaussian_model.y_mean.max = position[1] + search_radius.to('pixel').value
 
+    # Mask the frame (set everything to zero that is too far from position)
+    masked_frame = mask_frame_around_position(
+        frame=np.nan_to_num(frame),
+        position=position,
+        radius=(5 + search_radius.to('pix').value),
+    )
+
     # Fit the model to the data
     fit_p = fitting.LevMarLSQFitter()
-    gaussian_model = fit_p(gaussian_model, x, y, np.nan_to_num(frame))
+    gaussian_model = fit_p(gaussian_model, x, y, masked_frame)
 
     # Get the final position of the Gaussian after the fit
     final_position = (gaussian_model.x_mean.value, gaussian_model.y_mean.value)
