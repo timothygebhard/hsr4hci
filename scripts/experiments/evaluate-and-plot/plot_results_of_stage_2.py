@@ -341,7 +341,7 @@ def plot_polar_match_fraction(
     )
 
     # Add inset axis for signal template
-    inset_ax = inset_axes(ax, width="33.3%", height="33.3%", loc=4)
+    inset_ax = inset_axes(ax, width="33.3%", height="33.3%", loc=1)
     inset_ax.set_aspect('equal')
     disable_ticks(inset_ax)
 
