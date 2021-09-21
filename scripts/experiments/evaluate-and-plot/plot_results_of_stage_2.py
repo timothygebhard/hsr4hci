@@ -1,5 +1,8 @@
 """
-Plot the results of stage 2.
+Plot the results of stage 2: hypothesis match, match fraction map,
+polar match fraction map, cross-correlation between the polar match
+fraction map and the expected signal template, and the final residual
+selection mask.
 """
 
 # -----------------------------------------------------------------------------
@@ -58,6 +61,10 @@ def _prepare_plot__dec_rac(
     contours: List[np.ndarray],
     pixscale: float,
 ) -> Tuple[Figure, Axes]:
+    """
+    Auxiliary function to prepare a plot in a declination / right
+    ascension coordinate system.
+    """
 
     # Create new figure
     fig, ax = plt.subplots(figsize=(3.4 / 2.54, 4.2 / 2.54))
@@ -103,6 +110,10 @@ def _prepare_plot__dec_rac(
 
 
 def _prepare_plot__sep_ang() -> Tuple[Figure, Axes]:
+    """
+    Auxiliary function to prepare a plot in a polar coordinate system
+    given by the separation and the azimuthal angle.
+    """
 
     # Create new figure
     fig, ax = plt.subplots(figsize=(3.4 / 2.54, 4.2 / 2.54))
@@ -119,15 +130,13 @@ def _prepare_plot__sep_ang() -> Tuple[Figure, Axes]:
     return fig, ax
 
 
-# -----------------------------------------------------------------------------
-# DEFINE FUNCTIONS
-# -----------------------------------------------------------------------------
-
 def plot_hypothesis_map(
     hypotheses: np.ndarray,
     contours: List[np.ndarray],
     plots_dir: Path,
     pixscale: float,
+    x_lim: Tuple[float, float],
+    y_lim: Tuple[float, float],
 ) -> None:
     """
     Create plot of the hypothesis map.
@@ -156,6 +165,10 @@ def plot_hypothesis_map(
         rasterized=True,
     )
 
+    # Set the plot limits
+    ax.set_xlim(*x_lim)
+    ax.set_ylim(*y_lim)
+
     # Add a colorbar and set options
     cbar = add_colorbar_to_ax(img, fig, ax, where='top')
     cbar.ax.tick_params(labelsize=5, pad=0.5, length=2)
@@ -175,6 +188,8 @@ def plot_match_fraction_map(
     contours: List[np.ndarray],
     plots_dir: Path,
     pixscale: float,
+    x_lim: Tuple[float, float],
+    y_lim: Tuple[float, float],
 ) -> None:
     """
     Create plot of the (Cartesian) match fraction map.
@@ -203,6 +218,10 @@ def plot_match_fraction_map(
         rasterized=True,
     )
 
+    # Set the plot limits
+    ax.set_xlim(*x_lim)
+    ax.set_ylim(*y_lim)
+
     # Add a colorbar and set options
     cbar = add_colorbar_to_ax(img, fig, ax, where='top')
     cbar.ax.tick_params(labelsize=5, pad=0.5, length=2)
@@ -224,6 +243,8 @@ def plot_selection_mask(
     contours: List[np.ndarray],
     plots_dir: Path,
     pixscale: float,
+    x_lim: Tuple[float, float],
+    y_lim: Tuple[float, float],
 ) -> None:
     """
     Create plot of the residual selection mask.
@@ -252,6 +273,10 @@ def plot_selection_mask(
         snap=True,
         rasterized=True,
     )
+
+    # Set the plot limits
+    ax.set_xlim(*x_lim)
+    ax.set_ylim(*y_lim)
 
     # Add a custom legend
     ax.legend(
@@ -355,7 +380,6 @@ def plot_polar_match_fraction(
 def plot_template_matching(
     matched: np.ndarray,
     plots_dir: Path,
-    grid_size: int,
     dec_rac_center: Tuple[float, float],
 ) -> None:
     """
@@ -393,7 +417,7 @@ def plot_template_matching(
         y = (
             peak_position[0]
             / min(dec_rac_center[0], dec_rac_center[1])
-            * grid_size
+            * matched.shape[0]
         )
         plt.plot(x, y, 'xk', ms=3)
 
@@ -475,13 +499,11 @@ if __name__ == '__main__':
 
     # Define quantities related to the size of the data set
     n_frames = len(parang)
-    with instrument_unit_context:
-        outer_radius = Quantity(*config['roi_mask']['outer_radius'])
-        frame_size = (
-            int(outer_radius.to('pixel').value) * 2 + 7,
-            int(outer_radius.to('pixel').value) * 2 + 7,
-        )
-        dec_rac_center = get_center(frame_size)
+    frame_size = (
+        int(config['dataset']['frame_size'][0]),
+        int(config['dataset']['frame_size'][1]),
+    )
+    dec_rac_center = get_center(frame_size)
 
     # Construct the mask for the region of interest (ROI)
     with instrument_unit_context:
@@ -549,7 +571,6 @@ if __name__ == '__main__':
     print('Loading hypothesis map...', end=' ', flush=True)
     file_path = experiment_dir / 'hypotheses' / 'hypotheses.fits'
     hypotheses = read_fits(file_path, return_header=False)
-    hypotheses = crop_center(hypotheses, frame_size)
     hypotheses /= n_frames
     hypotheses[~roi_mask] = np.nan
     print('Done!', flush=True)
@@ -558,7 +579,6 @@ if __name__ == '__main__':
     print('Loading match fraction map...', end=' ', flush=True)
     file_path = experiment_dir / 'match_fractions' / 'median_mf.fits'
     match_fraction = read_fits(file_path, return_header=False)
-    match_fraction = crop_center(match_fraction, frame_size)
     match_fraction[~roi_mask] = np.nan
     print('Done!', flush=True)
 
@@ -566,7 +586,7 @@ if __name__ == '__main__':
     print('Computing selection mask...', end=' ', flush=True)
     (
         selection_mask,
-        polar,
+        polar_match_fraction,
         matched,
         expected_signal,
         peak_positions,
@@ -589,14 +609,63 @@ if __name__ == '__main__':
     )
 
     # -------------------------------------------------------------------------
+    # Compute plot limits (we basically only want to plot the ROI)
+    # -------------------------------------------------------------------------
+
+    with instrument_unit_context:
+        outer_radius = Quantity(*config['roi_mask']['outer_radius'])
+        x_diff = frame_size[0] - (int(outer_radius.to('pixel').value) * 2 + 7)
+        y_diff = frame_size[1] - (int(outer_radius.to('pixel').value) * 2 + 7)
+        x_lim = (int(x_diff / 2), frame_size[0] - int(x_diff / 2) - 1)
+        y_lim = (int(y_diff / 2), frame_size[0] - int(y_diff / 2) - 1)
+
+    # -------------------------------------------------------------------------
     # Finally, create the plots
     # -------------------------------------------------------------------------
 
-    plot_hypothesis_map(hypotheses, contours, plots_dir, pixscale)
-    plot_match_fraction_map(match_fraction, contours, plots_dir, pixscale)
-    plot_selection_mask(selection_mask, contours, plots_dir, pixscale)
-    plot_polar_match_fraction(polar, expected_signal, plots_dir)
-    plot_template_matching(matched, plots_dir, 128, dec_rac_center)
+    # Plot hypothesis map
+    plot_hypothesis_map(
+        hypotheses=hypotheses,
+        contours=contours,
+        plots_dir=plots_dir,
+        pixscale=pixscale,
+        x_lim=x_lim,
+        y_lim=y_lim,
+    )
+
+    # Plot match fraction
+    plot_match_fraction_map(
+        match_fraction=match_fraction,
+        contours=contours,
+        plots_dir=plots_dir,
+        pixscale=pixscale,
+        x_lim=x_lim,
+        y_lim=y_lim,
+    )
+
+    # Plot selection mask
+    plot_selection_mask(
+        selection_mask=selection_mask,
+        contours=contours,
+        plots_dir=plots_dir,
+        pixscale=pixscale,
+        x_lim=x_lim,
+        y_lim=y_lim,
+    )
+
+    # Plot polar match fraction
+    plot_polar_match_fraction(
+        polar_match_fraction=polar_match_fraction,
+        expected_signal=expected_signal,
+        plots_dir=plots_dir,
+    )
+
+    # Plot cross-correlation result
+    plot_template_matching(
+        matched=matched,
+        plots_dir=plots_dir,
+        dec_rac_center=dec_rac_center,
+    )
 
     # -------------------------------------------------------------------------
     # Postliminaries
