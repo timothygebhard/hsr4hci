@@ -99,11 +99,12 @@ def get_reference_positions(
     # Unpack the polar position
     separation, position_angle = polar_position
 
-    # Compute the "opening angle" that one aperture corresponds to at
-    # the given separation
-    opening_angle = 2 * np.arcsin(
-        aperture_radius / separation.to(aperture_radius.unit)
-    )
+    # Compute the "opening angle" that one aperture corresponds to at given
+    # separation; check if we are too close to the center before using arcsin.
+    radius_ratio = aperture_radius / separation.to(aperture_radius.unit)
+    if not (-1 <= radius_ratio <= 1):
+        raise ValueError('Too close to center, opening_angle is NaN!')
+    opening_angle = 2 * np.arcsin(radius_ratio)
 
     # In case no exclusion angle is explicitly specified, compute a default
     # exclusion angle, which is chosen such that the apertures that are the
