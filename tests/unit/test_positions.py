@@ -66,13 +66,22 @@ def test__get_reference_positions() -> None:
     assert len(reference_positions) == 6
     assert all(_[0] == Quantity(0.6, 'arcsec') for _ in reference_positions)
 
-    # Case 2
+    # Case 3
     reference_positions = get_reference_positions(
         polar_position=(Quantity(8, 'pixel'), Quantity(-5, 'degree')),
         aperture_radius=Quantity(2, 'pixel'),
         exclusion_angle=Quantity(0, 'degree'),
     )
     assert len(reference_positions) == 11
+
+    # Case 4
+    with pytest.raises(ValueError) as value_error:
+        get_reference_positions(
+            polar_position=(Quantity(1, 'pixel'), Quantity(0, 'degree')),
+            aperture_radius=Quantity(2, 'pixel'),
+            exclusion_angle=None,
+        )
+    assert 'Too close to center, opening_angle is NaN' in str(value_error)
 
 
 def test__rotate_positions() -> None:

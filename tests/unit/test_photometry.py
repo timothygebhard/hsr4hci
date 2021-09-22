@@ -140,7 +140,6 @@ def test__get_flux__fs() -> None:
     assert np.isclose(flux, np.pi / 4)
 
 
-
 def test_get_flux() -> None:
 
     # Prepare data

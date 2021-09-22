@@ -68,47 +68,47 @@ def test__compute_metrics() -> None:
         n_rotation_steps=10,
     )
     assert np.isclose(
-        positions['final']['polar'][0].to('pixel').value, 16.01104586
+        positions['final']['polar'][0].to('pixel').value, 16.01080024421563
     )
     assert np.isclose(
-        positions['final']['polar'][1].to('radian').value, -1.57211132
+        positions['final']['polar'][1].to('radian').value, -1.5720312352633194
     )
     assert np.isclose(results['fpf']['max'], 4.985079950867889e-17)
     assert np.isclose(results['fpf']['mean'], 3.389508968147001e-17)
     assert np.isclose(results['fpf']['median'], 3.7016290701829294e-17)
     assert np.isclose(results['fpf']['min'], 5.3292228535917906e-18)
     assert np.isclose(results['fpf']['std'], 1.1155016447011583e-17)
-    assert np.isclose(results['log_fpf']['max'], 17.27333611836642)
-    assert np.isclose(results['log_fpf']['mean'], 16.517762842231445)
-    assert np.isclose(results['log_fpf']['median'], 16.43160710282887)
-    assert np.isclose(results['log_fpf']['min'], 16.302327872068012)
-    assert np.isclose(results['log_fpf']['std'], 0.2509437715244665)
-    assert np.isclose(results['noise']['max'], 0.021591978585007096)
-    assert np.isclose(results['noise']['mean'], 0.02112641155509073)
-    assert np.isclose(results['noise']['median'], 0.021180148095241408)
-    assert np.isclose(results['noise']['min'], 0.02077980551946452)
-    assert np.isclose(results['noise']['std'], 0.00025072540799743036)
+    assert np.isclose(results['log_fpf']['max'], 17.282327941119874)
+    assert np.isclose(results['log_fpf']['mean'], 16.526431865957733)
+    assert np.isclose(results['log_fpf']['median'], 16.44033950338373)
+    assert np.isclose(results['log_fpf']['min'], 16.310988015553853)
+    assert np.isclose(results['log_fpf']['std'], 0.25104035793468965)
+    assert np.isclose(results['noise']['max'], 0.02159086332484625)
+    assert np.isclose(results['noise']['mean'], 0.021125462204945204)
+    assert np.isclose(results['noise']['median'], 0.02117884744469653)
+    assert np.isclose(results['noise']['min'], 0.02077860767195894)
+    assert np.isclose(results['noise']['std'], 0.0002506598504073832)
     assert np.isclose(results['p_value']['max'], 1.0)
     assert np.isclose(results['p_value']['mean'], 1.0)
     assert np.isclose(results['p_value']['median'], 1.0)
     assert np.isclose(results['p_value']['min'], 0.9999999999999999)
     assert np.isclose(results['p_value']['std'], 4.734006883291518e-17)
-    assert np.isclose(results['signal']['max'], 0.7760009431476597)
-    assert np.isclose(results['signal']['mean'], 0.7753099579273356)
-    assert np.isclose(results['signal']['median'], 0.7753044468190109)
-    assert np.isclose(results['signal']['min'], 0.7747286941495293)
-    assert np.isclose(results['signal']['std'], 0.00037295309654538256)
-    assert np.isclose(results['snr']['max'], 37.282769245546504)
-    assert np.isclose(results['snr']['mean'], 36.70362888897134)
-    assert np.isclose(results['snr']['median'], 36.61052751305583)
-    assert np.isclose(results['snr']['min'], 35.92801806912074)
-    assert np.isclose(results['snr']['std'], 0.4230403938588033)
+    assert np.isclose(results['signal']['max'], 0.7769396634948865)
+    assert np.isclose(results['signal']['mean'], 0.7762484349890049)
+    assert np.isclose(results['signal']['median'], 0.7762431434540997)
+    assert np.isclose(results['signal']['min'], 0.775667102956501)
+    assert np.isclose(results['signal']['std'], 0.0003730524628884189)
+    assert np.isclose(results['snr']['max'], 37.330080783193)
+    assert np.isclose(results['snr']['mean'], 36.7497062463769)
+    assert np.isclose(results['snr']['median'], 36.65708303670411)
+    assert np.isclose(results['snr']['min'], 35.97334674314541)
+    assert np.isclose(results['snr']['std'], 0.42348499291612113)
 
     # Case 2
     with pytest.raises(RuntimeError) as runtime_error:
         compute_metrics(
             frame=signal_estimate,
-            polar_position=(Quantity(2, 'pixel'), Quantity(270, 'degree')),
+            polar_position=(Quantity(2.5, 'pixel'), Quantity(270, 'degree')),
             planet_mode='FS',
             noise_mode='P',
             aperture_radius=Quantity(2.35, 'pixel'),
