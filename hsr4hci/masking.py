@@ -399,7 +399,7 @@ def remove_connected_components(
 def mask_frame_around_position(
     frame: np.ndarray,
     position: Tuple[float, float],
-    radius: int = 5,
+    radius: float = 5,
 ) -> np.ndarray:
     """
     Create a circular mask with the given `radius` at the given position
