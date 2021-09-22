@@ -54,21 +54,8 @@ def test__assemble_residuals_from_hypotheses() -> None:
 def test___get_radial_gradient_mask() -> None:
 
     # Case 1
-    gradient = _get_radial_gradient_mask(mask_size=(5, 5), power=1.0)
-    expected = np.array(
-        [
-            [np.sqrt(8), np.sqrt(5), np.sqrt(4), np.sqrt(5), np.sqrt(8)],
-            [np.sqrt(5), np.sqrt(2), np.sqrt(1), np.sqrt(2), np.sqrt(5)],
-            [np.sqrt(4), np.sqrt(1), np.sqrt(0), np.sqrt(1), np.sqrt(4)],
-            [np.sqrt(5), np.sqrt(2), np.sqrt(1), np.sqrt(2), np.sqrt(5)],
-            [np.sqrt(8), np.sqrt(5), np.sqrt(4), np.sqrt(5), np.sqrt(8)],
-        ]
-    )
-    assert np.allclose(gradient, expected)
-
-    # Case 2
-    gradient = _get_radial_gradient_mask(mask_size=(5, 5), power=0.5)
-    expected = np.sqrt(
+    gradient = _get_radial_gradient_mask(mask_size=(5, 5))
+    expected = (
         np.array(
             [
                 [np.sqrt(8), np.sqrt(5), np.sqrt(4), np.sqrt(5), np.sqrt(8)],
@@ -78,8 +65,14 @@ def test___get_radial_gradient_mask() -> None:
                 [np.sqrt(8), np.sqrt(5), np.sqrt(4), np.sqrt(5), np.sqrt(8)],
             ]
         )
+        / 19
     )
     assert np.allclose(gradient, expected)
+
+    # Case 2
+    gradient = _get_radial_gradient_mask(mask_size=(45, 45))
+    assert np.allclose(gradient[0, :], 1)
+    assert np.allclose(gradient[:, 0], 1)
 
 
 def test___get_expected_signal() -> None:
