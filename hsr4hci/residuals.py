@@ -132,6 +132,10 @@ def _get_expected_signal(
     relative_rho: float = 0.500,
     relative_phi: float = 0.275,
 ) -> np.ndarray:
+    """
+    Auxiliary function to compute the expected signal (or: expected
+    signature of a planet) in the polar match fraction map.
+    """
 
     # Define shortcuts
     center = get_center(frame_size)
