@@ -104,6 +104,7 @@ def _get_flux__p(
 def _get_flux__f(
     frame: np.ndarray,
     position: Tuple[float, float],
+    mask_frame_radius: float = 5.0,
 ) -> Tuple[Tuple[float, float], float]:
     """
     Auxiliary function to measure the flux using the "F" mode.
@@ -131,7 +132,11 @@ def _get_flux__f(
     gaussian_model.y_mean.fixed = True
 
     # Mask the frame (set everything to zero that is too far from position)
-    masked_frame = mask_frame_around_position(np.nan_to_num(frame), position)
+    masked_frame = mask_frame_around_position(
+        frame=np.nan_to_num(frame),
+        position=position,
+        radius=mask_frame_radius,
+    )
 
     # Fit the model to the data
     fit_p = fitting.LevMarLSQFitter()
@@ -151,6 +156,7 @@ def _get_flux__fs(
     frame: np.ndarray,
     position: Tuple[float, float],
     search_radius: Quantity,
+    mask_frame_radius: float = 5.0,
 ) -> Tuple[Tuple[float, float], float]:
     """
     Auxiliary function to measure the flux using the "FS" mode.
@@ -184,7 +190,7 @@ def _get_flux__fs(
     masked_frame = mask_frame_around_position(
         frame=np.nan_to_num(frame),
         position=position,
-        radius=(5 + search_radius.to('pix').value),
+        radius=(mask_frame_radius + search_radius.to('pix').value),
     )
 
     # Fit the model to the data
@@ -211,6 +217,7 @@ def get_flux(
     mode: str = 'AS',
     aperture_radius: Optional[Quantity] = None,
     search_radius: Optional[Quantity] = None,
+    mask_frame_radius: float = 5.0,
 ) -> Tuple[Tuple[float, float], float]:
     """
     This function estimates the flux at or around a given position in
@@ -245,6 +252,16 @@ def get_flux(
         search_radius: Required for modes "ASS" and "FS". Defines the
             size of the region within which we vary the position to find
             the "optimal" (= highest) flux.
+        mask_frame_radius: For modes "F" and "FS" (i.e., the modes that
+            are based on fitting a 2D Gaussian to the data), we use a
+            mask to set pixels to zero that are further away from the
+            `position` (plus `search_radius`) than `mask_frame_radius`.
+            This is useful to avoid that other signals or speckles "in
+            the distance" affect the result of the fit. Modes "P", "AS",
+            and "ASS" ignore this parameter.
+            Note: for measuring the stellar flux, this parameter should
+            be set to a larger value than for planets; otherwise, the
+            stellar flux will be under-estimated.
 
     Returns:
         A tuple `(final_position, flux)`, where the `final_position` is
@@ -260,9 +277,9 @@ def get_flux(
     if mode == 'P':
         return _get_flux__p(frame, position)
     if mode == 'F':
-        return _get_flux__f(frame, position)
+        return _get_flux__f(frame, position, mask_frame_radius)
     if mode == 'FS':
-        return _get_flux__fs(frame, position, search_radius)
+        return _get_flux__fs(frame, position, search_radius, mask_frame_radius)
 
     # All other values for mode result in an error
     raise ValueError(f'Mode "{mode}" not supported!')
@@ -311,6 +328,7 @@ def get_stellar_flux(
         mode=mode,
         aperture_radius=aperture_radius,
         search_radius=search_radius,
+        mask_frame_radius=np.infty,
     )
 
     return flux
