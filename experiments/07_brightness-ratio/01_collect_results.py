@@ -161,9 +161,6 @@ if __name__ == '__main__':
         azimuthal_position = config['injection']['azimuthal_position']
         expected_contrast = config['injection']['contrast']
 
-        if separation == 1:
-            return None
-
         # Compute the expected position and contrast (note that we need to
         # convert the separation to units of PSF FWHM first!)
         polar_position = get_injection_position(
@@ -195,7 +192,7 @@ if __name__ == '__main__':
             planet_mode='FS',
             noise_mode='P',
             exclusion_angle=None,
-            n_rotation_steps=100,
+            n_rotation_steps=10,
         )
         metrics_results = flatten_nested_dict(metrics_results)
 
