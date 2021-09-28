@@ -29,7 +29,7 @@
     "class":                "RidgeCV",
     "parameters": {
       "fit_intercept":      true,
-      "alphas":             [1e0, 1e6, 51]
+      "alphas":             [1e-1, 1e3, 41]
     }
   }
 }
