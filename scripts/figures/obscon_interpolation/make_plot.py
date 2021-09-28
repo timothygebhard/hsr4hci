@@ -9,17 +9,22 @@ beta_pictoris__lp data set.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from datetime import timedelta
+
 import time
 
+from matplotlib.dates import MinuteLocator, SecondLocator, DateFormatter
+
 import h5py
-import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
 from hsr4hci.config import get_datasets_dir
+from hsr4hci.plotting import set_fontsize
 from hsr4hci.time_conversion import (
     date_string_to_timestamp,
+    round_minutes,
     timestamp_to_datetime,
 )
 
@@ -110,7 +115,12 @@ if __name__ == '__main__':
     # Create the plot
     # -------------------------------------------------------------------------
 
-    fig, ax = plt.subplots(figsize=(16.5 / 2.54, 16.5 / 4 / 2.54))
+    # Create new figure
+    fig, ax = plt.subplots(figsize=(18.4 / 2.54, 4 / 2.54))
+    fig.subplots_adjust(left=0.07, right=0.999, top=0.9, bottom=0.32)
+
+    # Set fontsize
+    set_fontsize(ax=ax, fontsize=6)
 
     # Plot the cubes as shaded regions in the background
     cube_starts_dates = [timestamp_to_datetime(_) for _ in cube_starts]
@@ -123,7 +133,7 @@ if __name__ == '__main__':
     for i, (start_time, end_time, start_value, end_value) in enumerate(
         zip(cube_starts_dates, cube_ends_dates, start_values, end_values)
     ):
-        label = 'From FITS headers' if i == 0 else None
+        label = 'Values from FITS headers' if i == 0 else None
         ax.plot(
             [start_time, end_time],
             [start_value, end_value],
@@ -146,10 +156,6 @@ if __name__ == '__main__':
             color='gray',
         )
 
-    # Set up formatting for x-axis (i.e., use properly formatted dates / times)
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
-    fig.autofmt_xdate()
-
     # Plot the values queried from the ambient servers
     for i, (timestamp, integration_time, value) in enumerate(
         zip(
@@ -158,7 +164,7 @@ if __name__ == '__main__':
             query_results['parameter'],
         )
     ):
-        label = 'From METEO archive' if i == 0 else None
+        label = 'Values from METEO archive' if i == 0 else None
         start_time = timestamp_to_datetime(timestamp - integration_time)
         end_time = timestamp_to_datetime(timestamp)
         ax.plot(
@@ -184,7 +190,7 @@ if __name__ == '__main__':
         [],
         lw=2,
         color='C0',
-        label='Spline interpolation',
+        label='Interpolated values',
     )
     ax.plot(
         datetimes,
@@ -194,14 +200,35 @@ if __name__ == '__main__':
         mew=0,
     )
 
-    # Set limits
-    xmin_ = np.min(query_results['timestamp']) + 740
-    xmax_ = xmin_ + 610
-    ax.set_xlim(timestamp_to_datetime(xmin_), timestamp_to_datetime(xmax_))
+    # Set axes limits
+    xmin_ = round_minutes(datetimes[0] + timedelta(seconds=740), 'down', 1)
+    xmax_ = round_minutes(xmin_ + timedelta(seconds=560), 'up ', 1)
+    ax.set_xlim(xmin_, xmax_)
     ax.set_ylim(743.2, 743.5)
-    ax.grid(ls='--', color='lightgray', lw=0.5)
-    ax.set_xlabel('Observation time (UTC)', fontsize=6)
-    ax.set_ylabel('Air pressure (hPa)', fontsize=6)
+
+    # Set up formatting for x-axis (i.e., use properly formatted dates / times)
+    ax.xaxis.set_major_locator(MinuteLocator())
+    ax.xaxis.set_minor_locator(SecondLocator(range(0, 60, 10)))
+    ax.xaxis.set_major_formatter(DateFormatter('%H:%M:%S'))
+    for tick_label in ax.get_xticklabels():
+        tick_label.set_ha('right')
+        tick_label.set_rotation(30)
+
+    # Add axes labels
+    ax.set_xlabel('Time (UTC)')
+    ax.set_ylabel('Air pressure (hPa)')
+
+    # Add grid
+    ax.grid(
+        b=True,
+        which='both',
+        lw=1,
+        alpha=0.3,
+        dash_capstyle='round',
+        dashes=(0, 2),
+    )
+
+    # Add legend to
     ax.legend(
         fontsize=6,
         ncol=4,
@@ -211,12 +238,9 @@ if __name__ == '__main__':
         borderaxespad=0.0,
         frameon=False,
     )
-    ax.tick_params(axis='both', which='major', labelsize=4)
-    ax.tick_params(axis='both', which='minor', labelsize=4)
 
     # Save the result as a PDF
-    fig.tight_layout()
-    plt.savefig('air_pressure.pdf', bbox_inches='tight', pad_inches=0)
+    plt.savefig('air_pressure.pdf', dpi=600)
 
     # -------------------------------------------------------------------------
     # Postliminaries
