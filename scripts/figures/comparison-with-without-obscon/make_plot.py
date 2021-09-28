@@ -12,20 +12,11 @@ from argparse import ArgumentParser
 
 import time
 
-from astropy.units import Quantity
-
-import matplotlib.pyplot as plt
-import numpy as np
-
 from hsr4hci.config import get_hsr4hci_dir
 from hsr4hci.data import load_metadata
 from hsr4hci.fits import read_fits
-from hsr4hci.coordinates import get_center
 from hsr4hci.general import crop_center
 from hsr4hci.plotting import plot_frame
-from hsr4hci.units import InstrumentUnitsContext
-
-import hsr4hci
 
 
 # -----------------------------------------------------------------------------

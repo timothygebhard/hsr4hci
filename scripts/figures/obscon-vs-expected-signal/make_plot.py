@@ -8,7 +8,6 @@ Create plot to compare the expected signal with an observing condition.
 
 from argparse import ArgumentParser
 
-import datetime
 import time
 
 from matplotlib.dates import HourLocator, MinuteLocator, DateFormatter
