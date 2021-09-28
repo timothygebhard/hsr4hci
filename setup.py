@@ -38,6 +38,7 @@ setup(
         'photutils==1.1.0',
         'polarTransform==2.0.0',
         'python-dateutil==2.8.1',
+        'requests==2.25.1',
         'scikit-image==0.18.1',
         'scikit-learn==0.24.2',
         'scipy==1.6.3',
