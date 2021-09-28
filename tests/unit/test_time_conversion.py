@@ -15,6 +15,7 @@ from hsr4hci.time_conversion import (
     date_string_to_timestamp,
     timestamp_to_date_string,
     timestamp_to_datetime,
+    round_minutes,
 )
 
 
@@ -71,3 +72,20 @@ def test__timestamp_to_date_string() -> None:
         include_timezone=False,
     )
     assert result == '2021-04-30T15:36:29'
+
+
+def test__round_minutes() -> None:
+
+    dt = datetime(2021, 9, 28, 22, 8, 29, tzinfo=timezone.utc)
+
+    # Case 1
+    result = round_minutes(dt, 'down', 5)
+    assert result == datetime(2021, 9, 28, 22, 5, 0, tzinfo=timezone.utc)
+
+    # Case 2
+    result = round_minutes(dt, 'up', 5)
+    assert result == datetime(2021, 9, 28, 22, 10, 0, tzinfo=timezone.utc)
+
+    # Case 3
+    result = round_minutes(dt, 'down', 60)
+    assert result == datetime(2021, 9, 28, 22, 0, 0, tzinfo=timezone.utc)

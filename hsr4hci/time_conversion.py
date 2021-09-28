@@ -9,7 +9,7 @@ and ISO 8061 strings.
 
 from typing import Union
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from dateutil.parser import parse
 
 import numpy as np
@@ -18,6 +18,7 @@ import numpy as np
 # -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
+
 
 def date_string_to_datetime(
     date_string: Union[str, np.bytes_],
@@ -99,3 +100,33 @@ def timestamp_to_date_string(
     if include_timezone:
         return datetime.fromtimestamp(timestamp, tz=tzinfo).isoformat()
     return datetime.fromtimestamp(timestamp, tz=tzinfo).isoformat()[:-6]
+
+
+def round_minutes(
+    dt: datetime,
+    direction: str,
+    resolution: float = 5,
+) -> datetime:
+    """
+    Auxiliary function to round the minutes of a given datetime `dt`
+    to the desired `resolution` (e.g., closest 5 minutes). Seconds
+    and milliseconds are discarded.
+
+    Args:
+        dt: A `datetime` object.
+        direction: Either "up" or "down" (direction of rounding).
+        resolution: Resolution (round to closest `resolution` minutes).
+
+    Returns:
+        The given datetime `dt` rounded to the target `resolution`.
+    """
+
+    # Compute new value for minute
+    offset = int(direction == 'up')
+    new_minute = (dt.minute // resolution + offset) * resolution
+
+    # Construct new datetime object
+    new_dt = dt + timedelta(minutes=new_minute - dt.minute)
+    new_dt = new_dt.replace(second=0, microsecond=0)
+
+    return new_dt
