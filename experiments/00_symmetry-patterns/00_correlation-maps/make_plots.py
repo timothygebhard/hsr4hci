@@ -1,5 +1,5 @@
 """
-Apply clustering to time series and plot the results.
+Create correlation map plots.
 """
 
 # -----------------------------------------------------------------------------
@@ -10,15 +10,14 @@ from pathlib import Path
 
 import time
 
-from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
+from matplotlib.image import AxesImage
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
-import numpy as np
 
-from hsr4hci.coordinates import get_center
+from hsr4hci.data import load_metadata
 from hsr4hci.fits import read_fits
-from hsr4hci.plotting import disable_ticks, add_colorbar_to_ax
+from hsr4hci.plotting import plot_frame
 
 
 # -----------------------------------------------------------------------------
@@ -56,6 +55,9 @@ if __name__ == '__main__':
         start_time = time.time()
         print(f'Running for {dataset}...', end=' ', flush=True)
 
+        # Load metadata for dataset
+        metadata = load_metadata(name_or_path=dataset)
+
         # Load correlation coefficients from FITS
         file_path = fits_dir / f'{dataset}.fits'
         correlations = read_fits(file_path=file_path, return_header=False)
@@ -63,57 +65,44 @@ if __name__ == '__main__':
         # Select CC map that we want to plot (flip coordinates because numpy!)
         cc_map = correlations[y, x]
 
-        # Define shortcuts
-        x_size, y_size = cc_map.shape
-        frame_size = (x_size, y_size)
-        center = get_center(frame_size)
-
-        # Plot the correlation map
-        fig, ax = plt.subplots(figsize=(5, 6))
-        img = ax.pcolormesh(
-            np.arange(x_size),
-            np.arange(y_size),
-            cc_map,
-            vmin=-0.6,
-            vmax=0.6,
-            shading='nearest',
-            cmap='RdBu_r',
-            snap=True,
-            rasterized=True,
+        # Create plot
+        fig, ax, _ = plot_frame(
+            frame=cc_map,
+            positions=[],
+            labels=[],
+            pixscale=metadata['PIXSCALE'],
+            figsize=(4.3 / 2.54, 5.3 / 2.54),
+            subplots_adjust=dict(
+                left=0.001,
+                right=0.999,
+                top=0.855,
+                bottom=0.005,
+            ),
+            aperture_radius=0,
+            scalebar_color='black',
+            scalebar_loc=2,
+            limits=(-0.6, 0.6),
+            add_colorbar=False,
         )
-        disable_ticks(ax)
-        ax.set_aspect('equal')
 
-        # Plot markers for position and center
-        plt.plot(x, y, 'x', mew=2, ms=8, color='lime')
-        plt.plot(center[0], center[1], '+', color='black')
+        # Add target pixel
+        ax.plot(x, y, 'x', ms=4, color='white')
 
-        # Create the scale bar and add it to the frame
-        scalebar = AnchoredSizeBar(
-            transform=ax.transData,
-            size=0.5 / 0.0271,
-            label='0.5"',
-            loc=2,
-            pad=1,
-            color='black',
-            frameon=False,
-            size_vertical=0,
-            fontproperties=fm.FontProperties(size=12),
+        # Add colorbar on top of the axis
+        img = ax.collections[0]
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes('top', size='5%', pad=0.025)
+        cbar = fig.colorbar(
+            img, cax=cax, orientation='horizontal', ticklocation='top'
         )
-        ax.add_artist(scalebar)
-
-        # Add a color bar
-        cbar = add_colorbar_to_ax(img, fig, ax, where='bottom')
         cbar.set_ticks([-0.5, -0.25, 0, 0.25, 0.5])
-        cbar.ax.set_xlabel(
-            r'Correlation with target pixel (in green)', fontsize=12
-        )
-        cbar.ax.xaxis.set_label_position('bottom')
+        cbar.ax.set_xlabel('Correlation with target pixel', fontsize=6)
+        cbar.ax.xaxis.set_label_position('top')
+        cbar.ax.tick_params(labelsize=5)
 
         # Save plot as a PDF
-        fig.tight_layout()
         file_path = plots_dir / f'{dataset}.pdf'
-        plt.savefig(file_path, bbox_inches='tight', pad_inches=0.025)
+        plt.savefig(file_path, dpi=600)
 
         print(f'Done! ({time.time() - start_time:.1f} seconds)', flush=True)
 

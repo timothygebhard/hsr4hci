@@ -10,15 +10,11 @@ from pathlib import Path
 
 import time
 
-from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
-
-import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import numpy as np
 
-from hsr4hci.coordinates import get_center
 from hsr4hci.data import load_dataset
-from hsr4hci.plotting import disable_ticks
+from hsr4hci.plotting import plot_frame
 from hsr4hci.pca import get_pca_signal_estimates
 
 
@@ -61,8 +57,8 @@ if __name__ == '__main__':
             binning_factor=1,
         )
         n_frames, x_size, y_size = stack.shape
-        center = get_center((x_size, y_size))
 
+        # Run PCA and compute principal components
         _, components = get_pca_signal_estimates(
             stack=stack,
             parang=parang,
@@ -70,71 +66,48 @@ if __name__ == '__main__':
             return_components=True,
         )
 
+        # Loop over principal components and plot them
         for n in range(24):
 
             # Scale components to (-1, 1)
             plot_array = components[n]
             plot_array /= np.nanpercentile(np.abs(plot_array), 99.99)
 
-            # Prepare grid for the pcolormesh()
-            x_range = np.arange(x_size)
-            y_range = np.arange(y_size)
-            x, y = np.meshgrid(x_range, y_range)
-
-            # Plot the result
-            fig, ax = plt.subplots(figsize=(2.4, 2.4))
-            img = ax.pcolormesh(
-                x,
-                y,
-                plot_array,
-                shading='nearest',
-                cmap='RdBu_r',
-                rasterized=True,
-                vmin=-1,
-                vmax=1,
+            # Create plot
+            fig, ax, cbar = plot_frame(
+                frame=plot_array,
+                positions=[],
+                labels=[],
+                pixscale=float(metadata['PIXSCALE']),
+                figsize=(2.125 / 2.54, 2.125 / 2.54),
+                subplots_adjust=dict(
+                    left=0.01, right=0.99, bottom=0.01, top=0.99,
+                ),
+                aperture_radius=0,
+                scalebar_color='black',
+                limits=(-1, 1),
+                add_colorbar=False,
             )
-            ax.plot(center[0], center[1], '+', color='black', ms=8)
-            disable_ticks(ax)
 
-            # Create the scale bar and add it to the frame
-            scalebar = AnchoredSizeBar(
-                transform=ax.transData,
-                size=0.5 / float(metadata['PIXSCALE']),
-                label='0.5"',
-                loc=1,
-                pad=1,
-                color='black',
-                frameon=False,
-                size_vertical=0,
-                fontproperties=fm.FontProperties(size=10),
+            # Add number of the principal component
+            ax.annotate(
+                f'PC #{n}',
+                xy=(51 - 5, 4),
+                xycoords='data',
+                xytext=(51 - 5, 4),
+                textcoords='data',
+                ha='right',
+                va='bottom',
+                fontsize=6,
             )
-            ax.add_artist(scalebar)
-
-            # Use another size bar to add a label for the number of principal
-            # components that stylistically matches the scale bar
-            label = AnchoredSizeBar(
-                transform=ax.transData,
-                size=0,
-                label=f'PC #{n + 1}',
-                loc=4,
-                pad=1,
-                color='black',
-                frameon=False,
-                size_vertical=0,
-                fontproperties=fm.FontProperties(size=10),
-            )
-            ax.add_artist(label)
 
             # Ensure that the results directory for this data set exists
             dataset_dir = plots_dir / dataset
             dataset_dir.mkdir(exist_ok=True)
 
             # Save the plot as a PDF
-            fig.tight_layout()
             file_path = dataset_dir / f'{dataset}__n_pc={n}.pdf'
-            plt.savefig(
-                file_path, bbox_inches='tight', dpi=600, pad_inches=0.005
-            )
+            plt.savefig(file_path, dpi=600)
             plt.close()
 
         print(f'Done! ({time.time() - start_time:.1f} seconds)', flush=True)
