@@ -10,7 +10,6 @@ from pathlib import Path
 
 import time
 
-from matplotlib.image import AxesImage
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import matplotlib.pyplot as plt
