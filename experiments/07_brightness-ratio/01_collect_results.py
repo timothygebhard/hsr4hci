@@ -60,9 +60,15 @@ if __name__ == '__main__':
         help='Main directory of the experiment set.',
     )
     parser.add_argument(
-        '--use-no-fake-planets',
-        action='store_true',
-        help='Use no_fake_planets residual ("classic" contrast computation).',
+        '--mode',
+        choices=['classic', 'alternative'],
+        default='classic',
+        help=(
+            'How to compute the throughput: using the "classic" approach'
+            'where the no_fake_planets residual is subtracted, or the '
+            'alternative approach that estimate the background from other '
+            'positions at the same separation.'
+        ),
     )
     parser.add_argument(
         '--n-jobs',
@@ -74,7 +80,7 @@ if __name__ == '__main__':
 
     # Define shortcuts
     main_dir = Path(args.directory).resolve()
-    use_no_fake_planets = args.use_no_fake_planets
+    mode = args.mode
     n_jobs = args.n_jobs
 
     # Make sure the main directory (where the base_config.json resides) exists
@@ -125,7 +131,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     no_fake_planets: Optional[np.ndarray] = None
-    if use_no_fake_planets:
+    if mode == 'classic':
         file_path = (
             experiments_dir
             / 'no_fake_planets'
@@ -225,7 +231,7 @@ if __name__ == '__main__':
     )
 
     # Store the results
-    file_path = main_dir / 'results.tsv'
+    file_path = main_dir / f'results__{mode}.tsv'
     results_df.to_csv(file_path, sep='\t')
 
     print('Done!', flush=True)
