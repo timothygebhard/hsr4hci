@@ -75,7 +75,7 @@ if __name__ == '__main__':
     # Create a new figure
     fig, axes = plt.subplots(
         nrows=7,
-        figsize=(9 / 2.54, 20.5 / 2.54),
+        figsize=(9 / 2.54, 20.15 / 2.54),
         sharex='all',
     )
     fig.subplots_adjust(
