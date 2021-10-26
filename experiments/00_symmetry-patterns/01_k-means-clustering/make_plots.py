@@ -10,6 +10,7 @@ from pathlib import Path
 
 import time
 
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 
@@ -74,9 +75,12 @@ if __name__ == '__main__':
             positions=[],
             labels=[],
             pixscale=float(metadata['PIXSCALE']),
-            figsize=(4.3 / 2.54, 4.3 / 2.54),
+            figsize=(4.3 / 2.54, 5.3 / 2.54),
             subplots_adjust=dict(
-                left=0.001, right=0.999, top=0.995, bottom=0.001,
+                left=0.001,
+                right=0.999,
+                top=0.855,
+                bottom=0.005,
             ),
             aperture_radius=0,
             scalebar_color='black',
@@ -85,6 +89,13 @@ if __name__ == '__main__':
             cmap='tab20',
             limits=(0, 10),
         )
+
+        # Add empty colorbar on top of the axis to ensure spacing, margins,
+        # etc. are identical to the correlation map plots
+        img = ax.collections[0]
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes('top', size='5%', pad=0.025)
+        cax.set_axis_off()
 
         # Save the plot as a PDF
         file_path = plots_dir / f'{dataset}.pdf'
