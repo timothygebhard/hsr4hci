@@ -458,6 +458,55 @@ def _add_colorbar(
     return cbar
 
 
+def _add_cardinal_directions(
+    ax: Axes,
+    color: MatplotlibColor = 'white',
+) -> None:
+    """
+    Auxiliary function for `plot_frame()` to add cardinal directions.
+    """
+
+    # Define position (i.e., where do the arrows start) and length of arrows
+    position = (0.95, 0.05)
+    arrow_length = 0.075
+
+    # Define common parameters for annotate()
+    params = dict(
+        xycoords='axes fraction',
+        textcoords='axes fraction',
+        arrowprops=dict(
+            arrowstyle='<-',
+            lw=0.75,
+            color=color,
+            shrinkA=2.5,
+            shrinkB=0,
+            patchA=None,
+            patchB=None,
+        ),
+        color=color,
+        fontsize=6,
+        bbox=dict(fc='none', ec='none', pad=0),
+    )
+
+    # Plot an arrow for "North" and "East"
+    ax.annotate(
+        'N',
+        xy=position,
+        xytext=(position[0], position[1] + arrow_length),
+        ha='center',
+        va='bottom',
+        **params,
+    )
+    ax.annotate(
+        'E',
+        xy=position,
+        xytext=(position[0] - arrow_length, position[1]),
+        ha='right',
+        va='center',
+        **params,
+    )
+
+
 def plot_frame(
     frame: np.ndarray,
     positions: Sequence[Tuple[float, float]],
@@ -473,6 +522,7 @@ def plot_frame(
     use_logscale: bool = False,
     add_colorbar: bool = True,
     add_scalebar: bool = True,
+    add_cardinal_directions: bool = True,
     scalebar_loc: int = 1,
     file_path: Optional[Union[Path, str]] = None,
 ) -> Tuple[Figure, Axes, Optional[Colorbar]]:
@@ -510,6 +560,8 @@ def plot_frame(
         add_scalebar: Whether or not to add a scale bar and a grid of
             ticks around the borders of the frame (to better understand
             the scale of the frame).
+        add_cardinal_directions: Whether or not to add labeled arrows
+            to indicate the cardinal directions (North and East).
         scalebar_loc: Location parameter for the scalebar. Example:
             loc=1 means "upper right".
         file_path: The path at which to save the resulting plot. The
@@ -583,6 +635,10 @@ def plot_frame(
         _add_ticks(ax, frame_size, scalebar_size, scalebar_color)
     else:
         disable_ticks(ax)
+
+    # If desired, add the cardinal directions
+    if add_cardinal_directions:
+        _add_cardinal_directions(ax, scalebar_color)
 
     # If desired, add a color bar
     if add_colorbar:
