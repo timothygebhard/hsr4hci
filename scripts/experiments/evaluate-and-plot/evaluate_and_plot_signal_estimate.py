@@ -109,6 +109,12 @@ if __name__ == '__main__':
     # Load information about the planets in the dataset
     planets = load_planets(**config['dataset'])
 
+    # Get information about label positions from config file
+    try:
+        label_positions = config['plotting']['label_positions']
+    except KeyError:
+        label_positions = None
+
     # Store labels and positions for plot
     labels = []
     positions = []
@@ -171,6 +177,7 @@ if __name__ == '__main__':
         pixscale=metadata['PIXSCALE'],
         positions=positions,
         labels=labels,
+        label_positions=label_positions,
         add_colorbar=True,
         use_logscale=False,
     )

@@ -306,6 +306,7 @@ def _add_apertures_and_labels(
     ax: Axes,
     positions: Sequence[Tuple[float, float]],
     labels: Sequence[Union[str, float]],
+    label_positions: Optional[Sequence[str]],
     aperture_radius: float,
     draw_color: MatplotlibColor,
 ) -> None:
@@ -316,8 +317,6 @@ def _add_apertures_and_labels(
 
     # Define default options for the label
     label_kwargs = dict(
-        ha='left',
-        va='center',
         color='white',
         fontsize=6,
         bbox=dict(
@@ -332,13 +331,47 @@ def _add_apertures_and_labels(
         aperture = CircularAperture(positions=positions, r=aperture_radius)
         aperture.plot(axes=ax, **dict(lw=1, color=draw_color))
 
+    # If no label positions are given, assume all labels go to the right
+    # of the position that they are annotation
+    if label_positions is None:
+        label_positions = len(labels) * ['right']
+
     # Add labels for positions (if labels are given)
-    if labels and positions:
-        for position, label in zip(positions, labels):
+    if labels and positions and label_positions:
+        for position, label, label_position in zip(
+            positions, labels, label_positions
+        ):
+
+            # Determine positions for annotate() and the alignment of the
+            # label based on `label_position`
+            if label_position == 'right':
+                xy = (position[0] + aperture_radius, position[1])
+                xytext = (8, 0)
+                ha = 'left'
+                va = 'center'
+            elif label_position == 'left':
+                xy = (position[0] - aperture_radius, position[1])
+                xytext = (-8, 0)
+                ha = 'right'
+                va = 'center'
+            elif label_position == 'top':
+                xy = (position[0], position[1] + aperture_radius)
+                xytext = (0, 8)
+                ha = 'center'
+                va = 'bottom'
+            elif label_position == 'bottom':
+                xy = (position[0], position[1] - aperture_radius)
+                xytext = (0, -8)
+                ha = 'center'
+                va = 'top'
+            else:
+                raise ValueError('Illegal value for label_position!')
+
+            # Annotate the aperture with a label
             ax.annotate(
                 text=label,
-                xy=(position[0] + aperture_radius, position[1]),
-                xytext=(8, 0),
+                xy=xy,
+                xytext=xytext,
                 textcoords='offset pixels',
                 arrowprops=dict(
                     arrowstyle='-',
@@ -347,6 +380,8 @@ def _add_apertures_and_labels(
                     lw=1,
                     color=draw_color,
                 ),
+                ha=ha,
+                va=va,
                 **label_kwargs,
             )
 
@@ -515,6 +550,7 @@ def plot_frame(
     figsize: Tuple[float, float] = (4.3 / 2.54, 5.0 / 2.54),
     subplots_adjust: Optional[Dict[str, float]] = None,
     aperture_radius: float = 0,
+    label_positions: Optional[Sequence[str]] = None,
     draw_color: MatplotlibColor = 'darkgreen',
     scalebar_color: MatplotlibColor = 'white',
     cmap: str = 'RdBu_r',
@@ -546,6 +582,10 @@ def plot_frame(
         aperture_radius: The radius of the apertures to be drawn at the
             given `positions`. If `positions` is empty, this value is
             never used.
+        label_positions: A list of strings (either "right", "left",
+            "top" or "bottom") that indicates, for each label where
+            this label should be placed relative to the position that
+            it annotates. Default is "right" for all labels.
         draw_color: The color that is used for drawing the apertures and
             also labels.
         scalebar_color: The color that is used for the scale bar and the
@@ -624,7 +664,7 @@ def plot_frame(
     # Plot apertures and add labels
     if positions:
         _add_apertures_and_labels(
-            ax, positions, labels, aperture_radius, draw_color
+            ax, positions, labels, label_positions, aperture_radius, draw_color
         )
 
     # If desired, add a scale bar and a grid of ticks
