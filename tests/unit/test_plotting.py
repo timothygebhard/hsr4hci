@@ -23,6 +23,7 @@ from hsr4hci.plotting import (
     _add_apertures_and_labels,
     _add_colorbar,
     _add_scalebar,
+    _add_cardinal_directions,
     _add_ticks,
     _determine_limit,
     add_colorbar_to_ax,
@@ -199,6 +200,7 @@ def test__add_apertures_and_labels() -> None:
         ax=ax,
         positions=[],
         labels=[],
+        label_positions=None,
         aperture_radius=0,
         draw_color='red',
     )
@@ -208,9 +210,32 @@ def test__add_apertures_and_labels() -> None:
         ax=ax,
         positions=[(15, 15), (30, 8)],
         labels=['Label 1', 'Label 2'],
+        label_positions=['left', 'right'],
         aperture_radius=2,
         draw_color='red',
     )
+
+    # Case 3
+    _add_apertures_and_labels(
+        ax=ax,
+        positions=[(15, 15), (30, 8)],
+        labels=['Label 1', 'Label 2'],
+        label_positions=['top', 'bottom'],
+        aperture_radius=2,
+        draw_color='red',
+    )
+
+    # Case 4
+    with pytest.raises(ValueError) as value_error:
+        _add_apertures_and_labels(
+            ax=ax,
+            positions=[(15, 15), (30, 8)],
+            labels=['Label 1', 'Label 2'],
+            label_positions=['illegal', 'value'],
+            aperture_radius=2,
+            draw_color='red',
+        )
+    assert 'Illegal value for label_position!' in str(value_error)
 
     plt.close()
 
@@ -224,9 +249,20 @@ def test__add_scalebar() -> None:
     scalebar_size = _add_scalebar(ax=ax, frame_size=(50, 50), pixscale=0.0271)
     assert np.isclose(scalebar_size, 9.22509225)
 
-    # Case 1
+    # Case 2
     scalebar_size = _add_scalebar(ax=ax, frame_size=(70, 70), pixscale=0.0271)
     assert np.isclose(scalebar_size, 18.4501845)
+
+    plt.close()
+
+
+def test__add_cardinal_directions() -> None:
+
+    fig, ax = plt.subplots()
+    ax.imshow(np.zeros((50, 50)))
+
+    # Case 1
+    _add_cardinal_directions(ax, color='red')
 
     plt.close()
 
