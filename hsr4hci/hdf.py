@@ -56,8 +56,8 @@ def save_data_to_hdf(
             create the new data set in the HDF file. Can be empty.
         name: The name of the data set.
         data: The data to be written to the data set.
-        overwrite: Whether or not to overwrite a data set of the same
-            name that already exists in the given location.
+        overwrite: Whether to overwrite a data set of the same name
+            that already exists in the given location.
     """
 
     # Ensure that we only try to save supported types
@@ -124,7 +124,7 @@ def recursively_save_dict_contents_to_group(
     dictionary and saving them to an HDF file.
 
     Args:
-        hdf_object: Either an open HDF file, or a a group inside such
+        hdf_object: Either an open HDF file, or a group inside such
             a file.
         prefix: Path to the location inside the HDF file; e.g., the
             name of a group, or a path (for nested groups).
@@ -257,7 +257,7 @@ def create_hdf_dir(experiment_dir: Path, create_on_work: bool = False) -> Path:
         work_dir = Path(experiment_dir.as_posix().replace('/home/', '/work/'))
         work_dir.mkdir(exist_ok=True, parents=True)
 
-        # Now, create a HDF directory on /work
+        # Now, create an HDF directory on /work
         work_hdf_dir = work_dir / 'hdf'
         work_hdf_dir.mkdir(exist_ok=True)
 
