@@ -28,10 +28,10 @@ class InstrumentUnitsContext:
     For VLT/NACO, it is typically 0.0271 arcsec / pixel, whereas for
     VLT/SPHERE, the value is 0.1221 arcsec / pixel.
     Similarly, the value of lambda / D obviously depends both on the
-    wavelength $lambda$ of the observation, as well as the diameter D
-    of the primary mirror. If we want to use lambda / D as a unit (as
-    it is a characteristic scale, e.g., for the PSF size), we need to
-    define its value in terms of other units somewhere.
+    wavelength $lambda$ of the observation and the diameter D of the
+    primary mirror. If we want to use lambda / D as a unit (as it is a
+    characteristic scale, e.g., for the PSF size), we need to define
+    its value in terms of other units somewhere.
     This class provides a context manager that is initialized with
     values for the pixel scale and lambda over D, and it then provides
     a (re-usable!) context inside which an `astropy.units.Quantity` can
