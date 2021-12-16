@@ -72,10 +72,10 @@ def get_reference_positions(
             specifies the target position for which the reference
             positions are computed.
         aperture_radius: The radius of the apertures that are used to
-            to the photometry. Traditionally, a common choice is to use
+            do the photometry. Traditionally, a common choice is to use
             apertures with a diameter of 1 lambda / D. To ensure that
             the samples are actually independent, one should probably
-            based the size of the apertures on the size of the PSF of
+            base the size of the apertures on the size of the PSF of
             the data set (e.g., diameter 1 FWHM).
         exclusion_angle: The angle around the `polar_positions` where
             no reference positions are placed. This can be used, for
@@ -100,7 +100,7 @@ def get_reference_positions(
     separation, position_angle = polar_position
 
     # Compute the "opening angle" that one aperture corresponds to at given
-    # separation; check if we are too close to the center before using arcsin.
+    # separation; check if we are too close to the center before using arc sin.
     radius_ratio = aperture_radius / separation.to(aperture_radius.unit)
     if not (-1 <= radius_ratio <= 1):
         raise ValueError('Too close to center, opening_angle is NaN!')
@@ -162,7 +162,7 @@ def rotate_reference_positions(
     arbitrary, as they depend, for example, on an arbitrary choice of
     the exclusion angle. Preliminary experiments have shown that the
     exact placement of the reference apertures can have an unreasonably
-    large effect on the SNR; meaning that a already slightly different
+    large effect on the SNR; meaning that an already slightly different
     (and arguably just as valid) choice of the reference positions can
     result in a significantly different SNR.
     For this reason, this function allows us to add some variation to
