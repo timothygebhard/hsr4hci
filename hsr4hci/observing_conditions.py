@@ -92,7 +92,7 @@ class ObservingConditions:
         Return a sorted list of the available observing conditions.
 
         Returns:
-            A a sorted list of the available observing conditions.
+            A sorted list of the available observing conditions.
         """
         return sorted(list(self.observing_conditions.keys()))
 
@@ -222,7 +222,8 @@ def query_archive(
     Send a request to one of ESO's ambient condition query forms [1] to
     retrieve the values of a particular observing condition.
 
-    [1]: https://archive.eso.org/cms/eso-data/ambient-conditions/paranal-ambient-query-forms.html
+    [1]: https://archive.eso.org/cms/eso-data/ambient-conditions/paranal
+         -ambient-query-forms.html
 
     Args:
         start_date: The start datetime (in UTC) as a string in ISO 8061
@@ -272,7 +273,10 @@ def query_archive(
     if archive == 'meteo':
         url = 'https://archive.eso.org/wdb/wdb/asm/meteo_paranal/query'
     elif archive == 'dimm_old':
-        url = 'https://archive.eso.org/wdb/wdb/asm/historical_ambient_paranal/query'
+        url = (
+            'https://archive.eso.org/wdb/wdb/asm/'
+            'historical_ambient_paranal/query'
+        )
     elif archive == 'dimm_new':
         url = 'https://archive.eso.org/wdb/wdb/asm/dimm_paranal/query'
     elif archive == 'mass':
