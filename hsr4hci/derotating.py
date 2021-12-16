@@ -34,7 +34,7 @@ def derotate_frames(
         parang: Array of parallactic angles (one for each frame).
         mask: Mask to apply after derotating. Usually, pixels for which
             there exist no real values are set to NaN. However, for
-            derotating, these have to be casted to zeros (otherwise the
+            derotating, these have to be cast to zeros (otherwise the
             interpolation turns everything into a NaN). This mask here
             allows to restore these NaN values again. Note that this
             mask selects the pixels that will be set to NaN; that means,
@@ -100,7 +100,7 @@ def derotate_combine(
             respective parallactic angle for each frame.
         mask: Mask to apply after derotating. Usually, pixels for which
             there exist no real values are set to NaN. However, for
-            derotating, these have to be casted to zeros (otherwise the
+            derotating, these have to be cast to zeros (otherwise the
             interpolation turns everything into a NaN). This mask here
             allows to restore these NaN values again.
         order: The order of the spline interpolation for the rotation.
