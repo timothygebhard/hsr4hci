@@ -37,7 +37,7 @@ def date_string_to_datetime(
     """
 
     # Decode the date string if necessary (this is sometimes necessary when
-    # strings are read directly from a PynPoint data base)
+    # strings are read directly from a PynPoint database)
     if isinstance(date_string, np.bytes_):
         date_string = date_string.decode('utf-8')
 
@@ -91,8 +91,8 @@ def timestamp_to_date_string(
     Args:
         timestamp: A UNIX timestamp (as a float).
         tzinfo: A timezone object. Usually, everything should be in UTC.
-        include_timezone: Whether or not to include the time zone
-            information in the string (e.g., "+00:00").
+        include_timezone: Whether to include the time zone information
+            in the string (e.g., "+00:00").
 
     Returns:
         An ISO 8061-formatted string that matches the given timestamp.
