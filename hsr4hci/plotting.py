@@ -159,7 +159,7 @@ def adjust_luminosity(
     if isinstance(color, str) and (color in mc.cnames.keys()):
         rgb: Tuple[float, float, float] = mc.to_rgb(mc.cnames[color])
 
-    # Otherwise we try to convert the color to RGB; this will raise a value
+    # Otherwise, we try to convert the color to RGB; this will raise a value
     # error for invalid color formats.
     else:
         rgb = mc.to_rgb(color)
@@ -168,7 +168,7 @@ def adjust_luminosity(
     hue, luminosity, saturation = colorsys.rgb_to_hls(*rgb)
 
     # Multiply `1 - luminosity` by given `amount` and convert back to RGB
-    luminosity = max(0, min(1, amount * luminosity))
+    luminosity = max(0.0, min(1.0, amount * luminosity))
     rgb = colorsys.hls_to_rgb(hue, luminosity, saturation)
 
     return rgb
@@ -391,7 +391,7 @@ def _add_scalebar(
     frame_size: Tuple[int, int],
     pixscale: float,
     color: MatplotlibColor = 'white',
-    loc: int = 1,
+    loc: str = 'upper right',
 ) -> float:
     """
     Auxiliary function for `plot_frame()` to add a scale bar.
@@ -559,7 +559,7 @@ def plot_frame(
     add_colorbar: bool = True,
     add_scalebar: bool = True,
     add_cardinal_directions: bool = True,
-    scalebar_loc: int = 1,
+    scalebar_loc: str = 'upper right',
     file_path: Optional[Union[Path, str]] = None,
 ) -> Tuple[Figure, Axes, Optional[Colorbar]]:
     """
@@ -593,17 +593,14 @@ def plot_frame(
         cmap: Name of the color map to be used for plotting.
         limits: A tuple `(vmin, vmax)` that is used for the plot limits.
             If None, the limits are estimated from the data.
-        use_logscale: Whether or not to use a (symmetric) log scale for
-            the plot / color bar.
-        add_colorbar: Whether or not to add a colorbar at the bottom of
-            the frame.
-        add_scalebar: Whether or not to add a scale bar and a grid of
-            ticks around the borders of the frame (to better understand
-            the scale of the frame).
-        add_cardinal_directions: Whether or not to add labeled arrows
-            to indicate the cardinal directions (North and East).
-        scalebar_loc: Location parameter for the scalebar. Example:
-            loc=1 means "upper right".
+        use_logscale: Whether to use a (symmetric) log scale.
+        add_colorbar: Whether to add a colorbar at the bottom.
+        add_scalebar: Whether to add a scale bar and a grid of ticks
+            around the borders of the frame (to better understand the
+            scale of the frame).
+        add_cardinal_directions: Whether to add labeled arrows to
+            indicate the cardinal directions (North and East).
+        scalebar_loc: Location parameter for the scalebar.
         file_path: The path at which to save the resulting plot. The
             path should include the file name plus file ending. If None
             is given, the plot is not saved.
@@ -612,7 +609,7 @@ def plot_frame(
         A 3-tuple containing:
         (1) the current matplotlib figure,
         (2) the current axis containing the plot of the frame, and
-        (3) the colorbar object (or None, if add_colobar == False).
+        (3) the colorbar object (or None, if add_colorbar == False).
     """
 
     # Define shortcuts
