@@ -45,23 +45,23 @@ def crop_center(
         The input array, cropped to the desired size around its center.
     """
 
-    # Ensure that the the array shape and the size variable match
+    # Ensure that the array shape and the size variable match
     if not array.ndim == len(size):
         raise RuntimeError(
             'Length of size must match number of dimensions of array!'
         )
 
-    # Loop over the the axes of the array to create slices
+    # Loop over the axes of the array to create slices
     slices = list()
     for old_len, new_len in zip(array.shape, size):
 
         # Compute start and end position for axis: if the new length is
-        # greater the the current one, we do not crop.
+        # greater the current one, we do not crop.
         if new_len > old_len:
             start = None
             end = None
 
-        # Otherwise we crop the same amount on both sides
+        # Otherwise, we crop the same amount on both sides
         else:
             start = old_len // 2 - new_len // 2 if new_len != -1 else None
             end = start + new_len if start is not None else None
@@ -220,7 +220,7 @@ def rotate_position(
     # If we called the function on an array, we have to return an array
     if isinstance(x, np.ndarray):
         return np.vstack((x, y))
-    return x, y
+    return float(x), float(y)
 
 
 def find_closest(sequence: Sequence, value: Any) -> Tuple[int, Any]:
