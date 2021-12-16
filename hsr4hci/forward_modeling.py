@@ -130,9 +130,9 @@ def add_fake_planet(
         dit_psf_template: The detector integration time of the
             `psf_template` (in seconds). Necessary to compute the
             correct scaling factor for the planet that we inject.
-        return_planet_positions: Whether or not to return the
-            (Cartesian) positions at which the fake planet was injected,
-            as a 2D numpy array of shape `(n_frames, 2)`.
+        return_planet_positions: Whether to return the (Cartesian)
+            positions at which the fake planet was injected, as a
+            2D numpy array of shape `(n_frames, 2)`.
         interpolation: interpolation argument that is passed to the
             `scipy.ndimage.shift()` routine that is used internally.
 

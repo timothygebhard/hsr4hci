@@ -43,7 +43,7 @@ def read_fits(
 
     Args:
         file_path: Path of the FITS file to be read in.
-        return_header: Whether or not to return the FITS header.
+        return_header: Whether to return the FITS header.
 
     Returns:
         A numpy array containing the contents of the given FITS file.
@@ -76,7 +76,7 @@ def save_fits(
         array: The numpy array to be saved to a FITS file.
         file_path: The path where to save the FITS file.
         header: A dictionary with additional header information.
-        overwrite: Whether or not to overwrite an existing FITS file.
+        overwrite: Whether to overwrite an existing FITS file.
     """
 
     # Make sure that file_path is a proper Path
