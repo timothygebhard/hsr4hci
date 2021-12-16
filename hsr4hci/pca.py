@@ -70,8 +70,7 @@ def get_pca_signal_estimates(
             derotating the stack).
         n_components: An iterable of integers, containing the values for
             the numbers of principal components for which to run PCA.
-        return_components: Whether or not to return the principal
-            components of the PCA.
+        return_components: Whether to return the principal components.
         roi_mask: A 2D binary mask of shape `(width, height)` that can
             be used to select the region of interest. If a ROI mask is
             given, only the pixels inside the ROI will be used to find
@@ -189,7 +188,7 @@ def get_pca_signal_estimates(
     else:
 
         # The reshaping of principal components into 2D frames depends on
-        # whether or not we have used an ROI mask
+        # whether we have used an ROI mask
         if roi_mask is not None:
             components = np.full((len(n_components), x_size, y_size), np.nan)
             for i in range(len(n_components)):
