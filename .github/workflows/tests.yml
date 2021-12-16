@@ -37,6 +37,9 @@ jobs:
     - name: Run flake8
       run: |
         flake8 . --count --show-source --statistics
+    - name: Install missing stub packages
+      run: |
+        mypy --install-types
     - name: Run mypy (package)
       run: |
         mypy -p hsr4hci
