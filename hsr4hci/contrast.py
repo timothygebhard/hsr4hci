@@ -74,11 +74,11 @@ def get_contrast(
             the reference positions. See `hsr4hci.photometry.get_flux()`
             for details.
         exclusion_angle: Exclusion angle that is used for determining
-            the reference positions (basically: whether or not to ignore
-            the positions left and right of the `polar_position` which
-            may contain self-subtraction "wings"). For more details,
-            see `hsr4hci.positions.get_reference_positions()`. This
-            option is only used if `no_fake_planets` is None.
+            the reference positions (basically: whether to ignore the
+            positions left and right of the `polar_position` which may
+            contain self-subtraction "wings"). For more details, see
+            `hsr4hci.positions.get_reference_positions()`. This option
+            is only used if `no_fake_planets` is None.
 
     Returns:
         A dictionary containing the observed contrast and flux ratio,
@@ -227,9 +227,9 @@ def get_contrast_curve(
             want to accept as "detectable". The usual value of 5 sigma
             (based on a standard normal distribution) corresponds to a
             1 in 3.5 million chance of a false positive.
-        log_transform: Whether or not to apply a log transformation to
-            the FPF before interpolating it to determine the detection
-            limit (i.e., work with logFPF).
+        log_transform: Whether to apply a log transformation to the FPF
+            before interpolating it to determine the detection limit
+            (i.e., work with logFPF).
 
     Returns:
         A 2-tuple, (separations, detection_limits), which contains the
