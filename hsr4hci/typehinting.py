@@ -21,9 +21,9 @@ import numpy as np
 class RegressorModel(Protocol):
     """
     Define a type hint for a generic regressor, that is, a class that
-    follows the usual sklearn syntax (i.e., it provides a fit() and a
-    predict() method) and can be used to learn a mapping from predictors
-    X to targets y.
+    follows the usual sklearn syntax (i.e., it provides a `fit()` and
+    a `predict()` method) and can be used to learn a mapping from
+    predictors X to targets y.
     """
 
     # pylint: disable=missing-function-docstring
