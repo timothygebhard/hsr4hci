@@ -107,7 +107,7 @@ def load_psf_template(name_or_path: Union[str, Path], **_: Any) -> np.ndarray:
 
     Args:
         name_or_path: Name of a data set (e.g., "beta_pictoris__lp"),
-            or Path to a HDF file that contains the data set.
+            or Path to an HDF file that contains the data set.
 
     Returns:
         A numpy array containing the unsaturated PSF template.
@@ -139,7 +139,7 @@ def load_observing_conditions(
 
     Args:
         name_or_path: Name of a data set (e.g., "beta_pictoris__lp"),
-            or Path to a HDF file that contains the data set.
+            or Path to an HDF file that contains the data set.
         binning_factor: Number of time steps that should be temporally
             binned ("pre-stacked") using a block-wise mean.
 
@@ -180,7 +180,7 @@ def load_metadata(name_or_path: Union[str, Path], **_: Any) -> dict:
 
     Args:
         name_or_path: Name of a data set (e.g., "beta_pictoris__lp"),
-            or Path to a HDF file that contains the data set.
+            or Path to an HDF file that contains the data set.
 
     Returns:
         A dictionary containing the metadata.
@@ -209,7 +209,7 @@ def load_planets(name_or_path: Union[str, Path], **_: Any) -> dict:
 
     Args:
         name_or_path: Name of a data set (e.g., "beta_pictoris__lp"),
-            or Path to a HDF file that contains the data set.
+            or Path to an HDF file that contains the data set.
 
     Returns:
         A dictionary containing the planet information.
@@ -244,7 +244,7 @@ def load_stack(
 
     Args:
         name_or_path: Name of a data set (e.g., "beta_pictoris__lp"),
-            or Path to a HDF file that contains the data set.
+            or Path to an HDF file that contains the data set.
         binning_factor: Number of frames that should be temporally
             binned ("pre-stacked") using a block-wise mean.
         frame_size: Target frame size to which the stack should be
@@ -349,7 +349,7 @@ def load_dataset(
 
     Args:
         name_or_path: Name of a data set (e.g., "beta_pictoris__lp"),
-            or Path to a HDF file that contains the data set.
+            or Path to an HDF file that contains the data set.
         binning_factor: Number of frames that should be temporally
             binned ("pre-stacked") using a block-wise mean.
         frame_size: Target frame size to which the stack should be
