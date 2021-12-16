@@ -47,10 +47,10 @@ def load_config(file_path: Union[str, Path]) -> Dict[str, Any]:
 
 def get_datasets_dir() -> Path:
     """
-    Get the Path of the datasets directory.
+    Get the Path of the dataset's directory.
 
     Returns:
-        Path to the datasets directory.
+        Path to the dataset's directory.
     """
 
     return get_hsr4hci_dir() / 'datasets'
