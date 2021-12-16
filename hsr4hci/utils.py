@@ -52,8 +52,8 @@ def check_frame_size(frame_size: Any) -> bool:
     (i.e., is a 2-tuple of positive integers).
 
     Args:
-        frame_size: Variable which to check whether or not it represents
-            a valid frame size.
+        frame_size: Variable which to check whether it represents a
+            valid frame size.
 
     Returns:
         None if `frame_size` is a valid frame size; otherwise, a
@@ -81,9 +81,9 @@ def check_cartesian_position(
 
     Args:
         position: Variable to check whether it is a valid position.
-        require_int: Whether or not we require all entries of the
-            position to be integers (e.g., because we want to use
-            `position` to index an array).
+        require_int: Whether we require all entries of the position to
+            be integers (e.g., because we want to use `position` to
+            index an array).
 
     Returns:
         None is `position` is a valid Cartesian position; otherwise, a
