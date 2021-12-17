@@ -47,7 +47,7 @@ def get_signal_times(n_frames: int, n_signal_times: int) -> np.ndarray:
     """
 
     # Generate `n_signal_times` different possible points in time (distributed
-    # uniformly over the observation) at which we planet signal could be
+    # uniformly over the observation) at which the planet signal could be
     return np.linspace(0, n_frames - 1, n_signal_times).astype(int)
 
 
@@ -113,7 +113,7 @@ def train_all_models(
         A dictionary containing three keys:
         (1) "stack_shape": the shape of the original stack; required
             when merging partial result files.
-        (2 "roi_mask": the *PARTIAL* ROI mask that was used for
+        (2) "roi_mask": the *PARTIAL* ROI mask that was used for
             training; also required when merging partial result files.
         (3) "residuals": a dictionary with keys "default", "0", ...,
             "N", where the latter are the signal times for which we have
@@ -133,7 +133,7 @@ def train_all_models(
         raise ValueError('roi_split must be an integer in [0, n_roi_splits)!')
 
     # Define shortcuts
-    n_frames, x_size, y_size = stack.shape
+    n_frames = stack.shape[0]
     signal_times = get_signal_times(n_frames, n_signal_times)
 
     # Get the partial ROI mask (that selects the subset of the ROI defined by
@@ -147,8 +147,8 @@ def train_all_models(
         # Initialize dictionary in which we will collect *all* residuals
         residuals: Dict[str, np.ndarray] = {}
 
-        # Loop over both the default model, as well as the temporal grid,
-        # train the respective models, compute the residuals, and store them
+        # Loop over both the default model and the temporal grid, train the
+        # respective models, compute the residuals, and store them
         for key in ['default'] + list(signal_times):
 
             # Initialize temporary array for residuals for the current key
@@ -312,15 +312,15 @@ def train_model_for_position(
         expected_signal = np.full(n_frames, np.nan)
 
         # Only compute it if we are not training a default model. This happens
-        # here so we don't have to re-compute it in each train / test-split.
+        # here, so we don't have to re-compute it in each train / test-split.
         if train_mode in ('signal_fitting', 'signal_masking'):
 
             # Ensure that the signal time is not None
             if signal_time is None:
                 raise RuntimeError('signal_time must not be None!')
 
-            # Compute expected signal based on position and signal_time.
-            # The resulting time series is already normalized to a maximum of 1.
+            # Compute expected signal based on position and signal_time. The
+            # resulting time series is already normalized to a maximum of 1.
             expected_signal = get_time_series_for_position(
                 position=position,
                 signal_time=signal_time,
@@ -556,11 +556,11 @@ def _train_signal_fitting_model(
     # Ideally, we would constrain the coefficient of the expected signal (and
     # ONLY this coefficient) to be non-negative. After all, there is no such
     # thing as a "negative planet". However, such a constrained model does not
-    # have an analytic solution anymore (unlike "normal" linear models) and can
-    # only be learned used optimization / quadratic programming, which would
-    # require a custom model class (sklearn do not provide linear models where
-    # you can place constraints on individual coefficients) and also increase
-    # training time.
+    # have an analytic solution (unlike "normal" linear models) and can only
+    # be learned used optimization / quadratic programming, which would require
+    # a custom model class (sklearn do not provide linear models where you can
+    # place constraints on individual coefficients) and also increase training
+    # time.
     # For these reasons, we use the following simple (and, again, somewhat
     # hacky...) solution: We simply  check if the coefficient that belongs to
     # the expected signal is negative. In this case, we train the model again,
@@ -583,6 +583,7 @@ def _train_signal_fitting_model(
     # only"-model by simply dropping the last coefficient from the model
     else:
         model.coef_ = model.coef_[:-1]
+        model.n_features_in_ -= 1
 
     # Return the model and the planet coefficient
     return model, planet_coefficient
@@ -628,7 +629,7 @@ def _train_signal_masking_model(
     # Instantiate a new model
     model = base_model_creator.get_model_instance()
 
-    # Fit the model to the training data to which we have apply the signal
+    # Fit the model to the training data to which we have to apply the signal
     # mask in order to ignore all parts that contain too much planet signal
     try:
         model.fit(
