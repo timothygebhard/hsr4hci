@@ -30,8 +30,8 @@ def two_sample_t_test(
     noise_samples: Union[List[float], np.ndarray],
 ) -> Tuple[float, float, float, float, float]:
     """
-    Compute the two-sample t-test that is the basis of the signal-to-
-    noise (SNR) as introduced by the following classic paper:
+    Compute the two-sample t-test that is the basis of the
+    signal-to-noise (SNR) as introduced by the following paper:
 
         Mawet, D. et al. (2014): "Fundamental limitations of high
             contrast imaging set by small sample statistics". *The
@@ -42,7 +42,7 @@ def two_sample_t_test(
         planet_samples: A list of floats containing the results of the
             flux measurements at the planet position(s). Generally, in
             almost all cases, there is only a single planet position
-            and, therefore, only a single planet planet sample.
+            and, therefore, only a single planet sample.
         noise_samples: A list of floats containing the results of the
             flux measurements at the reference (or noise) positions.
 
@@ -282,7 +282,7 @@ def compute_metrics(
 
             name = aggregation_function.__name__.replace('nan', '')
             results[metric_name][name] = float(
-                aggregation_function(metric_values)
+                aggregation_function(metric_values)  # type: ignore
             )
 
     return results, positions
