@@ -9,6 +9,9 @@
     "selected_keys":        null
   },
   "n_train_splits":         3,
+  "selection_mask": {
+    "radius_excluded":      [10.0, "pixel"]
+  },
   "base_model": {
     "module":               "sklearn.linear_model",
     "class":                "RidgeCV",
