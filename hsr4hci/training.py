@@ -273,7 +273,7 @@ def train_model_for_position(
         position=position[::-1],
         radius_position=Quantity(*selection_mask_config['radius_position']),
         radius_opposite=Quantity(*selection_mask_config['radius_opposite']),
-        psf_template=psf_template,
+        radius_excluded=Quantity(*selection_mask_config['radius_excluded']),
     )
 
     # Compute the number of predictor *pixels* (since we might still add the
