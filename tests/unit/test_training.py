@@ -29,6 +29,9 @@ from hsr4hci.masking import get_annulus_mask
 # -----------------------------------------------------------------------------
 
 def test__get_signal_times() -> None:
+    """
+    Test `hsr4hci.training.get_signal_times`.
+    """
 
     # Case 1
     signal_times = get_signal_times(n_frames=10, n_signal_times=1)
@@ -48,6 +51,9 @@ def test__get_signal_times() -> None:
 
 
 def test___train_default_model() -> None:
+    """
+    Test `hsr4hci.training._train_default_model`.
+    """
 
     base_model_config = {
         'module': 'sklearn.linear_model',
@@ -72,6 +78,9 @@ def test___train_default_model() -> None:
 
 
 def test___train_signal_fitting_model() -> None:
+    """
+    Test `hsr4hci.training._train_signal_fitting_model`.
+    """
 
     illegal_base_model_config = {
         'module': 'sklearn.ensemble',
@@ -138,6 +147,9 @@ def test___train_signal_fitting_model() -> None:
 
 
 def test___train_signal_masking_model() -> None:
+    """
+    Test `hsr4hci.training._train_signal_masking_model`.
+    """
 
     base_model_config = {
         'module': 'sklearn.linear_model',
@@ -180,6 +192,9 @@ def test___train_signal_masking_model() -> None:
 
 
 def test__train_model_for_position() -> None:
+    """
+    Test `hsr4hci.training.train_model_for_position`.
+    """
 
     base_model_config = {
         'module': 'sklearn.linear_model',
@@ -188,7 +203,7 @@ def test__train_model_for_position() -> None:
     }
     base_model_creator = BaseModelCreator(**base_model_config)
 
-    # Create a stack that has perfect mirror symmetry so it can be predicted
+    # Create a stack that has perfect mirror symmetry, so it can be predicted
     # perfectly by our model
     stack = np.random.normal(0, 1, (50, 31, 31))
     stack += np.rot90(stack, k=2, axes=(1, 2))
@@ -198,6 +213,7 @@ def test__train_model_for_position() -> None:
     selection_mask_config = {
         'radius_position': (2, 'pixel'),
         'radius_opposite': (2, 'pixel'),
+        'radius_excluded': (2, 'pixel'),
     }
     psf_template = np.array([[0, 0.5, 0], [0.5, 1, 0.5], [0, 0.5, 0]])
     n_train_splits = 1
@@ -309,6 +325,9 @@ def test__train_model_for_position() -> None:
 
 
 def test__train_all_models() -> None:
+    """
+    Test `hsr4hci.training.train_all_models`.
+    """
 
     base_model_config = {
         'module': 'sklearn.linear_model',
@@ -325,6 +344,7 @@ def test__train_all_models() -> None:
     selection_mask_config = {
         'radius_position': (2, 'pixel'),
         'radius_opposite': (2, 'pixel'),
+        'radius_excluded': (2, 'pixel'),
     }
     psf_template = np.array([[0, 0.5, 0], [0.5, 1, 0.5], [0, 0.5, 0]])
     roi_mask = get_annulus_mask(frame_size, inner_radius=2, outer_radius=6)
