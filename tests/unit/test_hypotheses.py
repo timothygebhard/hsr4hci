@@ -193,5 +193,5 @@ def test__get_all_hypotheses() -> None:
     target_similarities[7, 7] = 1
     target_similarities[8, 2] = 1
     target_similarities[11, 5] = 1
-    assert np.array_equal(hypotheses, target_hypotheses, equal_nan=True)  # type: ignore
-    assert np.array_equal(similarities, target_similarities, equal_nan=True)  # type: ignore
+    assert np.array_equal(hypotheses, target_hypotheses, equal_nan=True)
+    assert np.array_equal(similarities, target_similarities, equal_nan=True)

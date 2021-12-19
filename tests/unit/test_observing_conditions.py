@@ -36,7 +36,10 @@ def test__observing_conditions() -> None:
     assert 'Illegal name: "all"!' in str(key_error)
 
     # Case 2: observing conditions are not numpy arrays
-    input_dict = {'a': np.random.normal(0, 1, 10), 'b': list(range(100))}
+    input_dict = {
+        'a': np.random.normal(0, 1, 10),
+        'b': list(range(100)),  # type: ignore
+    }
     with pytest.raises(ValueError) as value_error:
         ObservingConditions(input_dict)
     assert 'All observing conditions must be numpy arrays!' in str(value_error)

@@ -313,7 +313,7 @@ def test_plot_frame(tmp_path_factory: TempPathFactory) -> None:
         use_logscale=False,
         add_colorbar=True,
         add_scalebar=True,
-        scalebar_loc=1,
+        scalebar_loc='upper right',
         file_path=None,
     )
     plt.close(fig)
@@ -335,7 +335,7 @@ def test_plot_frame(tmp_path_factory: TempPathFactory) -> None:
         use_logscale=True,
         add_colorbar=False,
         add_scalebar=True,
-        scalebar_loc=2,
+        scalebar_loc='upper left',
         file_path=test_dir / 'test.pdf',
     )
     plt.close(fig)
@@ -357,7 +357,7 @@ def test_plot_frame(tmp_path_factory: TempPathFactory) -> None:
         use_logscale=True,
         add_colorbar=False,
         add_scalebar=False,
-        scalebar_loc=3,
+        scalebar_loc='lower right',
         file_path=test_dir / 'test.png',
     )
     plt.close(fig)
