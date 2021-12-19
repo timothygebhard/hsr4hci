@@ -37,6 +37,10 @@ jobs:
     - name: Run flake8
       run: |
         flake8 . --count --show-source --statistics
+    - name: Install stub packages
+      run: |
+        pip install types-python-dateutil
+        pip install types-requests ;
     - name: Run mypy (package)
       run: |
         mypy -p hsr4hci
