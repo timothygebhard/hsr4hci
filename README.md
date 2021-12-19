@@ -1,6 +1,6 @@
 # Half-Sibling Regression for High-Contrast Imaging
 
-![Python 3.7](https://img.shields.io/badge/python-3.7-blue)
+![Python 3.8 | 3.9](https://img.shields.io/badge/python-3.8_|_3.9-blue)
 [![Checked with MyPy](https://img.shields.io/badge/mypy-checked-blue)](https://github.com/python/mypy)
 [![Code style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
 ![Tests](https://github.com/timothygebhard/hsr4hci/workflows/Tests/badge.svg?branch=master)
