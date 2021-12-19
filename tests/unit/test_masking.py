@@ -8,7 +8,6 @@ Tests for masking.py
 
 from itertools import combinations
 
-from astropy.modeling import models
 from astropy.units import Quantity
 
 import numpy as np
@@ -32,20 +31,10 @@ from hsr4hci.masking import (
 # TEST CASES
 # -----------------------------------------------------------------------------
 
-@pytest.fixture(scope="session")
-def psf_template() -> np.ndarray:
-
-    x, y = np.meshgrid(np.arange(33), np.arange(33))
-    gaussian = models.Gaussian2D(
-        x_mean=16, x_stddev=1, y_mean=16, y_stddev=1, amplitude=1
-    )
-    psf_template = np.asarray(gaussian(x, y))
-    psf_template /= np.max(psf_template)
-
-    return psf_template
-
-
 def test__get_circle_mask() -> None:
+    """
+    Test `hsr4hci.masking.get_circle_mask`.
+    """
 
     # Case 1
     circle_mask = get_circle_mask(mask_size=(3, 3), radius=1, center=None)
@@ -118,6 +107,9 @@ def test__get_circle_mask() -> None:
 
 
 def test__get_annulus_mask() -> None:
+    """
+    Test `hsr4hci.masking.get_annulus_mask`.
+    """
 
     # Case 1
     annulus_mask = get_annulus_mask(
@@ -170,6 +162,9 @@ def test__get_annulus_mask() -> None:
 
 
 def test__get_roi_mask() -> None:
+    """
+    Test `hsr4hci.masking.get_roi_mask`.
+    """
 
     roi_mask = get_roi_mask(
         mask_size=(51, 51),
@@ -183,6 +178,9 @@ def test__get_roi_mask() -> None:
 
 
 def test__get_predictor_mask() -> None:
+    """
+    Test `hsr4hci.masking.get_predictor_mask`.
+    """
 
     # Case 1
     predictor_mask = get_predictor_mask(
@@ -237,38 +235,74 @@ def test__get_predictor_mask() -> None:
     )
 
 
-def test__get_exclusion_mask(psf_template: np.ndarray) -> None:
+def test__get_exclusion_mask() -> None:
+    """
+    Test `hsr4hci.masking.get_exclusion_mask`.
+    """
 
     # Case 1
     exclusion_mask = get_exclusion_mask(
         mask_size=(11, 11),
         position=(5, 5),
-        psf_template=np.ones((1, 1)),
+        radius_excluded=Quantity(0, 'pixel'),
     )
-    assert np.sum(exclusion_mask) == 13
+    assert np.sum(exclusion_mask) == 0
 
     # Case 2
     exclusion_mask = get_exclusion_mask(
+        mask_size=(11, 11),
+        position=(5, 5),
+        radius_excluded=Quantity(1, 'pixel'),
+    )
+    assert np.sum(exclusion_mask) == 1
+
+    # Case 3
+    exclusion_mask = get_exclusion_mask(
         mask_size=(101, 101),
         position=(32, 21),
-        psf_template=psf_template,
+        radius_excluded=Quantity(2, 'pixel'),
     )
-    assert np.sum(exclusion_mask) == 57
+    assert np.sum(exclusion_mask) == 9
+
+    # Case 4
+    exclusion_mask = get_exclusion_mask(
+        mask_size=(101, 101),
+        position=(10, 80),
+        radius_excluded=Quantity(3, 'pixel'),
+    )
+    assert np.sum(exclusion_mask) == 25
 
 
-def test__get_predictor_pixel_selection_mask(psf_template: np.ndarray) -> None:
+def test__get_predictor_pixel_selection_mask() -> None:
+    """
+    Test `hsr4hci.masking.get_predictor_pixel_selection_mask`.
+    """
 
+    # Case 1
     mask = get_predictor_pixel_selection_mask(
         mask_size=(101, 101),
         position=(15, 19),
         radius_position=Quantity(3, 'pixel'),
         radius_opposite=Quantity(3, 'pixel'),
-        psf_template=psf_template,
+        radius_excluded=Quantity(2, 'pixel'),
     )
-    assert np.sum(mask) == 25
+    assert np.sum(mask) == 41
+
+    # Case 2
+    mask = get_predictor_pixel_selection_mask(
+        mask_size=(101, 101),
+        position=(15, 19),
+        radius_position=Quantity(5, 'pixel'),
+        radius_opposite=Quantity(5, 'pixel'),
+        radius_excluded=Quantity(3, 'pixel'),
+    )
+    assert np.sum(mask) == 113
 
 
 def test__get_positions_from_mask() -> None:
+    """
+    Test `hsr4hci.masking.get_positions_from_mask`.
+    """
 
     mask = np.full((11, 11), False)
     mask[3, 7] = True
@@ -278,6 +312,9 @@ def test__get_positions_from_mask() -> None:
 
 
 def test__get_partial_roi_mask() -> None:
+    """
+    Test `hsr4hci.masking.get_partial_roi_mask`.
+    """
 
     roi_mask = get_circle_mask((101, 101), 45)
     partial_roi_masks = [
@@ -290,6 +327,9 @@ def test__get_partial_roi_mask() -> None:
 
 
 def test__remove_connected_components() -> None:
+    """
+    Test `hsr4hci.masking.remove_connected_components`.
+    """
 
     mask_1 = get_circle_mask(mask_size=(101, 101), radius=1, center=(30, 30))
     mask_2 = get_circle_mask(mask_size=(101, 101), radius=2, center=(36, 36))
@@ -311,6 +351,9 @@ def test__remove_connected_components() -> None:
 
 
 def test__mask_around_position() -> None:
+    """
+    Test `hsr4hci.masking.mask_around_position`.
+    """
 
     frame = np.ones((17, 17))
     masked_frame = mask_frame_around_position(
