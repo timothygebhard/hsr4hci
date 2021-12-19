@@ -104,6 +104,7 @@ if __name__ == '__main__':
     # Other shortcuts
     selected_keys = config['observing_conditions']['selected_keys']
     n_train_splits = config['n_train_splits']
+    radius_excluded = config['selection_mask']['radius_excluded']
     roi_split = args.roi_split
     n_roi_splits = args.n_roi_splits
 
@@ -125,7 +126,7 @@ if __name__ == '__main__':
         (x_size, y_size, n_train_splits, x_size, y_size), np.nan
     )
 
-    # Define the the subset of the frame which we will process
+    # Define the subset of the frame which we will process
     partial_roi_mask = get_partial_roi_mask(
         roi_mask=np.full((x_size, y_size), True),
         roi_split=roi_split,
@@ -148,6 +149,7 @@ if __name__ == '__main__':
                 selection_mask_config={
                     "radius_position": [1000.0, "pixel"],
                     "radius_opposite": [1000.0, "pixel"],
+                    "radius_excluded": radius_excluded,
                 },
                 psf_template=psf_template,
                 n_train_splits=config['n_train_splits'],
