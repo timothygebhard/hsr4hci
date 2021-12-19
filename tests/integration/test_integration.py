@@ -22,6 +22,7 @@ from hsr4hci.base_models import BaseModelCreator
 from hsr4hci.config import load_config
 from hsr4hci.data import load_dataset
 from hsr4hci.derotating import derotate_combine
+from hsr4hci.fits import save_fits
 from hsr4hci.forward_modeling import add_fake_planet
 from hsr4hci.hypotheses import get_all_hypotheses
 from hsr4hci.hdf import save_dict_to_hdf
@@ -49,7 +50,7 @@ def test_dir(tmp_path_factory: TempPathFactory) -> Path:
     Create a directory in which all the integration test data is stored.
     """
 
-    return tmp_path_factory.mktemp('integration_test', numbered=False)
+    return Path(tmp_path_factory.mktemp('integration_test', numbered=False))
 
 
 @pytest.fixture(scope="session")
@@ -178,6 +179,7 @@ def hsr_config_file(hsr_experiment_dir: Path, test_data_path: Path) -> None:
         "selection_mask": {
             "radius_position": [8.0, "pixel"],
             "radius_opposite": [0.2168, "arcsec"],
+            "radius_excluded": [4.0, "pixel"],
         },
         "train_mode": "signal_masking",
         "n_signal_times": 10,
@@ -334,7 +336,7 @@ def test__integration_hsr(
         **config['dataset']
     )
 
-    n_frames, x_size, y_size = stack.shape
+    _, x_size, y_size = stack.shape
     frame_size = (x_size, y_size)
 
     pixscale = float(metadata['PIXSCALE'])
@@ -377,8 +379,11 @@ def test__integration_hsr(
         )
     residuals: Dict[str, np.ndarray] = dict(results['residuals'])
 
-    assert np.isclose(np.nansum(residuals['default']), 106.88051)
-    assert np.isclose(np.nansum(residuals['0']), 258.61685)
+    print("\n\n\n")
+    print("np.nansum(residuals['default']) =", np.nansum(residuals['default']))
+    assert np.isclose(np.nansum(residuals['default']), 97.77813)
+    print("np.nansum(residuals['0']) =", np.nansum(residuals['0']))
+    assert np.isclose(np.nansum(residuals['0']), 231.49171)
 
     # -------------------------------------------------------------------------
     # STEP 2: Find hypotheses
@@ -392,8 +397,13 @@ def test__integration_hsr(
         frame_size=frame_size,
         psf_template=psf_template,
     )
-    assert np.nansum(hypotheses) == 7061.0
-    assert np.isclose(np.nansum(similarities), 85.247)
+    print("np.nansum(hypotheses) =", np.nansum(hypotheses))
+    assert np.nansum(hypotheses) == 7235.0
+    print("np.nansum(similarities) =", np.nansum(similarities))
+    assert np.isclose(np.nansum(similarities), 85.039)
+
+    file_path = hsr_experiment_dir / 'hypotheses.fits'
+    save_fits(hypotheses, file_path)
 
     # -------------------------------------------------------------------------
     # STEP 3: Compute match fractions
@@ -407,8 +417,14 @@ def test__integration_hsr(
         roi_mask=roi_mask,
         frame_size=frame_size,
     )
-    assert np.isclose(np.nansum(mean_mf), 21.814918730410714)
-    assert np.isclose(np.nansum(median_mf), 21.60788388460061)
+
+    print("np.nansum(mean_mf) =", np.nansum(mean_mf))
+    assert np.isclose(np.nansum(mean_mf), 21.85110251973588)
+    print("np.nansum(median_mf) =", np.nansum(median_mf))
+    assert np.isclose(np.nansum(median_mf), 22.061571398839916)
+
+    file_path = hsr_experiment_dir / 'mean_mf.fits'
+    save_fits(mean_mf, file_path)
 
     # -------------------------------------------------------------------------
     # STEP 4: Find selection mask
@@ -419,7 +435,11 @@ def test__integration_hsr(
         parang=parang,
         psf_template=psf_template,
     )
+    print("np.nansum(selection_mask) =", np.nansum(selection_mask))
     assert np.nansum(selection_mask) == 48
+
+    file_path = hsr_experiment_dir / 'selection_mask.fits'
+    save_fits(selection_mask, file_path)
 
     # -------------------------------------------------------------------------
     # STEP 5: Assemble residual stack and compute signal estimate
@@ -430,12 +450,20 @@ def test__integration_hsr(
         hypotheses=hypotheses,
         selection_mask=selection_mask,
     )
-    assert np.isclose(np.nansum(residual_stack), 1603.6471)
+    print("np.nansum(residual_stack) =", np.nansum(residual_stack))
+    assert np.isclose(np.nansum(residual_stack), 1609.6305)
+
+    file_path = hsr_experiment_dir / 'residual_stack.fits'
+    save_fits(residual_stack, file_path)
 
     signal_estimate = derotate_combine(
         stack=residual_stack, parang=parang, mask=~roi_mask
     )
-    assert np.isclose(np.nansum(signal_estimate), 32.195614995551296)
+    print("np.nansum(signal_estimate) =", np.nansum(signal_estimate))
+    assert np.isclose(np.nansum(signal_estimate), 32.198919676862715)
+
+    file_path = hsr_experiment_dir / 'signal_estimate.fits'
+    save_fits(signal_estimate, file_path)
 
     # -------------------------------------------------------------------------
     # STEP 6: Compute metrics
@@ -453,9 +481,13 @@ def test__integration_hsr(
             ),
             aperture_radius=Quantity(psf_fwhm / 2, 'pixel'),
         )
-    assert np.isclose(metrics['snr']['min'], 27.146177668342617)
-    assert np.isclose(metrics['snr']['max'], 51.39151761600216)
-    assert np.isclose(metrics['snr']['mean'], 35.94418435996597)
+
+    print("metrics['snr']['min'] =", metrics['snr']['min'])
+    assert np.isclose(metrics['snr']['min'], 27.419537160667645)
+    print("metrics['snr']['max'] =", metrics['snr']['max'])
+    assert np.isclose(metrics['snr']['max'], 50.717935810046825)
+    print("metrics['snr']['mean'] =", metrics['snr']['mean'])
+    assert np.isclose(metrics['snr']['mean'], 35.834709350004545)
 
     # -------------------------------------------------------------------------
     # STEP 7: Create a plot
@@ -472,3 +504,4 @@ def test__integration_hsr(
         add_colorbar=True,
         use_logscale=False,
     )
+    print('Result directory:', hsr_experiment_dir)
