@@ -7,6 +7,7 @@ Evaluate (compute SNR) and plot signal estimate.
 # -----------------------------------------------------------------------------
 
 from pathlib import Path
+from typing import Any
 
 import argparse
 import json
@@ -14,6 +15,7 @@ import os
 import time
 
 from astropy.units import Quantity
+from scipy.spatial.distance import euclidean
 
 import numpy as np
 
@@ -131,7 +133,7 @@ if __name__ == '__main__':
 
         # Compute the metrics
         with instrument_unit_context:
-            metrics, positions_ = compute_metrics(
+            metrics, position_dict = compute_metrics(
                 frame=signal_estimate,
                 polar_position=planet_position,
                 aperture_radius=Quantity(psf_fwhm / 2, 'pixel'),
@@ -147,12 +149,45 @@ if __name__ == '__main__':
             rf'_{{-{log_fpf["mean"] - log_fpf["min"]:.1f}}}$'
         )
         labels.append(label)
-        positions.append(positions_['final']['cartesian'])
+        positions.append(position_dict['final']['cartesian'])
 
         # Save metrics to JSON in results directory
         file_path = results_dir / f'metrics__{name}.json'
         with open(file_path, 'w') as json_file:
             json.dump(metrics, json_file, indent=2)
+
+        # Create a new dictionary which contains the values from the
+        # positions_dict but converted to float so that we can save it
+        # as a JSON file.
+        positions_json: Any = dict(initial={}, final={}, distance=np.nan)
+        with instrument_unit_context:
+
+            # Make the positions dictionary serializable (i.e., convert the
+            # astropy Quantity objects to regular floats in the right units
+            positions_json['final']['polar'] = [
+                position_dict['final']['polar'][0].to('arcsec').value,
+                position_dict['final']['polar'][1].to('degree').value,
+            ]
+            positions_json['initial']['polar'] = [
+                position_dict['initial']['polar'][0].to('arcsec').value,
+                position_dict['initial']['polar'][1].to('degree').value,
+            ]
+
+            # Ensure that the polar angle is positive
+            if positions_json['final']['polar'][1] < 0:
+                positions_json['final']['polar'][1] += 360
+
+            # Compute the distance (in pixels) between the initial and the
+            # final position, and add it to the positions_dict
+            positions_json['distance'] = euclidean(
+                position_dict['initial']['cartesian'],
+                position_dict['final']['cartesian']
+            )
+
+        # Save positions to JSON in results directory
+        file_path = results_dir / f'positions__{name}.json'
+        with open(file_path, 'w') as json_file:
+            json.dump(positions_json, json_file, indent=2)
 
     print('Done!\n', flush=True)
 
