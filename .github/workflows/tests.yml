@@ -37,15 +37,12 @@ jobs:
     - name: Run flake8
       run: |
         flake8 . --count --show-source --statistics
-    - name: Install missing stub packages
-      run: |
-        mypy --install-types
     - name: Run mypy (package)
       run: |
-        mypy -p hsr4hci
+        mypy -p hsr4hci --install-types
     - name: Run mypy (tests)
       run: |
-        mypy tests/
+        mypy tests --install-types
     - name: Run pytest
       run: |
         pytest --cov-report term-missing --cov=hsr4hci --verbose 2>&1 | tee test.log
