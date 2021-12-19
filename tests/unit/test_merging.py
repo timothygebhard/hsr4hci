@@ -31,16 +31,25 @@ from hsr4hci.merging import (
 
 @pytest.fixture(scope="session")
 def hdf_dir(tmp_path_factory: TempPathFactory) -> Path:
-    return tmp_path_factory.mktemp('merging_hdf', numbered=False)
+    """
+    Fixture to create temporary HDF directory.
+    """
+    return Path(tmp_path_factory.mktemp('merging_hdf', numbered=False))
 
 
 @pytest.fixture(scope="session")
 def fits_dir(tmp_path_factory: TempPathFactory) -> Path:
-    return tmp_path_factory.mktemp('merging_fits', numbered=False)
+    """
+    Fixture to create temporary FITS directory.
+    """
+    return Path(tmp_path_factory.mktemp('merging_fits', numbered=False))
 
 
 @pytest.fixture(scope="session")
 def fits_data(fits_dir: Path) -> Tuple[Path, np.ndarray, List[Path]]:
+    """
+    Fixture to create temporary test data for FITS.
+    """
 
     np.random.seed(42)
 
@@ -62,6 +71,9 @@ def fits_data(fits_dir: Path) -> Tuple[Path, np.ndarray, List[Path]]:
 
 @pytest.fixture(scope="session")
 def hdf_data__partial(fits_dir: Path) -> Tuple[Path, dict, List[Path]]:
+    """
+    Fixture to create temporary partial test data for HDF.
+    """
 
     np.random.seed(42)
 
@@ -102,6 +114,9 @@ def hdf_data__partial(fits_dir: Path) -> Tuple[Path, dict, List[Path]]:
 
 @pytest.fixture(scope="session")
 def hdf_data__full(fits_dir: Path) -> Tuple[Path, dict, List[Path]]:
+    """
+    Fixture to create temporary full test data for HDF.
+    """
 
     np.random.seed(42)
 
@@ -151,8 +166,11 @@ def hdf_data__full(fits_dir: Path) -> Tuple[Path, dict, List[Path]]:
 def test__get_list_of_fits_file_paths(
     fits_data: Tuple[Path, np.ndarray, List[Path]]
 ) -> None:
+    """
+    Test `hsr4hci.merging.get_list_of_fits_file_paths`.
+    """
 
-    fits_dir, array, expected_file_paths = fits_data
+    fits_dir, _, expected_file_paths = fits_data
 
     # Case 1
     actual_file_paths = get_list_of_fits_file_paths(fits_dir, 'dummy')
@@ -170,6 +188,9 @@ def test__get_list_of_fits_file_paths(
 def test__merge_fits_files(
     fits_data: Tuple[Path, np.ndarray, List[Path]]
 ) -> None:
+    """
+    Test `hsr4hci.merging.merge_fits_files`.
+    """
 
     _, array, file_paths = fits_data
 
@@ -181,8 +202,11 @@ def test__merge_fits_files(
 def test__get_list_of_hdf_file_paths(
     hdf_data__partial: Tuple[Path, np.ndarray, List[Path]]
 ) -> None:
+    """
+    Test `hsr4hci.merging.get_list_of_hdf_file_paths`.
+    """
 
-    hdf_dir, full_results, expected_file_paths = hdf_data__partial
+    hdf_dir, _, expected_file_paths = hdf_data__partial
 
     # Case 1
     actual_file_paths = get_list_of_hdf_file_paths(hdf_dir)
@@ -200,8 +224,11 @@ def test__get_list_of_hdf_file_paths(
 def test__merge_hdf_files__partial(
     hdf_data__partial: Tuple[Path, np.ndarray, List[Path]]
 ) -> None:
+    """
+    Test `hsr4hci.merging.merge_hdf_files__partial`.
+    """
 
-    hdf_dir, full_results, file_paths = hdf_data__partial
+    _, full_results, file_paths = hdf_data__partial
 
     # Case 1
     merged = merge_hdf_files(hdf_file_paths=file_paths)
@@ -217,8 +244,11 @@ def test__merge_hdf_files__partial(
 def test__merge_hdf_files__full(
     hdf_data__full: Tuple[Path, np.ndarray, List[Path]]
 ) -> None:
+    """
+    Test `hsr4hci.merging.merge_hdf_files__full`.
+    """
 
-    hdf_dir, full_results, file_paths = hdf_data__full
+    _, full_results, file_paths = hdf_data__full
 
     # Case 1
     merged = merge_hdf_files(hdf_file_paths=file_paths)

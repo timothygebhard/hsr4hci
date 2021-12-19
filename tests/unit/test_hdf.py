@@ -29,11 +29,18 @@ from hsr4hci.hdf import (
 
 @pytest.fixture(scope="session")
 def hdf_dir(tmp_path_factory: TempPathFactory) -> Path:
-    return tmp_path_factory.mktemp('hdf', numbered=False)
+    """
+    Fixture to create temporary HDF directory.
+    """
+    return Path(tmp_path_factory.mktemp('hdf', numbered=False))
 
 
 @pytest.fixture(scope="session")
 def test_data() -> dict:
+    """
+    Fixture to create temporary test data.
+    """
+
     return {
         'bool': False,
         'complex': 1 + 2j,
@@ -49,6 +56,9 @@ def test_data() -> dict:
 
 
 def test__save_data_to_hdf(hdf_dir: Path) -> None:
+    """
+    Test `hsr4hci.hdf.save_data_to_hdf`.
+    """
 
     data_1 = np.random.normal(0, 1, 10)
     data_2 = np.random.normal(1, 2, 3)
@@ -105,8 +115,11 @@ def test__save_data_to_hdf(hdf_dir: Path) -> None:
 
 
 def test__save_dict_to_hdf(
-    tmp_path_factory: TempPathFactory, hdf_dir: Path, test_data: dict
+    hdf_dir: Path, test_data: dict
 ) -> None:
+    """
+    Test `hsr4hci.hdf.save_dict_to_hdf`.
+    """
 
     # Define location of test file in temporary directory
     file_path = hdf_dir / 'test_2.hdf'
@@ -124,8 +137,11 @@ def test__save_dict_to_hdf(
 
 
 def test__load_dict_from_hdf(
-    tmp_path_factory: TempPathFactory, hdf_dir: Path, test_data: dict
+    hdf_dir: Path, test_data: dict
 ) -> None:
+    """
+    Test `hsr4hci.hdf.load_dict_from_hdf`.
+    """
 
     # Define location of test file in temporary directory
     file_path = hdf_dir / 'test_2.hdf'
@@ -154,6 +170,9 @@ def test__load_dict_from_hdf(
 
 
 def test__create_hdf_dir(hdf_dir: Path) -> None:
+    """
+    Test `hsr4hci.hdf.create_hdf_dir`.
+    """
 
     # Case 1
     test_dir = create_hdf_dir(experiment_dir=hdf_dir, create_on_work=False)

@@ -21,10 +21,16 @@ from hsr4hci.htcondor import SubmitFile, DAGFile
 
 @pytest.fixture(scope="session")
 def htcondor_dir(tmp_path_factory: TempPathFactory) -> Path:
-    return tmp_path_factory.mktemp('htcondor_dir', numbered=False)
+    """
+    Fixture to create temporary htcondor directory.
+    """
+    return Path(tmp_path_factory.mktemp('htcondor_dir', numbered=False))
 
 
 def test__submit_file(htcondor_dir: Path) -> None:
+    """
+    Test `hsr4hci.htcondor.SubmitFile`.
+    """
 
     # Case 1
     submit_file = SubmitFile(
@@ -56,6 +62,9 @@ def test__submit_file(htcondor_dir: Path) -> None:
 
 
 def test__dag_file(htcondor_dir: Path) -> None:
+    """
+    Test `hsr4hci.htcondor.DAGFile`.
+    """
 
     # Case 1
     dag_file = DAGFile()

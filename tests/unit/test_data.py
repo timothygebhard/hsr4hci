@@ -34,9 +34,11 @@ from hsr4hci.data import (
 # TESTS
 # -----------------------------------------------------------------------------
 
-
 @pytest.fixture(scope="session")
 def test_data() -> Any:
+    """
+    Fixture to create temporary test data.
+    """
 
     stack = np.random.normal(0, 1, (100, 51, 51)).astype(np.float32)
     parang = np.random.normal(0, 1, (100,)).astype(np.float32)
@@ -60,6 +62,9 @@ def test_data() -> Any:
 
 @pytest.fixture(scope="session")
 def test_file(tmp_path_factory: TempPathFactory, test_data: Any) -> Path:
+    """
+    Fixture to create a temporary test HDF file.
+    """
 
     # Unpack the test data
     (
@@ -72,10 +77,10 @@ def test_file(tmp_path_factory: TempPathFactory, test_data: Any) -> Path:
     ) = test_data
 
     # Define location of test file in temporary directory
-    test_dir = tmp_path_factory.mktemp('data', numbered=False)
+    test_dir = Path(tmp_path_factory.mktemp('data', numbered=False))
     file_path = test_dir / 'test.hdf'
 
-    # Write the test data to a HDF file that has the structure of a data set
+    # Write the test data to an HDF file that has the structure of a data set
     with h5py.File(file_path, 'w') as hdf_file:
 
         hdf_file.create_dataset(name='stack', data=stack)
@@ -97,7 +102,10 @@ def test_file(tmp_path_factory: TempPathFactory, test_data: Any) -> Path:
     return file_path
 
 
-def test__resolve_name_or_path() -> None:
+def test___resolve_name_or_path() -> None:
+    """
+    Test `hsr4hci.data._resolve_name_or_path`.
+    """
 
     # Case 1
     file_path = _resolve_name_or_path(name_or_path='test')
@@ -124,6 +132,9 @@ def test__resolve_name_or_path() -> None:
 
 
 def test_load_parang(test_file: Path, test_data: Any) -> None:
+    """
+    Test `hsr4hci.data.load_parang`.
+    """
 
     _, parang_1, _, _, _, _ = test_data
     parang_2 = load_parang(name_or_path=test_file)
@@ -131,6 +142,9 @@ def test_load_parang(test_file: Path, test_data: Any) -> None:
 
 
 def test_load_psf_template(test_file: Path, test_data: Any) -> None:
+    """
+    Test `hsr4hci.data.load_psf_template`.
+    """
 
     # Case 1
     _, _, psf_template_1, _, _, _ = test_data
@@ -151,6 +165,9 @@ def test_load_psf_template(test_file: Path, test_data: Any) -> None:
 
 
 def test_load_observing_conditions(test_file: Path, test_data: Any) -> None:
+    """
+    Test `hsr4hci.data.load_observing_conditions`.
+    """
 
     _, _, _, observing_conditions_1, _, _ = test_data
     observing_conditions_2 = load_observing_conditions(name_or_path=test_file)
@@ -164,6 +181,9 @@ def test_load_observing_conditions(test_file: Path, test_data: Any) -> None:
 
 
 def test_load_metadata(test_file: Path, test_data: Any) -> None:
+    """
+    Test `hsr4hci.data.load_metadata`.
+    """
 
     _, _, _, _, metadata_1, _ = test_data
     metadata_2 = load_metadata(name_or_path=test_file)
@@ -177,6 +197,9 @@ def test_load_metadata(test_file: Path, test_data: Any) -> None:
 
 
 def test_load_planets(test_file: Path, test_data: Any) -> None:
+    """
+    Test `hsr4hci.data.load_planets`.
+    """
 
     _, _, _, _, _, planets_1 = test_data
     planets_2 = load_planets(name_or_path=test_file)
@@ -189,7 +212,10 @@ def test_load_planets(test_file: Path, test_data: Any) -> None:
     assert not deepdiff
 
 
-def test_stack(test_file: Path, test_data: Any) -> None:
+def test_load_stack(test_file: Path, test_data: Any) -> None:
+    """
+    Test `hsr4hci.data.load_stack`.
+    """
 
     stack_1, _, _, _, _, _ = test_data
 
@@ -211,6 +237,9 @@ def test_stack(test_file: Path, test_data: Any) -> None:
 
 
 def test_load_dataset(test_file: Path, test_data: Any) -> None:
+    """
+    Test `hsr4hci.data.load_dataset`.
+    """
 
     (
         stack_1,
