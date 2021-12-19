@@ -10,12 +10,10 @@ from typing import List, Optional, Tuple
 
 from astropy.units import Quantity
 from scipy import ndimage
-from skimage.morphology import binary_dilation, disk
 
 import numpy as np
 
 from hsr4hci.coordinates import get_center
-from hsr4hci.general import crop_or_pad, shift_image
 
 
 # -----------------------------------------------------------------------------
@@ -188,16 +186,14 @@ def get_predictor_mask(
 def get_exclusion_mask(
     mask_size: Tuple[int, int],
     position: Tuple[float, float],
-    psf_template: np.ndarray,
+    radius_excluded: Quantity,
 ) -> np.ndarray:
     """
-    Get a mask of the pixels that we must *not* use as predictors.
+    Get a mask of the pixels that we must *not* use as predictors for
+    the given target pixel at `position`.
 
-    We use a rather simple heuristic here: We simply place the PSF
-    template at the given `position` and threshold it. This approach
-    does not take into account the movement of the planet; however,
-    previous experiments with more complicated versions of this function
-    have suggested that this does not make much of a difference anyway.
+    For simplicity, the exclusion region is a disk where we exclude
+    everything inside a given radius around the `position`.
 
     Note: This function uses the *astropy convention* for coordinates!
 
@@ -205,40 +201,23 @@ def get_exclusion_mask(
         mask_size: A tuple `(x_size, y_size)` containing the size of the
             mask (in pixels) to be created.
         position: The position (in astropy = matplotlib coordinates) for
-            which to compute the exclusion mask. The exclusion mask will
-            mark the pixels that we must not use as predictors for the
-            pixel at `position`.
-        psf_template: A 2D numpy array containing the (unsaturated) PSF
-            template.
+            which to compute the exclusion mask.
+        radius_excluded: The radius (as an `astropy.units.Quantity` that
+            can be converted to pixels) around `position` inside which
+            pixels are excluded from being used as a predictor.
 
     Returns:
         A 2D numpy array containing the (binary) exclusion mask for the
         pixel at the given `position`.
     """
 
-    # Defines shortcuts
-    center = get_center(mask_size)
-
-    # Prepare the unsaturated PSF template (crop it, normalize it)
-    psf_resized = np.copy(psf_template)
-    psf_resized = crop_or_pad(psf_resized, mask_size)
-    psf_resized /= np.max(psf_resized)
-
-    # Shift the PSF template so that it is centered on the given position
-    exclusion_mask = shift_image(
-        image=psf_resized,
-        offset=((position[0] - center[0]), (position[1] - center[1])),
-        interpolation='bilinear',
-        mode='constant',
+    # Create exclusion mask; flip position because get_circle_mask() uses
+    # the numpy coordinate convention
+    exclusion_mask = get_circle_mask(
+        mask_size=mask_size,
+        radius=radius_excluded.to('pixel').value,
+        center=position[::-1]
     )
-
-    # Threshold the shifted PSF to get the exclusion mask. The value of this
-    # threshold is, of course, somewhat arbitrarily chosen.
-    exclusion_mask = exclusion_mask > 0.05
-
-    # Dilate the mask by two pixel for a little extra "safety margin"
-    selem = disk(radius=2)
-    exclusion_mask = binary_dilation(image=exclusion_mask, selem=selem)
 
     return exclusion_mask
 
@@ -248,7 +227,7 @@ def get_predictor_pixel_selection_mask(
     position: Tuple[int, int],
     radius_position: Quantity,
     radius_opposite: Quantity,
-    psf_template: np.ndarray,
+    radius_excluded: Quantity,
 ) -> np.ndarray:
     """
     Get the mask that selects the predictor pixels for a given position.
@@ -269,8 +248,9 @@ def get_predictor_pixel_selection_mask(
             can be converted to pixels) of the circular region around
             the opposite `position`, that is, the position that we get
             if we mirror `position` across the center of the frame.
-        psf_template: A 2D numpy array containing the unsaturated PSF
-            template.
+        radius_excluded: The radius (as an astropy.units.Quantity that
+            can be converted to pixels) around `position` inside which
+            pixels are excluded from being used as a predictor.
 
     Returns:
         A 2D numpy array containing a mask that selects the pixels to
@@ -287,7 +267,9 @@ def get_predictor_pixel_selection_mask(
 
     # Get exclusion mask (i.e., pixels we must not use as predictors)
     exclusion_mask = get_exclusion_mask(
-        mask_size=mask_size, position=position, psf_template=psf_template
+        mask_size=mask_size,
+        position=position,
+        radius_excluded=radius_excluded,
     )
 
     # Create the actual selection mask by removing the exclusion mask
@@ -403,7 +385,7 @@ def mask_frame_around_position(
 ) -> np.ndarray:
     """
     Create a circular mask with the given `radius` at the given position
-    and set the frame outside of this mask to zero. This is sometimes
+    and set the frame outside this mask to zero. This is sometimes
     required for the Gaussian2D-based photometry methods to prevent the
     Gaussian to try and fit some part of the data that is far from the
     target `position`.
@@ -426,7 +408,7 @@ def mask_frame_around_position(
     frame_size = (frame.shape[0], frame.shape[1])
     masked_frame = np.array(np.copy(frame))
 
-    # Get get circle mask; flip the position because numpy convention
+    # Get circle mask; flip the position because numpy convention
     circle_mask = get_circle_mask(
         mask_size=frame_size, radius=radius, center=position[::-1]
     )
