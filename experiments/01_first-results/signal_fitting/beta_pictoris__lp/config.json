@@ -14,7 +14,7 @@
   "selection_mask": {
     "radius_position":      [16.0, "pixel"],
     "radius_opposite":      [16.0, "pixel"],
-    "radius_excluded":      [12.0, "pixel"]
+    "radius_excluded":      [ 9.0, "pixel"]
   },
   "train_mode":             "signal_fitting",
   "n_signal_times":         32,
