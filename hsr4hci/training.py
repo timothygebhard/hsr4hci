@@ -621,9 +621,9 @@ def _train_signal_masking_model(
     signal_mask = expected_signal < 0.2
 
     # Check if the signal mask excludes more than a given fraction of the
-    # training data, namely, 50% of the data (again, this threshold is rather
+    # training data, namely, 33% of the data (again, this threshold is rather
     # arbitrary). In this case, we cannot / should not train a model.
-    if np.mean(signal_mask) < 0.5:
+    if np.mean(signal_mask) < 0.33:
         return None
 
     # Instantiate a new model
