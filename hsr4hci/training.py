@@ -16,6 +16,7 @@ import numpy as np
 
 from hsr4hci.base_models import BaseModelCreator
 from hsr4hci.forward_modeling import get_time_series_for_position
+from hsr4hci.general import fast_corrcoef
 from hsr4hci.masking import (
     get_predictor_pixel_selection_mask,
     get_positions_from_mask,
@@ -51,6 +52,57 @@ def get_signal_times(n_frames: int, n_signal_times: int) -> np.ndarray:
     return np.linspace(0, n_frames - 1, n_signal_times).astype(int)
 
 
+def add_obscon_as_predictors(
+    predictors: np.ndarray,
+    obscon_array: np.ndarray,
+    expected_signal: np.ndarray,
+    max_correlation: float = 0.5,
+) -> np.ndarray:
+    """
+    Merge the `predictors` and the `obscon_array` and take into account
+    the desired maximum correlation with the expected signal.
+
+    Args:
+        predictors: A 2D numpy array with shape `(n_frames, n_pixels)`
+            that contains the predictors for a target pixel.
+        obscon_array: A 2D numpy array with shape `(n_frames, n_obscon)`
+            that contains the (global) observing conditions.
+        expected_signal: A 1D numpy array with shape `(n_frames,)` that
+            contains the expected signal for a target pixel. In case we
+            are training a default model, the expected_signal will be
+            all NaN.
+        max_correlation: Maximum value for the correlation between
+            the expected signal and the observing conditions. OCs with
+            a higher correlation will not be added as predictors.
+
+    Returns:
+        A 2D numpy array with shape `(n_frames, n_predictors)` that
+        contains the (full) predictors: both pixels and admissible OC.
+    """
+
+    # Initialize the output
+    output = [predictors]
+
+    # If the expected_signal is all-NaN, we are training a default model. In
+    # this case, we do not need to worry about the correlation between the
+    # observing conditions and the expected signal (because there is none).
+    # Also, if all values of `expected_signal` are the same, we cannot compute
+    # the correlation, because the variance of `expected_signal` is 0. (This
+    # should only happen at extremely small separations.)
+    if np.isnan(expected_signal).any() or len(np.unique(expected_signal)) == 1:
+        return np.hstack((predictors, obscon_array))
+
+    # Otherwise (i.e., for signal fitting / masking), we loop over all
+    # observing conditions, compute their correlation with the expected
+    # signal, and only add them to the output if the correlation does not
+    # exceed the given maximum:
+    for obscon in obscon_array.T:
+        if fast_corrcoef(obscon, expected_signal) <= max_correlation:
+            output.append(obscon.reshape(-1, 1))
+
+    return np.hstack(output)
+
+
 def train_all_models(
     roi_mask: np.ndarray,
     stack: np.ndarray,
@@ -60,6 +112,7 @@ def train_all_models(
     base_model_creator: BaseModelCreator,
     psf_template: np.ndarray,
     train_mode: str,
+    max_oc_correlation: float = 0.5,
     n_train_splits: int = 3,
     n_signal_times: int = 30,
     n_roi_splits: int = 1,
@@ -84,17 +137,22 @@ def train_all_models(
         obscon_array: A 2D numpy array of shape `(n_frames, n_features)`
             containing the observing conditions that should be used as
             additional predictors.
-        train_mode: The mode to use for training; must be one of the
-            following: "default", "signal_fitting" or "signal_masking".
         selection_mask_config: A dictionary containing two keys (namely
             "radius_position" and "radius_opposite") that define the
             mask that is used to select the predictor pixels. The values
             of the dict should be tuples of the form `(value, "unit")`.
-        psf_template: A 2D numpy array containing the unsaturated PSF
-            template.
-        n_train_splits: The number of training / test splits to use.
         base_model_creator: An instance of `BaseModelCreator` that can
             be used to instantiate new base models.
+        psf_template: A 2D numpy array containing the unsaturated PSF
+            template.
+        train_mode: The mode to use for training; must be one of the
+            following: "default", "signal_fitting" or "signal_masking".
+        max_oc_correlation: Maximum value for the correlation between
+            the `expected_signal` and an observing conditions for this
+            OC to be used as a predictor. (Basically, we do not want to
+            use OC that are "accidentally" strongly correlated with a
+            potential signal.)
+        n_train_splits: The number of training / test splits to use.
         n_signal_times: The size of the temporal grid, that is, the
             number of different (temporal) signal positions that are
             assumed for each pixel.
@@ -171,6 +229,7 @@ def train_all_models(
                     psf_template=psf_template,
                     n_train_splits=n_train_splits,
                     base_model_creator=base_model_creator,
+                    max_oc_correlation=max_oc_correlation,
                 )
                 key_residuals[:, x, y] = residual
                 progressbar.update()
@@ -202,6 +261,7 @@ def train_model_for_position(
     n_train_splits: int,
     base_model_creator: BaseModelCreator,
     expected_signal: Optional[np.ndarray] = None,
+    max_oc_correlation: float = 0.5,
 ) -> Tuple[np.ndarray, Dict[str, np.ndarray]]:
     """
     Train a model (or rather: a set of models, because of the train /
@@ -246,6 +306,11 @@ def train_model_for_position(
             Note that the `expected_signal` should be consistent with
             the given `signal_time`; otherwise the mask that is used for
             the pixel predictor selection will be wrong.
+        max_oc_correlation: Maximum value for the correlation between
+            the `expected_signal` and an observing conditions for this
+            OC to be used as a predictor. (Basically, we do not want to
+            use OC that are "accidentally" strongly correlated with a
+            potential signal.)
 
     Returns:
         A 2-tuple consisting of:
@@ -284,10 +349,6 @@ def train_model_for_position(
     full_predictors = stack[:, selection_mask]
     full_targets = stack[:, position[0], position[1]].reshape(-1, 1)
 
-    # Add observing conditions to the predictors
-    # Note: the obscon_array can be empty (i.e., shape == (n_frames, 0))
-    full_predictors = np.hstack((full_predictors, obscon_array))
-
     # -------------------------------------------------------------------------
     # Prepare result variables
     # -------------------------------------------------------------------------
@@ -308,7 +369,8 @@ def train_model_for_position(
     # running the HSR in "hypothesis-based mode"), we do not compute it here
     if expected_signal is None:
 
-        # Always initialize the expected signal
+        # Always initialize the expected signal -- for default models, the
+        # expected_signal will simply be all NaN.
         expected_signal = np.full(n_frames, np.nan)
 
         # Only compute it if we are not training a default model. This happens
@@ -328,6 +390,19 @@ def train_model_for_position(
                 parang=parang,
                 psf_template=psf_template,
             )
+
+    # -------------------------------------------------------------------------
+    # Add observing conditions to the predictors
+    # -------------------------------------------------------------------------
+
+    # When adding the observing conditions as predictors, we want to make sure
+    # that none of the OC is too strongly correlated with the expected signal
+    full_predictors = add_obscon_as_predictors(
+        predictors=full_predictors,
+        obscon_array=obscon_array,
+        expected_signal=expected_signal,
+        max_correlation=max_oc_correlation,
+    )
 
     # -------------------------------------------------------------------------
     # Train model(s)
