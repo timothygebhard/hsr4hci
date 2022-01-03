@@ -370,6 +370,7 @@ def test__integration_hsr(
             obscon_array=observing_conditions.as_array(selected_keys),
             selection_mask_config=config['selection_mask'],
             base_model_creator=BaseModelCreator(**config['base_model']),
+            max_oc_correlation=1.0,
             n_train_splits=config['n_train_splits'],
             train_mode=config['train_mode'],
             n_signal_times=n_signal_times,

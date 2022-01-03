@@ -118,9 +118,12 @@ if __name__ == '__main__':
     lambda_over_d = float(metadata['LAMBDA_OVER_D'])
 
     # Other shortcuts
-    selected_keys = config['observing_conditions']['selected_keys']
     roi_split = args.roi_split
     n_roi_splits = args.n_roi_splits
+    selected_keys = config['observing_conditions']['selected_keys']
+    max_oc_correlation = float(
+        config['observing_conditions']['max_correlation']
+    )
 
     # Define the unit conversion context for this data set
     instrument_units_context = InstrumentUnitsContext(
@@ -154,6 +157,7 @@ if __name__ == '__main__':
             obscon_array=observing_conditions.as_array(selected_keys),
             selection_mask_config=config['selection_mask'],
             base_model_creator=base_model_creator,
+            max_oc_correlation=max_oc_correlation,
             n_train_splits=config['n_train_splits'],
             train_mode=config['train_mode'],
             n_signal_times=config['n_signal_times'],

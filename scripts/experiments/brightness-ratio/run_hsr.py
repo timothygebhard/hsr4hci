@@ -98,8 +98,11 @@ if __name__ == '__main__':
     lambda_over_d = float(metadata['LAMBDA_OVER_D'])
 
     # Other shortcuts
-    selected_keys = config['observing_conditions']['selected_keys']
     n_signal_times = config['n_signal_times']
+    selected_keys = config['observing_conditions']['selected_keys']
+    max_oc_correlation = float(
+        config['observing_conditions']['max_correlation']
+    )
 
     # Define the unit conversion context for this data set
     instrument_units_context = InstrumentUnitsContext(
@@ -184,6 +187,7 @@ if __name__ == '__main__':
             obscon_array=observing_conditions.as_array(selected_keys),
             selection_mask_config=config['selection_mask'],
             base_model_creator=base_model_creator,
+            max_oc_correlation=max_oc_correlation,
             n_train_splits=config['n_train_splits'],
             train_mode=config['train_mode'],
             n_signal_times=n_signal_times,
@@ -200,7 +204,7 @@ if __name__ == '__main__':
     # STEP 2: Find hypotheses
     # -------------------------------------------------------------------------
 
-    # Find best hypothesis for every pixel
+    # Find the best hypothesis for every pixel
     print('Finding best hypothesis for each spatial pixel:', flush=True)
     hypotheses, similarities = get_all_hypotheses(
         roi_mask=roi_mask,
