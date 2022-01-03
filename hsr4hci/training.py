@@ -97,7 +97,10 @@ def add_obscon_as_predictors(
     # signal, and only add them to the output if the correlation does not
     # exceed the given maximum:
     for obscon in obscon_array.T:
-        if fast_corrcoef(obscon, expected_signal) <= max_correlation:
+        correlation = fast_corrcoef(
+            obscon.squeeze(), expected_signal.squeeze()
+        )
+        if np.abs(correlation) <= max_correlation:
             output.append(obscon.reshape(-1, 1))
 
     return np.hstack(output)
