@@ -16,6 +16,7 @@ from hsr4hci.training import (
     _train_default_model,
     _train_signal_fitting_model,
     _train_signal_masking_model,
+    add_obscon_as_predictors,
     get_signal_times,
     train_all_models,
     train_model_for_position,
@@ -27,6 +28,84 @@ from hsr4hci.masking import get_annulus_mask
 # -----------------------------------------------------------------------------
 # TESTS
 # -----------------------------------------------------------------------------
+
+def test__add_obscon_as_predictors() -> None:
+    """
+    Test `hsr4hci.training.add_obscon_as_predictors`.
+    """
+
+    np.random.seed(42)
+
+    # Create an expected signal
+    expected_signal = np.zeros(100)
+    expected_signal[50] = 1
+    for i in range(5):
+        expected_signal = np.convolve(
+            expected_signal, np.ones(3) / 3, mode='same'
+        )
+    expected_signal = expected_signal.reshape(100, 1)
+
+    # Case 1: empty obscon array
+    predictors = np.random.normal(0, 1, (100, 10))
+    obscon_array = np.empty((100, 0))
+    final_predictors = add_obscon_as_predictors(
+        predictors=predictors,
+        obscon_array=obscon_array,
+        expected_signal=expected_signal,
+        max_correlation=0.5,
+    )
+    assert np.allclose(predictors, final_predictors)
+
+    # Case 2: all values are the same for expected signal
+    predictors = np.random.normal(0, 1, (100, 10))
+    obscon_array = np.empty((100, 0))
+    final_predictors = add_obscon_as_predictors(
+        predictors=predictors,
+        obscon_array=obscon_array,
+        expected_signal=np.ones(100),
+        max_correlation=0.5,
+    )
+    assert np.allclose(predictors, final_predictors)
+
+    # Case 3: any NaN-values in the expected signal
+    predictors = np.random.normal(0, 1, (100, 10))
+    obscon_array = np.empty((100, 0))
+    final_predictors = add_obscon_as_predictors(
+        predictors=predictors,
+        obscon_array=obscon_array,
+        expected_signal=np.full((100, ), np.nan),
+        max_correlation=0.5,
+    )
+    assert np.allclose(predictors, final_predictors)
+
+    # Case 4: perfect correlation
+    predictors = np.random.normal(0, 1, (100, 10))
+    final_predictors = add_obscon_as_predictors(
+        predictors=predictors,
+        obscon_array=expected_signal,
+        expected_signal=expected_signal,
+        max_correlation=0.5,
+    )
+    assert np.allclose(predictors, final_predictors)
+
+    # Case 5: one OC is too strongly correlated
+    predictors = np.random.normal(0, 1, (100, 10))
+    obscon_array = np.hstack(
+        [
+            np.random.normal(0, 1, (100, 1)),
+            np.random.normal(0, 1, (100, 1)),
+            np.random.normal(0, 0.05, (100, 1)) + expected_signal,
+            np.random.normal(0, 0.10, (100, 1)) + expected_signal,
+        ]
+    )
+    final_predictors = add_obscon_as_predictors(
+        predictors=predictors,
+        obscon_array=obscon_array,
+        expected_signal=expected_signal,
+        max_correlation=0.5,
+    )
+    assert final_predictors.shape[1] == predictors.shape[1] + 3
+
 
 def test__get_signal_times() -> None:
     """
