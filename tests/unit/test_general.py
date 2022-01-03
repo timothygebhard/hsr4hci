@@ -20,6 +20,7 @@ from hsr4hci.general import (
     rotate_position,
     shift_image,
     set_in_nested_dict,
+    fast_corrcoef,
 )
 
 
@@ -275,3 +276,39 @@ def test__flatten_nested_dict() -> None:
     d = {'a': 1, 'c': {'a': 2, 'b': {'x': 5, 'y': 10}}, 'd': [1, 2, 3]}
     d_flat = {'a': 1, 'c_a': 2, 'c_b_x': 5, 'd': [1, 2, 3], 'c_b_y': 10}
     assert flatten_nested_dict(d) == d_flat
+
+
+def test__fast_corrcoef() -> None:
+    """
+    Test `hsr4hci.general.fast_corrcoef`.
+    """
+
+    np.random.seed(42)
+
+    # Case 1
+    x = np.random.normal(0, 1, 10)
+    y = np.random.normal(0, 1, 10)
+    a = fast_corrcoef(x, y)
+    b = np.corrcoef(x, y)[0, 1]
+    assert np.isclose(a, b).all()
+
+    # Case 2
+    x = np.random.normal(0, 1, 100)
+    y = np.random.normal(0, 1, 100)
+    a = fast_corrcoef(x, y)
+    b = np.corrcoef(x, y)[0, 1]
+    assert np.isclose(a, b).all()
+
+    # Case 3
+    x = np.random.normal(0, 1, 1000)
+    y = np.random.normal(0, 1, 1000)
+    a = fast_corrcoef(x, y)
+    b = np.corrcoef(x, y)[0, 1]
+    assert np.isclose(a, b).all()
+
+    # Case 4
+    x = np.random.normal(0, 1, 10)
+    y = x + np.random.normal(0, 0.5, 10)
+    a = fast_corrcoef(x, y)
+    b = np.corrcoef(x, y)[0, 1]
+    assert np.isclose(a, b).all()
