@@ -5,7 +5,8 @@
     "frame_size":           [63, 63]
   },
   "observing_conditions": {
-    "selected_keys":        "all"
+    "selected_keys":        "all",
+    "max_correlation":      0.3
   },
   "roi_mask": {
     "inner_radius":         [0.00, "arcsec"],
@@ -28,6 +29,6 @@
     }
   },
   "plotting": {
-    "label_positions": ["bottom"]
+    "label_positions":      ["bottom"]
   }
 }
