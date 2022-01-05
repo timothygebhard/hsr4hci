@@ -14,7 +14,6 @@ import pytest
 # noinspection PyProtectedMember
 from hsr4hci.residuals import (
     assemble_residual_stack_from_hypotheses,
-    _get_radial_gradient_mask,
     _get_expected_signal,
     _prune_blobs,
     get_residual_selection_mask,
@@ -49,30 +48,6 @@ def test__assemble_residuals_from_hypotheses() -> None:
         assembled,
         np.tile(np.array([[0, 2, 4], [0, 1, 2], [0, 4, 1]]), (5, 1, 1)),
     )
-
-
-def test___get_radial_gradient_mask() -> None:
-
-    # Case 1
-    gradient = _get_radial_gradient_mask(mask_size=(5, 5))
-    expected = (
-        np.array(
-            [
-                [np.sqrt(8), np.sqrt(5), np.sqrt(4), np.sqrt(5), np.sqrt(8)],
-                [np.sqrt(5), np.sqrt(2), np.sqrt(1), np.sqrt(2), np.sqrt(5)],
-                [np.sqrt(4), np.sqrt(1), np.sqrt(0), np.sqrt(1), np.sqrt(4)],
-                [np.sqrt(5), np.sqrt(2), np.sqrt(1), np.sqrt(2), np.sqrt(5)],
-                [np.sqrt(8), np.sqrt(5), np.sqrt(4), np.sqrt(5), np.sqrt(8)],
-            ]
-        )
-        / 19
-    )
-    assert np.allclose(gradient, expected)
-
-    # Case 2
-    gradient = _get_radial_gradient_mask(mask_size=(45, 45))
-    assert np.allclose(gradient[0, :], 1)
-    assert np.allclose(gradient[:, 0], 1)
 
 
 def test___get_expected_signal() -> None:
@@ -155,7 +130,7 @@ def test__get_residual_selection_mask() -> None:
             psf_template=psf_template,
             grid_size=256,
         )
-    assert 'field_rotation is greater than 180 degrees!' in str(runtime_error)
+    assert 'Field rotation is greater than 180 degrees!' in str(runtime_error)
 
     # Case 2
     (
@@ -170,9 +145,9 @@ def test__get_residual_selection_mask() -> None:
         psf_template=psf_template,
         grid_size=128,
     )
-    assert np.sum(selection_mask) == 216
-    assert np.isclose(np.sum(polar), 575.611199943112)
-    assert np.isclose(np.sum(matched), 1388.3128938647826)
+    assert np.sum(selection_mask) == 205
+    assert np.isclose(np.sum(polar), 110.40989835080471)
+    assert np.isclose(np.sum(matched), 441.4169627449298)
     assert len(positions) == 1
-    assert np.isclose(positions[0][0], 16.40625)
-    assert np.isclose(positions[0][1], 2.552544031041707)
+    assert np.isclose(positions[0][0], 15.88335621806445)
+    assert np.isclose(positions[0][1], 2.556919091700612)

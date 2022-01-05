@@ -437,7 +437,7 @@ def test__integration_hsr(
         psf_template=psf_template,
     )
     print("np.nansum(selection_mask) =", np.nansum(selection_mask))
-    assert np.nansum(selection_mask) == 50
+    assert np.nansum(selection_mask) == 51
 
     file_path = hsr_experiment_dir / 'selection_mask.fits'
     save_fits(selection_mask, file_path)
@@ -452,7 +452,7 @@ def test__integration_hsr(
         selection_mask=selection_mask,
     )
     print("np.nansum(residual_stack) =", np.nansum(residual_stack))
-    assert np.isclose(np.nansum(residual_stack), 1700.4087)
+    assert np.isclose(np.nansum(residual_stack), 1646.7012)
 
     file_path = hsr_experiment_dir / 'residual_stack.fits'
     save_fits(residual_stack, file_path)
@@ -461,7 +461,7 @@ def test__integration_hsr(
         stack=residual_stack, parang=parang, mask=~roi_mask
     )
     print("np.nansum(signal_estimate) =", np.nansum(signal_estimate))
-    assert np.isclose(np.nansum(signal_estimate), 34.01252420182573)
+    assert np.isclose(np.nansum(signal_estimate), 32.94099403114524)
 
     file_path = hsr_experiment_dir / 'signal_estimate.fits'
     save_fits(signal_estimate, file_path)
@@ -484,11 +484,11 @@ def test__integration_hsr(
         )
 
     print("metrics['snr']['min'] =", metrics['snr']['min'])
-    assert np.isclose(metrics['snr']['min'], 28.84672102825338)
+    assert np.isclose(metrics['snr']['min'], 27.430971199560332)
     print("metrics['snr']['max'] =", metrics['snr']['max'])
-    assert np.isclose(metrics['snr']['max'], 50.82310190189962)
+    assert np.isclose(metrics['snr']['max'], 51.611312579520906)
     print("metrics['snr']['mean'] =", metrics['snr']['mean'])
-    assert np.isclose(metrics['snr']['mean'], 36.550659848891485)
+    assert np.isclose(metrics['snr']['mean'], 35.993992202839024)
 
     # -------------------------------------------------------------------------
     # STEP 7: Create a plot
