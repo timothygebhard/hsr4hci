@@ -385,3 +385,34 @@ def load_dataset(
     )
 
     return stack, parang, psf_template, observing_conditions, metadata
+
+
+def get_field_rotation(parang: np.ndarray) -> float:
+    """
+    Compute the field rotation from a given array of parallactic angles.
+
+    Args:
+        parang: A 1D numpy array of shape `(n_frames,)` that contains
+            the parallactic angle for each frame in degree.
+
+    Returns:
+        The field rotation in degree.
+    """
+
+    # Compute field rotation
+    field_rotation = float(abs(parang[-1] - parang[0]))
+
+    # If the value is physically sensible, we can return it
+    if field_rotation < 180:
+        return field_rotation
+
+    # If the observation crosses the zenith, we sometimes get "jumps" in the
+    # parallactic angle that break the computation of the field rotation. By
+    # ensuring all angles are positive, we can try to fix this issue.
+    new_parang = (parang + 360) % 360
+    field_rotation = abs(new_parang[-1] - new_parang[0])
+    if field_rotation < 180:
+        return field_rotation
+
+    # If the value is still not physically sensible, raise an error
+    raise RuntimeError('Field rotation is greater than 180 degrees!')

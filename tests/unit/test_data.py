@@ -27,6 +27,7 @@ from hsr4hci.data import (
     load_planets,
     load_psf_template,
     load_stack,
+    get_field_rotation,
 )
 
 
@@ -271,3 +272,27 @@ def test_load_dataset(test_file: Path, test_data: Any) -> None:
         ignore_type_in_groups=[(float, np.float64), (int, np.int64)],
         ignore_nan_inequality=True,
     )
+
+
+def test__get_field_rotation() -> None:
+    """
+    Test for `hsr4hci.data.get_field_rotation`.
+    """
+
+    # Case 1
+    parang = np.linspace(0, 10, 10)
+    assert get_field_rotation(parang) == 10
+
+    # Case 2
+    parang = np.linspace(120, 250, 10)
+    assert get_field_rotation(parang) == 130
+
+    # Case 3
+    parang = np.array([-240.4, -249.3, -261.2, 88.2, 76.5, 64.7, 55.7])
+    assert np.isclose(get_field_rotation(parang), 63.9)
+
+    # Case 4
+    parang = np.linspace(10, 250, 10)
+    with pytest.raises(RuntimeError) as runtime_error:
+        get_field_rotation(parang)
+    assert 'Field rotation is greater than 180 degrees!' in str(runtime_error)
