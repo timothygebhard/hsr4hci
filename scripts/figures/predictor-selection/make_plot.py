@@ -18,7 +18,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from hsr4hci.coordinates import get_center
-from hsr4hci.data import load_parang, load_psf_template
 from hsr4hci.masking import (
     get_exclusion_mask,
     get_predictor_pixel_selection_mask,
@@ -46,9 +45,6 @@ if __name__ == '__main__':
     dataset = 'beta_pictoris__lp'
     frame_size = (65, 65)
     center = get_center(frame_size)
-
-    parang = load_parang(name_or_path=dataset)
-    psf_template = load_psf_template(name_or_path=dataset)
 
     position = (45, 16)
 
@@ -79,9 +75,9 @@ if __name__ == '__main__':
     selection_mask = get_predictor_pixel_selection_mask(
         mask_size=frame_size,
         position=position,
-        psf_template=psf_template,
         radius_position=Quantity(16, 'pixel'),
         radius_opposite=Quantity(16, 'pixel'),
+        radius_excluded=Quantity(9, 'pixel'),
     )
 
     # Plot the predictor pixel selection mask
@@ -97,7 +93,7 @@ if __name__ == '__main__':
     exclusion_mask = get_exclusion_mask(
         mask_size=frame_size,
         position=position,
-        psf_template=psf_template,
+        radius_excluded=Quantity(9, 'pixel'),
     )
 
     # Plot the exclusion mask
@@ -132,8 +128,8 @@ if __name__ == '__main__':
         bbox=dict(boxstyle="circle,pad=0.3", fc="white", ec="k", lw=0.5),
     )
     axes[0].text(
-        position[0] - 6,
-        position[1] - 10,
+        position[0] - 9,
+        position[1] - 9,
         "2",
         ha="center",
         va="center",
