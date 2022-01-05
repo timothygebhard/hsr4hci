@@ -83,7 +83,7 @@ def _prepare_plot__dec_rac(
         transform=ax.transData,
         size=0.3 / pixscale,
         label='0.3"',
-        loc=2,
+        loc='upper right',
         pad=0.5,
         color='white',
         frameon=False,
@@ -172,7 +172,7 @@ def plot_hypothesis_map(
     # Add a colorbar and set options
     cbar = add_colorbar_to_ax(img, fig, ax, where='top')
     cbar.ax.tick_params(labelsize=5, pad=0.5, length=2)
-    cbar.set_ticks(np.linspace(0, 1, 3))
+    cbar.set_ticks(list(np.linspace(0, 1, 3)))
     cbar.set_label(label='Relative temporal index', fontsize=6)
 
     # Save the results
@@ -225,9 +225,7 @@ def plot_match_fraction_map(
     # Add a colorbar and set options
     cbar = add_colorbar_to_ax(img, fig, ax, where='top')
     cbar.ax.tick_params(labelsize=5, pad=0.5, length=2)
-    cbar.set_ticks(
-        np.linspace(0, 0.5, 6),
-    )
+    cbar.set_ticks(list(np.linspace(0, 0.5, 6)))
     cbar.set_label(label='Match fraction', fontsize=6)
 
     # Save the results
@@ -328,10 +326,10 @@ def plot_polar_match_fraction(
     fig, ax = _prepare_plot__sep_ang()
     fig.subplots_adjust(left=0.085, bottom=-0.055, right=0.96, top=0.96)
 
-    # Plot match fraction map
+    # Plot match fraction map (rescaled so that max == 1)
     img = ax.pcolormesh(
         *np.meshgrid(np.arange(frame_size[0]), np.arange(frame_size[1])),
-        polar_match_fraction,
+        polar_match_fraction / np.nanmax(polar_match_fraction),
         vmin=0.0,
         vmax=1.0,
         shading='nearest',
@@ -366,7 +364,7 @@ def plot_polar_match_fraction(
     # Add a colorbar and set options
     cbar = add_colorbar_to_ax(img, fig, ax, where='top')
     cbar.ax.tick_params(labelsize=5, pad=0.5, length=2)
-    cbar.set_ticks(np.linspace(0, 1, 3))
+    cbar.set_ticks(list(np.linspace(0, 1, 3)))
     cbar.set_label(label='Rescaled match fraction', fontsize=6)
 
     # Save the results
@@ -424,7 +422,7 @@ def plot_template_matching(
     # Add a colorbar and set options
     cbar = add_colorbar_to_ax(img, fig, ax, where='top')
     cbar.ax.tick_params(labelsize=5, pad=0.5, length=2)
-    cbar.set_ticks(np.linspace(0, 1, 3))
+    cbar.set_ticks(list(np.linspace(0, 1, 3)))
     cbar.set_label(label='Cross-correlation value', fontsize=6)
 
     # Save the results
