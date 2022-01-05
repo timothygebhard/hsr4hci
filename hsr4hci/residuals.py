@@ -10,17 +10,18 @@ from itertools import product
 from math import fmod
 from typing import Dict, List, Tuple, Union
 
+from astropy.units import Quantity
 from photutils.centroids import centroid_com
 from polarTransform import convertToPolarImage
 from skimage.feature import blob_log, match_template
-from skimage.filters import gaussian
+from skimage.filters import gaussian, sobel
 
 import h5py
 import numpy as np
 
 from hsr4hci.coordinates import get_center
+from hsr4hci.data import get_field_rotation
 from hsr4hci.general import shift_image, crop_or_pad
-from hsr4hci.masking import get_circle_mask
 from hsr4hci.photometry import get_flux
 
 
@@ -63,7 +64,7 @@ def assemble_residual_stack_from_hypotheses(
     _, x_size, y_size = result.shape
 
     # Loop over all spatial positions and pick the signal masking-based
-    # residual based on the the respective hypothesis for the pixel
+    # residual based on the respective hypothesis for the pixel
     for x, y in product(np.arange(x_size), np.arange(y_size)):
 
         # If we do not have a hypothesis, or the selection mask did not select
@@ -71,57 +72,12 @@ def assemble_residual_stack_from_hypotheses(
         if np.isnan(hypotheses[x, y]) or (not selection_mask[x, y]):
             continue
 
-        # Otherwise (if the selection mask is True), replace the "default"
+        # Otherwise (i.e., if the selection mask is True), replace the default
         # residual with the one that matches the hypothesis for this pixel
         signal_time = str(int(hypotheses[x, y]))
         result[:, x, y] = np.array(residuals[signal_time][:, x, y])
 
     return result
-
-
-def _get_radial_gradient_mask(mask_size: Tuple[int, int]) -> np.ndarray:
-    """
-    Compute a "radial gradient" mask, that is, a 2D array where the
-    value of each pixel is the pixel's separation from the center.
-
-    We use this gradient mask to re-weight the match fraction map to
-    take into account that the "uncertainty" for pixels far from the
-    center is smaller than for pixels close to the star:
-    The number of  pixels that go into the computation of the match
-    fraction (MF) is proportional to the separation from the center. At
-    small separations, only very few pixels contribute to the MF, which
-    tends to result in many false positives (i.e., high MF values that
-    are not due to a planet). An ad-hoc solution is to down-weigh the
-    pixels at small separations in the MF map, which is what this mask
-    is used for.
-
-    Args:
-        mask_size: A tuple `(x_size, y_size)` specifying the size of
-            the radial gradient mask.
-
-    Returns:
-        A radial gradient mask of the given size.
-    """
-
-    # Define gradient parameters: the radius parameter determines the size
-    # of the region in which we down-weigh the match fraction. 19 pixels
-    # corresponds to approximately 0.5" for VLT/NACO.
-    radius = 19
-    tmp_size = int(2 * radius + 1)
-
-    # Create a circular mask where the value increases linearly from 0 (at the
-    # center of the mask) to 1 (at the edge of the mask)
-    sx, sy = (tmp_size, tmp_size)
-    x, y = np.ogrid[0:sx, 0:sy]
-    gradient_mask = np.asarray(np.hypot(x - sx / 2 + 0.5, y - sy / 2 + 0.5))
-    gradient_mask /= radius
-    circle_mask = get_circle_mask((tmp_size, tmp_size), radius)
-    gradient_mask[~circle_mask] = 1
-
-    # Crop or pad to the required target size
-    gradient_mask = crop_or_pad(gradient_mask, mask_size, constant_values=1)
-
-    return gradient_mask
 
 
 def _get_expected_signal(
@@ -230,6 +186,47 @@ def _prune_blobs(blobs: List[Tuple[float, float, float]]) -> np.ndarray:
     return np.array(pruned)
 
 
+def get_gradient_mask(
+    grid_size: int,
+    frame_size: Tuple[int, int],
+    zero_radius: int = 4,
+) -> np.ndarray:
+    """
+    Compute a gradient mask to re-weight the match fraction radially.
+
+    Rationale: The number of "affected pixels" that we use to compute
+    a match fraction scales linearly with the separation from the star.
+    For pixels very close to the center, only very few pixels contribute
+    while for pixels at large separations, the MF is computed as the
+    average of many pixels. To reduce both the number of false positives
+    at small separations and false negative at large separations, it is
+    useful to apply a "gradient mask" to the match fraction to re-weigh
+    the MF values based on the separation from the center.
+
+    Args:
+        grid_size: Frame size of the polar representation.
+        frame_size: Frame size of the Cartesian representation.
+        zero_radius: Radius (in pixels) around the center where the
+            mask is set to zero; typically 1 FWHM. Even if there is a
+            planet this close to the star, we should not be able to
+            detect it.
+
+    Returns:
+        A gradient mask that can be used to re-weigh the polar MF map.
+    """
+
+    # Re-scale the radius between the Cartesian and the polar coordinates
+    radius = int(2 * zero_radius / min(frame_size) * grid_size)
+
+    # Construct the gradient mask
+    gradient = np.concatenate(
+        (np.full(radius, 1e-8), np.linspace(1e-8, 1, grid_size - radius))
+    )
+    gradient = np.tile(gradient.reshape(-1, 1), reps=(1, grid_size))
+
+    return np.asarray(gradient)
+
+
 def get_residual_selection_mask(
     match_fraction: np.ndarray,
     parang: np.ndarray,
@@ -301,36 +298,19 @@ def get_residual_selection_mask(
     # Preparations
     # -------------------------------------------------------------------------
 
-    # Compute field rotation; check that it is physically meaningful
-    field_rotation = abs(parang[-1] - parang[0])
-    if field_rotation > 180:
-        new_parang = (parang + 360) % 360
-        field_rotation = abs(new_parang[-1] - new_parang[0])
-        if field_rotation > 180:
-            raise RuntimeError('field_rotation is greater than 180 degrees!')
-
-    # Prepare the Cartesian match fraction; define shortcuts
+    # Prepare the Cartesian match fraction: Make sure all entries are valid
+    # numbers with values between 0 and 1.
     cartesian = np.copy(match_fraction)
     cartesian = np.nan_to_num(cartesian)
+    cartesian = np.clip(cartesian, a_min=0, a_max=1)
+
+    # Define shortcuts
     x_size, y_size = cartesian.shape
     frame_size = (x_size, y_size)
     center = get_center(cartesian.shape)
 
-    # Apply normalization to cartesian match fraction; this appears to improve
-    # the final results (better thresholding in the blob finding stage)
-    cartesian /= np.percentile(cartesian, 98.5)
-    cartesian = np.clip(cartesian, a_min=None, a_max=1)
-
-    # Multiply the match fraction with a gradient mask that aims to (partially)
-    # compensates for the fact that at small separations, only few pixels
-    # contribute to the match fraction, meaning it is "easier" to get a
-    # high match fraction at small separations, whereas for pixels at larger
-    # separation, this "uncertainty" is smaller.
-    cartesian *= _get_radial_gradient_mask(frame_size)
-
-    # Applying a mild Gaussian blur filter appears to give better results
-    # when projecting to polar coordinates
-    cartesian = gaussian(cartesian, sigma=2.0)
+    # Compute field rotation
+    field_rotation = get_field_rotation(parang=parang)
 
     # -------------------------------------------------------------------------
     # Prepare the template of the expected signal for the cross-correlation
@@ -338,7 +318,7 @@ def get_residual_selection_mask(
 
     # Compute the signal that we expect to see in polar coordinates.
     # Note: This signal is not perfectly translation invariant, so the signal
-    # that we will be search for is approximately the median of the possible
+    # that we will be searching for is approximately the median of the possible
     # signals that we would expect.
     expected_signal = _get_expected_signal(
         frame_size=frame_size,
@@ -346,6 +326,17 @@ def get_residual_selection_mask(
         psf_template=psf_template,
         grid_size=grid_size,
     )
+
+    # Create a negative "glow" around the expected signal. This is required
+    # because otherwise, the template matching (which is really just a cross-
+    # correlation) does not pay enough attention to the shape of the signal.
+    negative = np.clip(
+        (gaussian(sobel(expected_signal), sigma=5)
+         - (expected_signal > 0.2 * np.max(expected_signal))),
+        a_min=0,
+        a_max=None,
+    )
+    expected_signal -= negative
 
     # -------------------------------------------------------------------------
     # Project to polar coordinates
@@ -363,14 +354,14 @@ def get_residual_selection_mask(
     )
     polar = polar.T
 
-    # This removes a lot of "background noise" from the polar match fraction
-    # and yields cleaner planet signals that give better template matches
-    polar *= np.std(polar, axis=1, keepdims=True)
-    polar -= np.median(polar, axis=1, keepdims=True)
-
-    # Normalize the polar match fraction (and fix type for mypy)
-    polar /= np.max(polar)
-    polar = np.asarray(polar)
+    # Compute and apply gradient mask to re-weight the match fraction based on
+    # the separation: The number of "affected pixels" that are used to compute
+    # the match fraction scales linearly with the separation meaning that high
+    # values at large separations are less likely to be just a fluke.
+    gradient_mask = get_gradient_mask(
+        grid_size=grid_size, frame_size=frame_size, zero_radius=4
+    )
+    polar *= gradient_mask
 
     # -------------------------------------------------------------------------
     # Cross-correlate with expected signal
@@ -384,9 +375,13 @@ def get_residual_selection_mask(
         mode='wrap',
     )
 
-    # Clip the cross-correlation (= only keep pixels with high values)
     # noinspection PyTypeChecker
+    matched = np.array(matched)
+
+    # Clip the cross-correlation (= only keep pixels with the highest values).
+    # This is useful for the blob finder.
     matched = np.clip(matched, a_min=np.percentile(matched, 90), a_max=None)
+    matched -= np.min(matched)
 
     # -------------------------------------------------------------------------
     # Run blob finder, and prune blobs
@@ -417,23 +412,23 @@ def get_residual_selection_mask(
             phase_shifted_matched, (3 * grid_size, 3 * grid_size)
         )
 
-        # Find blobs / peaks in the matched filter result
-        # Depending on the data set and / or the hyper-parameters of the HSR,
-        # the parameters of the blob finder might require additional tuning.
+        # Apply the blob finding algorithm to the matched filter result
         tmp_blobs = blob_log(
             image=padded_phase_shifted_matched,
+            min_sigma=0.1,
             max_sigma=grid_size / 4,
-            num_sigma=32,
-            threshold=0.04,
+            threshold=0.15,
             overlap=0.0,
         )
 
-        # Process blobs: First, drop all blobs that are too close to the image
-        # border. Then replace the last column (by default the radius of the
-        # blob) by the brightness of the blob, and finally, convert the first
-        # two columns (the coordinates of the blob in the polar match fraction)
-        # to values for the radius  and separation in the original (Cartesian)
-        # match fraction.
+        # Slightly post-process the blobs that we have found:
+        # (1) Drop all blobs that are too close to the image border (they will
+        #     be found by the other `global_phase_offset` value).
+        # (2) Replace the last entry (by default the radius of the blob) by the
+        #     brightness of the blob. (Needed for pruning blobs.)
+        # (3) Convert the first two entries (the coordinates of the blob in the
+        #     polar match fraction map) to values for the radius and separation
+        #     in the original (Cartesian) match fraction map.
         for blob in tmp_blobs:
 
             # Unpack blob coordinates
@@ -448,9 +443,13 @@ def get_residual_selection_mask(
             if phi < grid_size / 4 or phi > 3 * grid_size / 4:
                 continue
 
-            # Measure the blob brightness for pruning purposes
-            _, brightness = get_flux(
-                frame=phase_shifted_matched, position=(phi, rho), mode='P'
+            # Measure the blob brightness for pruning purposes and re-fit
+            # the exact blob position after un-doing the gradient mask.
+            (phi, rho), brightness = get_flux(
+                frame=phase_shifted_matched / gradient_mask,
+                position=(phi, rho),
+                mode='FS',
+                search_radius=Quantity(2, 'pixel'),
             )
 
             # Adjust for coordinate system conventions / scaling
@@ -458,6 +457,7 @@ def get_residual_selection_mask(
             phi = (2 * np.pi * phi / grid_size) + global_phase_offset + np.pi
             phi = fmod(phi, 2 * np.pi)
 
+            # Store the final position and brightness of the blob
             blobs.append((rho, phi, brightness))
 
     # Prune the list of blobs to get the positions: if there are two planet
@@ -488,7 +488,7 @@ def get_residual_selection_mask(
             selection_mask += shifted
 
     # Finally, multiply the selection mask with the (normalized) original match
-    # fraction to drop any "bad pixels", and threshold to binarize it
+    # fraction to drop any "bad pixels", and threshold to binarize it to a mask
     selection_mask *= np.nan_to_num(match_fraction) / np.nanmax(match_fraction)
     selection_mask = np.asarray(selection_mask > 0.1)
 
