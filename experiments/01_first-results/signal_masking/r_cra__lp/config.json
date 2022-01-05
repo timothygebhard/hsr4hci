@@ -26,5 +26,8 @@
       "fit_intercept":      true,
       "alphas":             [1e-1, 1e3, 41]
     }
+  },
+  "plotting": {
+    "label_positions":      ["bottom"]
   }
 }
