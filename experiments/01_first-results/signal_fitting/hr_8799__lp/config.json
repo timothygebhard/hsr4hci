@@ -5,7 +5,8 @@
     "frame_size":           [167, 167]
   },
   "observing_conditions": {
-    "selected_keys":        null
+    "selected_keys":        null,
+    "max_correlation":      0.0
   },
   "roi_mask": {
     "inner_radius":         [0.00, "arcsec"],
