@@ -12,7 +12,8 @@
     "azimuthal_position": null
   },
   "observing_conditions": {
-    "selected_keys":      "all"
+    "selected_keys":      "all",
+    "max_correlation":    0.3
   },
   "roi_mask": {
     "inner_radius":       [0.00, "arcsec"],
@@ -20,7 +21,8 @@
   },
   "selection_mask": {
     "radius_position":    [16.0, "pixel"],
-    "radius_opposite":    [16.0, "pixel"]
+    "radius_opposite":    [16.0, "pixel"],
+    "radius_excluded":    [ 9.0, "pixel"]
   },
   "train_mode":           "signal_fitting",
   "n_signal_times":       32,
