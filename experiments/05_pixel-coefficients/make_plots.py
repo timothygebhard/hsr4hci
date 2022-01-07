@@ -45,12 +45,12 @@ if __name__ == '__main__':
 
     # Loop over different data sets and positions
     for dataset, binning_factor, (x, y), loc in (
-        ('beta_pictoris__lp', 1, (8 - 1, 30 - 1), 1),
-        ('beta_pictoris__lp', 1, (38 - 1, 10 - 1), 1),
-        ('beta_pictoris__mp', 1, (42 - 1, 19 - 1), 1),
-        ('beta_pictoris__mp', 1, (28 - 1, 40 - 1), 1),
-        ('r_cra__lp', 1, (12 - 1, 17 - 1), 1),
-        ('r_cra__lp', 1, (33 - 1, 45 - 1), 2),
+        ('beta_pictoris__lp', 1, (8 - 1, 30 - 1), 'upper right'),
+        ('beta_pictoris__lp', 1, (38 - 1, 10 - 1), 'upper right'),
+        ('beta_pictoris__mp', 1, (42 - 1, 19 - 1), 'upper right'),
+        ('beta_pictoris__mp', 1, (28 - 1, 40 - 1), 'upper right'),
+        ('r_cra__lp', 1, (26 - 1, 10 - 1), 'upper right'),
+        ('r_cra__lp', 1, (33 - 1, 45 - 1), 'upper left'),
     ):
 
         start_time = time.time()
