@@ -53,6 +53,7 @@ def test_data() -> Any:
         'DIT_STACK': 0,
         'DIT_PSF_TEMPLATE': 0.2,
         'PIXSCALE': 0.0271,
+        'ND_FILTER': 0.01,
     }
     planets = {
         "b": {"separation": 0.1867, "position_angle": 132.0, "contrast": 6.48}
