@@ -153,7 +153,7 @@ if __name__ == '__main__':
                 psf_template=psf_template,
                 polar_position=injection_position,
                 magnitude=contrast,
-                extra_scaling=1,
+                extra_scaling=(1.0 / float(metadata['ND_FILTER'])),
                 dit_stack=float(metadata['DIT_STACK']),
                 dit_psf_template=float(metadata['DIT_PSF_TEMPLATE']),
                 return_planet_positions=False,
