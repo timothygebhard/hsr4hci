@@ -3,7 +3,11 @@
     "b": {
       "separation":         [0.45842, "arcsecond"],
       "position_angle":     [211.39, "degree"],
-      "contrast":           7.64
+      "contrast": {
+        "mean":             7.64,
+        "lower":            7.52,
+        "upper":            7.76
+      }
     }
   },
   "dataset": {
@@ -20,7 +24,8 @@
   },
   "selection_mask": {
     "radius_position":      [16.00, "pixel"],
-    "radius_opposite":      [16.00, "pixel"]
+    "radius_opposite":      [16.00, "pixel"],
+    "radius_excluded":      [ 9.00, "pixel"]
   },
   "train_mode":             "signal_fitting",
   "n_train_splits":         3,
