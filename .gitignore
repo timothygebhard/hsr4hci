@@ -1,3 +1,6 @@
+# macOS files
+._*
+
 # Ignore .local folder
 .local
 
@@ -14,7 +17,7 @@ experiments/**/partial
 experiments/**/results
 experiments/**/clusterlogs
 experiments/**/*.sub
-experiments/**/*.dag
+experiments/**/*.dag*
 
 # Ignore FITS and HDF files (these should never go into the repository)
 *.fits
