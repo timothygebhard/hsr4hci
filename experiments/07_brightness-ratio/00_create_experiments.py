@@ -13,7 +13,6 @@ from typing import List
 
 import argparse
 import json
-import os
 import sys
 import time
 
@@ -27,7 +26,11 @@ from hsr4hci.htcondor import SubmitFile
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
-def create_submit_file(experiment_dir: Path, algorithm: str) -> Path:
+def create_submit_file(
+    experiment_dir: Path,
+    algorithm: str,
+    memory: int = 8192,
+) -> Path:
     """
     Create the HTCondor submit file for an experiment.
 
@@ -36,6 +39,7 @@ def create_submit_file(experiment_dir: Path, algorithm: str) -> Path:
             create the submit file.
         algorithm: The algorithm to use: "pca" or "signal_fitting" or
             "signal_masking".
+        memory: Memory (in MB) to require for experiments.
 
     Returns:
         Path to the *.sub file that runs the experiment.
@@ -48,11 +52,10 @@ def create_submit_file(experiment_dir: Path, algorithm: str) -> Path:
 
     # Define script and requirements for different algorithms
     if algorithm == 'pca':
-        memory = 10240
+        memory += 2048
         cpus = 1
         job_script = scripts_dir / 'run_pca.py'
     elif algorithm == 'hsr':
-        memory = 8192
         cpus = 2
         job_script = scripts_dir / 'run_hsr.py'
     else:
@@ -153,6 +156,12 @@ if __name__ == '__main__':
         default=False,
         help='If flag is set, no experiment without fake planets is created.',
     )
+    parser.add_argument(
+        '--memory',
+        type=int,
+        default=8192,
+        help='Memory to require for experiments (use to overwrite defaults).',
+    )
     args = parser.parse_args()
 
     # Define shortcuts to arguments
@@ -161,6 +170,7 @@ if __name__ == '__main__':
     separations = sorted(args.separations)
     azimuthal_positions = sorted(args.azimuthal_positions)
     create_baseline_experiment = not args.no_baseline_experiment
+    memory = int(args.memory)
     n_experiments = int(
         len(contrasts) * len(separations) * len(azimuthal_positions)
     )
@@ -202,6 +212,12 @@ if __name__ == '__main__':
     # Keep track of all the submit files for the experiments
     submit_file_paths: List[Path] = []
 
+    # We will create a DAG file with the submit files for all experiments so
+    # that we can easily launch all jobs at once. We now define the path to
+    # the file and make sure it is empty.
+    dag_file_path = main_dir / 'start_jobs.dag'
+    open(dag_file_path, 'w').close()
+
     # -------------------------------------------------------------------------
     # Create baseline experiment (no fake planets)
     # -------------------------------------------------------------------------
@@ -228,9 +244,15 @@ if __name__ == '__main__':
 
         # Create a submit file for the experiment
         file_path = create_submit_file(
-            experiment_dir=no_fake_planets_dir, algorithm=algorithm
+            experiment_dir=no_fake_planets_dir,
+            algorithm=algorithm,
+            memory=memory,
         )
         submit_file_paths.append(file_path)
+
+        # Add the baseline experiment as a job to the DAG file
+        with open(dag_file_path, 'a') as dag_file:
+            dag_file.write(f'JOB no_fake_planets {file_path}\n')
 
         print('Done!', flush=True)
 
@@ -242,45 +264,41 @@ if __name__ == '__main__':
     # azimuthal positions -- this is the grid for which we create experiments.
     combinations = list(product(contrasts, separations, azimuthal_positions))
 
-    # Loop over all combinations and create experiments
-    for (contrast, separation, azimuthal_position) in combinations:
+    # Open the DAG file where we keep track of all experiments
+    with open(dag_file_path, 'a') as dag_file:
 
-        # Define experiment name and create the directory for this experiment
-        name = f'{contrast:.2f}__{separation:.1f}__{azimuthal_position}'
-        experiment_dir = (experiments_dir / name).resolve()
-        experiment_dir.mkdir(exist_ok=True, parents=True)
+        # Loop over all combinations and create experiments
+        for (contrast, separation, azimuthal_position) in combinations:
 
-        print(f'Creating experiment: {experiment_dir}...', end=' ', flush=True)
+            # Define experiment name and create experiment directory
+            name = f'{contrast:.2f}__{separation:.1f}__{azimuthal_position}'
+            experiment_dir = (experiments_dir / name).resolve()
+            experiment_dir.mkdir(exist_ok=True, parents=True)
 
-        # Create experiment configuration (by overwriting previous config)
-        config['injection']['separation'] = separation
-        config['injection']['contrast'] = contrast
-        config['injection']['azimuthal_position'] = azimuthal_position
+            print(f'Creating {experiment_dir}...', end=' ', flush=True)
 
-        # Store the experiment configuration
-        file_path = experiment_dir / 'config.json'
-        with open(file_path, 'w') as json_file:
-            json.dump(config, json_file, indent=2)
+            # Create experiment configuration (by overwriting previous config)
+            config['injection']['separation'] = separation
+            config['injection']['contrast'] = contrast
+            config['injection']['azimuthal_position'] = azimuthal_position
 
-        # Create a submit file for the experiment
-        file_path = create_submit_file(
-            experiment_dir=experiment_dir, algorithm=algorithm
-        )
-        submit_file_paths.append(file_path)
+            # Store the experiment configuration
+            file_path = experiment_dir / 'config.json'
+            with open(file_path, 'w') as json_file:
+                json.dump(config, json_file, indent=2)
 
-        print('Done!', flush=True)
+            # Create a submit file for the experiment
+            file_path = create_submit_file(
+                experiment_dir=experiment_dir,
+                algorithm=algorithm,
+                memory=memory,
+            )
+            submit_file_paths.append(file_path)
 
-    # -------------------------------------------------------------------------
-    # Create a shell script that allows to launch the jobs on the cluster
-    # -------------------------------------------------------------------------
+            # Add the submit file to the DAG file
+            dag_file.write(f'JOB {name} {file_path}\n')
 
-    print('\nCreating shell script to start jobs...', end=' ', flush=True)
-    file_path = main_dir / 'start_jobs.sh'
-    with open(file_path, 'w') as sh_file:
-        for submit_file_path in submit_file_paths:
-            sh_file.write(f'condor_submit_bid 5 {submit_file_path} ;\n')
-    os.chmod(file_path, 0o755)
-    print('Done!', flush=True)
+            print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
     # Postliminaries
