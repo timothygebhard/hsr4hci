@@ -101,6 +101,9 @@ if __name__ == '__main__':
                 Quantity(*config['hypothesis']['b']['position_angle']),
             )
 
+            # Get the expected contrast
+            expected_contrast = config['hypothesis']['b']['contrast']['mean']
+
             # Get the observed contrast
             result = get_contrast(
                 signal_estimate=signal_estimate,
@@ -108,7 +111,7 @@ if __name__ == '__main__':
                 psf_template=psf_template,
                 metadata=metadata,
                 no_fake_planets=None,
-                expected_contrast=config['hypothesis']['b']['contrast'],
+                expected_contrast=expected_contrast,
             )
 
             # Store all relevant results
