@@ -88,10 +88,10 @@ def test___prune_blobs() -> None:
     blobs = [
         (10.2, 90.0, 12),
         (11.4, 120.0, 14),
-        (18.0, 0.0, 5.0),
+        (19.5, 0.0, 5.0),
     ]
     pruned = _prune_blobs(blobs)
-    assert np.array_equal(pruned, np.array([[11.4, 120], [18.0, 0]]))
+    assert np.array_equal(pruned, np.array([[11.4, 120], [19.5, 0]]))
 
 
 def test__get_residual_selection_mask() -> None:
@@ -147,7 +147,8 @@ def test__get_residual_selection_mask() -> None:
     )
     assert np.sum(selection_mask) == 205
     assert np.isclose(np.sum(polar), 110.40989835080471)
-    assert np.isclose(np.sum(matched), 441.4169627449298)
+    assert np.isclose(np.sum(matched), 1.1368683772161603e-13)
+    assert np.isclose(np.sum(np.clip(matched, 0, None)), 439.39300124870806)
     assert len(positions) == 1
-    assert np.isclose(positions[0][0], 15.88335621806445)
-    assert np.isclose(positions[0][1], 2.556919091700612)
+    assert np.isclose(positions[0][0], 15.890379340695295)
+    assert np.isclose(positions[0][1], 2.556317281587953)

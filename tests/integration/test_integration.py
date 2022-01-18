@@ -298,9 +298,9 @@ def test__integration_pca(
             ),
             aperture_radius=Quantity(psf_fwhm / 2, 'pixel'),
         )
-    assert np.isclose(metrics['snr']['min'], 6.593299696334281)
-    assert np.isclose(metrics['snr']['max'], 14.093937863225246)
-    assert np.isclose(metrics['snr']['mean'], 9.62031939013815)
+    assert np.isclose(metrics['snr']['min'], 6.59901264552203)
+    assert np.isclose(metrics['snr']['max'], 14.076939261296465)
+    assert np.isclose(metrics['snr']['mean'], 9.572915607066628)
 
     # -------------------------------------------------------------------------
     # STEP 3: Create a plot
@@ -437,7 +437,7 @@ def test__integration_hsr(
         psf_template=psf_template,
     )
     print("np.nansum(selection_mask) =", np.nansum(selection_mask))
-    assert np.nansum(selection_mask) == 51
+    assert np.nansum(selection_mask) == 52
 
     file_path = hsr_experiment_dir / 'selection_mask.fits'
     save_fits(selection_mask, file_path)
@@ -452,7 +452,7 @@ def test__integration_hsr(
         selection_mask=selection_mask,
     )
     print("np.nansum(residual_stack) =", np.nansum(residual_stack))
-    assert np.isclose(np.nansum(residual_stack), 1646.7012)
+    assert np.isclose(np.nansum(residual_stack), 1650.6615)
 
     file_path = hsr_experiment_dir / 'residual_stack.fits'
     save_fits(residual_stack, file_path)
@@ -461,7 +461,7 @@ def test__integration_hsr(
         stack=residual_stack, parang=parang, mask=~roi_mask
     )
     print("np.nansum(signal_estimate) =", np.nansum(signal_estimate))
-    assert np.isclose(np.nansum(signal_estimate), 32.94099403114524)
+    assert np.isclose(np.nansum(signal_estimate), 33.02019202453084)
 
     file_path = hsr_experiment_dir / 'signal_estimate.fits'
     save_fits(signal_estimate, file_path)
@@ -484,11 +484,11 @@ def test__integration_hsr(
         )
 
     print("metrics['snr']['min'] =", metrics['snr']['min'])
-    assert np.isclose(metrics['snr']['min'], 27.430971199560332)
+    assert np.isclose(metrics['snr']['min'], 27.657864911875844)
     print("metrics['snr']['max'] =", metrics['snr']['max'])
-    assert np.isclose(metrics['snr']['max'], 51.611312579520906)
+    assert np.isclose(metrics['snr']['max'], 50.477201295166466)
     print("metrics['snr']['mean'] =", metrics['snr']['mean'])
-    assert np.isclose(metrics['snr']['mean'], 35.993992202839024)
+    assert np.isclose(metrics['snr']['mean'], 35.896775592958086)
 
     # -------------------------------------------------------------------------
     # STEP 7: Create a plot

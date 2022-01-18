@@ -97,12 +97,12 @@ def test_get_contrast() -> None:
         expected_contrast=5,
     )
     assert np.isclose(
-        results['observed_flux_ratio'], 0.010587254186049756, rtol=1e-4
+        results['observed_flux_ratio'], 0.010483672887739989, rtol=1e-4
     )
     assert np.isclose(
-        results['observed_contrast'], 4.938041649889568, rtol=1e-4
+        results['observed_contrast'], 4.948716345998492, rtol=1e-4
     )
-    assert np.isclose(results['throughput'], 1.0587254186049757, rtol=1e-4)
+    assert np.isclose(results['throughput'], 1.0483672887739988, rtol=1e-4)
 
     # Case 5
     signal_estimate = np.zeros(frame_size)

@@ -6,6 +6,8 @@ Tests for metrics.py
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from pprint import pprint
+
 from astropy.modeling import models
 from astropy.units import Quantity
 from skimage.filters import gaussian
@@ -68,41 +70,47 @@ def test__compute_metrics() -> None:
         n_rotation_steps=10,
     )
     assert np.isclose(
-        positions['final']['polar'][0].to('pixel').value, 16.01080024421563
+        positions['final']['polar'][0].to('pixel').value, 16.01086125
     )
     assert np.isclose(
-        positions['final']['polar'][1].to('radian').value, -1.5720312352633194
+        positions['final']['polar'][1].to('radian').value, -1.57203488
     )
-    assert np.isclose(results['fpf']['max'], 4.985079950867889e-17)
-    assert np.isclose(results['fpf']['mean'], 3.389508968147001e-17)
-    assert np.isclose(results['fpf']['median'], 3.7016290701829294e-17)
-    assert np.isclose(results['fpf']['min'], 5.3292228535917906e-18)
-    assert np.isclose(results['fpf']['std'], 1.1155016447011583e-17)
-    assert np.isclose(results['log_fpf']['max'], 17.282327941119874)
-    assert np.isclose(results['log_fpf']['mean'], 16.526431865957733)
-    assert np.isclose(results['log_fpf']['median'], 16.44033950338373)
-    assert np.isclose(results['log_fpf']['min'], 16.310988015553853)
-    assert np.isclose(results['log_fpf']['std'], 0.25104035793468965)
-    assert np.isclose(results['noise']['max'], 0.02159086332484625)
-    assert np.isclose(results['noise']['mean'], 0.021125462204945204)
-    assert np.isclose(results['noise']['median'], 0.02117884744469653)
-    assert np.isclose(results['noise']['min'], 0.02077860767195894)
-    assert np.isclose(results['noise']['std'], 0.0002506598504073832)
+    assert np.isclose(positions['final']['cartesian'][0], 48.01084897383275)
+    assert np.isclose(positions['final']['cartesian'][1], 31.98016968443035)
+
+    print()
+    pprint(results)
+
+    assert np.isclose(results['fpf']['max'], 5.164200653596613e-17)
+    assert np.isclose(results['fpf']['mean'], 3.511819194376848e-17)
+    assert np.isclose(results['fpf']['median'], 3.834279134370597e-17)
+    assert np.isclose(results['fpf']['min'], 5.535349294883412e-18)
+    assert np.isclose(results['fpf']['std'], 1.155278577366806e-17)
+    assert np.isclose(results['log_fpf']['max'], 17.256854968813425)
+    assert np.isclose(results['log_fpf']['mean'], 16.502279822495144)
+    assert np.isclose(results['log_fpf']['median'], 16.416316273799083)
+    assert np.isclose(results['log_fpf']['min'], 16.28699689168509)
+    assert np.isclose(results['log_fpf']['std'], 0.2506379199885584)
+    assert np.isclose(results['noise']['max'], 0.021591052642817854)
+    assert np.isclose(results['noise']['mean'], 0.021125651139223087)
+    assert np.isclose(results['noise']['median'], 0.021179069594017063)
+    assert np.isclose(results['noise']['min'], 0.020778807014472208)
+    assert np.isclose(results['noise']['std'], 0.00025066276461067156)
     assert np.isclose(results['p_value']['max'], 1.0)
     assert np.isclose(results['p_value']['mean'], 1.0)
     assert np.isclose(results['p_value']['median'], 1.0)
     assert np.isclose(results['p_value']['min'], 0.9999999999999999)
-    assert np.isclose(results['p_value']['std'], 4.734006883291518e-17)
-    assert np.isclose(results['signal']['max'], 0.7769396634948865)
-    assert np.isclose(results['signal']['mean'], 0.7762484349890049)
-    assert np.isclose(results['signal']['median'], 0.7762431434540997)
-    assert np.isclose(results['signal']['min'], 0.775667102956501)
-    assert np.isclose(results['signal']['std'], 0.0003730524628884189)
-    assert np.isclose(results['snr']['max'], 37.330080783193)
-    assert np.isclose(results['snr']['mean'], 36.7497062463769)
-    assert np.isclose(results['snr']['median'], 36.65708303670411)
-    assert np.isclose(results['snr']['min'], 35.97334674314541)
-    assert np.isclose(results['snr']['std'], 0.42348499291612113)
+    assert np.isclose(results['p_value']['std'], 5.797950651443767e-17)
+    assert np.isclose(results['signal']['max'], 0.7742381617783726)
+    assert np.isclose(results['signal']['mean'], 0.7735469609874865)
+    assert np.isclose(results['signal']['median'], 0.7735416641351142)
+    assert np.isclose(results['signal']['min'], 0.7729656408388326)
+    assert np.isclose(results['signal']['std'], 0.0003730376838223088)
+    assert np.isclose(results['snr']['max'], 37.19971220197919)
+    assert np.isclose(results['snr']['mean'], 36.62148319066654)
+    assert np.isclose(results['snr']['median'], 36.52914588278508)
+    assert np.isclose(results['snr']['min'], 35.84790987208666)
+    assert np.isclose(results['snr']['std'], 0.4219717303747466)
 
     # Case 2
     with pytest.raises(RuntimeError) as runtime_error:
