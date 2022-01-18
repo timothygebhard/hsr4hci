@@ -6,7 +6,7 @@ Functions for measuring fluxes.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Any, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 from astropy.modeling import models, fitting
 from astropy.units import Quantity
@@ -119,14 +119,6 @@ def _get_flux__f(
     # Create a new Gaussian2D object
     gaussian_model = models.Gaussian2D(x_mean=position[0], y_mean=position[1])
 
-    # Define auxiliary function for tieing the standard deviations
-    def tie_stddev(gaussian_model: Any) -> Any:
-        return gaussian_model.y_stddev
-
-    # Enforce symmetry: tie standard deviation parameters to same value to
-    # ensure that the resulting 2D Gaussian is always circular
-    gaussian_model.x_stddev.tied = tie_stddev
-
     # Fix the position (= mean) of the 2D Gaussian
     gaussian_model.x_mean.fixed = True
     gaussian_model.y_mean.fixed = True
@@ -170,14 +162,6 @@ def _get_flux__fs(
 
     # Create a new Gaussian2D object
     gaussian_model = models.Gaussian2D(x_mean=position[0], y_mean=position[1])
-
-    # Define auxiliary function for tieing the standard deviations
-    def tie_stddev(gaussian_model: Any) -> Any:
-        return gaussian_model.y_stddev
-
-    # Enforce symmetry: tie standard deviation parameters to same value to
-    # ensure that the resulting 2D Gaussian is always circular
-    gaussian_model.x_stddev.tied = tie_stddev
 
     # Define "search area" by setting minimum and maximum values for the mean
     # of the Gaussian (i.e., the position)
