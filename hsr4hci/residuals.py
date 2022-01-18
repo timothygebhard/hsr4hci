@@ -14,7 +14,7 @@ from astropy.units import Quantity
 from photutils.centroids import centroid_com
 from polarTransform import convertToPolarImage
 from skimage.feature import blob_log, match_template
-from skimage.filters import gaussian, sobel
+from skimage.filters import gaussian
 
 import h5py
 import numpy as np
@@ -175,7 +175,7 @@ def _prune_blobs(blobs: List[Tuple[float, float, float]]) -> np.ndarray:
 
             # If the blob that we are comparing with is radially close and
             # brighter than the reference blob, we break the inner loop
-            if abs(rho_1 - rho_2) <= 5 and brightness_2 > brightness_1:
+            if abs(rho_1 - rho_2) <= 8 and brightness_2 > brightness_1:
                 break
 
         # Only if the inner for-loop terminated normally, that is, not via the
@@ -327,15 +327,10 @@ def get_residual_selection_mask(
         grid_size=grid_size,
     )
 
-    # Create a negative "glow" around the expected signal. This is required
+    # Add a small negative "glow" around the expected signal. This is needed
     # because otherwise, the template matching (which is really just a cross-
-    # correlation) does not pay enough attention to the shape of the signal.
-    negative = np.clip(
-        (gaussian(sobel(expected_signal), sigma=5)
-         - (expected_signal > 0.2 * np.max(expected_signal))),
-        a_min=0,
-        a_max=None,
-    )
+    # correlation) does not pay enough attention to the signal *shape*.
+    negative = np.clip(gaussian(expected_signal, sigma=5), 0, 0.05)
     expected_signal -= negative
 
     # -------------------------------------------------------------------------
@@ -378,11 +373,6 @@ def get_residual_selection_mask(
     # noinspection PyTypeChecker
     matched = np.array(matched)
 
-    # Clip the cross-correlation (= only keep pixels with the highest values).
-    # This is useful for the blob finder.
-    matched = np.clip(matched, a_min=np.percentile(matched, 90), a_max=None)
-    matched -= np.min(matched)
-
     # -------------------------------------------------------------------------
     # Run blob finder, and prune blobs
     # -------------------------------------------------------------------------
@@ -417,7 +407,6 @@ def get_residual_selection_mask(
             image=padded_phase_shifted_matched,
             min_sigma=0.1,
             max_sigma=grid_size / 4,
-            threshold=0.15,
             overlap=0.0,
         )
 
