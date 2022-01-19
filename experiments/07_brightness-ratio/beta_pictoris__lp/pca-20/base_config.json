@@ -1,0 +1,19 @@
+{
+  "algorithm":            "pca",
+  "dataset": {
+    "name_or_path":       "beta_pictoris__lp",
+    "binning_factor":     128,
+    "frame_size":         [111, 111],
+    "remove_planets":     true
+  },
+  "injection": {
+    "separation":         null,
+    "contrast":           null,
+    "azimuthal_position": null
+  },
+  "roi_mask": {
+    "inner_radius":       [0.00, "arcsec"],
+    "outer_radius":       [1.10, "arcsec"]
+  },
+  "n_components":         20
+}

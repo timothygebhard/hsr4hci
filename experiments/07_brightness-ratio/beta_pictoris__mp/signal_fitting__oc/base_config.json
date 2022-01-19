@@ -1,7 +1,7 @@
 {
   "algorithm":            "hsr",
   "dataset": {
-    "name_or_path":       "beta_pictoris__lp",
+    "name_or_path":       "beta_pictoris__mp",
     "binning_factor":     128,
     "frame_size":         [111, 111],
     "remove_planets":     true
@@ -12,12 +12,12 @@
     "azimuthal_position": null
   },
   "observing_conditions": {
-    "selected_keys":      null,
-    "max_correlation":    0.0
+    "selected_keys":      "all",
+    "max_correlation":    0.3
   },
   "roi_mask": {
     "inner_radius":       [0.00, "arcsec"],
-    "outer_radius":       [1.10, "arcsec"]
+    "outer_radius":       [1.25, "arcsec"]
   },
   "selection_mask": {
     "radius_position":    [16.0, "pixel"],
