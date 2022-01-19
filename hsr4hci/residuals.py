@@ -316,10 +316,7 @@ def get_residual_selection_mask(
     # Prepare the template of the expected signal for the cross-correlation
     # -------------------------------------------------------------------------
 
-    # Compute the signal that we expect to see in polar coordinates.
-    # Note: This signal is not perfectly translation invariant, so the signal
-    # that we will be searching for is approximately the median of the possible
-    # signals that we would expect.
+    # Compute the signal that we expect to see in polar coordinates
     expected_signal = _get_expected_signal(
         frame_size=frame_size,
         field_rotation=field_rotation,
@@ -330,6 +327,7 @@ def get_residual_selection_mask(
     # Add a small negative "glow" around the expected signal. This is needed
     # because otherwise, the template matching (which is really just a cross-
     # correlation) does not pay enough attention to the signal *shape*.
+    # Note: The exact parameters here may require some additional fine-tuning.
     negative = np.clip(gaussian(expected_signal, sigma=5), 0, 0.05)
     expected_signal -= negative
 
