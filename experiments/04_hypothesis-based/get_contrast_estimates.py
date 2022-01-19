@@ -13,6 +13,7 @@ import time
 
 from astropy.units import Quantity
 
+import numpy as np
 import pandas as pd
 
 from hsr4hci.config import load_config
@@ -102,7 +103,10 @@ if __name__ == '__main__':
             )
 
             # Get the expected contrast
-            expected_contrast = config['hypothesis']['b']['contrast']['mean']
+            contrast_dict = config['hypothesis']['b']['contrast']
+            expected_contrast_mean = contrast_dict['mean']
+            expected_contrast_min = contrast_dict['lower']
+            expected_contrast_max = contrast_dict['upper']
 
             # Get the observed contrast
             result = get_contrast(
@@ -111,7 +115,7 @@ if __name__ == '__main__':
                 psf_template=psf_template,
                 metadata=metadata,
                 no_fake_planets=None,
-                expected_contrast=expected_contrast,
+                expected_contrast=expected_contrast_mean,
             )
 
             # Store all relevant results
@@ -124,6 +128,8 @@ if __name__ == '__main__':
                     'observed_contrast': result['observed_contrast'],
                     'expected_flux_ratio': result['expected_flux_ratio'],
                     'expected_contrast': result['expected_contrast'],
+                    'expected_contrast_min': expected_contrast_min,
+                    'expected_contrast_max': expected_contrast_max,
                     'throughput': result['throughput'],
                     'label': (
                         f'{result["observed_contrast"]:.2f} '
@@ -158,10 +164,59 @@ if __name__ == '__main__':
     )
     print('\n\n', pivot_table, '\n')
 
-    # Save pivot table as LaTeX code
-    latex_code = pivot_table.to_latex()
-    with open('results-table.tex', 'w') as tex_file:
-        tex_file.write(latex_code)
+    # -------------------------------------------------------------------------
+    # Generate LaTeX code for paper
+    # -------------------------------------------------------------------------
+
+    # Keep track of all the lines for the output file (LaTeX)
+    lines = []
+
+    # Loop over algorithms
+    for algorithm in ('Signal fitting', 'Signal masking'):
+
+        # Store name and then convert to key for data frame
+        lines += [f'{algorithm} &\n']
+        algorithm = algorithm.lower().replace(' ', '_')
+
+        # Loop over data sets and binning factors
+        for dataset in ('beta_pictoris__lp', 'beta_pictoris__mp', 'r_cra__lp'):
+            lines += ['    &\n']
+            for binning_factor in (1, 10, 100):
+
+                # Select results for experiment
+                idx = (
+                    (results_df.train_mode == algorithm)
+                    & (results_df.dataset == dataset)
+                    & (results_df.binning_factor == binning_factor)
+                )
+                contrast_min = np.around(
+                    float(results_df[idx].expected_contrast_min), 2
+                )
+                contrast_max = np.around(
+                    float(results_df[idx].expected_contrast_max), 2
+                )
+                observed_contrast = np.around(
+                    float(results_df[idx].observed_contrast), 2
+                )
+                throughput = np.around(float(results_df[idx].throughput), 2)
+
+                # Construct label: Observed contrast should be bold if it
+                # falls inside the MCMC uncertainty interval
+                if contrast_min <= observed_contrast <= contrast_max:
+                    label = f'\\textbf{{{observed_contrast:.2f}}} '
+                else:
+                    label = f'{observed_contrast:.2f} '
+                label += f'({throughput:.2f})'
+
+                # End lines either with & or \\
+                if dataset == 'r_cra__lp' and binning_factor == 100:
+                    lines += [f'    {label} \\\\\n']
+                else:
+                    lines += [f'    {label} &\n']
+
+    # Write LaTeX code to file
+    with open('latex-table.tex', 'w') as latex_file:
+        latex_file.writelines(lines)
 
     # -------------------------------------------------------------------------
     # Postliminaries
