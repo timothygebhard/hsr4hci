@@ -217,12 +217,7 @@ def test___train_signal_fitting_model() -> None:
         train_targets=train_targets,
         expected_signal=expected_signal,
     )
-    assert model is not None
-    assert np.allclose(
-        model.coef_, np.array([1.18788776, 1.79318367, 3.04629971])
-    )
-    assert np.isclose(float(model.intercept_), -0.496544608313041)
-    assert np.isclose(planet_coefficient, -1)
+    assert model is None
 
 
 def test___train_signal_masking_model() -> None:
