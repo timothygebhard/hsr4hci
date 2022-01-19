@@ -23,7 +23,11 @@ from hsr4hci.derotating import derotate_combine
 from hsr4hci.fits import save_fits
 from hsr4hci.forward_modeling import add_fake_planet
 from hsr4hci.hypotheses import get_all_hypotheses
-from hsr4hci.masking import get_roi_mask, get_positions_from_mask
+from hsr4hci.masking import (
+    get_circle_mask,
+    get_positions_from_mask,
+    get_roi_mask,
+)
 from hsr4hci.match_fraction import get_all_match_fractions
 from hsr4hci.positions import get_injection_position
 from hsr4hci.psf import get_psf_fwhm
@@ -85,6 +89,11 @@ if __name__ == '__main__':
     )
     print('Done!', flush=True)
 
+    # Mask the PSF template to ensure exclusion region is sufficient
+    mask_size = (psf_template.shape[0], psf_template.shape[1])
+    mask = get_circle_mask(mask_size=mask_size, radius=8)
+    psf_template[~mask] = 0
+
     # -------------------------------------------------------------------------
     # Define various useful shortcuts; activate unit conversions
     # -------------------------------------------------------------------------
@@ -113,6 +122,14 @@ if __name__ == '__main__':
     # Fit the FWHM of the PSF (in pixels)
     psf_fwhm = get_psf_fwhm(psf_template)
 
+    # Construct the mask for the region of interest (ROI)
+    with instrument_units_context:
+        roi_mask = get_roi_mask(
+            mask_size=frame_size,
+            inner_radius=Quantity(*config['roi_mask']['inner_radius']),
+            outer_radius=Quantity(*config['roi_mask']['outer_radius']),
+        )
+
     # -------------------------------------------------------------------------
     # Inject a fake planet into the stack
     # -------------------------------------------------------------------------
@@ -124,6 +141,7 @@ if __name__ == '__main__':
 
     # If any parameter is None, skip the injection...
     if contrast is None or separation is None or azimuthal_position is None:
+        signal_stack = np.zeros_like(stack)
         print('Skipping injection of a fake planet!', flush=True)
 
     # ... otherwise, add a fake planet with given parameters to the stack
@@ -146,9 +164,9 @@ if __name__ == '__main__':
 
         # Inject the fake planet at the injection_position
         print('Injecting fake planet...', end=' ', flush=True)
-        stack = np.asarray(
+        signal_stack = np.asarray(
             add_fake_planet(
-                stack=stack,
+                stack=np.zeros_like(stack),
                 parang=parang,
                 psf_template=psf_template,
                 polar_position=injection_position,
@@ -160,7 +178,20 @@ if __name__ == '__main__':
                 interpolation='bilinear',
             )
         )
+        stack += signal_stack
         print('Done!', flush=True)
+
+    # Compute ideal signal estimate (assuming no noise at all)
+    print('Computing true signal estimate...', end=' ', flush=True)
+    ideal_signal_estimate = derotate_combine(stack=signal_stack, parang=parang)
+    ideal_signal_estimate[~roi_mask] = np.nan
+    print('Done!', flush=True)
+
+    # Save the ideal signal estimate to FITS
+    print('Saving ideal_signal_estimate to FITS...', end=' ', flush=True)
+    file_path = results_dir / 'ideal_signal_estimate.fits'
+    save_fits(array=ideal_signal_estimate, file_path=file_path)
+    print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
     # STEP 1: Train HSR models
@@ -168,14 +199,6 @@ if __name__ == '__main__':
 
     # Set up a BaseModelCreator to create instances of our base model
     base_model_creator = BaseModelCreator(**config['base_model'])
-
-    # Construct the mask for the region of interest (ROI)
-    with instrument_units_context:
-        roi_mask = get_roi_mask(
-            mask_size=frame_size,
-            inner_radius=Quantity(*config['roi_mask']['inner_radius']),
-            outer_radius=Quantity(*config['roi_mask']['outer_radius']),
-        )
 
     print('\nTraining models:', flush=True)
     with instrument_units_context:
