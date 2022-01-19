@@ -6,6 +6,7 @@ Collect results for experiments of an algorithm.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from itertools import product
 from pathlib import Path
 
 import argparse
@@ -71,12 +72,33 @@ if __name__ == '__main__':
     file_path = main_dir / f'results__{mode}.tsv'
     results_df = pd.read_csv(file_path, sep='\t')
 
-    pivot_table = results_df.pivot_table(
+    pivot_median = results_df.pivot_table(
         index='expected_contrast',
         columns='separation',
         values='throughput',
         aggfunc={'throughput': np.nanmedian},
     )
+    pivot_min = results_df.pivot_table(
+        index='expected_contrast',
+        columns='separation',
+        values='throughput',
+        aggfunc={'throughput': np.min},
+    )
+    pivot_max = results_df.pivot_table(
+        index='expected_contrast',
+        columns='separation',
+        values='throughput',
+        aggfunc={'throughput': np.max},
+    )
+
+    labels = np.full(shape=pivot_median.shape, fill_value='').tolist()
+
+    n_row, n_col = pivot_median.shape
+    for i, j in product(range(n_row), range(n_col)):
+        median = pivot_median.values[i, j]
+        lower = pivot_median.values[i, j] - pivot_min.values[i, j]
+        upper = pivot_max.values[i, j] - pivot_median.values[i, j]
+        labels[i][j] = rf'${median:.2f}_{{-{lower:.2f}}}^{{+{upper:.2f}}}$'
 
     # -------------------------------------------------------------------------
     # Create the heatmap-like plot of the brightness ratio table
@@ -84,15 +106,15 @@ if __name__ == '__main__':
 
     # Create a new plot
     fig, ax = plt.subplots(figsize=(9 / 2.54, 6 / 2.54))
-    fig.subplots_adjust(left=0.12, right=1, top=1, bottom=0.1325)
+    fig.subplots_adjust(left=0.12, right=1, top=1, bottom=0.135)
 
     # Create a heatmap plot of the pivot table
     heatmap = sns.heatmap(
         ax=ax,
-        data=pivot_table,
-        annot=True,
-        fmt='.2f',
-        annot_kws={'size': 6, 'alpha': 0.65},
+        data=pivot_median.values,
+        annot=labels,
+        fmt='',
+        annot_kws={'size': 5, 'alpha': 0.65},
         xticklabels=1,
         yticklabels=1,
         vmin=0,
@@ -102,9 +124,13 @@ if __name__ == '__main__':
         cbar=False,
     )
 
+    # Add the right ticks / tick labels
+    ax.set_xticklabels(np.unique(results_df.separation.values))
+    ax.set_yticklabels(np.unique(results_df.expected_contrast.values))
+
     # Add a hatched patch for all throughput values greater 1 which need to
     # be interpreted with extra caution / discussed separately
-    for i, (expected_contrast, row) in enumerate(pivot_table.iterrows()):
+    for i, (expected_contrast, row) in enumerate(pivot_median.iterrows()):
         for j, (separation, throughput) in enumerate(row.items()):
             if throughput > 1.15:
                 ax.add_patch(
