@@ -16,6 +16,8 @@ import json
 import sys
 import time
 
+from tqdm.auto import tqdm
+
 import click
 
 from hsr4hci.config import load_config, get_hsr4hci_dir
@@ -254,28 +256,31 @@ if __name__ == '__main__':
         with open(dag_file_path, 'a') as dag_file:
             dag_file.write(f'JOB no_fake_planets {file_path}\n')
 
-        print('Done!', flush=True)
+        print('Done!\n', flush=True)
 
     # -------------------------------------------------------------------------
     # Create experiments that use fake planets
     # -------------------------------------------------------------------------
 
+    print('Creating experiment with fake planets:', flush=True)
+
     # Compute the Cartesian product of the contrasts, the separations and the
     # azimuthal positions -- this is the grid for which we create experiments.
-    combinations = list(product(contrasts, separations, azimuthal_positions))
+    combinations = tqdm(
+        iterable=list(product(contrasts, separations, azimuthal_positions)),
+        ncols=80
+    )
 
     # Open the DAG file where we keep track of all experiments
     with open(dag_file_path, 'a') as dag_file:
 
-        # Loop over all combinations and create experiments
+        # Loop over all combinations (with progress bar) and create experiments
         for (contrast, separation, azimuthal_position) in combinations:
 
             # Define experiment name and create experiment directory
             name = f'{contrast:.2f}__{separation:.1f}__{azimuthal_position}'
             experiment_dir = (experiments_dir / name).resolve()
             experiment_dir.mkdir(exist_ok=True, parents=True)
-
-            print(f'Creating {experiment_dir}...', end=' ', flush=True)
 
             # Create experiment configuration (by overwriting previous config)
             config['injection']['separation'] = separation
@@ -297,8 +302,6 @@ if __name__ == '__main__':
 
             # Add the submit file to the DAG file
             dag_file.write(f'JOB {name} {file_path}\n')
-
-            print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
     # Postliminaries
