@@ -21,7 +21,10 @@ from hsr4hci.contrast import get_contrast, get_contrast_curve
 # TEST CASES
 # -----------------------------------------------------------------------------
 
-def test_get_contrast() -> None:
+def test__get_contrast() -> None:
+    """
+    Test `hsr4hci.contrast.get_contrast`.
+    """
 
     np.random.seed(42)
 
@@ -97,12 +100,12 @@ def test_get_contrast() -> None:
         expected_contrast=5,
     )
     assert np.isclose(
-        results['observed_flux_ratio'], 0.010483672887739989, rtol=1e-4
+        results['observed_flux_ratio'], 0.010587381375277849, rtol=1e-4
     )
     assert np.isclose(
-        results['observed_contrast'], 4.948716345998492, rtol=1e-4
+        results['observed_contrast'], 4.93802860655294, rtol=1e-4
     )
-    assert np.isclose(results['throughput'], 1.0483672887739988, rtol=1e-4)
+    assert np.isclose(results['throughput'], 1.05873813752778, rtol=1e-4)
 
     # Case 5
     signal_estimate = np.zeros(frame_size)
@@ -119,7 +122,10 @@ def test_get_contrast() -> None:
     assert np.isclose(results['throughput'], 0)
 
 
-def test_get_contrast_curve() -> None:
+def test__get_contrast_curve() -> None:
+    """
+    Test `hsr4hci.contrast.get_contrast_curve`.
+    """
 
     # Case 1
     df = pd.DataFrame(

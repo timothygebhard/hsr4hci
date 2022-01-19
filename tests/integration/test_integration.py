@@ -298,9 +298,9 @@ def test__integration_pca(
             ),
             aperture_radius=Quantity(psf_fwhm / 2, 'pixel'),
         )
-    assert np.isclose(metrics['snr']['min'], 6.59901264552203)
-    assert np.isclose(metrics['snr']['max'], 14.076939261296465)
-    assert np.isclose(metrics['snr']['mean'], 9.572915607066628)
+    assert np.isclose(metrics['snr']['min'], 6.593305613055345)
+    assert np.isclose(metrics['snr']['max'], 14.093961827511508)
+    assert np.isclose(metrics['snr']['mean'], 9.620330342280868)
 
     # -------------------------------------------------------------------------
     # STEP 3: Create a plot
@@ -484,11 +484,11 @@ def test__integration_hsr(
         )
 
     print("metrics['snr']['min'] =", metrics['snr']['min'])
-    assert np.isclose(metrics['snr']['min'], 27.657864911875844)
+    assert np.isclose(metrics['snr']['min'], 27.65057524185288)
     print("metrics['snr']['max'] =", metrics['snr']['max'])
-    assert np.isclose(metrics['snr']['max'], 50.477201295166466)
+    assert np.isclose(metrics['snr']['max'], 50.48721848434706)
     print("metrics['snr']['mean'] =", metrics['snr']['mean'])
-    assert np.isclose(metrics['snr']['mean'], 35.896775592958086)
+    assert np.isclose(metrics['snr']['mean'], 35.901626071429995)
 
     # -------------------------------------------------------------------------
     # STEP 7: Create a plot
