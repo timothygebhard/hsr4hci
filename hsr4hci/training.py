@@ -639,16 +639,23 @@ def _train_signal_fitting_model(
     # a custom model class (sklearn do not provide linear models where you can
     # place constraints on individual coefficients) and also increase training
     # time.
-    # As a simpler alternative, we return None if the planet coefficient is
-    # negative, meaning that we will use the default model for this pixel.
+    # For these reasons, we use the following simple (and, again, somewhat
+    # hacky...) solution: We simply  check if the coefficient that belongs to
+    # the expected signal is negative. In this case, we train the model again,
+    # this time WITHOUT the expected signal as a predictor (effectively forcing
+    # the coefficient to 0).
 
     # Get the coefficient that belongs to the expected signal, and undo the
     # scaling that we applied to the expected signal due to the regularization
     planet_coefficient = float(model.coef_[-1]) * 1_000
 
-    # If the planet coefficient is negative, we should use the default model!
+    # If the planet coefficient is negative, re-train the model *without* the
+    # expected signal as a predictor
     if planet_coefficient < 0:
-        return None, np.nan
+        try:
+            model.fit(X=train_predictors, y=train_targets)
+        except np.linalg.LinAlgError:  # pragma: no cover
+            return None, np.nan
 
     # If the planet coefficient is NOT negative, we can create a "noise
     # only"-model by simply dropping the last coefficient from the model
