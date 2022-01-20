@@ -89,6 +89,9 @@ if __name__ == '__main__':
     )
     print('Done!', flush=True)
 
+    # Fit the FWHM of the PSF (in pixels)
+    psf_fwhm = get_psf_fwhm(psf_template)
+
     # Mask the PSF template to ensure exclusion region is sufficient
     mask_size = (psf_template.shape[0], psf_template.shape[1])
     mask = get_circle_mask(mask_size=mask_size, radius=8)
@@ -118,9 +121,6 @@ if __name__ == '__main__':
         pixscale=Quantity(pixscale, 'arcsec / pixel'),
         lambda_over_d=Quantity(lambda_over_d, 'arcsec'),
     )
-
-    # Fit the FWHM of the PSF (in pixels)
-    psf_fwhm = get_psf_fwhm(psf_template)
 
     # Construct the mask for the region of interest (ROI)
     with instrument_units_context:
