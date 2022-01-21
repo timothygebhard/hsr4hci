@@ -8,6 +8,7 @@ Collect results for experiments of an algorithm.
 
 from itertools import product
 from pathlib import Path
+from typing import Union
 
 import argparse
 import time
@@ -160,10 +161,22 @@ if __name__ == '__main__':
         log_transform=True,
     )
 
+    def rescale(x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+        """
+        Auxiliary function to map the detection limits to the coordinate
+        system of the heatmap plot.
+        """
+        a = 0.5
+        b = results_df.expected_contrast.unique().size - 0.5
+        c = results_df.expected_contrast.min()
+        d = results_df.expected_contrast.max()
+        result = (b - a) * (x - c) / (d - c) + a
+        return float(result) if isinstance(x, float) else np.array(result)
+
     # Plot the contrast curve
     ax.plot(
         separations + 0.5 - min(separations),
-        detection_limits,
+        rescale(detection_limits),
         linewidth=3,
         color='white',
         solid_capstyle='round',
@@ -171,7 +184,7 @@ if __name__ == '__main__':
     )
     ax.plot(
         separations + 0.5 - min(separations),
-        detection_limits,
+        rescale(detection_limits),
         '.-',
         markeredgecolor='white',
         markeredgewidth=0.5,
