@@ -257,7 +257,7 @@ def get_contrast_curve(
         # For each expected contrast, collect the average (transformed)
         # FPF value (the average is taken over the azimuthal position)
         average_values = [
-            np.mean(
+            np.median(
                 transform(
                     df[
                         (df.separation == separation)
