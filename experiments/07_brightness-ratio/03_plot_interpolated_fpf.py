@@ -45,6 +45,12 @@ if __name__ == '__main__':
     # Set up a parser and parse the command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        '--dataset',
+        type=str,
+        required=True,
+        help='Main directory of the experiment set.',
+    )
+    parser.add_argument(
         '--mode',
         choices=['classic', 'alternative'],
         default='classic',
@@ -55,10 +61,18 @@ if __name__ == '__main__':
             'positions at the same separation.'
         ),
     )
+    parser.add_argument(
+        '--sigma-threshold',
+        type=float,
+        default=5.0,
+        help='(Gaussian) sigma for contrast curve. Default: 5.',
+    )
     args = parser.parse_args()
 
     # Define shortcuts
+    dataset = args.dataset
     mode = args.mode
+    sigma_threshold = args.sigma_threshold
 
     # -------------------------------------------------------------------------
     # Define threshold; prepare new plot
@@ -68,9 +82,8 @@ if __name__ == '__main__':
         return -np.log10(x)
 
     # Define significance level and convert to logarithmic space
-    sigma = 5
-    threshold = float(transform(1 - norm.cdf(sigma, 0, 1)))
-    threshold_label = rf'{sigma}$\sigma$ threshold'
+    threshold = float(transform(1 - norm.cdf(sigma_threshold, 0, 1)))
+    threshold_label = rf'{sigma_threshold}$\sigma$ threshold'
 
     # Create a new figure
     fig, axes = plt.subplots(
@@ -88,7 +101,7 @@ if __name__ == '__main__':
     for ax in axes:
         set_fontsize(ax=ax, fontsize=6)
         ax.grid(
-            b=True,
+            visible=True,
             which='both',
             lw=1,
             alpha=0.3,
@@ -96,10 +109,10 @@ if __name__ == '__main__':
             dashes=(0, 2),
         )
         ax.axhline(y=threshold, ls='--', color='black', lw=1)
-        ax.set_ylim(0, 60)
+        ax.set_ylim(0, 120)
         ax.set_ylabel(r'$-\mathrm{log}_\mathrm{10}(\mathrm{FPF})$')
         ax.set_xlim(4.5, 12.5)
-        for k, spine in ax.spines.items():  # ax.spines is a dictionary
+        for k, spine in ax.spines.items():
             spine.set_zorder(1000)
 
     # Disable bottom ticks for all plots but the last one
@@ -119,14 +132,17 @@ if __name__ == '__main__':
 
     # Loop over different algorithms
     for name, path, color in [
-        ('PCA (n=20)', './experiments/pca', 'C0'),
-        ('HSR (signal fitting)', './experiments/signal_fitting', 'C1'),
-        ('HSR (signal masking)', './experiments/signal_masking', 'C2'),
+        ('PCA (n=20)', f'./{dataset}/pca-20', 'C0'),
+        ('HSR (signal fitting)', f'./{dataset}/signal_fitting', 'C1'),
+        ('HSR (signal masking)', f'./{dataset}/signal_masking', 'C2'),
     ]:
 
         # Read in result
         file_path = Path(path) / f'results__{mode}.tsv'
-        df = pd.read_csv(file_path, sep='\t')
+        if not file_path.exists():
+            continue
+        else:
+            df = pd.read_csv(file_path, sep='\t')
 
         # Get the available expected contrasts
         expected_contrasts = np.array(sorted(np.unique(df.expected_contrast)))
@@ -166,17 +182,16 @@ if __name__ == '__main__':
                     & (df.expected_contrast == expected_contrast)
                 ]['fpf_mean']
 
-                # Compute the average value and add it to the plot
-                average_value = np.mean(transform(df_subset))
-                std_dev_value = np.std(transform(df_subset))
-                ax.errorbar(
-                    x=expected_contrast,
-                    y=average_value,
-                    yerr=std_dev_value,
+                # Compute the average value and add it to the plot; also plot
+                # the six data points to give an idea of the variance
+                average_value = np.median(transform(df_subset))
+                ax.plot(
+                    len(df_subset) * [expected_contrast],
+                    transform(df_subset),
+                    ls='none',
                     marker='.',
                     color=color,
-                    zorder=50,
-                    elinewidth=1,
+                    ms=1,
                 )
 
                 # Store the average logFPF value for the interpolator
@@ -235,7 +250,7 @@ if __name__ == '__main__':
     )
 
     # Save plot as PDF
-    plt.savefig(f'fpf-interpolation__{mode}.pdf', dpi=600)
+    plt.savefig(f'./{dataset}/fpf-interpolation__{mode}.pdf', dpi=600)
 
     # -------------------------------------------------------------------------
     # Postliminaries
