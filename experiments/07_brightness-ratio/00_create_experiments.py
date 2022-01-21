@@ -72,7 +72,10 @@ def create_submit_file(
         clusterlogs_dir=clusterlogs_dir,
         memory=memory,
         cpus=cpus,
-        requirements=['Target.CpuFamily =!= 21'],
+        requirements=[
+            'Target.CpuFamily =!= 21',
+            'Target.Machine =!= "g095.internal.cluster.is.localnet"'
+        ],
     )
 
     # Add the experiment as a job
