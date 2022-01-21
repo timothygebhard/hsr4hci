@@ -13,10 +13,13 @@ import argparse
 import time
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 
 from hsr4hci.contrast import get_contrast_curve
+from hsr4hci.data import load_psf_template, load_metadata
 from hsr4hci.plotting import set_fontsize, adjust_luminosity
+from hsr4hci.psf import get_psf_fwhm
 
 
 # -----------------------------------------------------------------------------
@@ -39,6 +42,42 @@ if __name__ == '__main__':
     # Set up a parser and parse the command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        '--dataset',
+        type=str,
+        required=True,
+        help='Main directory of the data set with experiments for algorithms.',
+    )
+    parser.add_argument(
+        '--min-contrast',
+        type=float,
+        default=7.0,
+        help='Minimum contrast / upper limit for plot.',
+    )
+    parser.add_argument(
+        '--max-contrast',
+        type=float,
+        default=12.0,
+        help='Maximum contrast / lower limit for plot.',
+    )
+    parser.add_argument(
+        '--min-separation',
+        type=float,
+        default=2.0,
+        help='Minimum separation / lower limit for plot.',
+    )
+    parser.add_argument(
+        '--max-separation',
+        type=float,
+        default=8.0,
+        help='Maximum separation / upper limit for plot.',
+    )
+    parser.add_argument(
+        '--sigma-threshold',
+        type=float,
+        default=5.0,
+        help='(Gaussian) sigma for contrast curve. Default: 5.',
+    )
+    parser.add_argument(
         '--mode',
         choices=['classic', 'alternative'],
         default='classic',
@@ -52,41 +91,39 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Define shortcuts
+    dataset = args.dataset
     mode = args.mode
+    min_contrast = args.min_contrast
+    max_contrast = args.max_contrast
+    min_separation = args.min_separation
+    max_separation = args.max_separation
+    sigma_threshold = args.sigma_threshold
 
     # -------------------------------------------------------------------------
-    # Prepare plot
+    # Get the PSF FWHM of the respective data set; load the pixscale
     # -------------------------------------------------------------------------
 
-    # Create a new figure and adjust margins
-    fig, ax = plt.subplots(figsize=(9 / 2.54, 4.5 / 2.54))
-    fig.subplots_adjust(left=0.1, right=0.99, top=0.96, bottom=0.18)
+    # Load PSF and determine FWHM
+    psf_template = load_psf_template(name_or_path=dataset)
+    psf_fwhm = get_psf_fwhm(psf_template=psf_template)
 
-    # Add axes labels and set limits
-    ax.set_xlabel('Separation (in units of the PSF FWHM)')
-    ax.set_ylabel('Contrast (in magnitudes)')
-    ax.set_xlim(1.75, 8.25)
-    ax.set_ylim(11, 6)
-    ax.set_yticks([6, 7, 8, 9, 10, 11])
-
-    # Adjust fontsize and add grid
-    set_fontsize(ax=ax, fontsize=6)
-    ax.grid(
-        b=True,
-        which='both',
-        lw=1,
-        alpha=0.3,
-        dash_capstyle='round',
-        dashes=(0, 2),
-    )
+    # Load metadata and get pixscale
+    metadata = load_metadata(name_or_path=dataset)
+    pixscale = float(metadata['PIXSCALE'])
 
     # -------------------------------------------------------------------------
     # Loop over different result files and plot contrast curves
     # -------------------------------------------------------------------------
 
+    # Create a new figure and adjust margins
+    fig, ax = plt.subplots(figsize=(9 / 2.54, 4.5 / 2.54))
+    fig.subplots_adjust(left=0.1, right=0.99, top=0.82, bottom=0.18)
+
     # Loop over different algorithms
     for name, path, color, ls in [
-        ('PCA (n=20)', 'pca', 'black', '-'),
+        ('PCA (n=5)', 'pca-5', 'darkgreen', '-'),
+        ('PCA (n=20)', 'pca-20', 'forestgreen', '-'),
+        ('PCA (n=50)', 'pca-50', 'lawngreen', '-'),
         ('HSR (signal fitting)', 'signal_fitting', 'C0', '-'),
         ('HSR (signal masking)', 'signal_masking', 'C1', '-'),
         ('HSR (signal fitting + OC)', 'signal_fitting__oc', 'C0', '--'),
@@ -96,12 +133,22 @@ if __name__ == '__main__':
         print(f'Plotting {name}...', end=' ', flush=True)
 
         # Read in result
-        file_path = Path('./experiments/') / path / f'results__{mode}.tsv'
-        df = pd.read_csv(file_path, sep='\t')
+        file_path = Path(dataset) / path / f'results__{mode}.tsv'
+        if not file_path.exists():
+            print('Skipped!', flush=True)
+            continue
+        else:
+            df = pd.read_csv(file_path, sep='\t')
+
+        # Apply separation limits on the data frame
+        df = df[
+            (df.separation >= min_separation)
+            & (df.separation <= max_separation)
+        ]
 
         # Compute the contrast curve
         separations, detection_limits = get_contrast_curve(
-            df=df, sigma_threshold=5, log_transform=True
+            df=df, sigma_threshold=sigma_threshold, log_transform=True
         )
 
         # Define additional arguments for plotting
@@ -119,11 +166,53 @@ if __name__ == '__main__':
     # Add legend to the plot and save the plot
     # -------------------------------------------------------------------------
 
+    # Add a second x-axis on top with the separation in units of pixels
+    ax2 = ax.twiny()
+
+    # Add axes labels
+    ax.set_ylabel('Contrast (in magnitudes)')
+    ax.set_xlabel('Separation (in units of the PSF FWHM)')
+    ax2.set_xlabel('Separation (in arcsec)')
+
+    # Set x-limits and ticks
+    x_lower, x_upper = min_separation - 0.25, max_separation + 0.25
+    ax.set_xlim(x_lower, x_upper)
+    ax.set_xticks(np.arange(min_separation, max_separation + 1))
+    ax2.set_xlim(x_lower * psf_fwhm * pixscale, x_upper * psf_fwhm * pixscale)
+    ax2.set_xticks(np.arange(0.3, 1.0, 0.1))
+
+    # Set y-limits and ticks
+    ax.set_ylim(max_contrast, min_contrast)
+    ax.set_yticks(np.arange(min_contrast, max_contrast + 1))
+
+    # Adjust fontsize and add grid
+    set_fontsize(ax=ax, fontsize=6)
+    set_fontsize(ax=ax2, fontsize=6)
+    ax.grid(
+        visible=True,
+        which='both',
+        lw=1,
+        alpha=0.3,
+        dash_capstyle='round',
+        dashes=(0, 2),
+    )
+
+    # Shrink current axis by 20%
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.6, box.height])
+
     # Add legend
-    ax.legend(loc='upper right', fontsize=6)
+    ax.legend(
+        loc='center left',
+        bbox_to_anchor=(1, 0.5),
+        fontsize=6,
+        frameon=False,
+        handlelength=0.8,
+    )
 
     # Save plot as PDF
-    plt.savefig(f'all-contrast-curves__{mode}.pdf', dpi=600)
+    file_name = f'all-contrast-curves__{sigma_threshold:.1f}-sigma__{mode}.pdf'
+    plt.savefig(f'./{dataset}/{file_name}', dpi=600)
 
     # -------------------------------------------------------------------------
     # Postliminaries
