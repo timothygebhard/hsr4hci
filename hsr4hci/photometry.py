@@ -22,6 +22,39 @@ from hsr4hci.masking import mask_frame_around_position
 # AUXILIARY FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
 
+def _gaussian_integral(
+    amplitude: float,
+    sigma: float,
+    radius: float = 0.5,
+) -> float:
+    r"""
+    This function compute the following integral:
+
+    .. math::
+        \int_{0}^{R} dr \int_{0}^{2\pi} d\phi \ r\ A e^{-\frac{r^2}{2\sigma^2}}
+        = 2 \pi A \sigma^2 (1 - e^{-\frac{R^2}{2\sigma^2}})
+
+    This function can be used to turn the results of the fit of a 2D
+    Gaussian into units that are compatible with aperture photometry.
+
+    Args:
+        amplitude: Amplitude of a (symmetric) 2D Gaussian.
+        sigma: Standard deviation of a (symmetric) 2D Gaussian.
+        radius: The maximum radius $R$ for the integral.
+
+    Returns:
+        The value of the above integral as a float.
+    """
+
+    return float(
+        2
+        * np.pi
+        * amplitude
+        * sigma ** 2
+        * (1 - np.exp(-(radius ** 2) / (2 * sigma ** 2)))
+    )
+
+
 def _get_flux__as(
     frame: np.ndarray,
     position: Tuple[float, float],
@@ -145,11 +178,17 @@ def _get_flux__f(
     # Get the final position of the Gaussian after the fit
     final_position = (gaussian_model.x_mean.value, gaussian_model.y_mean.value)
 
-    # We cannot use the amplitude parameter of the Gaussian directly, as
-    # it is not comparable with the values estimated in pixel mode (due to
-    # the normalization of the Gaussian). Therefore, we create a new frame
-    # that contains *only* the Gaussian run "P"-mode style photometry.
-    return _get_flux__p(frame=gaussian_model(x, y), position=final_position)
+    # We cannot use the amplitude parameter of the Gaussian directly, as it
+    # is not comparable with the values estimated in "pixel mode", which are
+    # basically aperture sums / integral for apertures with 1 pixel diameter.
+    # However, using the amplitude and the standard deviation, we can convert
+    # the fit result to the right units:
+    flux = _gaussian_integral(
+        amplitude=float(gaussian_model.amplitude.value),
+        sigma=float(gaussian_model.x_stddev.value)
+    )
+
+    return final_position, flux
 
 
 def _get_flux__fs(
@@ -200,11 +239,17 @@ def _get_flux__fs(
     # Get the final position of the Gaussian after the fit
     final_position = (gaussian_model.x_mean.value, gaussian_model.y_mean.value)
 
-    # We cannot use the amplitude parameter of the Gaussian directly, as
-    # it is not comparable with the values estimated in pixel mode (due to
-    # the normalization of the Gaussian). Therefore, we create a new frame
-    # that contains *only* the Gaussian run "P"-mode style photometry.
-    return _get_flux__p(frame=gaussian_model(x, y), position=final_position)
+    # We cannot use the amplitude parameter of the Gaussian directly, as it
+    # is not comparable with the values estimated in "pixel mode", which are
+    # basically aperture sums / integral for apertures with 1 pixel diameter.
+    # However, using the amplitude and the standard deviation, we can convert
+    # the fit result to the right units:
+    flux = _gaussian_integral(
+        amplitude=float(gaussian_model.amplitude.value),
+        sigma=float(gaussian_model.x_stddev.value)
+    )
+
+    return final_position, flux
 
 
 # -----------------------------------------------------------------------------
