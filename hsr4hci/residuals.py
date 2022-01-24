@@ -10,7 +10,7 @@ from itertools import product
 from math import fmod
 from typing import Dict, List, Tuple, Union
 
-from astropy.units import Quantity
+from astropy.modeling import models, fitting
 from photutils.centroids import centroid_com
 from polarTransform import convertToPolarImage
 from skimage.feature import blob_log, match_template
@@ -22,7 +22,7 @@ import numpy as np
 from hsr4hci.coordinates import get_center
 from hsr4hci.data import get_field_rotation
 from hsr4hci.general import shift_image, crop_or_pad
-from hsr4hci.photometry import get_flux
+from hsr4hci.masking import mask_frame_around_position
 
 
 # -----------------------------------------------------------------------------
@@ -184,6 +184,48 @@ def _prune_blobs(blobs: List[Tuple[float, float, float]]) -> np.ndarray:
             pruned.append((rho_1, phi_1))
 
     return np.array(pruned)
+
+
+def _refit_blob(
+    frame: np.ndarray,
+    position: Tuple[float, float],
+) -> Tuple[float, float, float]:
+    """
+    Auxiliary function to fit a blob at the given `position` to refine
+    its position and get its brightness / amplitude for pruning.
+    """
+
+    # Define the grid for the fit
+    x = np.arange(frame.shape[0])
+    y = np.arange(frame.shape[1])
+    x, y = np.meshgrid(x, y)
+
+    # Create a new Gaussian2D object
+    gaussian_model = models.Gaussian2D(x_mean=position[0], y_mean=position[1])
+
+    # Define "search area" by setting minimum and maximum values for the mean
+    gaussian_model.x_mean.min = position[0] - 2
+    gaussian_model.x_mean.max = position[0] + 2
+    gaussian_model.y_mean.min = position[1] - 2
+    gaussian_model.y_mean.max = position[1] + 2
+
+    # Mask the frame (set everything to zero that is too far from position)
+    masked_frame = mask_frame_around_position(
+        frame=np.nan_to_num(frame),
+        position=position,
+        radius=8,
+    )
+
+    # Fit the model to the data
+    fit_p = fitting.LevMarLSQFitter()
+    gaussian_model = fit_p(gaussian_model, x, y, masked_frame)
+
+    # Get the final position and amplitude of the Gaussian after the fit
+    rho = float(gaussian_model.x_mean.value)
+    phi = float(gaussian_model.y_mean.value)
+    amplitude = float(gaussian_model.amplitude.value)
+
+    return rho, phi, amplitude
 
 
 def get_gradient_mask(
@@ -430,13 +472,11 @@ def get_residual_selection_mask(
             if phi < grid_size / 4 or phi > 3 * grid_size / 4:
                 continue
 
-            # Measure the blob brightness for pruning purposes and re-fit
-            # the exact blob position after un-doing the gradient mask.
-            (phi, rho), brightness = get_flux(
+            # Re-fit the exact blob position after un-doing the gradient mask
+            # and measure the brightness / amplitude for pruning
+            phi, rho, brightness = _refit_blob(
                 frame=phase_shifted_matched / gradient_mask,
                 position=(phi, rho),
-                mode='FS',
-                search_radius=Quantity(2, 'pixel'),
             )
 
             # Adjust for coordinate system conventions / scaling
@@ -447,8 +487,11 @@ def get_residual_selection_mask(
             # Store the final position and brightness of the blob
             blobs.append((rho, phi, brightness))
 
-    # Prune the list of blobs to get the positions: if there are two planet
-    # candidates at the same separation, we should only keep the brighter one
+    # Prune the list of blobs to get the positions: If there are two planet
+    # candidates at the same separation, we should only keep the brighter one.
+    # This step is, in principle, optional. However, it helps to reduce false
+    # positives because we *know* that it is unlikely to observe two planets
+    # at the same separation.
     positions = _prune_blobs(blobs)
 
     # -------------------------------------------------------------------------
