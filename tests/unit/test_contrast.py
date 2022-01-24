@@ -100,12 +100,12 @@ def test__get_contrast() -> None:
         expected_contrast=5,
     )
     assert np.isclose(
-        results['observed_flux_ratio'], 0.010587381375277849, rtol=1e-4
+        results['observed_flux_ratio'], 0.010779852568261169, rtol=1e-4
     )
     assert np.isclose(
-        results['observed_contrast'], 4.93802860655294, rtol=1e-4
+        results['observed_contrast'], 4.918467946952161, rtol=1e-4
     )
-    assert np.isclose(results['throughput'], 1.05873813752778, rtol=1e-4)
+    assert np.isclose(results['throughput'], 1.0779852568261168, rtol=1e-4)
 
     # Case 5
     signal_estimate = np.zeros(frame_size)
@@ -132,7 +132,7 @@ def test__get_contrast_curve() -> None:
         {
             'separation': 5 * np.ones(11),
             'expected_contrast': np.linspace(5, 15, 11),
-            'fpf_mean': (
+            'fpf_median': (
                 2
                 * (1 - norm.cdf(5, 0, 1))
                 * np.tanh(7.5 - 0.5 * np.arange(5, 16))
@@ -150,7 +150,7 @@ def test__get_contrast_curve() -> None:
         {
             'separation': 5 * np.ones(11),
             'expected_contrast': np.linspace(5, 15, 11),
-            'fpf_mean': (
+            'fpf_median': (
                 (1 - norm.cdf(5, 0, 1))
                 ** (2 * np.tanh(7.5 - 0.5 * np.arange(5, 16)))
             ),

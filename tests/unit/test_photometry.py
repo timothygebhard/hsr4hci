@@ -14,6 +14,7 @@ import pytest
 
 # noinspection PyProtectedMember
 from hsr4hci.photometry import (
+    _gaussian_integral,
     _get_flux__as,
     _get_flux__ass,
     _get_flux__p,
@@ -30,7 +31,28 @@ from hsr4hci.coordinates import polar2cartesian
 # TEST CASES
 # -----------------------------------------------------------------------------
 
-def test__get_flux__as() -> None:
+def test___gaussian_integral() -> None:
+    """
+    Test for `hsr4hci.photometry._gaussian_integral`.
+    """
+
+    # Case 1
+    value = _gaussian_integral(amplitude=1, sigma=1, radius=0.5)
+    assert np.isclose(value, 2 * np.pi * (1 - np.exp(-1 / 8)))
+
+    # Case 2
+    value = _gaussian_integral(amplitude=1, sigma=1, radius=np.infty)
+    assert np.isclose(value, 2 * np.pi)
+
+    # Case 3
+    value = _gaussian_integral(amplitude=1, sigma=1, radius=0)
+    assert np.isclose(value, 0)
+
+
+def test___get_flux__as() -> None:
+    """
+    Test for `hsr4hci.photometry._get_flux__as`.
+    """
 
     # Case 1
     frame = np.zeros((10, 10))
@@ -54,7 +76,10 @@ def test__get_flux__as() -> None:
     assert np.isclose(flux, np.pi)
 
 
-def test__get_flux__ass() -> None:
+def test___get_flux__ass() -> None:
+    """
+    Test for `hsr4hci.photometry._get_flux__ass`.
+    """
 
     # Case 1
     x, y = np.meshgrid(np.arange(33), np.arange(33))
@@ -71,7 +96,10 @@ def test__get_flux__ass() -> None:
     assert np.isclose(flux, 5.27522347777759)
 
 
-def test__get_flux__p() -> None:
+def test___get_flux__p() -> None:
+    """
+    Test for `hsr4hci.photometry._get_flux__p`.
+    """
 
     # Case 1
     frame = np.zeros((11, 11))
@@ -84,7 +112,10 @@ def test__get_flux__p() -> None:
     assert np.isclose(flux, np.pi / 4)
 
 
-def test__get_flux__f() -> None:
+def test___get_flux__f() -> None:
+    """
+    Test for `hsr4hci.photometry._get_flux__f`.
+    """
 
     # Case 1
     x, y = np.meshgrid(np.arange(33), np.arange(33))
@@ -96,10 +127,13 @@ def test__get_flux__f() -> None:
         position=(17, 17),
     )
     assert position == (17, 17)
-    assert np.isclose(flux, np.pi / 4)
+    assert np.isclose(flux, 2 * np.pi * (1 - np.exp(-1 / 8)))
 
 
-def test__get_flux__fs() -> None:
+def test___get_flux__fs() -> None:
+    """
+    Test for `hsr4hci.photometry._get_flux__fs`.
+    """
 
     # Case 1
     x, y = np.meshgrid(np.arange(33), np.arange(33))
@@ -112,7 +146,7 @@ def test__get_flux__fs() -> None:
         search_radius=Quantity(2, 'pixel'),
     )
     assert np.allclose(position, (17, 17))
-    assert np.isclose(flux, np.pi / 4)
+    assert np.isclose(flux, 2 * np.pi * (1 - np.exp(-1 / 8)))
 
     # Case 2 (ensure that signals "in the distance" do not affect the fit)
     x, y = np.meshgrid(np.arange(33), np.arange(33))
@@ -137,10 +171,13 @@ def test__get_flux__fs() -> None:
         search_radius=Quantity(2, 'pixel'),
     )
     assert np.allclose(position, (17, 17))
-    assert np.isclose(flux, np.pi / 4)
+    assert np.isclose(flux, 2 * np.pi * (1 - np.exp(-1 / 8)))
 
 
-def test_get_flux() -> None:
+def test__get_flux() -> None:
+    """
+    Test for `hsr4hci.photometry.get_flux`.
+    """
 
     # Prepare data
     x, y = np.meshgrid(np.arange(33), np.arange(33))
@@ -226,7 +263,10 @@ def test_get_flux() -> None:
     assert 'Mode "illegal" not supported!' in str(error)
 
 
-def test_get_stellar_flux() -> None:
+def test__get_stellar_flux() -> None:
+    """
+    Test for `hsr4hci.photometry.get_stellar_flux`.
+    """
 
     # Case 1
     x, y = np.meshgrid(np.arange(63), np.arange(63))
@@ -241,10 +281,13 @@ def test_get_stellar_flux() -> None:
         dit_psf_template=0.1,
         scaling_factor=0.02,
     )
-    assert np.isclose(flux, np.pi / 4 / 0.1 / 0.02)
+    assert np.isclose(flux, (2 * np.pi * (1 - np.exp(-1 / 8))) / 0.1 / 0.02)
 
 
-def test_get_fluxes_for_polar_positions() -> None:
+def test__get_fluxes_for_polar_positions() -> None:
+    """
+    Test for `hsr4hci.photometry.get_fluxes_for_polar_positions`.
+    """
 
     frame_size = (101, 101)
     polar_positions = [

@@ -8,6 +8,7 @@ Tests for metrics.py
 
 from astropy.modeling import models
 from astropy.units import Quantity
+from deepdiff import DeepDiff
 from skimage.filters import gaussian
 
 import numpy as np
@@ -19,6 +20,7 @@ from hsr4hci.metrics import two_sample_t_test, compute_metrics
 # -----------------------------------------------------------------------------
 # TEST CASES
 # -----------------------------------------------------------------------------
+
 
 def test__two_sample_t_test() -> None:
     """
@@ -79,36 +81,52 @@ def test__compute_metrics() -> None:
     assert np.isclose(
         positions['final']['polar'][1].to('radian').value, -1.5720312352633194
     )
-    assert np.isclose(results['fpf']['max'], 4.985079950867889e-17)
-    assert np.isclose(results['fpf']['mean'], 3.389508968147001e-17)
-    assert np.isclose(results['fpf']['median'], 3.7016290701829294e-17)
-    assert np.isclose(results['fpf']['min'], 5.3292228535917906e-18)
-    assert np.isclose(results['fpf']['std'], 1.1155016447011583e-17)
-    assert np.isclose(results['log_fpf']['max'], 17.282327941119874)
-    assert np.isclose(results['log_fpf']['mean'], 16.526431865957733)
-    assert np.isclose(results['log_fpf']['median'], 16.44033950338373)
-    assert np.isclose(results['log_fpf']['min'], 16.310988015553853)
-    assert np.isclose(results['log_fpf']['std'], 0.25104035793468965)
-    assert np.isclose(results['noise']['max'], 0.02159086332484625)
-    assert np.isclose(results['noise']['mean'], 0.021125462204945204)
-    assert np.isclose(results['noise']['median'], 0.02117884744469653)
-    assert np.isclose(results['noise']['min'], 0.02077860767195894)
-    assert np.isclose(results['noise']['std'], 0.0002506598504073832)
-    assert np.isclose(results['p_value']['max'], 1.0)
-    assert np.isclose(results['p_value']['mean'], 1.0)
-    assert np.isclose(results['p_value']['median'], 1.0)
-    assert np.isclose(results['p_value']['min'], 0.9999999999999999)
-    assert np.isclose(results['p_value']['std'], 4.734006883291518e-17)
-    assert np.isclose(results['signal']['max'], 0.7769396634948865)
-    assert np.isclose(results['signal']['mean'], 0.7762484349890049)
-    assert np.isclose(results['signal']['median'], 0.7762431434540997)
-    assert np.isclose(results['signal']['min'], 0.775667102956501)
-    assert np.isclose(results['signal']['std'], 0.0003730524628884189)
-    assert np.isclose(results['snr']['max'], 37.330080783193)
-    assert np.isclose(results['snr']['mean'], 36.7497062463769)
-    assert np.isclose(results['snr']['median'], 36.65708303670411)
-    assert np.isclose(results['snr']['min'], 35.97334674314541)
-    assert np.isclose(results['snr']['std'], 0.42348499291612113)
+
+    targets = {
+        'fpf': {
+            'max': 6.194854293428218e-17,
+            'mean': 4.214132959935859e-17,
+            'median': 4.60012631087341e-17,
+            'min': 6.715709917068221e-18,
+            'std': 1.3840535988546529e-17,
+        },
+        'log_fpf': {
+            'max': 17.172908071339435,
+            'mean': 16.422724601964216,
+            'median': 16.337230243239688,
+            'min': 16.207968904026302,
+            'std': 0.24930074956372117,
+        },
+        'noise': {
+            'max': 0.021590863324846252,
+            'mean': 0.021125462204945204,
+            'median': 0.02117884744469653,
+            'min': 0.02077860767195894,
+            'std': 0.0002506598504073832,
+        },
+        'p_value': {
+            'max': 1.0,
+            'mean': 1.0,
+            'median': 1.0,
+            'min': 0.9999999999999999,
+            'std': 7.485122105058051e-17,
+        },
+        'signal': {
+            'max': 0.76537519658579,
+            'mean': 0.7646839680799083,
+            'median': 0.7646786765450032,
+            'min': 0.7641026360474045,
+            'std': 0.0003730524628884189,
+        },
+        'snr': {
+            'max': 36.7735243915584,
+            'mean': 36.20221102207236,
+            'median': 36.11104449804924,
+            'min': 35.43772819306231,
+            'std': 0.41701411203610933,
+        },
+    }
+    assert not DeepDiff(results, targets)
 
     # Case 2
     with pytest.raises(RuntimeError) as runtime_error:
