@@ -7,7 +7,7 @@ as well as computing contrast curves (i.e., detection limits).
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from typing import Optional, Tuple, Any
+from typing import Callable, Optional, Tuple, Any
 
 from astropy.units import Quantity
 from scipy.interpolate import InterpolatedUnivariateSpline
@@ -212,6 +212,7 @@ def get_contrast_curve(
     df: pd.DataFrame,
     sigma_threshold: float = 5,
     log_transform: bool = True,
+    aggregation_function: Callable[[np.ndarray], float] = np.median,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Given a data frame `df` with experiment results, compute a contrast
@@ -230,6 +231,11 @@ def get_contrast_curve(
         log_transform: Whether to apply a log transformation to the FPF
             before interpolating it to determine the detection limit
             (i.e., work with logFPF).
+        aggregation_function: The function that is used to aggregate the
+            results for the six azimuthal positions into a single value.
+            Must take a 1D numpy array as an input and return a float.
+            Usually, either the mean or the median is used. Using the
+            min / max can give an estimate for the worst / best case.
 
     Returns:
         A 2-tuple, (separations, detection_limits), which contains the
@@ -257,12 +263,12 @@ def get_contrast_curve(
         # For each expected contrast, collect the average (transformed)
         # FPF value (the average is taken over the azimuthal position)
         average_values = [
-            np.median(
+            aggregation_function(
                 transform(
                     df[
                         (df.separation == separation)
                         & (df.expected_contrast == expected_contrast)
-                    ]['fpf_mean']
+                    ]['fpf_median']
                 )
             )
             for expected_contrast in expected_contrasts
