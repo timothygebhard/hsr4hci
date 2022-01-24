@@ -145,8 +145,8 @@ if __name__ == '__main__':
         log_fpf = metrics["log_fpf"]
         label = (
             rf'${log_fpf["mean"]:.1f}'
-            rf'^{{+{log_fpf["max"] - log_fpf["mean"]:.1f}}}'
-            rf'_{{-{log_fpf["mean"] - log_fpf["min"]:.1f}}}$'
+            rf'^{{+{log_fpf["max"] - log_fpf["median"]:.1f}}}'
+            rf'_{{-{log_fpf["median"] - log_fpf["min"]:.1f}}}$'
         )
         labels.append(label)
         positions.append(position_dict['final']['cartesian'])
