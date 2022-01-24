@@ -148,18 +148,8 @@ if __name__ == '__main__':
                 )
 
     # -------------------------------------------------------------------------
-    # Compute and plot the contrast curve
+    # Define auxiliary function to map detection limits to plotting coordinates
     # -------------------------------------------------------------------------
-
-    # Define the sigma threshold which we will use to compute the limits
-    sigma_threshold = 5
-
-    # Compute the contrast curve
-    separations, detection_limits = get_contrast_curve(
-        df=results_df,
-        sigma_threshold=sigma_threshold,
-        log_transform=True,
-    )
 
     def rescale(x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         """
@@ -173,7 +163,22 @@ if __name__ == '__main__':
         result = (b - a) * (x - c) / (d - c) + a
         return float(result) if isinstance(x, float) else np.array(result)
 
-    # Plot the contrast curve
+    # -------------------------------------------------------------------------
+    # Compute and plot the contrast curve
+    # -------------------------------------------------------------------------
+
+    # Define the sigma threshold which we will use to compute the limits
+    sigma_threshold = 5
+
+    # Compute the median contrast curve
+    separations, detection_limits = get_contrast_curve(
+        df=results_df,
+        sigma_threshold=sigma_threshold,
+        log_transform=True,
+        aggregation_function=lambda x: float(np.median(x)),
+    )
+
+    # Plot the median contrast curve
     ax.plot(
         separations + 0.5 - min(separations),
         rescale(detection_limits),
@@ -193,6 +198,29 @@ if __name__ == '__main__':
         solid_capstyle='round',
         zorder=100,
     )
+
+    # Compute the worst-case contrast curve
+    separations, new_detection_limits = get_contrast_curve(
+        df=results_df,
+        sigma_threshold=sigma_threshold,
+        log_transform=True,
+        aggregation_function=np.min,
+    )
+
+    # Add markers for the worst-case contrast curve
+    for x, y_1, y_2 in zip(
+        separations, detection_limits, new_detection_limits
+    ):
+        ax.plot(
+            [x + 0.5 - min(separations), x + 0.5 - min(separations)],
+            [rescale(y_1), rescale(y_2)],
+            '.-',
+            lw=1,
+            markersize=3,
+            color='orangered',
+            solid_capstyle='round',
+            zorder=99,
+        )
 
     # -------------------------------------------------------------------------
     # Add plot options
