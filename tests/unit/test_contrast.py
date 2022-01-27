@@ -132,6 +132,11 @@ def test__get_contrast_curve() -> None:
         {
             'separation': 5 * np.ones(11),
             'expected_contrast': np.linspace(5, 15, 11),
+            'fpf_mean': (
+                2
+                * (1 - norm.cdf(5, 0, 1))
+                * np.tanh(7.5 - 0.5 * np.arange(5, 16))
+            ),
             'fpf_median': (
                 2
                 * (1 - norm.cdf(5, 0, 1))
@@ -150,6 +155,11 @@ def test__get_contrast_curve() -> None:
         {
             'separation': 5 * np.ones(11),
             'expected_contrast': np.linspace(5, 15, 11),
+            'fpf_mean': (
+                2
+                * (1 - norm.cdf(5, 0, 1))
+                * np.tanh(7.5 - 0.5 * np.arange(5, 16))
+            ),
             'fpf_median': (
                 (1 - norm.cdf(5, 0, 1))
                 ** (2 * np.tanh(7.5 - 0.5 * np.arange(5, 16)))
