@@ -126,7 +126,7 @@ def test__compute_metrics() -> None:
             'std': 0.41701411203610933,
         },
     }
-    assert not DeepDiff(results, targets)
+    assert not DeepDiff(results, targets, math_epsilon=1e-6)
 
     # Case 2
     with pytest.raises(RuntimeError) as runtime_error:
