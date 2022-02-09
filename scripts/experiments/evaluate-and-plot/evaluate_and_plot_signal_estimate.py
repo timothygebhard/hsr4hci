@@ -144,7 +144,7 @@ if __name__ == '__main__':
         # Create label and store it
         log_fpf = metrics["log_fpf"]
         label = (
-            rf'${log_fpf["mean"]:.1f}'
+            rf'${log_fpf["median"]:.1f}'
             rf'^{{+{log_fpf["max"] - log_fpf["median"]:.1f}}}'
             rf'_{{-{log_fpf["median"] - log_fpf["min"]:.1f}}}$'
         )
