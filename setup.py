@@ -25,7 +25,7 @@ setup(
     description='hsr4hci: Half-Sibling Regression for High-Contrast Imaging',
     url='https://github.com/timothygebhard/hsr4hci',
     install_requires=[
-        'astropy==5.0',
+        'astropy==5.0.1',
         'astroquery==0.4.4',
         'bottleneck==1.3.2',
         'click==8.0.3',
