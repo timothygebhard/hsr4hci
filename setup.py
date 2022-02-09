@@ -26,7 +26,7 @@ setup(
     url='https://github.com/timothygebhard/hsr4hci',
     install_requires=[
         'astropy==5.0.1',
-        'astroquery==0.4.4',
+        'astroquery==0.4.5',
         'bottleneck==1.3.2',
         'click==8.0.3',
         'h5py==3.6.0',
