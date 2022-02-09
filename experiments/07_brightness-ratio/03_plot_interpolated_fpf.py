@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from hsr4hci.plotting import set_fontsize, adjust_luminosity
+from hsr4hci.plotting import set_fontsize
 
 
 # -----------------------------------------------------------------------------
@@ -109,7 +109,7 @@ if __name__ == '__main__':
             dashes=(0, 2),
         )
         ax.axhline(y=threshold, ls='--', color='black', lw=1)
-        ax.set_ylim(0, 120)
+        ax.set_ylim(0, 100)
         ax.set_ylabel(r'$-\mathrm{log}_\mathrm{10}(\mathrm{FPF})$')
         ax.set_xlim(4.5, 12.5)
         for k, spine in ax.spines.items():
@@ -208,8 +208,9 @@ if __name__ == '__main__':
             grid = np.linspace(
                 min(expected_contrasts), max(expected_contrasts), int(1e4)
             )
+            ax.plot(grid, interpolator(grid), color=color, lw=1)
             ax.plot(
-                grid, interpolator(grid), color=adjust_luminosity(color, 1.6)
+                expected_contrasts, np.array(average_values), '.', color=color
             )
 
             # Define a helper function to find the (maximum) index after
@@ -229,7 +230,7 @@ if __name__ == '__main__':
                 # at which the FPF / logFPF crosses the threshold, and plot it
                 threshold_contrast = 0.5 * (grid[idx] + grid[idx + 1])
                 ax.axvline(
-                    x=threshold_contrast, color=color, lw=1, ls='-', zorder=99
+                    x=threshold_contrast, color=color, lw=1.5, zorder=99
                 )
 
         # Add handles for the legend

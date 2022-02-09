@@ -50,13 +50,13 @@ if __name__ == '__main__':
     parser.add_argument(
         '--min-contrast',
         type=float,
-        default=7.0,
+        default=6.0,
         help='Minimum contrast / upper limit for plot.',
     )
     parser.add_argument(
         '--max-contrast',
         type=float,
-        default=12.0,
+        default=11.0,
         help='Maximum contrast / lower limit for plot.',
     )
     parser.add_argument(
@@ -116,18 +116,18 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Create a new figure and adjust margins
-    fig, ax = plt.subplots(figsize=(9 / 2.54, 4.5 / 2.54))
-    fig.subplots_adjust(left=0.1, right=0.99, top=0.82, bottom=0.18)
+    fig, ax = plt.subplots(figsize=(5.8 / 2.54, 5.8 / 2.54))
+    fig.subplots_adjust(left=0.155, right=0.995, top=0.865, bottom=0.135)
 
     # Loop over different algorithms
     for name, path, color, ls in [
         ('PCA (n=5)', 'pca-5', 'darkgreen', '-'),
         ('PCA (n=20)', 'pca-20', 'forestgreen', '-'),
         ('PCA (n=50)', 'pca-50', 'lawngreen', '-'),
-        ('HSR (signal fitting)', 'signal_fitting', 'C0', '-'),
-        ('HSR (signal masking)', 'signal_masking', 'C1', '-'),
-        ('HSR (signal fitting + OC)', 'signal_fitting__oc', 'C0', '--'),
-        ('HSR (signal masking + OC)', 'signal_masking__oc', 'C1', '--'),
+        ('HSR (SF)', 'signal_fitting', 'C0', '-'),
+        ('HSR (SM)', 'signal_masking', 'C1', '-'),
+        ('HSR (SF+OC)', 'signal_fitting__oc', 'C0', '--'),
+        ('HSR (SM+OC)', 'signal_masking__oc', 'C1', '--'),
     ]:
 
         print(f'Plotting {name}...', end=' ', flush=True)
@@ -148,7 +148,9 @@ if __name__ == '__main__':
 
         # Compute the contrast curve
         separations, detection_limits = get_contrast_curve(
-            df=df, sigma_threshold=sigma_threshold, log_transform=True
+            df=df,
+            sigma_threshold=sigma_threshold,
+            log_transform=True,
         )
 
         # Define additional arguments for plotting
@@ -179,10 +181,16 @@ if __name__ == '__main__':
     ax.set_xlim(x_lower, x_upper)
     ax.set_xticks(np.arange(min_separation, max_separation + 1))
     ax2.set_xlim(x_lower * psf_fwhm * pixscale, x_upper * psf_fwhm * pixscale)
-    ax2.set_xticks(np.arange(0.3, 1.0, 0.1))
+    ax2.set_xticks(
+        np.arange(
+            round(x_lower * psf_fwhm * pixscale, 1) + 0.1,
+            min(round(x_upper * psf_fwhm * pixscale, 1), 1.0) + 0.1,
+            0.1,
+        )
+    )
 
     # Set y-limits and ticks
-    ax.set_ylim(max_contrast, min_contrast)
+    ax.set_ylim(max_contrast + 0.5, min_contrast - 0.5)
     ax.set_yticks(np.arange(min_contrast, max_contrast + 1))
 
     # Adjust fontsize and add grid
@@ -197,16 +205,11 @@ if __name__ == '__main__':
         dashes=(0, 2),
     )
 
-    # Shrink current axis by 20%
-    box = ax.get_position()
-    ax.set_position([box.x0, box.y0, box.width * 0.6, box.height])
-
     # Add legend
     ax.legend(
-        loc='center left',
-        bbox_to_anchor=(1, 0.5),
+        loc='upper right',
         fontsize=6,
-        frameon=False,
+        frameon=True,
         handlelength=0.8,
     )
 
