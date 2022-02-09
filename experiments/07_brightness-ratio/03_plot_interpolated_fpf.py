@@ -74,6 +74,11 @@ if __name__ == '__main__':
     mode = args.mode
     sigma_threshold = args.sigma_threshold
 
+    # Get path to main directory
+    main_dir = Path(dataset).resolve()
+    if not main_dir.exists():
+        raise RuntimeError(f'{main_dir} does not exist!')
+
     # -------------------------------------------------------------------------
     # Define threshold; prepare new plot
     # -------------------------------------------------------------------------
@@ -92,7 +97,7 @@ if __name__ == '__main__':
         sharex='all',
     )
     fig.subplots_adjust(
-        left=0.1, right=0.995, top=0.95, bottom=0.04, hspace=0.1
+        left=0.12, right=0.995, top=0.95, bottom=0.04, hspace=0.1
     )
     axes[0].set_xticks(np.arange(5, 13))
     axes[-1].set_xlabel('Contrast of injected planet (in magnitudes) ')
@@ -132,9 +137,9 @@ if __name__ == '__main__':
 
     # Loop over different algorithms
     for name, path, color in [
-        ('PCA (n=20)', f'./{dataset}/pca-20', 'C0'),
-        ('HSR (signal fitting)', f'./{dataset}/signal_fitting', 'C1'),
-        ('HSR (signal masking)', f'./{dataset}/signal_masking', 'C2'),
+        ('PCA (n=20)', main_dir / 'pca-20', 'C0'),
+        ('HSR (signal fitting)', main_dir / 'signal_fitting', 'C1'),
+        ('HSR (signal masking)', main_dir / 'signal_masking', 'C2'),
     ]:
 
         # Read in result
@@ -251,7 +256,7 @@ if __name__ == '__main__':
     )
 
     # Save plot as PDF
-    plt.savefig(f'./{dataset}/fpf-interpolation__{mode}.pdf', dpi=600)
+    plt.savefig(main_dir / f'fpf-interpolation__{mode}.pdf', dpi=600)
 
     # -------------------------------------------------------------------------
     # Postliminaries

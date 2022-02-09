@@ -99,6 +99,14 @@ if __name__ == '__main__':
     max_separation = args.max_separation
     sigma_threshold = args.sigma_threshold
 
+    # Get path to main directory
+    main_dir = Path(dataset).resolve()
+    if not main_dir.exists():
+        raise RuntimeError(f'{main_dir} does not exist!')
+
+    # Extract actual dataset from `dataset` (which can be a full path)
+    dataset = str(Path(dataset).name.strip())
+
     # -------------------------------------------------------------------------
     # Get the PSF FWHM of the respective data set; load the pixscale
     # -------------------------------------------------------------------------
@@ -133,7 +141,7 @@ if __name__ == '__main__':
         print(f'Plotting {name}...', end=' ', flush=True)
 
         # Read in result
-        file_path = Path(dataset) / path / f'results__{mode}.tsv'
+        file_path = main_dir / path / f'results__{mode}.tsv'
         if not file_path.exists():
             print('Skipped!', flush=True)
             continue
@@ -215,7 +223,7 @@ if __name__ == '__main__':
 
     # Save plot as PDF
     file_name = f'all-contrast-curves__{sigma_threshold:.1f}-sigma__{mode}.pdf'
-    plt.savefig(f'./{dataset}/{file_name}', dpi=600)
+    plt.savefig(main_dir / file_name, dpi=600)
 
     # -------------------------------------------------------------------------
     # Postliminaries
