@@ -8,6 +8,7 @@ Create plots of pixel coefficients.
 
 from pathlib import Path
 
+import argparse
 import time
 
 from photutils import CircularAperture
@@ -36,21 +37,36 @@ if __name__ == '__main__':
     print('\nPLOT PIXEL COEFFICIENTS\n', flush=True)
 
     # -------------------------------------------------------------------------
+    # Parse command line arguments
+    # -------------------------------------------------------------------------
+
+    # Set up parser for command line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--binning-factor',
+        type=int,
+        default=1,
+        help='Binning factor for which to create plots.',
+    )
+    args = parser.parse_args()
+    binning_factor = str(args.binning_factor)
+
+    # -------------------------------------------------------------------------
     # Plot pixel coefficients and save results as PDF
     # -------------------------------------------------------------------------
 
     # Ensure the plots directory exists
-    plots_dir = Path('plots')
-    plots_dir.mkdir(exist_ok=True)
+    plots_dir = Path('plots') / f'binning-factor_{binning_factor}'
+    plots_dir.mkdir(exist_ok=True, parents=True)
 
     # Loop over different data sets and positions
-    for dataset, binning_factor, (x, y), loc in (
-        ('beta_pictoris__lp', 1, (8 - 1, 30 - 1), 'upper right'),
-        ('beta_pictoris__lp', 1, (38 - 1, 10 - 1), 'upper right'),
-        ('beta_pictoris__mp', 1, (42 - 1, 19 - 1), 'upper right'),
-        ('beta_pictoris__mp', 1, (28 - 1, 40 - 1), 'upper right'),
-        ('r_cra__lp', 1, (26 - 1, 10 - 1), 'upper right'),
-        ('r_cra__lp', 1, (33 - 1, 45 - 1), 'upper left'),
+    for dataset, (x, y), loc in (
+        ('beta_pictoris__lp', (8 - 1, 30 - 1), 'upper right'),
+        ('beta_pictoris__lp', (38 - 1, 10 - 1), 'upper right'),
+        ('beta_pictoris__mp', (42 - 1, 19 - 1), 'upper right'),
+        ('beta_pictoris__mp', (28 - 1, 40 - 1), 'upper right'),
+        ('r_cra__lp', (26 - 1, 10 - 1), 'upper right'),
+        ('r_cra__lp', (33 - 1, 45 - 1), 'upper left'),
     ):
 
         start_time = time.time()
@@ -104,7 +120,7 @@ if __name__ == '__main__':
         ).plot(axes=ax, **dict(ls=':', lw=1, color='black'))
 
         # Save plot as a PDF
-        file_path = plots_dir / f'{dataset}__{binning_factor}__{x}_{y}.pdf'
+        file_path = plots_dir / f'{dataset}__{x}_{y}.pdf'
         plt.savefig(file_path, dpi=600, pad_inches=0)
 
         print(f'Done! ({time.time() - start_time:.1f} seconds)', flush=True)
