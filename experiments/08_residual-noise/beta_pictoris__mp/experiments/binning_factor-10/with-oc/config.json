@@ -1,0 +1,32 @@
+{
+  "dataset": {
+    "name_or_path":         "beta_pictoris__mp",
+    "binning_factor":       10,
+    "frame_size":           [63, 63],
+    "remove_planets":       true
+  },
+  "observing_conditions": {
+    "selected_keys":        "all",
+    "max_correlation":      0.3
+  },
+  "roi_mask": {
+    "inner_radius":         [0.00, "arcsec"],
+    "outer_radius":         [0.45, "arcsec"]
+  },
+  "selection_mask": {
+    "radius_position":      [16.0, "pixel"],
+    "radius_opposite":      [16.0, "pixel"],
+    "radius_excluded":      [ 9.0, "pixel"]
+  },
+  "train_mode":             "signal_masking",
+  "n_signal_times":         0,
+  "n_train_splits":         3,
+  "base_model": {
+    "module":               "sklearn.linear_model",
+    "class":                "RidgeCV",
+    "parameters": {
+      "fit_intercept":      true,
+      "alphas":             [1e-1, 1e3, 41]
+    }
+  }
+}
