@@ -106,8 +106,8 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Create a new plot
-    fig, ax = plt.subplots(figsize=(9 / 2.54, 6 / 2.54))
-    fig.subplots_adjust(left=0.12, right=1, top=1, bottom=0.135)
+    fig, ax = plt.subplots(figsize=(9 / 2.54, 5.5 / 2.54))
+    fig.subplots_adjust(left=0.12, right=1, top=1, bottom=0.145)
 
     # Create a heatmap plot of the pivot table
     heatmap = sns.heatmap(
