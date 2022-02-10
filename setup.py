@@ -45,7 +45,6 @@ setup(
         'seaborn==0.11.2',
         'tqdm==4.62.3',
         'typing-extensions==4.0.1',
-        'wheel',  # See here: https://github.com/astropy/pyvo/issues/296
     ],
     extras_require={
         'develop': [
