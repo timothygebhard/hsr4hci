@@ -168,6 +168,8 @@ if __name__ == '__main__':
     # Generate LaTeX code for paper
     # -------------------------------------------------------------------------
 
+    print('Creating LaTeX file...', end=' ', flush=True)
+
     # Keep track of all the lines for the output file (LaTeX)
     lines = []
 
@@ -214,9 +216,13 @@ if __name__ == '__main__':
                 else:
                     lines += [f'    {label} &\n']
 
+    print('Done!', flush=True)
+
     # Write LaTeX code to file
+    print('Writing results to LaTeX file...', end=' ', flush=True)
     with open('latex-table.tex', 'w') as latex_file:
         latex_file.writelines(lines)
+    print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
     # Postliminaries
