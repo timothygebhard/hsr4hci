@@ -13,8 +13,6 @@ from typing import Union
 import argparse
 import time
 
-from matplotlib.patches import Rectangle
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -128,24 +126,6 @@ if __name__ == '__main__':
     # Add the right ticks / tick labels
     ax.set_xticklabels(np.unique(results_df.separation.values))
     ax.set_yticklabels(np.unique(results_df.expected_contrast.values))
-
-    # Add a hatched patch for all throughput values greater 1 which need to
-    # be interpreted with extra caution / discussed separately
-    for i, (expected_contrast, row) in enumerate(pivot_median.iterrows()):
-        for j, (separation, throughput) in enumerate(row.items()):
-            if throughput > 1.15:
-                ax.add_patch(
-                    Rectangle(
-                        (j, i),
-                        1,
-                        1,
-                        ec='white',
-                        fc='none',
-                        lw=0.1,
-                        hatch='////////',
-                        alpha=0.35,
-                    )
-                )
 
     # -------------------------------------------------------------------------
     # Define auxiliary function to map detection limits to plotting coordinates
