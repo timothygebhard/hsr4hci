@@ -89,8 +89,10 @@ if __name__ == '__main__':
 
     # Get directory from which to read base config / create symlink
     if algorithm.endswith('oc'):
+        algorithm_name = algorithm.split('__')[0]
         original_experiment = '03_observing-conditions'
     else:
+        algorithm_name = algorithm
         original_experiment = '01_first-results'
 
     # Create the experiment with binning factor = 1. This should just be a
@@ -101,7 +103,7 @@ if __name__ == '__main__':
         get_hsr4hci_dir()
         / 'experiments'
         / original_experiment
-        / algorithm
+        / algorithm_name
         / dataset
     )
     dst_dir = main_dir / 'binning_factor-0001'
