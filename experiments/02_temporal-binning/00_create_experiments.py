@@ -83,7 +83,7 @@ if __name__ == '__main__':
         / dataset
         / algorithm
     )
-    print(f'Creating directory: {main_dir} ...', end='', flush=True)
+    print(f'Creating directory: {main_dir}...', end=' ', flush=True)
     main_dir.mkdir(exist_ok=True, parents=True)
     print('Done!', flush=True)
 
@@ -98,7 +98,7 @@ if __name__ == '__main__':
     # Create the experiment with binning factor = 1. This should just be a
     # symlink to the respective directory 01_first-results so that we do not
     # have to run the most expensive experiment twice.
-    print('Creating experiment: binning_factor-0001 ...', end='', flush=True)
+    print('Creating experiment: binning_factor-0001...', end=' ', flush=True)
     src_dir = (
         get_hsr4hci_dir()
         / 'experiments'
@@ -128,8 +128,8 @@ if __name__ == '__main__':
     for binning_factor in binning_factors:
 
         print(
-            f'Creating experiment: binning_factor-{binning_factor:04d} ...',
-            end='',
+            f'Creating experiment: binning_factor-{binning_factor:04d}...',
+            end=' ',
             flush=True,
         )
 
@@ -166,7 +166,7 @@ if __name__ == '__main__':
 
     # Create the shell script to create submit files for all experiments;
     # use chmod() to make the script executable
-    print('Creating 00_create_submit_files.sh ...', end='', flush=True)
+    print('Creating 00_create_submit_files.sh...', end=' ', flush=True)
     file_path = main_dir / '00_create_submit_files.sh'
     with open(file_path, 'w') as sh_file:
         sh_file.write('#!/bin/zsh\n\n')
@@ -177,7 +177,7 @@ if __name__ == '__main__':
 
     # Create the shell script to launch the experiments on the cluster;
     # use chmod() to make the script executable
-    print('Creating 01_start_jobs.sh ...', end='', flush=True)
+    print('Creating 01_start_jobs.sh...', end=' ', flush=True)
     file_path = main_dir / '01_start_jobs.sh'
     with open(file_path, 'w') as sh_file:
         sh_file.write('#!/bin/zsh\n\n')
