@@ -38,13 +38,14 @@ if __name__ == '__main__':
     parser.add_argument(
         '--algorithm',
         type=str,
-        choices=['pca', 'signal_fitting', 'signal_masking'],
         required=True,
+        help='Name of algorithm, e.g., "pca" or "signal_fitting__oc".',
     )
     parser.add_argument(
         '--dataset',
         type=str,
         required=True,
+        help='Name of dataset, e.g., "beta_pictoris__lp".',
     )
     args = parser.parse_args()
 
@@ -57,7 +58,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Define binning factors (we exclude "1" here, because we can re-use the
-    # results for 01_first-results)
+    # results for 01_first-results or 03_observing-conditions)
     binning_factors = np.unique(np.geomspace(2, 2000, 21).astype(int))
 
     # Define the directory that contains the script for creating the submit
@@ -86,6 +87,12 @@ if __name__ == '__main__':
     main_dir.mkdir(exist_ok=True, parents=True)
     print('Done!', flush=True)
 
+    # Get directory from which to read base config / create symlink
+    if algorithm.endswith('oc'):
+        original_experiment = '03_observing-conditions'
+    else:
+        original_experiment = '01_first-results'
+
     # Create the experiment with binning factor = 1. This should just be a
     # symlink to the respective directory 01_first-results so that we do not
     # have to run the most expensive experiment twice.
@@ -93,7 +100,7 @@ if __name__ == '__main__':
     src_dir = (
         get_hsr4hci_dir()
         / 'experiments'
-        / '01_first-results'
+        / original_experiment
         / algorithm
         / dataset
     )
