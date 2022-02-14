@@ -153,8 +153,7 @@ if __name__ == '__main__':
         '--algorithm',
         type=str,
         required=True,
-        choices=['pca', 'signal_fitting', 'signal_masking'],
-        help='Algorithm: "pca", "signal_fitting" or "signal_masking".',
+        help='Algorithm, e.g., "pca" or "signal_fitting".',
     )
     parser.add_argument(
         '--dataset',
@@ -219,13 +218,11 @@ if __name__ == '__main__':
             for _ in tqdm(experiment_dirs, ncols=80)
         )
         results = sum(results, [])
-    elif algorithm in ('signal_fitting', 'signal_masking'):
+    else:
         results = Parallel(n_jobs=n_jobs)(
             delayed(get_hsr_results)(_, instrument_units_context, psf_fwhm)
             for _ in tqdm(experiment_dirs, ncols=80)
         )
-    else:
-        raise ValueError(f'Invalid algorithm: {algorithm}')
 
     # Drop empty results (from experiments that were skipped)
     results = [_ for _ in results if _ != {}]
