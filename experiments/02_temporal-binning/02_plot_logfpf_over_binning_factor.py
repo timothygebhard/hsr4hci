@@ -71,14 +71,12 @@ if __name__ == '__main__':
     print('Done!', flush=True)
 
     # Initialize a new plot to which we will add everything
-    fig, ax1 = plt.subplots(figsize=(18.4 / 2.54, 18.4 / 2.54 / 2.5))
-    fig.subplots_adjust(left=0.052, right=0.998, top=0.88, bottom=0.12)
+    fig, ax1 = plt.subplots(figsize=(18.4 / 2.54, 18.4 / 2.54 / 2))
+    fig.subplots_adjust(left=0.052, right=0.998, top=0.905, bottom=0.095)
 
     # -------------------------------------------------------------------------
     # Load and plot the results for PCA
     # -------------------------------------------------------------------------
-
-    print('Processing PCA results...', end=' ', flush=True)
 
     # Read in the results for PCA into a pandas DataFrame
     file_path = dataset_dir / 'pca' / f'metrics__{planet}.tsv'
@@ -88,7 +86,9 @@ if __name__ == '__main__':
     max_binning_factor = df.binning_factor.max()
 
     # Plot results for different numbers of principal components
-    for i, n_components in enumerate([1, 5, 10, 20, 50, 100]):
+    for i, n_components in enumerate([10, 20, 50, 100]):
+
+        print(f'Plotting PCA (n={n_components})...', end=' ', flush=True)
 
         # Select the subset of the data frame for the current n_components
         df_selection = df[df['n_components'] == n_components]
@@ -99,81 +99,63 @@ if __name__ == '__main__':
         log_fpf_mean = df_selection.log_fpf_mean.values[idx]
 
         # Plot the -log(FPF) over the binning factor
-        ax1.plot(binning_factor, log_fpf_mean, color=f'C{i + 1}')
         ax1.plot(
             binning_factor,
             log_fpf_mean,
-            'o',
-            markerfacecolor=f'C{i + 1}',
+            ls='-',
+            color=f'C{i + 2}',
+            marker='o',
+            markerfacecolor=f'C{i + 2}',
             markeredgecolor='white',
             markersize=4,
             label=f'PCA (n={n_components})',
         )
 
-    print('Done!', flush=True)
+        print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
-    # Load and plot the results for HSR (signal fitting)
+    # Load and plot the results for HSR
     # -------------------------------------------------------------------------
 
-    print('Processing HSR results (signal fitting)...', end=' ', flush=True)
+    for i, algorithm in enumerate(['signal_fitting', 'signal_masking']):
+        for oc, ls, marker, amount in [
+            ('', '-', 's', 1.0),
+            ('__oc', '--', 'D', 1.3),
+        ]:
 
-    # Read in the results for signal fitting into a pandas DataFrame
-    file_path = dataset_dir / 'signal_fitting' / f'metrics__{planet}.tsv'
-    df = pd.read_csv(file_path, sep='\t')
+            print(f'Plotting {algorithm}{oc}...', end=' ', flush=True)
 
-    # Select results and sort by binning factor
-    idx = np.argsort(df.binning_factor.values)
-    binning_factor = df.binning_factor.values[idx]
-    log_fpf_mean = df.log_fpf_mean.values[idx]
+            # Read in the results for signal fitting into a pandas DataFrame
+            file_path = (
+                dataset_dir / f'{algorithm}{oc}' / f'metrics__{planet}.tsv'
+            )
+            df = pd.read_csv(file_path, sep='\t')
 
-    # Plot the -log(FPF) over the binning factor
-    ax1.plot(binning_factor, log_fpf_mean, ls='-', color='C0')
-    ax1.plot(
-        binning_factor,
-        log_fpf_mean,
-        's',
-        markerfacecolor='C0',
-        markeredgecolor='white',
-        markersize=4,
-        label='HSR (signal fitting)',
-    )
+            # Select results and sort by binning factor
+            idx = np.argsort(df.binning_factor.values)
+            binning_factor = df.binning_factor.values[idx]
+            log_fpf_mean = df.log_fpf_mean.values[idx]
 
-    print('Done!', flush=True)
+            # Construct label for legend
+            version = 'SF' if algorithm == 'signal_fitting' else 'SM'
+            obscon = '+OC' if oc else ''
+            label = f'HSR ({version}{obscon})'
 
-    # -------------------------------------------------------------------------
-    # Load and plot the results for HSR (signal masking)
-    # -------------------------------------------------------------------------
+            # Plot the -log(FPF) over the binning factor
+            color = adjust_luminosity(color=f'C{i}', amount=amount)
+            ax1.plot(
+                binning_factor,
+                log_fpf_mean,
+                ls=ls,
+                color=color,
+                marker=marker,
+                markerfacecolor=color,
+                markeredgecolor='white',
+                markersize=4,
+                label=label,
+            )
 
-    print('Processing HSR results (signal masking)...', end=' ', flush=True)
-
-    # Read in the results for signal masking into a pandas DataFrame
-    file_path = dataset_dir / 'signal_masking' / f'metrics__{planet}.tsv'
-    df = pd.read_csv(file_path, sep='\t')
-
-    # Select results and sort by binning factor
-    idx = np.argsort(df.binning_factor.values)
-    binning_factor = df.binning_factor.values[idx]
-    log_fpf_mean = df.log_fpf_mean.values[idx]
-
-    # Plot the -log(FPF) over the binning factor
-    ax1.plot(
-        binning_factor,
-        log_fpf_mean,
-        ls='--',
-        color=adjust_luminosity('C0'),
-    )
-    ax1.plot(
-        binning_factor,
-        log_fpf_mean,
-        's',
-        markerfacecolor=adjust_luminosity('C0'),
-        markeredgecolor='white',
-        markersize=4,
-        label='HSR (signal masking)',
-    )
-
-    print('Done!', flush=True)
+            print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
     # Set up plot options and save results
@@ -192,7 +174,7 @@ if __name__ == '__main__':
         loc='lower center',
         ncol=8,
         fontsize=6,
-        handletextpad=0.05,
+        handletextpad=0.5,
         mode="expand",
         columnspacing=1.5,
     )
