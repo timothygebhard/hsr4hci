@@ -446,7 +446,7 @@ def train_model_for_position(
         # Train the model (which, in the end, should only predict noise!)
         # ---------------------------------------------------------------------
 
-        # Either train a default model...
+        # Either train a vanilla / default model...
         if train_mode == 'default':
             model = _train_default_model(
                 base_model_creator=base_model_creator,
@@ -454,7 +454,7 @@ def train_model_for_position(
                 train_targets=train_targets,
             )
 
-        # ... or a model with signal fitting / fitting
+        # ... or a model with signal fitting...
         elif train_mode == 'signal_fitting':
             model, planet_coefficient = _train_signal_fitting_model(
                 base_model_creator=base_model_creator,
