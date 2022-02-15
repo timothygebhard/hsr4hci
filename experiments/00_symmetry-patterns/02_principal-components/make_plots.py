@@ -87,6 +87,7 @@ if __name__ == '__main__':
                 scalebar_color='black',
                 limits=(-1, 1),
                 add_colorbar=False,
+                add_cardinal_directions=False,
             )
 
             # Add number of the principal component
