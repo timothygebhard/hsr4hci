@@ -2,7 +2,7 @@
   "dataset": {
     "name_or_path":         "beta_pictoris__lp",
     "binning_factor":       1,
-    "frame_size":           [81, 81],
+    "frame_size":           [181, 181],
     "remove_planets":       true
   },
   "observing_conditions": {
@@ -11,7 +11,7 @@
   },
   "roi_mask": {
     "inner_radius":         [0.00, "arcsec"],
-    "outer_radius":         [0.65, "arcsec"]
+    "outer_radius":         [2.00, "arcsec"]
   },
   "selection_mask": {
     "radius_position":      [16.0, "pixel"],
