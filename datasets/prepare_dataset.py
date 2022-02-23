@@ -362,9 +362,13 @@ if __name__ == '__main__':
             print(f'Retrieving {parameter_name}...', end=' ', flush=True)
 
             # Query ESO archive and interpolate observing conditions
-            interpolated, query_results = get_observing_conditions(
-                parameter_name=parameter_name, timestamps=timestamps_utc
-            )
+            try:
+                interpolated, query_results = get_observing_conditions(
+                    parameter_name=parameter_name, timestamps=timestamps_utc
+                )
+            except IndexError:
+                print('Failed!', flush=True)
+                continue
 
             # Store interpolated observing conditions in data frame
             observing_conditions_df[parameter_name] = interpolated
