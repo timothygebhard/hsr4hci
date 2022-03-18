@@ -1,16 +1,19 @@
 {
   "dataset": {
-    "name_or_path":   "r_cra__lp",
-    "binning_factor": 1,
-    "frame_size":     [63, 63]
+    "name_or_path":    "r_cra__lp",
+    "binning_factor":  1,
+    "frame_size":      [63, 63]
   },
   "roi_mask": {
-    "inner_radius":   [0.00, "arcsec"],
-    "outer_radius":   [0.40, "arcsec"]
+    "inner_radius":    [0.00, "arcsec"],
+    "outer_radius":    [0.40, "arcsec"]
   },
   "pca": {
-    "min_n":          1,
-    "max_n":          200,
-    "default_n":      9
+    "min_n":           1,
+    "max_n":           200,
+    "default_n":       9
+  },
+  "plotting": {
+    "label_positions": ["bottom"]
   }
 }
