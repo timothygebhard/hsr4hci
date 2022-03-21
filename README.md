@@ -6,6 +6,13 @@
 ![Tests](https://github.com/timothygebhard/hsr4hci/workflows/Tests/badge.svg?branch=master)
 ![Coverage Badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/timothygebhard/40d8bf48dcbaf33c99e8de35ad6161f2/raw/hsr4hci.json)
 
+---
+
+This repository contains the code for all experiments and figures in our paper ***Half-sibling regression meets Direct Imaging: PSF modeling and subtraction using a flexible, domain knowledge-driven, causal framework***.
+
+[TODO: Add link to paper once it is published.]
+
+---
 
 ## ⚡ Quickstart
 
@@ -20,11 +27,11 @@ pip install .
 If you want to use "developer options" (e.g., run unit tests), change the last line to:
 
 ```
-pip install .[develop]
+pip install ".[develop]"
 ```
 
-To run any experiments or reproduce our results, you will first need to create some data sets in the right format.
-Please check out the [README file in the `datasets` directory](https://github.com/timothygebhard/hsr4hci/tree/master/datasets) for more information on how to do this.
+To run any experiments or reproduce our results, you will first need to download or create some data sets in the right format.
+Please check out the [README file in the `datasets` directory](https://github.com/timothygebhard/hsr4hci/tree/master/datasets) for more detailed information on how to do this.
 
 
 ## 🧪 (Re)-running our experiments
@@ -52,14 +59,27 @@ For more specific questions, please feel free to reach out directly to us!
 
 ## 🐭 Tests
 
-To further improve reproducibility of our results, this repository comes with an extensive set of unit and integration tests (based on [`pytest`](https://pytest.org)). 
-After installing `hsr4hci`, the tests can be run as:
+This repository comes with an extensive set of unit and integration tests (based on [`pytest`](https://pytest.org)). 
+After installing `hsr4hci` with the `[develop]` option, the tests can be run as:
+
 ```
 pytest tests
 ```
 
+You can also use these tests to ensure that the code is compatible with newer versions of the libraries than the one in `setup.py`.
 
-## 📜 License and citation
 
-All of our code is released under the [MIT license](https://github.com/timothygebhard/hsr4hci/blob/master/LICENSE), meaning that you are welcome to use it for your own projects and modify or extend it.
-However, if you do use our code, please be sure to cite us :-)
+## 📜 Cite this work
+
+To cite this work, feel free to use the following BibTeX entry:
+
+```
+[TODO: Add BibTeX entry]
+```
+
+
+## ⚖️ License and copyright
+
+The code in this repository is property of the [Max Planck Society](https://www.mpg.de/en).
+
+[TODO: Add license information.]
