@@ -2,11 +2,9 @@
 
 ## Using the original data sets from the paper
 
-**[TODO: add download link for data sets once available!]**
-
-The final data sets that we used for the experiments in our paper are publicly available [here]().
+The final data sets that we used for the experiments in our paper are publicly available [here](https://doi.org/10.17617/3.LACYPN).
 To use them with the methods available from `hsr4hci.data`, you should place them in the `output` subdirectory of the respective data set.
-For example, the HDF file `beta_pictoris__lp.hdf` containing the *Beta Pictoris L'* data set should be placed at the following location:
+For example, the HDF file `beta_pictoris__lp.hdf` containing the Beta Pictoris *L'* data set should be placed at the following location:
 ```
 <path to hsr4hci>/datasets/beta_pictoris__lp/output/beta_pictoris__lp.hdf
 ```
