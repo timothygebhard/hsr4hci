@@ -31,6 +31,8 @@ If you want to use "developer options" (e.g., run unit tests), change the last l
 pip install ".[develop]"
 ```
 
+**Note:** The code was written for Python 3.8 and above; earlier versions will likely require some small modifications.
+
 
 ## 🪐 Data sets
 
@@ -40,7 +42,7 @@ Please check out the [README file in the `datasets` directory](https://github.co
 
 ## 🧪 (Re)-running our experiments
 
-All of our experiments can be found in the `experiments` directory, where we keep another README with more instructions for how to replicate our results.
+All of our experiments can be found in the `experiments` directory, where we keep [another README](https://github.com/timothygebhard/hsr4hci/tree/master/experiments) with more instructions for how to replicate our results.
 A good starting point if you are just getting started could the to run the demo experiment that we have prepared in the [`demo` directory](https://github.com/timothygebhard/hsr4hci/tree/master/demo).
 
 ## 🐭 Tests
@@ -67,4 +69,5 @@ To cite this work, feel free to use the following BibTeX entry:
 ## ⚖️ License and copyright
 
 The code in this repository is property of the [Max Planck Society](https://www.mpg.de/en).
-We are releasing it under a BSD-3 clause license; see [LICENSE](https://github.com/timothygebhard/hsr4hci/blob/master/LICENSE) for more details.
+
+We are releasing it under a BSD-3 Clause License; see [LICENSE](https://github.com/timothygebhard/hsr4hci/blob/master/LICENSE) for more details.
