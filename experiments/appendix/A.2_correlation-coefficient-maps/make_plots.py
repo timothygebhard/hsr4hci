@@ -91,6 +91,7 @@ if __name__ == '__main__':
             scalebar_loc='upper left',
             limits=(-0.6, 0.6),
             add_colorbar=False,
+            add_cardinal_directions=False,
         )
 
         # Add target pixel

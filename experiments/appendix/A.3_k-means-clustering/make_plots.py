@@ -92,6 +92,7 @@ if __name__ == '__main__':
             add_colorbar=False,
             cmap='tab20',
             limits=(0, 10),
+            add_cardinal_directions=False,
         )
 
         # Add empty colorbar on top of the axis to ensure spacing, margins,
