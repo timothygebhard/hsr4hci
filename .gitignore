@@ -1,16 +1,19 @@
 # macOS files
 ._*
 
-# Ignore .local folder
+# Ignore .local and archive folder
 .local
+archive
 
 # Ignore several types of result files
 *.csv
 *.pdf
 *.tsv
+*.tex
 
 # Ignore results, models, ... folders in experiment directories
 experiments/playground
+experiments/**/experiments
 experiments/**/htcondor
 experiments/**/hdf
 experiments/**/partial
