@@ -1,5 +1,5 @@
 """
-Utility functions for (de)-rotating stacks and computing residuals.
+Methods for (de)-rotating stacks and computing residuals.
 """
 
 # -----------------------------------------------------------------------------

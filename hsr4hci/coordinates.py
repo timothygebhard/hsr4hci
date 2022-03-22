@@ -1,5 +1,5 @@
 """
-Utility functions for dealing with coordinates.
+Methods for dealing with coordinates.
 """
 
 # -----------------------------------------------------------------------------

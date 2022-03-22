@@ -1,5 +1,5 @@
 """
-Utility functions for working with point spread functions.
+Methods for working with point spread functions.
 """
 
 # -----------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 """
-Utilities for computing performance metrics (e.g., SNR).
+Methods for computing performance metrics (e.g., SNR, logFPF, ...).
 """
 
 # -----------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 """
-Utility functions related to dealing with observing conditions.
+Methods for dealing with observing conditions.
 """
 
 # -----------------------------------------------------------------------------

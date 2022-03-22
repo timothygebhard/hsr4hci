@@ -1,5 +1,5 @@
 """
-Utility functions for plotting.
+Methods for plotting.
 """
 
 # -----------------------------------------------------------------------------

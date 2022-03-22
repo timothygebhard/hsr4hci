@@ -1,5 +1,5 @@
 """
-Utility functions for performing principal component analysis (PCA).
+Methods for performing PCA-based PSF subtraction.
 """
 
 # -----------------------------------------------------------------------------

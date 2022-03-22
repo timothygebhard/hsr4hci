@@ -1,5 +1,5 @@
 """
-Utilities for finding hypotheses of the form (Y, T), that is, pixel Y
+Methods for finding hypotheses of the form (Y, T), that is, pixel Y
 seems to contain a planet signal at time T.
 """
 

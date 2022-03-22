@@ -1,5 +1,5 @@
 """
-Utility functions for importing things from modules based on their name.
+Methods for importing things from modules based on their name.
 """
 
 # -----------------------------------------------------------------------------

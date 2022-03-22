@@ -1,5 +1,5 @@
 """
-Utility functions and classes for performing train / test splits.
+Methods for performing train / test splits.
 """
 
 # -----------------------------------------------------------------------------

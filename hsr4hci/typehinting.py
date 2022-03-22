@@ -1,15 +1,13 @@
 """
-Additional custom types that can be used for type hinting.
+Methods for additional custom type hinting.
 """
 
 # -----------------------------------------------------------------------------
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-try:
-    from typing import Protocol
-except ImportError:  # pragma: no cover
-    from typing_extensions import Protocol  # type: ignore  # pragma: no cover
+# This requires Python 3.8+
+from typing import Protocol
 
 import numpy as np
 

@@ -1,6 +1,6 @@
 """
-Utility functions for estimating contrasts, flux ratios and throughputs,
-as well as computing contrast curves (i.e., detection limits).
+Methods for estimating contrasts, flux ratios and throughputs, as well
+as computing contrast curves (i.e., detection limits).
 """
 
 # -----------------------------------------------------------------------------

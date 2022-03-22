@@ -1,5 +1,5 @@
 """
-Utility functions related to using units and quantities (astropy.units).
+Methods related to using units and quantities (astropy.units).
 """
 
 # -----------------------------------------------------------------------------

@@ -1,5 +1,6 @@
 """
-Utilities for reading in config files.
+Methods for reading in configuration files and getting paths to main
+`hsr4hci` subdirectories.
 """
 
 # -----------------------------------------------------------------------------

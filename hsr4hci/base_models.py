@@ -1,5 +1,5 @@
 """
-Utility functions for dealing with HSR base models.
+Methods for creating HSR base models.
 """
 
 # -----------------------------------------------------------------------------

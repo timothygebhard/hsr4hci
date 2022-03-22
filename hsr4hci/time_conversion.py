@@ -1,6 +1,6 @@
 """
-Utility functions for converting between Python datetimes, timestamps
-and ISO 8061 strings.
+Methods for converting between Python datetimes, timestamps and
+ISO 8061 strings.
 """
 
 # -----------------------------------------------------------------------------
@@ -18,7 +18,6 @@ import numpy as np
 # -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
 # -----------------------------------------------------------------------------
-
 
 def date_string_to_datetime(
     date_string: Union[str, np.bytes_],

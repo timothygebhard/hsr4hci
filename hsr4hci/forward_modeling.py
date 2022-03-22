@@ -1,5 +1,5 @@
 """
-Utility functions for forward modeling.
+Methods for forward modeling (= simulating a pure planet signal).
 """
 
 # -----------------------------------------------------------------------------

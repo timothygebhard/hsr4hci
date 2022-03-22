@@ -1,5 +1,5 @@
 """
-Functions for measuring fluxes.
+Methods for performing photometry / measuring fluxes.
 """
 
 # -----------------------------------------------------------------------------

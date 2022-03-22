@@ -1,5 +1,5 @@
 """
-Utility functions related to positions (injections and references).
+Methods related to positions (injections and references).
 """
 
 # -----------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 """
-Utility classes and functions to work with the HTCondor cluster system.
+Methods for working with the HTCondor cluster system.
 """
 
 # -----------------------------------------------------------------------------

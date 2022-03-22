@@ -1,5 +1,5 @@
 """
-Utility functions for loading data sets.
+Methods for loading data sets.
 """
 
 # -----------------------------------------------------------------------------

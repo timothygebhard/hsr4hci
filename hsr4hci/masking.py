@@ -1,5 +1,5 @@
 """
-Utility functions for creating and working with (binary) masks.
+Methods for creating and working with (binary) masks.
 """
 
 # -----------------------------------------------------------------------------

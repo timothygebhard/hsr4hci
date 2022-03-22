@@ -1,5 +1,5 @@
 """
-Utility functions training half-sibling regression models.
+Methods for training half-sibling regression models.
 """
 
 # -----------------------------------------------------------------------------

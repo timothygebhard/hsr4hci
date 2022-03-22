@@ -1,5 +1,5 @@
 """
-General purpose utilities, e.g., cropping arrays.
+Methods for general purpose usage (e.g., cropping arrays).
 """
 
 # -----------------------------------------------------------------------------

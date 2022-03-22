@@ -1,5 +1,5 @@
 """
-Utility functions for dealing with HDF files.
+Methods for dealing with HDF files.
 
 Parts of the code in the module are based on:
     https://codereview.stackexchange.com/a/121308

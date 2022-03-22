@@ -1,5 +1,5 @@
 """
-Utility functions for reading and writing FITS files.
+Methods for reading and writing FITS files.
 """
 
 # -----------------------------------------------------------------------------

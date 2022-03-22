@@ -1,5 +1,5 @@
 """
-Utility functions for merging partial result files (FITS / HDF).
+Methods for merging partial result files (FITS / HDF).
 """
 
 # -----------------------------------------------------------------------------

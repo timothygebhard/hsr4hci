@@ -1,5 +1,5 @@
 """
-Utility functions, mostly for validating function arguments.
+Methods for validating function arguments.
 """
 
 # -----------------------------------------------------------------------------

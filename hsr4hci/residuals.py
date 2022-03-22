@@ -1,5 +1,5 @@
 """
-Utility functions that are related to dealing with residuals.
+Methods for dealing with residuals.
 """
 
 # -----------------------------------------------------------------------------

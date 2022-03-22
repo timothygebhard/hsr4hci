@@ -1,5 +1,5 @@
 """
-Utility functions for computing match fractions.
+Methods for computing match fractions.
 """
 
 # -----------------------------------------------------------------------------
