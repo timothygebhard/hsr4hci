@@ -45,17 +45,6 @@ def load_config(file_path: Union[str, Path]) -> Dict[str, Any]:
     return config
 
 
-def get_datasets_dir() -> Path:
-    """
-    Get the Path of the dataset's directory.
-
-    Returns:
-        Path to the dataset's directory.
-    """
-
-    return get_hsr4hci_dir() / 'datasets'
-
-
 def get_hsr4hci_dir() -> Path:
     """
     Get path to directory of the hsr4hci package.
@@ -65,3 +54,25 @@ def get_hsr4hci_dir() -> Path:
     """
 
     return Path(hsr4hci.__file__).parent.parent
+
+
+def get_datasets_dir() -> Path:
+    """
+    Get the Path of the `datasets` directory.
+
+    Returns:
+        Path to the `datasets` directory.
+    """
+
+    return get_hsr4hci_dir() / 'datasets'
+
+
+def get_experiments_dir() -> Path:
+    """
+    Get the Path of the `experiments` directory.
+
+    Returns:
+        Path to the `experiments` directory.
+    """
+
+    return get_hsr4hci_dir() / 'experiments'
