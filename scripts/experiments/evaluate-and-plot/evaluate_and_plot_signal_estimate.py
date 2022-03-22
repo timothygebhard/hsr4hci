@@ -1,5 +1,5 @@
 """
-Evaluate (compute SNR) and plot signal estimate.
+Evaluate (= compute logFPF) and plot signal estimate.
 """
 
 # -----------------------------------------------------------------------------
