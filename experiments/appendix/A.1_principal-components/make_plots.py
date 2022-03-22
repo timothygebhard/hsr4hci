@@ -6,13 +6,12 @@ Run PCA and plot the principal components / eigenimages.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from pathlib import Path
-
 import time
 
 import matplotlib.pyplot as plt
 import numpy as np
 
+from hsr4hci.config import get_experiments_dir
 from hsr4hci.data import load_dataset
 from hsr4hci.plotting import plot_frame
 from hsr4hci.pca import get_pca_signal_estimates
@@ -36,7 +35,12 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Ensure the plots directory exists
-    plots_dir = Path('plots')
+    plots_dir = (
+        get_experiments_dir()
+        / 'appendix'
+        / 'A.1_principal-components'
+        / 'plots'
+    )
     plots_dir.mkdir(exist_ok=True)
 
     # Loop over different data sets

@@ -1,5 +1,6 @@
 """
-Collect results for experiments of an algorithm.
+Create a table plot of the brightness ratio as a function of the
+contrast and the separation.
 """
 
 # -----------------------------------------------------------------------------

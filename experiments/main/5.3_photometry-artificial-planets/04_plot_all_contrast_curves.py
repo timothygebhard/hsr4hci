@@ -1,6 +1,5 @@
 """
-Create a plot of the interpolated FPF values, which implicitly defines
-the contrast curve.
+Plot all contrast curves.
 """
 
 # -----------------------------------------------------------------------------

@@ -49,7 +49,10 @@ def create_submit_file(
 
     # Define path to scripts directory
     scripts_dir = (
-        get_hsr4hci_dir() / 'scripts' / 'experiments' / 'brightness-ratio'
+        get_hsr4hci_dir()
+        / 'scripts'
+        / 'experiments'
+        / 'brightness-ratio'
     )
 
     # Define script and requirements for different algorithms
@@ -74,7 +77,7 @@ def create_submit_file(
         cpus=cpus,
         requirements=[
             'Target.CpuFamily =!= 21',
-            'Target.Machine =!= "g095.internal.cluster.is.localnet"'
+            'Target.Machine =!= "g095.internal.cluster.is.localnet"',
         ],
     )
 

@@ -1,5 +1,6 @@
 """
-Create experiments to study effect of temporal binning.
+Create experiments where we look at the (log)FPF as function of the
+temporal binning factor.
 """
 
 # -----------------------------------------------------------------------------
@@ -13,7 +14,11 @@ import time
 
 import numpy as np
 
-from hsr4hci.config import load_config, get_hsr4hci_dir
+from hsr4hci.config import (
+    get_experiments_dir,
+    get_hsr4hci_dir,
+    load_config,
+)
 
 
 # -----------------------------------------------------------------------------
@@ -58,7 +63,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Define binning factors (we exclude "1" here, because we can re-use the
-    # results for 01_first-results or 03_observing-conditions)
+    # results for 5.1_first-results and 6.4_observing-conditions)
     binning_factors = np.unique(np.geomspace(2, 2000, 21).astype(int))
 
     # Define the directory that contains the script for creating the submit
@@ -77,9 +82,9 @@ if __name__ == '__main__':
 
     # Create the directory for the given combination of dataset and algorithm
     main_dir = (
-        get_hsr4hci_dir()
-        / 'experiments'
-        / '02_temporal-binning'
+        get_experiments_dir()
+        / 'appendix'
+        / 'D.1_fpf-as-function-of-temporal-binning'
         / dataset
         / algorithm
     )
@@ -90,18 +95,18 @@ if __name__ == '__main__':
     # Get directory from which to read base config / create symlink
     if algorithm.endswith('oc'):
         algorithm_name = algorithm.split('__')[0]
-        original_experiment = '03_observing-conditions'
+        original_experiment = '6.4_observing-conditions'
     else:
         algorithm_name = algorithm
-        original_experiment = '01_first-results'
+        original_experiment = '5.1_first-results'
 
     # Create the experiment with binning factor = 1. This should just be a
-    # symlink to the respective directory 01_first-results so that we do not
-    # have to run the most expensive experiment twice.
+    # symlink to the respective 5.1_first-results directory so that we do
+    # not have to run the most expensive experiment twice.
     print('Creating experiment: binning_factor-0001...', end=' ', flush=True)
     src_dir = (
-        get_hsr4hci_dir()
-        / 'experiments'
+        get_experiments_dir()
+        / 'main'
         / original_experiment
         / algorithm_name
         / dataset

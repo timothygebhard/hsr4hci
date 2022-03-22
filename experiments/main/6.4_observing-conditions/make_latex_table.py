@@ -11,7 +11,7 @@ the comparison table in the paper.
 import json
 import time
 
-from hsr4hci.config import get_hsr4hci_dir
+from hsr4hci.config import get_experiments_dir
 
 
 # -----------------------------------------------------------------------------
@@ -31,8 +31,8 @@ if __name__ == '__main__':
     # Define some shortcuts / dictionaries with labels
     # -------------------------------------------------------------------------
 
-    # Get the path to the HSR4HCI experiment directory
-    experiments_dir = get_hsr4hci_dir() / 'experiments'
+    # Get the path to the (main) experiments directory
+    experiments_dir = get_experiments_dir() / 'main'
 
     # Define labels for OC, methods and datasets
     oc_labels = {True: ' + OC', False: ''}
@@ -75,11 +75,11 @@ if __name__ == '__main__':
 
         # Get the subdirectory of the experiment folder (based on OC)
         if method.endswith('oc'):
-            folder = '03_observing-conditions'
+            folder = '6.4_observing-conditions'
             pure_method = method.split('__')[0]
             oc = True
         else:
-            folder = '01_first-results'
+            folder = '5.1_first-results'
             pure_method = method
             oc = False
 

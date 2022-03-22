@@ -25,7 +25,10 @@ import numpy as np
 
 from hsr4hci.config import load_config
 from hsr4hci.contrast import get_contrast
-from hsr4hci.data import load_metadata, load_psf_template
+from hsr4hci.data import (
+    load_metadata,
+    load_psf_template,
+)
 from hsr4hci.fits import read_fits
 from hsr4hci.general import flatten_nested_dict
 from hsr4hci.metrics import compute_metrics

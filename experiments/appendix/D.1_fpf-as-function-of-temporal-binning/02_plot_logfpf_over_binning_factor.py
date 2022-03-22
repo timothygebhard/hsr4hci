@@ -7,8 +7,6 @@ temporal binning and plot the -log(FPF) over the binning factor.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from pathlib import Path
-
 import argparse
 import time
 
@@ -16,8 +14,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from hsr4hci.config import get_experiments_dir
 from hsr4hci.data import load_metadata
-from hsr4hci.plotting import adjust_luminosity, set_fontsize
+from hsr4hci.plotting import (
+    adjust_luminosity,
+    set_fontsize,
+)
 
 
 # -----------------------------------------------------------------------------
@@ -62,7 +64,12 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Define directory for the dataset that we are processing
-    dataset_dir = Path(__file__).resolve().parent / dataset
+    dataset_dir = (
+        get_experiments_dir()
+        / 'appendix'
+        / 'D.1_fpf-as-function-of-temporal-binning'
+        / dataset
+    )
 
     # Load the metadata of the data set (e.g., because we need the DIT)
     print('Loading data set metadata...', end=' ', flush=True)

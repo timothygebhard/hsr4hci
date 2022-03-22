@@ -6,8 +6,6 @@ Apply clustering to time series and plot the results.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from pathlib import Path
-
 import time
 
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -17,6 +15,7 @@ from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 import numpy as np
 
+from hsr4hci.config import get_experiments_dir
 from hsr4hci.data import load_dataset
 from hsr4hci.plotting import plot_frame
 
@@ -42,7 +41,12 @@ if __name__ == '__main__':
     np.random.seed(42)
 
     # Ensure the plots directory exists
-    plots_dir = Path('plots')
+    plots_dir = (
+        get_experiments_dir()
+        / 'appendix'
+        / 'A.3_k-means-clustering'
+        / 'plots'
+    )
     plots_dir.mkdir(exist_ok=True)
 
     # Loop over different data sets
@@ -84,7 +88,7 @@ if __name__ == '__main__':
             ),
             aperture_radius=0,
             scalebar_color='black',
-            scalebar_loc=2,
+            scalebar_loc='upper left',
             add_colorbar=False,
             cmap='tab20',
             limits=(0, 10),

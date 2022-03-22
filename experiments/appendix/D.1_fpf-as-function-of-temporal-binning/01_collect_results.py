@@ -19,8 +19,15 @@ from tqdm.auto import tqdm
 
 import pandas as pd
 
-from hsr4hci.config import load_config
-from hsr4hci.data import load_planets, load_psf_template, load_metadata
+from hsr4hci.config import (
+    get_experiments_dir,
+    load_config,
+)
+from hsr4hci.data import (
+    load_planets,
+    load_psf_template,
+    load_metadata,
+)
 from hsr4hci.fits import read_fits
 from hsr4hci.general import flatten_nested_dict
 from hsr4hci.metrics import compute_metrics
@@ -205,9 +212,15 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Define main directory and collect experiment directories in there
-    main_dir = Path(__file__).resolve().parent / dataset / algorithm
+    main_dir = (
+        get_experiments_dir()
+        / 'appendix'
+        / 'D.1_fpf-as-function-of-temporal-binning'
+        / dataset
+        / algorithm
+    )
     experiment_dirs = [
-        Path(_.path) for _ in os.scandir(main_dir) if _.is_dir()
+        Path(_.path) for _ in list(os.scandir(main_dir)) if _.is_dir()
     ]
 
     # Loop over the experiment directories and collect the SNR, FPF, ...

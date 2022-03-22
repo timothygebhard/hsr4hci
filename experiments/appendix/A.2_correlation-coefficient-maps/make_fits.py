@@ -7,11 +7,10 @@ with every other position (x', y').
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from pathlib import Path
-
 import numpy as np
 import time
 
+from hsr4hci.config import get_experiments_dir
 from hsr4hci.data import load_dataset
 from hsr4hci.fits import save_fits
 
@@ -21,6 +20,9 @@ from hsr4hci.fits import save_fits
 # -----------------------------------------------------------------------------
 
 def correlation_map(x: np.ndarray, y: np.ndarray) -> np.ndarray:
+    """
+    Auxiliary function to compute the correlation map efficiently.
+    """
 
     epsilon = np.finfo(float).eps
 
@@ -60,7 +62,12 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Ensure that the directory for the FITS files exists
-    fits_dir = Path('fits')
+    fits_dir = (
+        get_experiments_dir()
+        / 'appendix'
+        / 'A.2_correlation-coefficient-maps'
+        / 'fits'
+    )
     fits_dir.mkdir(exist_ok=True)
 
     # Loop over different data sets

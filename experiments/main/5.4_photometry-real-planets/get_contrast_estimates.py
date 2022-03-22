@@ -1,5 +1,6 @@
 """
-Compute estimated contrast from signal estimate.
+Compute estimated contrast from signal estimate and save results as
+a LaTeX table.
 """
 
 # -----------------------------------------------------------------------------
@@ -16,9 +17,15 @@ from astropy.units import Quantity
 import numpy as np
 import pandas as pd
 
-from hsr4hci.config import load_config
+from hsr4hci.config import (
+    get_experiments_dir,
+    load_config,
+)
 from hsr4hci.contrast import get_contrast
-from hsr4hci.data import load_metadata, load_psf_template
+from hsr4hci.data import (
+    load_metadata,
+    load_psf_template,
+)
 from hsr4hci.fits import read_fits
 from hsr4hci.psf import get_psf_fwhm
 from hsr4hci.units import InstrumentUnitsContext
@@ -57,7 +64,9 @@ if __name__ == '__main__':
 
         # Define experiment directory
         experiment_dir = (
-            Path('.')
+            get_experiments_dir()
+            / 'main'
+            / '5.4_photometry-real-planets'
             / train_mode
             / dataset
             / f'binning-factor_{binning_factor}'
@@ -220,7 +229,13 @@ if __name__ == '__main__':
 
     # Write LaTeX code to file
     print('Writing results to LaTeX file...', end=' ', flush=True)
-    with open('latex-table.tex', 'w') as latex_file:
+    file_path = (
+        get_experiments_dir()
+        / 'main'
+        / '5.4_photometry-real-planets'
+        / 'latex-table.tex'
+    )
+    with open(file_path, 'w') as latex_file:
         latex_file.writelines(lines)
     print('Done!', flush=True)
 

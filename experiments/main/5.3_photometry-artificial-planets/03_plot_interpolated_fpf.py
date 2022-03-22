@@ -1,6 +1,6 @@
 """
-Create a plot of the interpolated FPF values, which implicitly defines
-the contrast curve.
+Create a plot of the interpolated FPF values (which implicitly defines
+the contrast curve).
 """
 
 # -----------------------------------------------------------------------------
@@ -15,8 +15,8 @@ import time
 
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
-from scipy.stats import norm
 from scipy.interpolate import InterpolatedUnivariateSpline
+from scipy.stats import norm
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -167,7 +167,10 @@ if __name__ == '__main__':
                 transform=ax.transAxes,
                 fontsize=6,
                 bbox=dict(
-                    boxstyle='round,pad=0.5', fc='white', ec='black', lw=0.5
+                    boxstyle='round,pad=0.5',
+                    fc='white',
+                    ec='black',
+                    lw=0.5,
                 ),
                 zorder=100,
             )

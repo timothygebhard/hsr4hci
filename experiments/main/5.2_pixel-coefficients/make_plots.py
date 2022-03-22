@@ -6,8 +6,6 @@ Create plots of pixel coefficients.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from pathlib import Path
-
 import argparse
 import time
 
@@ -17,7 +15,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from hsr4hci.coordinates import get_center
-from hsr4hci.data import load_psf_template, load_metadata
+from hsr4hci.config import get_experiments_dir
+from hsr4hci.data import (
+    load_metadata,
+    load_psf_template,
+)
 from hsr4hci.fits import read_fits
 from hsr4hci.plotting import plot_frame
 from hsr4hci.psf import get_psf_fwhm
@@ -56,7 +58,13 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Ensure the plots directory exists
-    plots_dir = Path('plots') / f'binning-factor_{binning_factor}'
+    plots_dir = (
+        get_experiments_dir()
+        / 'main'
+        / '5.2_pixel-coefficients'
+        / 'plots'
+        / f'binning-factor_{binning_factor}'
+    )
     plots_dir.mkdir(exist_ok=True, parents=True)
 
     # Loop over different data sets and positions
@@ -81,7 +89,14 @@ if __name__ == '__main__':
         pixscale = metadata['PIXSCALE']
 
         # Load pixel coefficients from FITS
-        fits_dir = Path(dataset) / f'binning-factor_{binning_factor}' / 'fits'
+        fits_dir = (
+            get_experiments_dir()
+            / 'main'
+            / '5.2_pixel-coefficients'
+            / dataset
+            / f'binning-factor_{binning_factor}'
+            / 'fits'
+        )
         file_path = fits_dir / 'coefficients.fits'
         coefficients = read_fits(file_path=file_path, return_header=False)
 

@@ -9,10 +9,10 @@ and without the observing conditions, for different binning factors.
 
 from argparse import ArgumentParser
 from itertools import product
-from pathlib import Path
 
 import time
 
+from hsr4hci.config import get_experiments_dir
 from hsr4hci.data import load_metadata
 from hsr4hci.fits import read_fits
 from hsr4hci.general import crop_center
@@ -50,7 +50,13 @@ if __name__ == '__main__':
     metadata = load_metadata(name_or_path=dataset)
 
     # Make sure the plots directory exists
-    plots_dir = Path('.') / dataset / 'plots'
+    plots_dir = (
+        get_experiments_dir()
+        / 'appendix'
+        / 'D.2_residual-noise-with-and-without-oc'
+        / dataset
+        / 'plots'
+    )
     plots_dir.mkdir(exist_ok=True)
 
     # -------------------------------------------------------------------------
@@ -63,7 +69,9 @@ if __name__ == '__main__':
 
         # Load and crop the signal estimate
         file_path = (
-            Path('.')
+            get_experiments_dir()
+            / 'appendix'
+            / 'D.2_residual-noise-with-and-without-oc'
             / dataset
             / 'experiments'
             / f'binning_factor-{bf}'

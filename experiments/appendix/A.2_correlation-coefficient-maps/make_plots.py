@@ -6,14 +6,13 @@ Create correlation map plots.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from pathlib import Path
-
 import time
 
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import matplotlib.pyplot as plt
 
+from hsr4hci.config import get_experiments_dir
 from hsr4hci.data import load_metadata
 from hsr4hci.fits import read_fits
 from hsr4hci.plotting import plot_frame
@@ -37,12 +36,22 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
 
     # Ensure that FITS directory exists
-    fits_dir = Path('fits')
+    fits_dir = (
+        get_experiments_dir()
+        / 'appendix'
+        / 'A.2_correlation-coefficient-maps'
+        / 'fits'
+    )
     if not fits_dir.exists():
         raise NotADirectoryError('FITS directory not found!')
 
     # Ensure the plots directory exists
-    plots_dir = Path('plots')
+    plots_dir = (
+        get_experiments_dir()
+        / 'appendix'
+        / 'A.2_correlation-coefficient-maps'
+        / 'plots'
+    )
     plots_dir.mkdir(exist_ok=True)
 
     # Loop over different data sets
@@ -79,7 +88,7 @@ if __name__ == '__main__':
             ),
             aperture_radius=0,
             scalebar_color='black',
-            scalebar_loc=2,
+            scalebar_loc='upper left',
             limits=(-0.6, 0.6),
             add_colorbar=False,
         )
