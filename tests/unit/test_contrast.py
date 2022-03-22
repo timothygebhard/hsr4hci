@@ -13,8 +13,14 @@ from scipy.stats import norm
 import numpy as np
 import pandas as pd
 
-from hsr4hci.general import shift_image, crop_or_pad
-from hsr4hci.contrast import get_contrast, get_contrast_curve
+from hsr4hci.contrast import (
+    get_contrast,
+    get_contrast_curve,
+)
+from hsr4hci.general import (
+    crop_or_pad,
+    shift_image,
+)
 
 
 # -----------------------------------------------------------------------------

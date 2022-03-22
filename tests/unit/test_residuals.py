@@ -13,9 +13,9 @@ import pytest
 
 # noinspection PyProtectedMember
 from hsr4hci.residuals import (
-    assemble_residual_stack_from_hypotheses,
     _get_expected_signal,
     _prune_blobs,
+    assemble_residual_stack_from_hypotheses,
     get_residual_selection_mask,
 )
 
@@ -28,6 +28,9 @@ from hsr4hci.masking import get_circle_mask
 # -----------------------------------------------------------------------------
 
 def test__assemble_residuals_from_hypotheses() -> None:
+    """
+    Test `hsr4hci.residuals.assemble_residual_stack_from_hypotheses`.
+    """
 
     hypotheses = np.array([[1, 2, 4], [4, 1, 2], [3, 4, 1]])
     selection_mask = np.array([[0, 1, 1], [0, 1, 1], [0, 1, 1]]).astype(bool)
@@ -51,6 +54,9 @@ def test__assemble_residuals_from_hypotheses() -> None:
 
 
 def test___get_expected_signal() -> None:
+    """
+    Test `hsr4hci.residuals._get_expected_signal`.
+    """
 
     x, y = np.meshgrid(np.arange(33), np.arange(33))
     model = models.Gaussian2D(x_mean=17, x_stddev=2, y_mean=17, y_stddev=2)
@@ -83,6 +89,9 @@ def test___get_expected_signal() -> None:
 
 
 def test___prune_blobs() -> None:
+    """
+    Test `hsr4hci.residuals._prune_blobs`.
+    """
 
     # Case 1
     blobs = [
@@ -95,6 +104,9 @@ def test___prune_blobs() -> None:
 
 
 def test__get_residual_selection_mask() -> None:
+    """
+    Test `hsr4hci.residuals.get_residual_selection_mask`.
+    """
 
     # Create fake PSF template
     x, y = np.meshgrid(np.arange(33), np.arange(33))

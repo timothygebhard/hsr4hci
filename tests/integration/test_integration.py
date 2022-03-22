@@ -160,7 +160,10 @@ def test_data_path(data_dir: Path) -> Path:
 
 
 @pytest.fixture(scope="session")
-def hsr_config_file(hsr_experiment_dir: Path, test_data_path: Path) -> None:
+def hsr_config_file(
+    hsr_experiment_dir: Path,
+    test_data_path: Path,
+) -> None:
     """
     Create a mock config file for the HSR pipeline.
     """
@@ -197,7 +200,10 @@ def hsr_config_file(hsr_experiment_dir: Path, test_data_path: Path) -> None:
 
 
 @pytest.fixture(scope="session")
-def pca_config_file(pca_experiment_dir: Path, test_data_path: Path) -> None:
+def pca_config_file(
+    pca_experiment_dir: Path,
+    test_data_path: Path,
+) -> None:
     """
     Create a mock config file for the PCA pipeline.
     """

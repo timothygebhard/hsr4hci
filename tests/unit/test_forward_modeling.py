@@ -24,6 +24,9 @@ from hsr4hci.forward_modeling import (
 # -----------------------------------------------------------------------------
 
 def test__add_fake_planet() -> None:
+    """
+    Test `hsr4hci.forward_modeling.add_fake_planet`.
+    """
 
     x, y = np.meshgrid(np.arange(33), np.arange(33))
     gaussian = models.Gaussian2D(x_mean=16, y_mean=16)
@@ -58,6 +61,9 @@ def test__add_fake_planet() -> None:
 
 
 def test__get_time_series_for_position() -> None:
+    """
+    Test `hsr4hci.forward_modeling.get_time_series_for_position`.
+    """
 
     x, y = np.meshgrid(np.arange(33), np.arange(33))
     gaussian = models.Gaussian2D(x_mean=16, y_mean=16)
@@ -80,6 +86,9 @@ def test__get_time_series_for_position() -> None:
 
 
 def test__get_time_series_for_position__full_stack() -> None:
+    """
+    Test `hsr4hci.forward_modeling.get_time_series_for_position__full_stack`.
+    """
 
     x, y = np.meshgrid(np.arange(33), np.arange(33))
     gaussian = models.Gaussian2D(x_mean=16, y_mean=16)

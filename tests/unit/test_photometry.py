@@ -17,12 +17,12 @@ from hsr4hci.photometry import (
     _gaussian_integral,
     _get_flux__as,
     _get_flux__ass,
-    _get_flux__p,
     _get_flux__f,
     _get_flux__fs,
+    _get_flux__p,
     get_flux,
-    get_stellar_flux,
     get_fluxes_for_polar_positions,
+    get_stellar_flux,
 )
 from hsr4hci.coordinates import polar2cartesian
 
@@ -138,7 +138,11 @@ def test___get_flux__fs() -> None:
     # Case 1
     x, y = np.meshgrid(np.arange(33), np.arange(33))
     gaussian = models.Gaussian2D(
-        x_mean=17, x_stddev=1, y_mean=17, y_stddev=1, amplitude=1
+        x_mean=17,
+        x_stddev=1,
+        y_mean=17,
+        y_stddev=1,
+        amplitude=1,
     )
     position, flux = _get_flux__fs(
         frame=gaussian(x, y),
@@ -182,7 +186,11 @@ def test__get_flux() -> None:
     # Prepare data
     x, y = np.meshgrid(np.arange(33), np.arange(33))
     gaussian = models.Gaussian2D(
-        x_mean=17, x_stddev=1, y_mean=17, y_stddev=1, amplitude=1
+        x_mean=17,
+        x_stddev=1,
+        y_mean=17,
+        y_stddev=1,
+        amplitude=1,
     )
     frame = gaussian(x, y)
     position = (16, 16)
@@ -271,7 +279,11 @@ def test__get_stellar_flux() -> None:
     # Case 1
     x, y = np.meshgrid(np.arange(63), np.arange(63))
     gaussian = models.Gaussian2D(
-        x_mean=32, x_stddev=1, y_mean=32, y_stddev=1, amplitude=1
+        x_mean=32,
+        x_stddev=1,
+        y_mean=32,
+        y_stddev=1,
+        amplitude=1,
     )
     flux = get_stellar_flux(
         psf_template=gaussian(x, y),
@@ -304,7 +316,11 @@ def test__get_fluxes_for_polar_positions() -> None:
             *polar_position, frame_size=frame_size
         )
         gaussian = models.Gaussian2D(
-            x_mean=x_mean, x_stddev=1, y_mean=y_mean, y_stddev=1, amplitude=1
+            x_mean=x_mean,
+            x_stddev=1,
+            y_mean=y_mean,
+            y_stddev=1,
+            amplitude=1,
         )
         frame += gaussian(x, y)
 

@@ -12,7 +12,10 @@ from _pytest.tmpdir import TempPathFactory
 
 import pytest
 
-from hsr4hci.htcondor import SubmitFile, DAGFile
+from hsr4hci.htcondor import (
+    DAGFile,
+    SubmitFile,
+)
 
 
 # -----------------------------------------------------------------------------
@@ -24,6 +27,7 @@ def htcondor_dir(tmp_path_factory: TempPathFactory) -> Path:
     """
     Fixture to create temporary htcondor directory.
     """
+
     return Path(tmp_path_factory.mktemp('htcondor_dir', numbered=False))
 
 

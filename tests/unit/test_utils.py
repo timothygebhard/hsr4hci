@@ -21,6 +21,9 @@ from hsr4hci.utils import (
 # -----------------------------------------------------------------------------
 
 def test__check_consistent_size() -> None:
+    """
+    Test `hsr4hci.utils.check_consistent_size`.
+    """
 
     # Check that only numpy arrays are accepted
     with pytest.raises(TypeError) as type_error:
@@ -46,6 +49,9 @@ def test__check_consistent_size() -> None:
 
 
 def test__check_frame_size() -> None:
+    """
+    Test `hsr4hci.utils.check_frame_size`.
+    """
 
     # Case 1: frame_size is not a tuple, list or np.ndarray
     frame_size_1 = '10_20'
@@ -70,6 +76,9 @@ def test__check_frame_size() -> None:
 
 
 def test__check_cartesian_position() -> None:
+    """
+    Test `hsr4hci.utils.check_cartesian_position`.
+    """
 
     # Case 1
     with pytest.raises(ValueError) as value_error:

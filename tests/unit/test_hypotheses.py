@@ -13,7 +13,10 @@ from astropy.modeling import models
 import numpy as np
 
 from hsr4hci.forward_modeling import get_time_series_for_position
-from hsr4hci.hypotheses import get_all_hypotheses, get_hypothesis_for_position
+from hsr4hci.hypotheses import (
+    get_all_hypotheses,
+    get_hypothesis_for_position,
+)
 from hsr4hci.masking import get_circle_mask
 from hsr4hci.training import get_signal_times
 
@@ -22,7 +25,10 @@ from hsr4hci.training import get_signal_times
 # TEST CASES
 # -----------------------------------------------------------------------------
 
-def test_get_hypothesis_for_position() -> None:
+def test__get_hypothesis_for_position() -> None:
+    """
+    Test `hsr4hci.hypotheses.get_hypothesis_for_position`.
+    """
 
     # Fix random seed
     np.random.seed(42)
@@ -122,6 +128,9 @@ def test_get_hypothesis_for_position() -> None:
 
 
 def test__get_all_hypotheses() -> None:
+    """
+    Test `hsr4hci.hypotheses.get_all_hypotheses`.
+    """
 
     # Fix random seed
     np.random.seed(42)

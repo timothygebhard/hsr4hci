@@ -16,6 +16,9 @@ from hsr4hci.base_models import BaseModelCreator
 # -----------------------------------------------------------------------------
 
 def test__base_model_creator() -> None:
+    """
+    Test `hsr4hci.base_models.BaseModelCreator`.
+    """
 
     base_model_creator = BaseModelCreator(
         **{

@@ -1,5 +1,5 @@
 """
-Tests for observing_conditions.py
+Tests for merging.py
 """
 
 # -----------------------------------------------------------------------------
@@ -34,6 +34,7 @@ def hdf_dir(tmp_path_factory: TempPathFactory) -> Path:
     """
     Fixture to create temporary HDF directory.
     """
+
     return Path(tmp_path_factory.mktemp('merging_hdf', numbered=False))
 
 
@@ -42,6 +43,7 @@ def fits_dir(tmp_path_factory: TempPathFactory) -> Path:
     """
     Fixture to create temporary FITS directory.
     """
+
     return Path(tmp_path_factory.mktemp('merging_fits', numbered=False))
 
 

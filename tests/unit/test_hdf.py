@@ -32,6 +32,7 @@ def hdf_dir(tmp_path_factory: TempPathFactory) -> Path:
     """
     Fixture to create temporary HDF directory.
     """
+
     return Path(tmp_path_factory.mktemp('hdf', numbered=False))
 
 
@@ -115,7 +116,8 @@ def test__save_data_to_hdf(hdf_dir: Path) -> None:
 
 
 def test__save_dict_to_hdf(
-    hdf_dir: Path, test_data: dict
+    hdf_dir: Path,
+    test_data: dict,
 ) -> None:
     """
     Test `hsr4hci.hdf.save_dict_to_hdf`.
@@ -137,7 +139,8 @@ def test__save_dict_to_hdf(
 
 
 def test__load_dict_from_hdf(
-    hdf_dir: Path, test_data: dict
+    hdf_dir: Path,
+    test_data: dict,
 ) -> None:
     """
     Test `hsr4hci.hdf.load_dict_from_hdf`.

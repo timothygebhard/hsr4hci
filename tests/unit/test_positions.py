@@ -22,6 +22,9 @@ from hsr4hci.positions import (
 # -----------------------------------------------------------------------------
 
 def test__get_injection_position() -> None:
+    """
+    Test `hsr4hci.positions.get_injection_position`.
+    """
 
     # Case 1
     with pytest.raises(ValueError) as value_error:
@@ -46,6 +49,9 @@ def test__get_injection_position() -> None:
 
 
 def test__get_reference_positions() -> None:
+    """
+    Test `hsr4hci.positions.get_reference_positions`.
+    """
 
     # Case 1
     reference_positions = get_reference_positions(
@@ -84,7 +90,10 @@ def test__get_reference_positions() -> None:
     assert 'Too close to center, opening_angle is NaN' in str(value_error)
 
 
-def test__rotate_positions() -> None:
+def test__rotate_reference_positions() -> None:
+    """
+    Test `hsr4hci.positions.rotate_reference_positions`.
+    """
 
     # Case 1
     reference_positions = get_reference_positions(

@@ -13,8 +13,8 @@ import pytest
 
 from hsr4hci.units import (
     flux_ratio_to_magnitudes,
-    magnitude_to_flux_ratio,
     InstrumentUnitsContext,
+    magnitude_to_flux_ratio,
 )
 
 
@@ -23,6 +23,9 @@ from hsr4hci.units import (
 # -----------------------------------------------------------------------------
 
 def test__instrument_units_context() -> None:
+    """
+    Test `hsr4hci.units.InstrumentUnitsContext`.
+    """
 
     # Case 1 (illegal constructor argument: pixscale)
     with pytest.raises(UnitsError) as units_error:
@@ -101,6 +104,9 @@ def test__instrument_units_context() -> None:
 
 
 def test__flux_ratio_to_magnitudes() -> None:
+    """
+    Test `hsr4hci.units.flux_ratio_to_magnitudes`.
+    """
 
     assert flux_ratio_to_magnitudes(100) == -5
     assert np.allclose(
@@ -109,6 +115,9 @@ def test__flux_ratio_to_magnitudes() -> None:
 
 
 def test__magnitude_to_flux_ratio() -> None:
+    """
+    Test `hsr4hci.units.magnitude_to_flux_ratio`.
+    """
 
     assert magnitude_to_flux_ratio(-5) == 100
     assert np.allclose(

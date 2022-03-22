@@ -11,6 +11,8 @@ from typing import Any
 import numpy as np
 import pytest
 
+from hsr4hci.base_models import BaseModelCreator
+from hsr4hci.masking import get_annulus_mask
 # noinspection PyProtectedMember
 from hsr4hci.training import (
     _train_default_model,
@@ -21,8 +23,6 @@ from hsr4hci.training import (
     train_all_models,
     train_model_for_position,
 )
-from hsr4hci.base_models import BaseModelCreator
-from hsr4hci.masking import get_annulus_mask
 
 
 # -----------------------------------------------------------------------------
@@ -282,8 +282,8 @@ def test__train_model_for_position() -> None:
     }
     base_model_creator = BaseModelCreator(**base_model_config)
 
-    # Create a stack that has perfect mirror symmetry, so it can be predicted
-    # perfectly by our model
+    # Create a stack that has perfect mirror symmetry, so it can be
+    # predicted perfectly by our model
     stack = np.random.normal(0, 1, (50, 31, 31))
     stack += np.rot90(stack, k=2, axes=(1, 2))
     parang = np.linspace(0, 50, 50)

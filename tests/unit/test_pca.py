@@ -18,6 +18,9 @@ from hsr4hci.pca import get_pca_signal_estimates
 # -----------------------------------------------------------------------------
 
 def test__get_pca_signal_estimates() -> None:
+    """
+    Test `hsr4hci.pca.get_pca_signal_estimates`.
+    """
 
     # Case 0
     with pytest.raises(ValueError) as value_error:
@@ -31,7 +34,8 @@ def test__get_pca_signal_estimates() -> None:
 
     # Case 1
     # Numbers are taken from section 3.1.1 of:
-    # http://faculty.salina.k-state.edu/tim/DAT/_downloads/Principal_Component_Analysis_Tutorial.pdf
+    # http://faculty.salina.k-state.edu/tim/DAT/_downloads/
+    #   Principal_Component_Analysis_Tutorial.pdf
     stack = np.array(
         [
             [

@@ -14,13 +14,15 @@ from skimage.filters import gaussian
 import numpy as np
 import pytest
 
-from hsr4hci.metrics import two_sample_t_test, compute_metrics
+from hsr4hci.metrics import (
+    compute_metrics,
+    two_sample_t_test,
+)
 
 
 # -----------------------------------------------------------------------------
 # TEST CASES
 # -----------------------------------------------------------------------------
-
 
 def test__two_sample_t_test() -> None:
     """

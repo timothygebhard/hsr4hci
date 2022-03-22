@@ -9,7 +9,10 @@ Tests for derotating.py
 import pytest
 import numpy as np
 
-from hsr4hci.derotating import derotate_combine, derotate_frames
+from hsr4hci.derotating import (
+    derotate_combine,
+    derotate_frames,
+)
 
 
 # -----------------------------------------------------------------------------
@@ -17,6 +20,9 @@ from hsr4hci.derotating import derotate_combine, derotate_frames
 # -----------------------------------------------------------------------------
 
 def test__derotate_frames() -> None:
+    """
+    Test `hsr4hci.derotating.derotate_frames`.
+    """
 
     # Case 1: no rotation at all
     stack = np.random.normal(0, 1, (10, 13, 13))
@@ -46,6 +52,9 @@ def test__derotate_frames() -> None:
 
 
 def test__derotate_combine() -> None:
+    """
+    Test `hsr4hci.derotating.derotate_combine`.
+    """
 
     # Case 1: no rotation at all should simply give mean
     stack = np.random.normal(0, 1, (10, 13, 13))

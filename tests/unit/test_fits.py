@@ -12,7 +12,10 @@ import astropy.io.fits.card as card
 import numpy as np
 import pytest
 
-from hsr4hci.fits import read_fits, save_fits
+from hsr4hci.fits import (
+    read_fits,
+    save_fits,
+)
 
 
 # -----------------------------------------------------------------------------
@@ -20,6 +23,9 @@ from hsr4hci.fits import read_fits, save_fits
 # -----------------------------------------------------------------------------
 
 def test__save_fits(tmp_path_factory: TempPathFactory) -> None:
+    """
+    Test `hsr4hci.fits.save_fits`.
+    """
 
     # Define location of test file in temporary directory
     test_dir = tmp_path_factory.mktemp('fits', numbered=False)
@@ -57,6 +63,9 @@ def test__save_fits(tmp_path_factory: TempPathFactory) -> None:
 
 
 def test__read_fits(tmp_path_factory: TempPathFactory) -> None:
+    """
+    Test `hsr4hci.fits.read_fits`.
+    """
 
     # Define location of test file in temporary directory
     test_dir = tmp_path_factory.getbasetemp() / 'fits'

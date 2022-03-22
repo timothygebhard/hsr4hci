@@ -1,5 +1,5 @@
 """
-Tests for evaluation.py
+Tests for coordinates.py
 """
 
 # -----------------------------------------------------------------------------
@@ -9,7 +9,11 @@ Tests for evaluation.py
 from math import atan2
 from astropy.units import Quantity
 
-from hsr4hci.coordinates import get_center, polar2cartesian, cartesian2polar
+from hsr4hci.coordinates import (
+    cartesian2polar,
+    get_center,
+    polar2cartesian,
+)
 
 
 # -----------------------------------------------------------------------------
@@ -17,6 +21,9 @@ from hsr4hci.coordinates import get_center, polar2cartesian, cartesian2polar
 # -----------------------------------------------------------------------------
 
 def test__get_center() -> None:
+    """
+    Test `hsr4hci.coordinates.get_center`.
+    """
 
     assert get_center((1, 1)) == (0.0, 0.0)
     assert get_center((2, 2)) == (0.5, 0.5)
@@ -24,6 +31,9 @@ def test__get_center() -> None:
 
 
 def test__polar2cartesian() -> None:
+    """
+    Test `hsr4hci.coordinates.polar2cartesian`.
+    """
 
     cartesian = polar2cartesian(
         separation=Quantity(0, 'pixel'),
@@ -48,6 +58,9 @@ def test__polar2cartesian() -> None:
 
 
 def test__cartesian2polar() -> None:
+    """
+    Test `hsr4hci.coordinates.cartesian2polar`.
+    """
 
     polar = cartesian2polar(
         position=(50, 50),

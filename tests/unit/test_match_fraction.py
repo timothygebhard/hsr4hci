@@ -23,6 +23,9 @@ from hsr4hci.match_fraction import (
 # -----------------------------------------------------------------------------
 
 def test__get_match_fraction_for_position() -> None:
+    """
+    Test `hsr4hci.match_fraction.get_match_fraction_for_position`
+    """
 
     # Create fake PSF template
     x, y = np.meshgrid(np.arange(33), np.arange(33))
@@ -95,6 +98,9 @@ def test__get_match_fraction_for_position() -> None:
 
 
 def test__get_all_match_fraction() -> None:
+    """
+    Test `hsr4hci.match_fraction.get_all_match_fractions`
+    """
 
     # Create fake PSF template
     x, y = np.meshgrid(np.arange(33), np.arange(33))

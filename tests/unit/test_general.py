@@ -12,15 +12,15 @@ import pytest
 from hsr4hci.general import (
     crop_center,
     crop_or_pad,
+    fast_corrcoef,
     find_closest,
     flatten_nested_dict,
     get_from_nested_dict,
     pad_array_to_shape,
     prestack_array,
     rotate_position,
-    shift_image,
     set_in_nested_dict,
-    fast_corrcoef,
+    shift_image,
 )
 
 
@@ -29,6 +29,9 @@ from hsr4hci.general import (
 # -----------------------------------------------------------------------------
 
 def test__crop_center() -> None:
+    """
+    Test `hsr4hci.general.crop_center`.
+    """
 
     # Test case 0: Check what happens in dimensions don't match
     with pytest.raises(RuntimeError) as error:
@@ -83,6 +86,9 @@ def test__crop_center() -> None:
 
 
 def test__find_closest() -> None:
+    """
+    Test `hsr4hci.general.find_closest`.
+    """
 
     sequence = [1, 2, 3, 4, 5]
 
@@ -93,6 +99,9 @@ def test__find_closest() -> None:
 
 
 def test__get_from_nested_dict() -> None:
+    """
+    Test `hsr4hci.general.get_from_nested_dict`.
+    """
 
     dictionary = {'a': {'b': 42}}
     result = get_from_nested_dict(dictionary, ['a', 'b'])
@@ -100,6 +109,9 @@ def test__get_from_nested_dict() -> None:
 
 
 def test__set_in_nested_dict() -> None:
+    """
+    Test `hsr4hci.general.set_in_nested_dict`.
+    """
 
     dictionary = {'a': {'b': 42}}
     set_in_nested_dict(dictionary, ['a', 'b'], 23)
@@ -107,6 +119,9 @@ def test__set_in_nested_dict() -> None:
 
 
 def test__prestack_array() -> None:
+    """
+    Test `hsr4hci.general.prestack_array`.
+    """
 
     # Test case 0: stacking_factor = 1
     array = np.random.normal(0, 1, 10)
@@ -149,6 +164,9 @@ def test__prestack_array() -> None:
 
 
 def test__rotate_position() -> None:
+    """
+    Test `hsr4hci.general.rotate_position`.
+    """
 
     # Check for ValueError
     with pytest.raises(ValueError) as error:
@@ -183,6 +201,9 @@ def test__rotate_position() -> None:
 
 
 def test__pad_array_to_shape() -> None:
+    """
+    Test `hsr4hci.general.pad_array_to_shape`.
+    """
 
     # Case 1
     with pytest.raises(ValueError) as error:
@@ -210,6 +231,9 @@ def test__pad_array_to_shape() -> None:
 
 
 def test__crop_or_pad() -> None:
+    """
+    Test `hsr4hci.general.crop_or_pad`.
+    """
 
     # Case 1 (crop)
     result = crop_or_pad(array=np.arange(25).reshape((5, 5)), size=(3, 3))
@@ -228,6 +252,9 @@ def test__crop_or_pad() -> None:
 
 
 def test__shift_image() -> None:
+    """
+    Test `hsr4hci.general.shift_image`.
+    """
 
     # Case 1
     with pytest.raises(ValueError) as error:
@@ -263,6 +290,9 @@ def test__shift_image() -> None:
 
 
 def test__flatten_nested_dict() -> None:
+    """
+    Test `hsr4hci.general.flatten_nested_dict`.
+    """
 
     # Case 1
     d = {'a': 5, 'b': 'foo', 'c': 2.7}

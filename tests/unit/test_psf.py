@@ -18,6 +18,9 @@ from hsr4hci.psf import get_psf_fwhm
 # -----------------------------------------------------------------------------
 
 def test__get_psf_fwhm() -> None:
+    """
+    Test `hsr4hci.psf.get_psf_fwhm`.
+    """
 
     # Case 1
     x, y = np.meshgrid(np.arange(33), np.arange(33))

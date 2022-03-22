@@ -14,9 +14,9 @@ from deepdiff import DeepDiff
 import pytest
 
 from hsr4hci.config import (
-    get_hsr4hci_dir,
     get_datasets_dir,
     get_experiments_dir,
+    get_hsr4hci_dir,
     load_config,
 )
 
@@ -26,6 +26,9 @@ from hsr4hci.config import (
 # -----------------------------------------------------------------------------
 
 def test__load_config(tmp_path_factory: TempPathFactory) -> None:
+    """
+    Test `hsr4hci.config.load_config`.
+    """
 
     # Define location of test config file in temporary directory
     test_dir = tmp_path_factory.mktemp('config', numbered=False)
@@ -57,15 +60,24 @@ def test__load_config(tmp_path_factory: TempPathFactory) -> None:
 
 
 def test__get_hsr4hci_dir() -> None:
+    """
+    Test `hsr4hci.config.get_hsr4hci_dir`.
+    """
 
     assert get_hsr4hci_dir().exists()
 
 
 def test__get_datasets_dir() -> None:
+    """
+    Test `hsr4hci.config.get_datasets_dir`.
+    """
 
     assert get_datasets_dir().exists()
 
 
 def test__get_experiments_dir() -> None:
+    """
+    Test `hsr4hci.config.get_experiments_dir`.
+    """
 
     assert get_experiments_dir().exists()

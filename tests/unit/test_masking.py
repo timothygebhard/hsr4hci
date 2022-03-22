@@ -17,11 +17,11 @@ from hsr4hci.masking import (
     get_annulus_mask,
     get_circle_mask,
     get_exclusion_mask,
+    get_partial_roi_mask,
     get_positions_from_mask,
     get_predictor_mask,
-    get_roi_mask,
-    get_partial_roi_mask,
     get_predictor_pixel_selection_mask,
+    get_roi_mask,
     mask_frame_around_position,
     remove_connected_components,
 )
@@ -362,3 +362,4 @@ def test__mask_around_position() -> None:
     assert np.sum(masked_frame) == 25
     assert masked_frame[5, 9] == 0
     assert masked_frame[9, 5] == 1
+    assert masked_frame[8, 4] == 1

@@ -26,8 +26,10 @@ from hsr4hci.observing_conditions import (
 # TESTS
 # -----------------------------------------------------------------------------
 
-
 def test__observing_conditions() -> None:
+    """
+    Test `hsr4hci.observing_conditions.ObservingConditions`.
+    """
 
     # Case 1: illegal name for observing condition
     input_dict = {'all': np.random.normal(0, 1, 10)}
@@ -104,6 +106,9 @@ def test__observing_conditions() -> None:
 
 
 def test__query_archive() -> None:
+    """
+    Test `hsr4hci.observing_conditions.query_archive`.
+    """
 
     # Case 1
     with pytest.raises(ValueError) as value_error:
@@ -193,6 +198,9 @@ def test__query_archive() -> None:
 
 
 def test__interpolate_observing_conditions() -> None:
+    """
+    Test `hsr4hci.observing_conditions.interpolate_observing_conditions`.
+    """
 
     np.random.seed(423)
 
@@ -240,6 +248,9 @@ def test__interpolate_observing_conditions() -> None:
 
 
 def test__get_observing_conditions() -> None:
+    """
+    Test `hsr4hci.observing_conditions.get_observing_conditions`.
+    """
 
     timestamps = np.arange(1359681191, 1359693381)
     interpolated, query_results = get_observing_conditions(
@@ -249,6 +260,9 @@ def test__get_observing_conditions() -> None:
 
 
 def test__resolve_parameter_name() -> None:
+    """
+    Test `hsr4hci.observing_conditions.resolve_parameter_name`.
+    """
 
     # Case 1
     archive, _, _ = resolve_parameter_name(

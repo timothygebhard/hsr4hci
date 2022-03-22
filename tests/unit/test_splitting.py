@@ -16,14 +16,10 @@ from hsr4hci.splitting import AlternatingSplit
 # TEST CASES
 # -----------------------------------------------------------------------------
 
-def test__errors() -> None:
-
-    with pytest.raises(AssertionError) as error:
-        _ = AlternatingSplit(n_splits=0)
-    assert 'n_splits must be a positive integer!' in str(error)
-
-
-def test__split() -> None:
+def test__alternating_split() -> None:
+    """
+    Test `hsr4hci.splitting.AlternatingSplit`.
+    """
 
     # Test case 1:
     splitter = AlternatingSplit(n_splits=2)
@@ -55,3 +51,8 @@ def test__split() -> None:
     for i in range(1):
         assert np.all(splits_list[i][0] == expectation[i][0])
         assert np.all(splits_list[i][1] == expectation[i][1])
+
+    # Test case 4:
+    with pytest.raises(AssertionError) as error:
+        _ = AlternatingSplit(n_splits=0)
+    assert 'n_splits must be a positive integer!' in str(error)

@@ -13,9 +13,9 @@ import numpy as np
 from hsr4hci.time_conversion import (
     date_string_to_datetime,
     date_string_to_timestamp,
+    round_minutes,
     timestamp_to_date_string,
     timestamp_to_datetime,
-    round_minutes,
 )
 
 
@@ -24,6 +24,9 @@ from hsr4hci.time_conversion import (
 # -----------------------------------------------------------------------------
 
 def test__date_string_to_datetime() -> None:
+    """
+    Test `hsr4hci.time_conversion.date_string_to_datetime`.
+    """
 
     result = date_string_to_datetime(
         date_string='2021-04-30T15:36:29+00:00',
@@ -40,6 +43,9 @@ def test__date_string_to_datetime() -> None:
 
 
 def test__date_string_to_timestamp() -> None:
+    """
+    Test `hsr4hci.time_conversion.date_string_to_timestamp`.
+    """
 
     result = date_string_to_timestamp(
         date_string='2021-04-30T15:36:29+00:00',
@@ -49,6 +55,9 @@ def test__date_string_to_timestamp() -> None:
 
 
 def test__timestamp_to_datetime() -> None:
+    """
+    Test `hsr4hci.time_conversion.timestamp_to_datetime`.
+    """
 
     result = timestamp_to_datetime(
         timestamp=1619796989,
@@ -58,6 +67,9 @@ def test__timestamp_to_datetime() -> None:
 
 
 def test__timestamp_to_date_string() -> None:
+    """
+    Test `hsr4hci.time_conversion.timestamp_to_date_string`.
+    """
 
     result = timestamp_to_date_string(
         timestamp=1619796989,
@@ -75,6 +87,9 @@ def test__timestamp_to_date_string() -> None:
 
 
 def test__round_minutes() -> None:
+    """
+    Test `hsr4hci.time_conversion.round_minutes`.
+    """
 
     dt = datetime(2021, 9, 28, 22, 8, 29, tzinfo=timezone.utc)
 

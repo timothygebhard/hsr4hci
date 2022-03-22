@@ -21,9 +21,9 @@ import pytest
 # noinspection PyProtectedMember
 from hsr4hci.plotting import (
     _add_apertures_and_labels,
+    _add_cardinal_directions,
     _add_colorbar,
     _add_scalebar,
-    _add_cardinal_directions,
     _add_ticks,
     _determine_limit,
     add_colorbar_to_ax,
@@ -42,8 +42,10 @@ from hsr4hci.plotting import (
 # TESTS
 # -----------------------------------------------------------------------------
 
-
-def test_get_cmap() -> None:
+def test__get_cmap() -> None:
+    """
+    Test `hsr4hci.plotting.get_cmap`.
+    """
 
     cmap = get_cmap()
     assert cmap.name == 'RdBu_r'
@@ -52,14 +54,20 @@ def test_get_cmap() -> None:
     )
 
 
-def test_get_transparent_cmap() -> None:
+def test__get_transparent_cmap() -> None:
+    """
+    Test `hsr4hci.plotting.get_transparent_cmap`.
+    """
 
     cmap = get_transparent_cmap('red')
     assert cmap.name == 'from_list'
     assert cmap.colors == [(0, 0, 0, 0), 'red']
 
 
-def test_add_colorbar_to_ax() -> None:
+def test__add_colorbar_to_ax() -> None:
+    """
+    Test `hsr4hci.plotting.add_colorbar_to_ax`.
+    """
 
     fig, ax = plt.subplots()
     img = ax.imshow(np.random.normal(0, 1, (10, 10)))
@@ -88,7 +96,10 @@ def test_add_colorbar_to_ax() -> None:
     plt.close()
 
 
-def test_adjust_luminosity() -> None:
+def test__adjust_luminosity() -> None:
+    """
+    Test `hsr4hci.plotting.adjust_luminosity`.
+    """
 
     # Case 1
     with pytest.raises(ValueError) as error:
@@ -114,7 +125,10 @@ def test_adjust_luminosity() -> None:
     assert np.isclose(color[2], 1.0)
 
 
-def test_disable_ticks() -> None:
+def test__disable_ticks() -> None:
+    """
+    Test `hsr4hci.plotting.disable_ticks`.
+    """
 
     fig, ax = plt.subplots()
     ax.imshow(np.random.normal(0, 1, (10, 10)))
@@ -122,7 +136,10 @@ def test_disable_ticks() -> None:
     plt.close()
 
 
-def test_zerocenter_plot() -> None:
+def test__zerocenter_plot() -> None:
+    """
+    Test `hsr4hci.plotting.zerocenter_plot`.
+    """
 
     fig, ax = plt.subplots()
     ax.plot([-1, 2], [-3, 4])
@@ -145,7 +162,10 @@ def test_zerocenter_plot() -> None:
     plt.close()
 
 
-def test_zerocenter_imshow() -> None:
+def test__zerocenter_imshow() -> None:
+    """
+    Test `hsr4hci.plotting.zerocenter_imshow`.
+    """
 
     data = np.zeros((10, 10))
     data[4, 3] = 10
@@ -161,7 +181,10 @@ def test_zerocenter_imshow() -> None:
     plt.close()
 
 
-def test_set_fontsize() -> None:
+def test__set_fontsize() -> None:
+    """
+    Test `hsr4hci.plotting.get_cmap`.
+    """
 
     fig, ax = plt.subplots()
     ax.set_title('Test')
@@ -171,6 +194,9 @@ def test_set_fontsize() -> None:
 
 
 def test__determine_limit() -> None:
+    """
+    Test `hsr4hci.plotting.determine_limit`.
+    """
 
     # Case 1
     frame = np.arange(10_000).reshape(100, 100)
@@ -190,7 +216,10 @@ def test__determine_limit() -> None:
     assert np.isclose(limit, 3)
 
 
-def test__add_apertures_and_labels() -> None:
+def test___add_apertures_and_labels() -> None:
+    """
+    Test `hsr4hci.plotting._add_apertures_and_labels`.
+    """
 
     fig, ax = plt.subplots()
     ax.imshow(np.zeros((50, 50)))
@@ -240,7 +269,10 @@ def test__add_apertures_and_labels() -> None:
     plt.close()
 
 
-def test__add_scalebar() -> None:
+def test___add_scalebar() -> None:
+    """
+    Test `hsr4hci.plotting._add_scalebar`.
+    """
 
     fig, ax = plt.subplots()
     ax.imshow(np.zeros((50, 50)))
@@ -256,7 +288,10 @@ def test__add_scalebar() -> None:
     plt.close()
 
 
-def test__add_cardinal_directions() -> None:
+def test___add_cardinal_directions() -> None:
+    """
+    Test `hsr4hci.plotting._add_cardinal_directions`.
+    """
 
     fig, ax = plt.subplots()
     ax.imshow(np.zeros((50, 50)))
@@ -267,7 +302,10 @@ def test__add_cardinal_directions() -> None:
     plt.close()
 
 
-def test__add_ticks() -> None:
+def test___add_ticks() -> None:
+    """
+    Test `hsr4hci.plotting._add_ticks`.
+    """
 
     fig, ax = plt.subplots()
     ax.imshow(np.zeros((50, 50)))
@@ -278,7 +316,10 @@ def test__add_ticks() -> None:
     plt.close()
 
 
-def test__add_colorbar() -> None:
+def test___add_colorbar() -> None:
+    """
+    Test `hsr4hci.plotting._add_colorbar`.
+    """
 
     fig, ax = plt.subplots()
     img = ax.imshow(np.random.normal(0, 1, (50, 50)))
@@ -293,6 +334,9 @@ def test__add_colorbar() -> None:
 
 
 def test_plot_frame(tmp_path_factory: TempPathFactory) -> None:
+    """
+    Test `hsr4hci.plotting.plot_frame`.
+    """
 
     test_dir = tmp_path_factory.mktemp('plotting', numbered=False)
     frame = np.random.normal(0, 1, (51, 51))

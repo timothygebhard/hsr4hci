@@ -9,9 +9,9 @@ Tests for typehinting.py
 import pytest
 
 from hsr4hci.typehinting import (
-    RegressorModel,
     BaseLinearModel,
     BaseLinearModelCV,
+    RegressorModel,
 )
 
 
@@ -20,6 +20,9 @@ from hsr4hci.typehinting import (
 # -----------------------------------------------------------------------------
 
 def test__regressor_model() -> None:
+    """
+    Test `hsr4hci.typehinting.RegressorModel`.
+    """
 
     with pytest.raises(TypeError) as type_error:
         RegressorModel()  # type: ignore
@@ -27,6 +30,9 @@ def test__regressor_model() -> None:
 
 
 def test__base_linear_model() -> None:
+    """
+    Test `hsr4hci.typehinting.BaseLinearModel`.
+    """
 
     with pytest.raises(TypeError) as type_error:
         BaseLinearModel()  # type: ignore
@@ -34,6 +40,9 @@ def test__base_linear_model() -> None:
 
 
 def test__base_linear_model_cv() -> None:
+    """
+    Test `hsr4hci.typehinting.BaseLinearModelCV`.
+    """
 
     with pytest.raises(TypeError) as type_error:
         BaseLinearModelCV()  # type: ignore
