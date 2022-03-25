@@ -22,13 +22,15 @@ To get started, clone this repository and install `hsr4hci` as a Python package:
 ```
 git clone git@github.com:timothygebhard/hsr4hci.git
 cd hsr4hci
-pip install .
+pip install -e .
 ```
+
+The `-e` option installs the package in "edit mode", which ensures that runs directly from the folder that you got by cloning this repository, instead of being copied to the `site-package` of your Python installation (a location where you usually would not want to store, e.g., data set files).
 
 If you want to use "developer options" (e.g., run unit tests), change the last line to:
 
 ```
-pip install ".[develop]"
+pip install -e ".[develop]"
 ```
 
 **Note:** The code was written for Python 3.8 and above; earlier versions will likely require some small modifications.
