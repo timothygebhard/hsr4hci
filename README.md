@@ -45,7 +45,7 @@ Please check out the [README file in the `datasets` directory](https://github.co
 ## 🧪 (Re)-running our experiments
 
 All of our experiments can be found in the `experiments` directory, where we keep [another README](https://github.com/timothygebhard/hsr4hci/tree/master/experiments) with more instructions for how to replicate our results.
-A good starting point if you are just getting started could the to run the demo experiment that we have prepared in the [`demo` directory](https://github.com/timothygebhard/hsr4hci/tree/master/demo).
+A good starting point if you are just getting started could the to run the demo experiment that we have prepared in the [`demo` directory](https://github.com/timothygebhard/hsr4hci/tree/master/experiments/demo).
 
 ## 🐭 Tests
 
