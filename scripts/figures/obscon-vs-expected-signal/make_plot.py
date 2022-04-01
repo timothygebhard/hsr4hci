@@ -121,7 +121,8 @@ if __name__ == '__main__':
 
     # Fit a linear model: basically test how well we can express the expected
     # signal by the observing condition
-    model = LinearRegression().fit(X=array.reshape(-1, 1), y=expected_signal)
+    model = LinearRegression()
+    model.fit(X=array.reshape(-1, 1), y=expected_signal)
     prediction = model.predict(array.reshape(-1, 1))
 
     # -------------------------------------------------------------------------
@@ -170,22 +171,11 @@ if __name__ == '__main__':
     ax1.tick_params(axis='y', labelcolor='C0')
     ax2.tick_params(axis='y', labelcolor='C1')
 
-    # Add a grid (only for the x-axis)
-    ax1.grid(
-        b=True,
-        which='both',
-        axis='x',
-        lw=1,
-        alpha=0.3,
-        dash_capstyle='round',
-        dashes=(0, 2),
-    )
-
     # -------------------------------------------------------------------------
     # Add a legend and save the plot as a PDF
     # -------------------------------------------------------------------------
 
-    # Manually add a legend to to plot
+    # Manually add a legend to the plot
     handles = [
         Line2D([0], [0], color='black', lw=2),
         Line2D([0], [0], color='C0', lw=2),

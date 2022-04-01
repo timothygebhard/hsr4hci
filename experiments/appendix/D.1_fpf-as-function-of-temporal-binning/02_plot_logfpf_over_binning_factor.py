@@ -175,8 +175,7 @@ if __name__ == '__main__':
         location='top', functions=(lambda x: dit * x, lambda x: x / dit)
     )
 
-    # Add a grid and a legend to the plot
-    ax1.grid(which='both', color='lightgray', ls='--')
+    # Add a legend to the plot
     ax1.legend(
         loc='lower center',
         ncol=8,

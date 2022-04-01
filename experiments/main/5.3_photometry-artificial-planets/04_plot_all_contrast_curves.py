@@ -200,17 +200,9 @@ if __name__ == '__main__':
     ax.set_ylim(max_contrast + 0.5, min_contrast - 0.5)
     ax.set_yticks(np.arange(min_contrast, max_contrast + 1))
 
-    # Adjust fontsize and add grid
+    # Adjust fontsize
     set_fontsize(ax=ax, fontsize=6)
     set_fontsize(ax=ax2, fontsize=6)
-    ax.grid(
-        visible=True,
-        which='both',
-        lw=1,
-        alpha=0.3,
-        dash_capstyle='round',
-        dashes=(0, 2),
-    )
 
     # Add legend
     ax.legend(

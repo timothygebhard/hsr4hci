@@ -218,17 +218,7 @@ if __name__ == '__main__':
     ax.set_xlabel('Time (UTC)')
     ax.set_ylabel('Air pressure (hPa)')
 
-    # Add grid
-    ax.grid(
-        b=True,
-        which='both',
-        lw=1,
-        alpha=0.3,
-        dash_capstyle='round',
-        dashes=(0, 2),
-    )
-
-    # Add legend to
+    # Add legend
     ax.legend(
         fontsize=6,
         ncol=4,

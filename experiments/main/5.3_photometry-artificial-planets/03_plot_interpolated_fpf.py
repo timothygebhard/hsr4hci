@@ -105,14 +105,6 @@ if __name__ == '__main__':
     # Setup various options for all axes
     for ax in axes:
         set_fontsize(ax=ax, fontsize=6)
-        ax.grid(
-            visible=True,
-            which='both',
-            lw=1,
-            alpha=0.3,
-            dash_capstyle='round',
-            dashes=(0, 2),
-        )
         ax.axhline(y=threshold, ls='--', color='black', lw=1)
         ax.set_ylim(0, 100)
         ax.set_ylabel(r'$-\mathrm{log}_\mathrm{10}(\mathrm{FPF})$')
