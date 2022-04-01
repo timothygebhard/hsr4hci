@@ -39,13 +39,13 @@ pip install -e ".[develop]"
 ## 🪐 Data sets
 
 To run any experiments or reproduce our results, you will first need to [download](https://doi.org/10.17617/3.LACYPN) or create some data sets in the right format.
-Please check out the [README file in the `datasets` directory](https://github.com/timothygebhard/hsr4hci/tree/master/datasets) for more detailed information on how to do this.
+Please check out the [README file in the *datasets* directory](https://github.com/timothygebhard/hsr4hci/tree/master/datasets) for more detailed information on how to do this.
 
 
 ## 🧪 (Re)-running our experiments
 
 All of our experiments can be found in the `experiments` directory, where we keep [another README](https://github.com/timothygebhard/hsr4hci/tree/master/experiments) with more instructions for how to replicate our results.
-A good starting point if you are just getting started could the to run the demo experiment that we have prepared in the [`demo` directory](https://github.com/timothygebhard/hsr4hci/tree/master/experiments/demo).
+A good starting point if you are just getting started could the to run the demo experiment that we have prepared in the [*demo* directory](https://github.com/timothygebhard/hsr4hci/tree/master/experiments/demo).
 
 ## 🐭 Tests
 
@@ -66,6 +66,11 @@ To cite this work, feel free to use the following BibTeX entry:
 ```
 [TODO: Add BibTeX entry]
 ```
+
+
+## ✏️ Authors
+
+All code was written by Timothy Gebhard, with some contributions from Markus Bonse.
 
 
 ## ⚖️ License and copyright
