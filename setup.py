@@ -55,6 +55,13 @@ setup(
             'mypy~=0.920',
             'pytest~=6.2.5',
             'pytest-cov~=3.0.0',
+        ],
+        'docs': [
+            'furo',
+            'myst-parser',
+            'sphinx',
+            'sphinx-copybutton',
+            'sphinx-math-dollar',
         ]
     },
     packages=find_packages(),
