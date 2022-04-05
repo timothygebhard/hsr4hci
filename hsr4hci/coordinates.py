@@ -26,10 +26,10 @@ def get_center(frame_size: Tuple[int, int]) -> Tuple[float, float]:
     image is located at (-0.5, -0.5).
 
     This function is essentially a simplified port of the corresponding
-    PynPoint function `pynpoint.util.image.center_subpixel()`.
+    PynPoint function :py:func:`pynpoint.util.image.center_subpixel()`.
 
     Args:
-        frame_size: A tuple of integers `(width, height)` specifying
+        frame_size: A tuple of integers `(x_size, y_size)` specifying
             the size of the images (in pixels).
 
     Returns:
@@ -50,19 +50,19 @@ def polar2cartesian(
     coordinates (in pixels).
 
     Args:
-        separation: Separation from the center (as a Quantity object
+        separation: Separation from the center (as a ``Quantity`` object
             that can be converted to pixels).
         angle: Angle, measured from the up = North direction (this
             corresponds to a -90° offset compared to "normal" polar
-            coordinates), as a Quantity object that can be converted
+            coordinates), as a ``Quantity`` object that can be converted
             to degrees or radian.
-        frame_size: A 2-tuple `(width, height)` of integers specifying
+        frame_size: A 2-tuple `(x_size, y_size)` of integers specifying
             the size of the frame that we are working with.
 
     Returns:
         A 2-tuple `(x, y)` containing the Cartesian representation of
         the position specified by the `(separation, angle)` tuple.
-        The Cartesian representation uses the astropy-convention for the
+        The Cartesian representation uses the astropy convention for the
         position of the origin, and the numpy convention for the order
         of the dimensions.
     """
@@ -99,10 +99,11 @@ def cartesian2polar(
             the size of the frame that we are working with.
 
     Returns:
-        A tuple `(separation, angle)`, where `separation` is a Quantity
-        in pixels, and `angle` is a Quantity in radian. The `angle` uses
-        the astronomical convention for polar coordinates, that is, 0 is
-        "up", not "right" (unlike in mathematical polar coordinates).
+        A 2-tuple `(separation, angle)`, where the `separation` is a
+        ``Quantity`` in pixels, and `angle` is a ``Quantity`` in radian.
+        The `angle` uses the astronomical convention for polar
+        coordinates, that is, 0 is "up", not "right" (unlike in
+        mathematical polar coordinates).
     """
 
     # Get coordinates of image center

@@ -1,6 +1,6 @@
 """
-Methods for finding hypotheses of the form (Y, T), that is, pixel Y
-seems to contain a planet signal at time T.
+Methods for finding hypotheses of the form `(Y, T)`, that is, pixel `Y`
+seems to contain a planet signal at time `T`.
 """
 
 # -----------------------------------------------------------------------------
@@ -36,8 +36,8 @@ def get_all_hypotheses(
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     This is a convenience function which wraps the loop over the ROI
-    to call `get_hypothesis_for_position()` for every spatial pixel.
-    See there for a full documentation of all parameters.
+    to call :func:`get_hypothesis_for_position()` for every spatial
+    pixel. See there for a full documentation of all parameters.
     """
 
     # Initialize array for hypotheses and similarities
@@ -76,14 +76,14 @@ def get_hypothesis_for_position(
 ) -> Tuple[float, float]:
     """
     Take a dictionary containing the full training results and find,
-    for a given spatial `position`, the time T at which we suspect
+    for a given spatial ``position``, the time `T` at which we suspect
     there to be a planet at the position. If there is no time at which
-    the residuals look like the contain a planet, return NaN.
+    the residuals look like the contain a planet, return `NaN`.
 
     Args:
         residuals: A dictionary containing the residuals of all models
-            that we have trained. The keys should be "default", "0",
-            ..., "N", where the latter are the signal times of the
+            that we have trained. The keys should be `"default"`, `"0"`,
+            ..., `"N"`, where the latter are the signal times of the
             temporal grid that was used during training, and each key
             should map to a 3D numpy array consisting of the residuals
             for the respective model.
@@ -95,7 +95,7 @@ def get_hypothesis_for_position(
         n_signal_times: An integer specifying the number of different
             signal times, that is, the size of the temporal grid that
             was used during training.
-        frame_size: A tuple `(width, height)` specifying the size (in
+        frame_size: A tuple `(x_size, y_size)` specifying the size (in
             pixels) of the frames that we are working with.
         psf_template: A 2D numpy array containing the unsaturated PSF
             template for the data set.
@@ -109,7 +109,7 @@ def get_hypothesis_for_position(
         `position`, and `score` is the corresponding cosine similarity
         between the expected and the observed signal.
         If the `position` does not seem to contain a planet signal at
-        any time, both of these values are NaN.
+        any time, both of these values are `NaN`.
     """
 
     # Initialize variables in which we store the optimum

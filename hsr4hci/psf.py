@@ -22,11 +22,11 @@ from hsr4hci.general import crop_center
 
 def get_psf_fwhm(psf_template: np.ndarray) -> float:
     """
-    Fit a symmetric 2D Gaussian to the given `psf_template` to estimate
-    the full width half maximum (FWHM) of the central "blob".
+    Fit a symmetric 2D Gaussian to the given ``psf_template`` to
+    estimate the full width half maximum (FWHM) of the central "blob".
 
     Args:
-        psf_template: A 2D numpy array containing the raw, unsaturated
+        psf_template: A 2D numpy array containing the unsaturated
             PSF template.
 
     Returns:

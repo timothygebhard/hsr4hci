@@ -35,10 +35,11 @@ def assemble_residual_stack_from_hypotheses(
     residuals: Union[h5py.File, Dict[str, np.ndarray]],
 ) -> np.ndarray:
     """
-    Assemble the residual stack based on the `selection_mask` and the
-    `hypotheses`: For each spatial pixel where the `selection_mask` is
-    True, use the residual from the model given by the respective entry
-    in `hypotheses`; for all other pixels, use the "default" residual.
+    Assemble the residual stack based on the ``selection_mask`` and the
+    given ``hypotheses``:
+    For each spatial pixel where the ``selection_mask`` is `True`, use
+    the residual from the model given by the respective entry in
+    ``hypotheses``; for all other pixels, use the "default" residual.
 
     Args:
         hypotheses: A 2D numpy array of shape `(x_size, y_size)`. Each
@@ -51,12 +52,12 @@ def assemble_residual_stack_from_hypotheses(
             default residual is used and for which pixel the residual
             based on signal fitting / masking is used.
         residuals: The dictionary, or an open HDF file, which contains
-            the full results from training both the "default" and the
-            models based on signal fitting / masking.
+            the full results from training both the "default" (vanilla)
+            and the models based on signal fitting / masking.
 
     Returns:
         A 3D numpy array (whose shape matches the stack) containing the
-        "best" residuals based on the given the `hypotheses`.
+        "best" residuals based on the given the ``hypotheses``.
     """
 
     # Initialize the result as the default residuals
@@ -275,10 +276,11 @@ def get_residual_selection_mask(
     psf_template: np.ndarray,
     grid_size: int = 128,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """
-    Based on the `match_fraction`, determine the `selection_mask`, that
-    is, the mask that decides for which pixels we use the default model
-    and for which we use the model based in signal fitting / masking.
+    r"""
+    Based on the ``match_fraction``, determine the ``selection_mask``,
+    that is, the mask that decides for which pixels we use the default
+    model and for which we use the model based on signal fitting or
+    signal masking.
 
     Ideally, it would be sufficient to simply threshold the match
     fraction to obtain the selection mask. In practice, however, this
@@ -286,13 +288,13 @@ def get_residual_selection_mask(
     Therefore, this function uses the following, more complex heuristic:
 
         1. Convert the match fraction from Cartesian to polar
-           coordinates (r, theta).
+           coordinates $(\rho, \phi)$.
         2. In polar coordinates, the planet signal is translation
            invariant; and even more importantly, we know exactly how
            it should look like. We can, therefore, compute a cross-
            correlation with the expected signal.
         3. In the result of this template matching, we can find peaks,
-           which correspond to the (r, theta) position of the planet
+           which correspond to the $(\rho, \phi)$ position of the planet
            signals in the match fraction.
         4. Based on these peaks, we explicitly construct the selection
            mask. These masks are more interpretable and will not contain
@@ -314,26 +316,27 @@ def get_residual_selection_mask(
             values can give better results, but slow things down.
 
     Returns:
-        A 5-tuple of numpy array, containing:
-        (1) The selection mask, that is, a 2D numpy array containing a
-            binary mask that can be used to select the pixels for which
-            the residuals based on signal fitting / signal masking
-            should be used.
-        (2) The polar projection, that is, a 2D numpy array of shape
-            `(grid_size, grid_size)` containing the polar projection
-            of the match fraction (mostly for debugging purposes).
-        (3) The output of the template matching ("heatmaps"), which has
-            the same shape as (3). This is the cross-correlation of
-            the polar projection with the expected signal.
-        (4) The expected signal, that is, a 2D numpy array of shape
-            `(grid_size, grid_size)` that contains the (approximate)
-            expected planet signal that we would hope to find in the
-            polar projections.
-        (5) The positions of the (centers) of the planet trace arcs,
-            as found by the cross-correlation procedure, that is, a 2D
-            numpy array of shape `(N, 2)` where `N` is the number of
-            found planet traces. Each tuple consists of the separation
-            and the polar angle (in radian).
+        A 5-tuple of numpy array, consisting of
+
+        1. The final ``selection_mask``, that is, a 2D numpy array
+           containing a binary mask that can be used to select the
+           pixels for which the residuals based on signal fitting or
+           signal masking should be used.
+        2. The ``polar`` projection, that is, a 2D numpy array of shape
+           `(grid_size, grid_size)` containing the polar projection
+           of the match fraction (mostly for debugging purposes).
+        3. The output of the template matching ("heatmap"), which has
+           the same shape as (2). This is the cross-correlation of
+           the polar projection with the expected signal.
+        4. The template / expected signal, that is, a 2D numpy array of
+           shape `(grid_size, grid_size)` that contains the approximate
+           expected planet signal that we would hope to find in the
+           polar projections.
+        5. The positions of the (centers) of the planet trace arcs,
+           as found by the cross-correlation procedure, that is, a 2D
+           numpy array of shape `(N, 2)` where `N` is the number of
+           found planet traces. Each tuple consists of the separation
+           and the polar angle (in radian).
     """
 
     # -------------------------------------------------------------------------

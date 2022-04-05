@@ -28,11 +28,11 @@ def date_string_to_datetime(
     a Python datetime object.
 
     Args:
-        date_string: A datetime as a string (e.g., "2007-04-05T14:30").
+        date_string: A datetime string (e.g., `"2007-04-05T14:30"`).
         tzinfo: A timezone object. Usually, everything should be in UTC.
 
     Returns:
-        A datetime object that matches the given `date_string`.
+        A ``datetime`` object that matches the given ``date_string``.
     """
 
     # Decode the date string if necessary (this is sometimes necessary when
@@ -49,15 +49,15 @@ def date_string_to_timestamp(
     tzinfo: timezone = timezone.utc,
 ) -> float:
     """
-    Convert a date_string (usually ISO 8061 for FITS files) to a UNIX
-    timestamp (i.e., seconds since January 1, 1970).
+    Convert a ``date_string`` (usually ISO 8061 for FITS files) to a
+    UNIX timestamp (i.e., seconds since January 1, 1970).
 
     Args:
-        date_string: A datetime as a string (e.g., "2007-04-05T14:30").
+        date_string: A datetime string (e.g., `"2007-04-05T14:30"`).
         tzinfo: A timezone object. Usually, everything should be in UTC.
 
     Returns:
-        A timestamp (as a float) that matches the given `date_string`.
+        A timestamp (as a float) that matches the given ``date_string``.
     """
     return date_string_to_datetime(date_string, tzinfo=tzinfo).timestamp()
 
@@ -91,7 +91,7 @@ def timestamp_to_date_string(
         timestamp: A UNIX timestamp (as a float).
         tzinfo: A timezone object. Usually, everything should be in UTC.
         include_timezone: Whether to include the time zone information
-            in the string (e.g., "+00:00").
+            in the string (e.g., `"+00:00"`).
 
     Returns:
         An ISO 8061-formatted string that matches the given timestamp.
@@ -107,17 +107,18 @@ def round_minutes(
     resolution: float = 5,
 ) -> datetime:
     """
-    Auxiliary function to round the minutes of a given datetime `dt`
-    to the desired `resolution` (e.g., closest 5 minutes). Seconds
+    Auxiliary function to round the minutes of a given datetime ``dt``
+    to the desired ``resolution`` (e.g., closest 5 minutes). Seconds
     and milliseconds are discarded.
 
     Args:
-        dt: A `datetime` object.
-        direction: Either "up" or "down" (direction of rounding).
-        resolution: Resolution (round to closest `resolution` minutes).
+        dt: A ``datetime`` object.
+        direction: Either `"up"` or `"down"` (direction of rounding).
+        resolution: Resolution (round to closest ``resolution``
+            minutes).
 
     Returns:
-        The given datetime `dt` rounded to the target `resolution`.
+        The given datetime ``dt`` rounded to the target ``resolution``.
     """
 
     # Compute new value for minute

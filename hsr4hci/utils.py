@@ -17,9 +17,9 @@ import numpy as np
 
 def check_consistent_size(*arrays: np.ndarray, axis: int = 0) -> bool:
     """
-    Check that all `arrays` have a consistent size along the given
-    `axis`. Can be used, for example, to ensure that a given `stack`
-    and `parang` have the same number of frames.
+    Check that all ``arrays`` have a consistent size along the given
+    ``axis``. Can be used, for example, to ensure that a given ``stack``
+    and ``parang`` have the same number of frames.
 
     Args:
         *arrays: The (numpy) arrays that will be checked.
@@ -27,8 +27,8 @@ def check_consistent_size(*arrays: np.ndarray, axis: int = 0) -> bool:
             default, this is the temporal axis (axis = 0).
 
     Returns:
-        None if all `arrays` have consistent sizes; otherwise, a
-        ValueError is raised.
+        `None` if all ``arrays`` have consistent sizes; otherwise, a
+        ``ValueError`` is raised.
     """
 
     # Make sure that all our arguments are actually arrays
@@ -48,7 +48,7 @@ def check_consistent_size(*arrays: np.ndarray, axis: int = 0) -> bool:
 
 def check_frame_size(frame_size: Any) -> bool:
     """
-    Check if a given `frame_size` tuple represents a valid frame size
+    Check if a given ``frame_size`` tuple represents a valid frame size
     (i.e., is a 2-tuple of positive integers).
 
     Args:
@@ -56,8 +56,8 @@ def check_frame_size(frame_size: Any) -> bool:
             valid frame size.
 
     Returns:
-        None if `frame_size` is a valid frame size; otherwise, a
-        ValueError is raised.
+        `None` if ``frame_size`` is a valid frame size; otherwise, a
+        ``ValueError`` is raised.
     """
 
     if not (
@@ -76,18 +76,18 @@ def check_cartesian_position(
     require_int: bool = False,
 ) -> bool:
     """
-    Check if a given `position` represents a valid Cartesian position
+    Check if a given ``position`` represents a valid Cartesian position
     (i.e., is a 2-tuple of floats or integers).
 
     Args:
         position: Variable to check whether it is a valid position.
         require_int: Whether we require all entries of the position to
-            be integers (e.g., because we want to use `position` to
+            be integers (e.g., because we want to use ``position`` to
             index an array).
 
     Returns:
-        None is `position` is a valid Cartesian position; otherwise, a
-        ValueError is raised.
+        `None` is ``position`` is a valid Cartesian position; otherwise,
+        a ``ValueError`` is raised.
     """
 
     # Ensure that position is a 2-tuple of integers or floats

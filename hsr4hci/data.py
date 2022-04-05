@@ -26,12 +26,12 @@ from hsr4hci.observing_conditions import ObservingConditions
 
 def _resolve_name_or_path(name_or_path: Union[str, Path]) -> Path:
     """
-    Resolve a given `name_or_path` to the file path of an HDF file.
+    Resolve a given ``name_or_path`` to the file path of an HDF file.
 
     Args:
         name_or_path: Either a string or a Path. In case it is a string,
             it is assumed it is the name of a data set in the hsr4hci
-            `datasets` directory, and the corresponding file path is
+            ``datasets`` directory, and the corresponding file path is
             constructed. In case it is a Path (or a string that contains
             a slash), it is assumed that this is the path to the target
             HDF file, so we return it without any modifications. In all
@@ -79,7 +79,7 @@ def load_parang(
     Load the parallactic angles.
 
     Args:
-        name_or_path: Name of a data set (e.g., "beta_pictoris__lp"),
+        name_or_path: Name of a data set (e.g., `"beta_pictoris__lp"`),
             or Path to the HDF file that contains a data set.
         binning_factor: Number of time steps that should be temporally
             binned ("pre-stacked") using a block-wise mean.
@@ -106,7 +106,7 @@ def load_psf_template(name_or_path: Union[str, Path], **_: Any) -> np.ndarray:
     Load the unsaturated PSF template.
 
     Args:
-        name_or_path: Name of a data set (e.g., "beta_pictoris__lp"),
+        name_or_path: Name of a data set (e.g., `"beta_pictoris__lp"`),
             or Path to an HDF file that contains the data set.
 
     Returns:
@@ -138,14 +138,13 @@ def load_observing_conditions(
     Load the observing conditions.
 
     Args:
-        name_or_path: Name of a data set (e.g., "beta_pictoris__lp"),
+        name_or_path: Name of a data set (e.g., `"beta_pictoris__lp"`),
             or Path to an HDF file that contains the data set.
         binning_factor: Number of time steps that should be temporally
             binned ("pre-stacked") using a block-wise mean.
 
     Returns:
-        An `ObservingConditions` object containing the observing
-        conditions.
+        An object containing the observing conditions.
     """
 
     # Get the path to the HDF file that contains the data to be loaded
@@ -179,7 +178,7 @@ def load_metadata(name_or_path: Union[str, Path], **_: Any) -> dict:
     Load the metadata.
 
     Args:
-        name_or_path: Name of a data set (e.g., "beta_pictoris__lp"),
+        name_or_path: Name of a data set (e.g., `"beta_pictoris__lp"`),
             or Path to an HDF file that contains the data set.
 
     Returns:
@@ -348,7 +347,7 @@ def load_dataset(
     PSF template, the observing conditions and the metadata all at once.
 
     Args:
-        name_or_path: Name of a data set (e.g., "beta_pictoris__lp"),
+        name_or_path: Name of a data set (e.g., `"beta_pictoris__lp"`),
             or Path to an HDF file that contains the data set.
         binning_factor: Number of frames that should be temporally
             binned ("pre-stacked") using a block-wise mean.
@@ -360,7 +359,7 @@ def load_dataset(
             a "clean" stack is required.
 
     Returns:
-         A 5-tuple: `(stack, parang, psf_template, obs_con, metadata)`.
+         The 5-tuple `(stack, parang, psf_template, obs_con, metadata)`.
     """
 
     stack = load_stack(

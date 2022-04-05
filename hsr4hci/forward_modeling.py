@@ -76,38 +76,39 @@ def add_fake_planet(
     interpolation: str = 'bilinear',
 ) -> Union[np.ndarray, Tuple[np.ndarray, List[Tuple[float, float]]]]:
     """
-    Add a fake planet to the given `stack` which, when derotating and
-    merging the stack, will show up at the given `position`.
+    Add a fake planet to the given ``stack`` which, when derotating and
+    merging the stack, will show up at the given ``position``.
 
     This function can also be used to *remove* planets from a stack by
-    setting the `psf_scaling` to a negative number.
+    setting the ``psf_scaling`` to a negative number.
 
     If you simply want to use this function to generate a fake signal
-    stack, set `stack` to all zeros, the `magnitude` to zero, both the
-    `dit_stack` and `dit_psf_template` to 1 (or any other non-zero
-    number), and use the `extra_scaling` factor to linearly control
-    the brightness of the injected planet.
+    stack, set ``stack`` to all zeros, the ``magnitude`` to zero, both
+    the ``dit_stack`` and ``dit_psf_template`` to 1 (or any other
+    non-zero number), and use the `extra_scaling` factor to linearly
+    control the "brightness" of the injected planet.
 
     This function is essentially a simplified port of the corresponding
-    PynPoint function `pynpoint.util.analysis.fake_planet()`.
+    PynPoint function :py:func:`pynpoint.util.analysis.fake_planet()`.
 
     Args:
         stack: A 3D numpy array of shape `(n_frames, width, height)`
             which contains the stack of images / frames into which we
             want to inject a fake planet.
-        parang: A 1D numpy array of shape `(n_frames, )` that contains
+        parang: A 1D numpy array of shape `(n_frames,)` that contains
             the respective parallactic angle for every frame in `stack`.
         psf_template: A 2D numpy array that contains the (centered) PSF
             template which will be used for the fake planet.
-            This should *not* be normalized to (0, 1] if we want to work
-            with actual astrophysical magnitudes for the contrast.
+            This should *not* be normalized to `(0, 1]` if we want to
+            work with actual astrophysical magnitudes for the contrast.
         polar_position: A tuple `(separation, angle)` which specifies
             the position at which the planet will show up after
-            de-rotating with `parang`. `separation` needs to be a
-            Quantity that can be converted to pixel; `angle` needs to
-            be a Quantity that can be converted to radian. Additionally,
-            `angle` should be using *astronomical* polar coordinates,
-            that is, 0 degrees will be "up" (= North), not "right".
+            de-rotating with ``parang``. ``separation`` needs to be a
+            ``Quantity`` that can be converted to pixel; `angle` needs
+            to be a ``Quantity`` that can be converted to radian.
+            Additionally, ``angle`` should be using *astronomical* polar
+            coordinates, that is, 0 degrees will be "up" (= North), not
+            "right".
             This function will internally add 90° to the angles to
             convert them to mathematical pilar coordinates.
         magnitude: The magnitude difference used to scale the PSF.
@@ -115,7 +116,7 @@ def add_fake_planet(
             that increasing this value by a factor of 5 will result in
             a planet that is 100 times brighter. In case you want to
             keep things linear, set this value to 0 and only use the
-            `psf_scaling` parameter.
+            ``psf_scaling`` parameter.
         extra_scaling: An additional scaling factor that is used for
             the PSF template.
             This number is simply multiplied with the PSF template,
@@ -123,28 +124,30 @@ def add_fake_planet(
             logarithmic scale. For example, you could use `-1` to add a
             *negative* planet to remove an actual planet in the data.
             This can also be used to incorporate an additional dimming
-            factor due to a
+            factor due to a neutral density (ND) filter.
         dit_stack: The detector integration time of the frames in the
-            `stack` (in seconds). Necessary to compute the correct
+            ``stack`` (in seconds). Necessary to compute the correct
             scaling factor for the planet that we inject.
         dit_psf_template: The detector integration time of the
-            `psf_template` (in seconds). Necessary to compute the
+            ``psf_template`` (in seconds). Necessary to compute the
             correct scaling factor for the planet that we inject.
         return_planet_positions: Whether to return the (Cartesian)
             positions at which the fake planet was injected, as a
             2D numpy array of shape `(n_frames, 2)`.
-        interpolation: interpolation argument that is passed to the
-            `scipy.ndimage.shift()` routine that is used internally.
+        interpolation: ``interpolation`` argument that is passed to
+            :py:func:`scipy.ndimage.shift` that is used internally.
 
     Returns:
         A 3D numpy array of shape `(n_frames, width, height)` which
-        contains the original `stack` into which a fake planet has been
-        injected, as well as a list of tuples `(x, y)` that, for each
-        frame, contain the position at which the fake planet has been
-        added.
-        If desired, additionally also a 2D numpy array of shape
-        `(n_frames, 2)` containing the Cartesian positions at which
-        the fake planet has been injected.
+        contains the original ``stack`` into which a fake planet has
+        been injected, as well as a list of tuples `(x, y)` that, for
+        each frame, contain the position at which the fake planet has
+        been added.
+
+        If desired (i.e., if ``return_planet_positions`` is ``True``),
+        the function also returns a 2D numpy array of shape
+        `(n_frames, 2)` containing the Cartesian positions at which the
+        fake planet has been injected.
     """
 
     # Make sure that the stack and the parallactic angles are compatible
@@ -215,26 +218,28 @@ def get_time_series_for_position(
     interpolation: str = 'bilinear',
 ) -> np.ndarray:
     """
-    Compute the expected signal time series for a pixel at `position`
+    Compute the expected signal time series for a pixel at ``position``
     under the assumption that the planet signal is centered on this
-    pixel at the given `signal_time`.
+    pixel at the given ``signal_time``.
 
     If we are only interested in a single such time series, using this
     function will be *dramatically* faster than computing the full stack
-    using `get_signal_stack()` and selecting the position of interest.
+    using :func:`get_signal_stack()` and selecting the position of
+    interest.
 
     The idea behind this function is that we can get the time series of
     interest (or a reasonably good approximation of it) by creating a
     single frame of all zeros, into which we place the PSF template at
-    the target `position`, and then sample this array along the implied
-    path (determined by the fact that the signal is supposed to be at
-    `position` at the `signal_time`) of the planet. This avoids the
-    computationally expensive generation of the full stack (of which
-    only a single spatial pixel would be used). The exact speed-up of
-    this version depends on the number of frames, but is typically on
-    the order of a factor of 10^2 to 10^3.
+    the target ``position``, and then sample this array along the
+    implied path (determined by the fact that the signal is supposed to
+    be at ``position`` at the ``signal_time``) of the planet. This
+    avoids the computationally expensive generation of the full stack
+    (of which only a single spatial pixel would be used). The exact
+    speed-up of this version depends on the number of frames, but is
+    typically on the order of a factor of $10^2$ to $10^3$.
 
-    Note: This function uses the *numpy convention* for `position`!
+    .. note:
+        This function uses the *numpy convention* for `position`!
 
     Args:
         position: A tuple `(x, y)` for which we want to compute the
@@ -246,14 +251,15 @@ def get_time_series_for_position(
             of the stack.
         parang: A numpy array containing the parallactic angle for
             every frame.
-        psf_template: A numpy array containing the cropped and masked
-            PSF template, as it is returned by `crop_psf_template()`.
-        interpolation: interpolation parameter that is passed to the
-            `shift_image()` function. Default is "bilinear".
+        psf_template: A 2D numpy array containing the unsaturated PSF
+            template.
+        interpolation: ``interpolation`` parameter that is passed to
+            the :func:`hsr4hci.general.shift_image` function. Default
+            is `"bilinear"`.
 
     Returns:
-        The time series for `position` computed under the hypothesis for
-        the planet movement explained above.
+        The time series for ``position`` computed under the hypothesis
+        for the planet movement explained above.
     """
 
     # Run basic sanity checks
@@ -316,11 +322,15 @@ def get_time_series_for_position__full_stack(
     interpolation: str = 'spline',
 ) -> np.ndarray:
     """
-    This function does the same as `get_time_series_for_position()`, but
-    it does not use our trick to speed up the computation; instead, the
-    *full* signal stack is generated. This function should only ever be
-    used to verify the correctness of `get_time_series_for_position()`,
-    as it will probably be too slow for most practical applications.
+    This function does conceptually exactly the same as
+    :func:`get_time_series_for_position()`, but it does not use our
+    trick to speed up the computation; instead, the *full* signal stack
+    is generated.
+
+    .. caution::
+        This function should pretty only ever  be used to verify the
+        correctness of :func:`get_time_series_for_position()`, as it
+        will probably be too slow for most practical applications.
     """
 
     # Run basic sanity checks

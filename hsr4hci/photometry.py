@@ -61,8 +61,8 @@ def _get_flux__as(
     aperture_radius: Quantity,
 ) -> Tuple[Tuple[float, float], float]:
     """
-    Auxiliary function to measure the flux using the "AS" mode.
-    See `get_flux()` for more details.
+    Auxiliary function to measure the flux using the `"AS"` mode.
+    See :func:`get_flux()` for more details.
     """
 
     # Set up an aperture of the given size
@@ -84,8 +84,8 @@ def _get_flux__ass(
     search_radius: Quantity,
 ) -> Tuple[Tuple[float, float], float]:
     """
-    Auxiliary function to measure the flux using the "ASS" mode.
-    See `get_flux()` for more details.
+    Auxiliary function to measure the flux using the `"ASS"` mode.
+    See :func:`get_flux()` for more details.
     """
 
     # Construct a 2D grid of positions around the target position at which we
@@ -120,8 +120,8 @@ def _get_flux__p(
     position: Tuple[float, float],
 ) -> Tuple[Tuple[float, float], float]:
     """
-    Auxiliary function to measure the flux using the "P" mode.
-    See `get_flux()` for more details.
+    Auxiliary function to measure the flux using the `"P"` mode.
+    See :func:`get_flux()` for more details.
     """
 
     # Set up an aperture with a radius of 0.5 pixels
@@ -140,8 +140,8 @@ def _get_flux__f(
     mask_frame_radius: float = 5.0,
 ) -> Tuple[Tuple[float, float], float]:
     """
-    Auxiliary function to measure the flux using the "F" mode.
-    See `get_flux()` for more details.
+    Auxiliary function to measure the flux using the `"F"` mode.
+    See :func:`get_flux()` for more details.
     """
 
     # Define the grid for the fit
@@ -198,8 +198,8 @@ def _get_flux__fs(
     mask_frame_radius: float = 5.0,
 ) -> Tuple[Tuple[float, float], float]:
     """
-    Auxiliary function to measure the flux using the "FS" mode.
-    See `get_flux()` for more details.
+    Auxiliary function to measure the flux using the `"FS"` mode.
+    See :func:`get_flux()` for more details.
     """
 
     # Define the grid for the fit
@@ -270,43 +270,50 @@ def get_flux(
 
         1. "AS" (aperture sum):
             Compute the integrated flux over a circular aperture with
-            radius `aperture_radius` at the given `position`. This is
+            radius `aperture_radius` at the given ``position``. This is
             perhaps the most "intuitive" way to compute the flux.
         2. "ASS" (aperture sum + search):
             Similar to "AS", except the `position` of the circular
             aperture is varied in a circular region with radius
-            `search_radius` to find the position with the highest flux.
+            ``search_radius`` to find the position with the highest
+            flux.
         3. "P" (pixel):
             Compute or interpolate the value of a single pixel at the
-            given `position`.
+            given ``position``. (Internally, this simply uses an
+            aperture with a diameter of 1 pixel.)
         4. "F" (fit):
             Compute the flux by fitting a 2D Gaussian to the given
-            position and returning its `amplitude`.
+            position and returning its ``amplitude``.
         5. "FS" (fit + search):
-            Similar to "F", except the position of the 2D Gaussian is
-            also optimized within the given `search_radius`.
+            Similar to `"F"`, except the position of the 2D Gaussian is
+            also optimized within the given ``search_radius``.
 
     Args:
         frame: A 2D numpy array of shape `(width, height)` containing
             the data on which to run the aperture photometry.
         position: A tuple `(x, y)` specifying the position at which to
             estimate the flux.
-        mode: See above.
-        aperture_radius: Required for modes "AS" and "ASS". Defines the
-            radius of the circular aperture over the flux is integrated.
-        search_radius: Required for modes "ASS" and "FS". Defines the
-            size of the region within which we vary the position to find
-            the "optimal" (= highest) flux.
-        mask_frame_radius: For modes "F" and "FS" (i.e., the modes that
-            are based on fitting a 2D Gaussian to the data), we use a
-            mask to set pixels to zero that are further away from the
-            `position` (plus `search_radius`) than `mask_frame_radius`.
+        mode: Either `"AS"`, `"ASS"`, `"P"`, `"F"`, or `"FS"` (see
+            above for a detailed explanation).
+        aperture_radius: Required for modes `"AS"` and `"ASS"`. Defines
+            the radius of the circular aperture over the flux is
+            summed up / integrated.
+        search_radius: Required for modes `"ASS"` and `"FS"`. Defines
+            the size of the region within which we vary the position to
+            find the "optimal" (= highest) flux.
+        mask_frame_radius: For modes `"F"` and `"FS"` (i.e., the modes
+            that are based on fitting a 2D Gaussian to the data), we use
+            a mask to set pixels to zero that are further away from the
+            ``position`` (plus ``search_radius``) than the given
+            ``mask_frame_radius``.
             This is useful to avoid that other signals or speckles "in
-            the distance" affect the result of the fit. Modes "P", "AS",
-            and "ASS" ignore this parameter.
-            Note: for measuring the stellar flux, this parameter should
-            be set to a larger value than for planets; otherwise, the
-            stellar flux will be under-estimated.
+            the distance" affect the result of the fit. Modes `"P"`,
+            `"AS"`, and `"ASS"` ignore this parameter.
+
+            .. caution::
+                For measuring the stellar flux, this parameter should
+                be set to a larger value than for planets; otherwise,
+                the stellar flux will be under-estimated.
 
     Returns:
         A tuple `(final_position, flux)`, where the `final_position` is
@@ -346,14 +353,17 @@ def get_stellar_flux(
 
     Args:
         psf_template: 2D numpy array with the unsaturated PSF template.
-        dit_stack: Integration time of the frames in the stack.
+        dit_stack: Integration time of the frames in the stack (in
+            seconds).
         dit_psf_template: Integration time of the unsaturated PSF
-            template.
-        scaling_factor: A scaling factor to account for ND filters.
-        mode: See `get_aperture_flux()` for more details. For the
-            stellar flux, mode "FS" is recommended.
-        aperture_radius: See `get_aperture_flux()` for more details.
-        search_radius: See `get_aperture_flux()` for more details.
+            template (in seconds).
+        scaling_factor: A scaling factor to account for neutral density
+            (ND) filters. Example: If the transmission is 2%, use a
+            value of `0.02` for the ``scaling_factor``.
+        mode: See :func:`get_aperture_flux()` for more details. For the
+            stellar flux, mode `"FS"` is recommended.
+        aperture_radius: See :func:`get_aperture_flux()` for details.
+        search_radius: See :func:`get_aperture_flux()` for details.
 
     Returns:
         The stellar flux, normalized relative to the DIT of the stack.
@@ -387,7 +397,7 @@ def get_fluxes_for_polar_positions(
     search_radius: Optional[Quantity] = None,
 ) -> List[float]:
     """
-    Auxiliary function for applying to `get_flux()` to a list of
+    Auxiliary function for applying to :func:`get_flux()` to a list of
     positions that are given in ("astronomical") polar coordinates.
 
     Args:
@@ -395,12 +405,12 @@ def get_fluxes_for_polar_positions(
             is, every position is a tuple `(separation, angle)`, where
             for the angle, 0 degrees is "up", not "right".
         frame: The frame / image on which to perform the photometry.
-        mode: The `mode` parameter for `get_flux()`; see there for
-            more details.
-        aperture_radius: The `aperture_radius` parameter for
-            `get_flux()`; see there for more details.
-        search_radius: The `search_radius` parameter for
-            `get_flux()`; see there for more details.
+        mode: The ``mode`` parameter for :func:`get_flux()`; see there
+            for more details.
+        aperture_radius: The ``aperture_radius`` parameter for
+            :func:`get_flux()`; see there for more details.
+        search_radius: The ``search_radius`` parameter for
+            :func:`get_flux()`; see there for more details.
 
     Returns:
         A list of the fluxes for each given polar position.

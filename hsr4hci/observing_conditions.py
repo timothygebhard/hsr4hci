@@ -63,12 +63,13 @@ class ObservingConditions:
         self.observing_conditions = observing_conditions
 
     def _verify_selected_keys(
-        self, selected_keys: Union[List[str], str, None]
+        self,
+        selected_keys: Union[List[str], str, None],
     ) -> bool:
         """
-        Check if the `selected_keys` constitute a valid subset of the
-        available observing conditions. Return True if yes, otherwise
-        raise a
+        Check if the ``selected_keys`` constitute a valid subset of the
+        available observing conditions. Return `True` if yes, otherwise
+        raise a ``KeyError``.
         """
 
         # Check if `selected_keys` contains a valid subset selection
@@ -112,13 +113,13 @@ class ObservingConditions:
     ) -> Dict[str, np.ndarray]:
         """
         Return the subset of observing conditions selected by
-        `selected_keys` as a dictionary.
+        ``selected_keys`` as a dictionary.
 
         Args:
             selected_keys: A valid specification of a subset of
-                observing conditions. Either None (to not select any
-                observing) conditions, or a list of keys, or "all" (to
-                select all available observing conditions).
+                observing conditions. Either `None` (to select no OC
+                at all), or a list of keys, or `"all"` (to select all
+                available observing conditions).
 
         Returns:
             A dictionary containing the selected observing conditions.
@@ -148,13 +149,13 @@ class ObservingConditions:
     ) -> np.ndarray:
         """
         Return the subset of observing conditions selected by
-        `selected_keys` as a numpy array.
+        ``selected_keys`` as a numpy array.
 
         Args:
             selected_keys: A valid specification of a subset of
-                observing conditions. Either None (to not select any
-                observing) conditions, or a list of keys, or "all" (to
-                select all available observing conditions).
+                observing conditions. Either `None` (to select no OC
+                at all), or a list of keys, or `"all"` (to select all
+                available observing conditions).
 
         Returns:
             A 2D numpy array of shape `(n_frames, n_obscon)` containing
@@ -185,13 +186,13 @@ class ObservingConditions:
     ) -> pd.DataFrame:
         """
         Return the subset of observing conditions selected by
-        `selected_keys` as a pandas data frame.
+        ``selected_keys`` as a pandas data frame.
 
         Args:
             selected_keys: A valid specification of a subset of
-                observing conditions. Either None (to not select any
-                observing) conditions, or a list of keys, or "all" (to
-                select all available observing conditions).
+                observing conditions. Either `None` (to select no OC
+                at all), or a list of keys, or `"all"` (to select all
+                available observing conditions).
 
         Returns:
             A pandas data frame containing the selected observing
@@ -222,33 +223,34 @@ def query_archive(
     Send a request to one of ESO's ambient condition query forms [1] to
     retrieve the values of a particular observing condition.
 
-    [1]: https://archive.eso.org/cms/eso-data/ambient-conditions/paranal
-         -ambient-query-forms.html
+    [1]: https://archive.eso.org/cms/eso-data/ambient-conditions/paranal-ambient-query-forms.html
 
     Args:
         start_date: The start datetime (in UTC) as a string in ISO 8061
-            format. Example: "2012-12-20T20:00:00.0000".
+            format. Example: `"2012-12-20T20:00:00.0000"`.
         end_date: The end datetime (in UTC) as a string in ISO 8061
-            format. Example: "2012-12-21T10:00:00.0000".
+            format. Example: `"2012-12-21T10:00:00.0000"`.
         archive: The name of the archive to which to send the query.
             Currently, the following archives are supported:
-                - "meteo"
-                - "dimm_old"
-                - "dimm_new"
-                - "mass"
-                - "lhatpro"
-                - "lhatpro_irt"
+
+            * `"meteo"`
+            * `"dimm_old"`
+            * `"dimm_new"`
+            * `"mass"`
+            * `"lhatpro"`
+            * `"lhatpro_irt"`
+
             See [1] for more information about these archives.
         parameter_key: The key under which a parameter is available from
             the respective archive. These keys can be reverse-engineered
             from the source code of the respective archive. For example,
-            "press" will get you the air pressure, or more precisely,
+            `"press"` will get you the air pressure, or more precisely,
             the "temporal (1 minute) mean of observatory site ambient
             barometric air pressure measured at ground during
             measurement period [hPa]."
-            For the default parameters, `resolve_parameter_name()` will
-            resolve "intuitive" parameter names (like "air_pressure") to
-            the correct, archive-specific keys.
+            For the default parameters, :func:`resolve_parameter_name()`
+            will resolve "intuitive" parameter names (such as, e.g.,
+            `"air_pressure"`) to the correct, archive-specific keys.
 
     Returns:
         A data frame with the datetime and timestamp, the integration
@@ -318,23 +320,23 @@ def interpolate_observing_conditions(
     parameter_key: str,
 ) -> np.ndarray:
     """
-    Take the values of the observing conditions in the data frame `df`
-    and interpolate them temporally so that we get values for the
-    timestamp of each frame.
+    Take the values of the observing conditions in the data frame
+    ``df`` and interpolate them temporally so that we get values for
+    the timestamp of each frame.
 
-    The interpolation procedure is based on Cubic splines (see
-    https://stats.stackexchange.com/a/511394 for the idea).
+    The interpolation procedure is based on Cubic splines.
+    See https://stats.stackexchange.com/a/511394 for the original idea.
 
     Args:
         timestamps: A 1D numpy array of floats, containing the UTC
             timestamps of the frames in the stack.
         df: A data frame containing the result from querying one of
-            the ESO archives (e.g., `query_meteo`).
+            the ESO archives (e.g., :func:`query_meteo`).
         parameter_key: The key under which a parameter is available from
-            the respective archive. (See also `query_archive()`).
+            the respective archive. (See also :func:`query_archive`).
 
     Returns:
-        A 1D numpy array (of length `n_frames`) which contains an
+        A 1D numpy array with shape `(n_frames, )` which contains an
         interpolated value of the target parameter for every frame.
     """
 
@@ -370,17 +372,17 @@ def get_observing_conditions(
     """
     This is a convenience wrapper to query the ESO ambient condition
     archives for a given parameter, interpolate the results, and
-    evaluate them at the requested `timestamps`.
+    evaluate them at the requested ``timestamps``.
 
     Args:
         parameter_name: Name of the parameter to retrieve from the
             archive. This needs to be resolvable into a parameter key
-            and archive by `resolve_parameter_name()`.
+            and archive by :func:`resolve_parameter_name()`.
         timestamps: A 1D numpy array of floats, containing the UTC
             timestamps of the frames in the stack.
 
     Returns:
-        A 1D numpy array (of length `n_frames`) which contains an
+        A 1D numpy array with shape `(n_frames, )` which contains an
         interpolated value of the target parameter for every frame.
     """
 
@@ -422,16 +424,16 @@ def resolve_parameter_name(
     obs_date: datetime,
 ) -> Tuple[str, str, str]:
     """
-    Resolves a `parameter_name` into a dictionary that contains
+    Resolves a ``parameter_name`` into a dictionary that contains
     information about which archive the parameter can be obtained
     from, using which parameter_key.
 
     Args:
-        parameter_name: Name of a parameter (e.g., 'air_pressure').
+        parameter_name: Name of a parameter (e.g., `"air_pressure"`).
         obs_date: Date at which the data set was observed.
 
     Returns:
-        A tuple `archive`, `parameter_key`, `description` which tells
+        A 3-tuple `(archive, parameter_key, description)` which tells
         us from which ESO ambient server we can retrieve the parameter
         and which key we have to use for the query.
     """

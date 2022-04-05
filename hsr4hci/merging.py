@@ -26,16 +26,16 @@ from hsr4hci.hdf import load_dict_from_hdf
 
 def get_list_of_fits_file_paths(fits_dir: Path, prefix: str) -> List[Path]:
     """
-    Get a list of all FITS files in a given `fits_dir` whose file name
-    begins with the given `prefix`.
+    Get a list of all FITS files in a given ``fits_dir`` whose file
+    name begins with the given ``prefix``.
 
     Args:
         fits_dir: Path to directory in which to look for FITS files.
         prefix: Only consider FITS files whose names begin with this.
-            For example: "hypotheses" or "mean_mf".
+            For example: `"hypotheses"` or `"mean_mf"`.
 
     Returns:
-        A list of Paths to the matching FITS files in `fits_dir`.
+        A list of Paths to the matching FITS files in ``fits_dir``.
     """
 
     # Get a list of the paths to all FITS files in the given FITS directory
@@ -64,16 +64,16 @@ def get_list_of_hdf_file_paths(
     hdf_dir: Path, prefix: str = 'residuals'
 ) -> List[Path]:
     """
-    Get a list of all HDF files in a given `hdf_dir` whose file name
-    begins with the given `prefix`.
+    Get a list of all HDF files in a given ``hdf_dir`` whose file name
+    begins with the given ``prefix``.
 
     Args:
         hdf_dir: Path to directory in which to look for HDF files.
         prefix: Only consider HDF files whose names begin with this.
-            Usually, we only need HDF files starting with "residuals".
+            Usually, we only need HDF files starting with `"residuals"`.
 
     Returns:
-        A list of Paths to the matching HDF files in `hdf_dir`.
+        A list of Paths to the matching HDF files in ``hdf_dir``.
     """
 
     # Get a list of the paths to all HDF files in the given HDF directory
@@ -104,8 +104,8 @@ def merge_hdf_files(
     Take a list of HDF files and merge all of them into a single dict.
 
     This function is intended to merge the (partial) results files that
-    are produced by `hsr4hci.training.train_all_models()`; see there for
-    more details on the expected internal structure of the HDF files.
+    are produced by :func:`hsr4hci.training.train_all_models`; see there
+    for more details on the expected internal structure of the files.
 
     Args:
         hdf_file_paths: A list of paths to the HDF files to be merged.
@@ -164,14 +164,14 @@ def merge_fits_files(fits_file_paths: List[Path]) -> np.ndarray:
     """
     Take a list of FITS files and merge all of them into a single array.
 
-    This function is intended to merge the partial result files that are
-    obtained in parallel with `hsr4hci.hypotheses.get_all_hypotheses()`
-    and `hsr4hci.match_fractions.get_all_match_fractions()`.
+    This function can merge the partial result files that are obtained
+    in parallel with :func:`hsr4hci.hypotheses.get_all_hypotheses` and
+    :func:`hsr4hci.match_fraction.get_all_match_fractions`.
 
     Merging works by stacking the arrays from the FITS files along a new
-    axis and then taking the nanmean() along this axis. This, of course,
-    assumes that each pixel only takes on a non-NaN value in at most one
-    of the FITS files.
+    axis and then taking the :func:`numpy.nanmean` along this axis.
+    This, of course, assumes that each pixel only takes on a non- `NaN`
+    value in at most one of the FITS files.
 
     Args:
         fits_file_paths: List of FITS files to be merged.

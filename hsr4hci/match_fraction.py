@@ -33,6 +33,36 @@ def get_all_match_fractions(
     n_roi_splits: int = 1,
     roi_split: int = 0,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    This is essentially a convenience function which wraps the loop over
+    the ROI and calls :func:`get_match_fraction_for_position()` for
+    every spatial pixel.
+
+    Args:
+        residuals: A dictionary containing the full residuals as they
+            are produced by :func:`hsr4hci.training.train_all_models`.
+        hypotheses: A 2D numpy array containing the hypotheses map.
+        parang: A 1D numpy array of shape `(n_frames, )` containing the
+            parallactic angle for every frame.
+        psf_template: A 2D numpy array containing the unsaturated PSF
+            template.
+        frame_size: A tuple `(x_size, y_size)` containing the spatial
+            size of the input stack in pixels.
+        n_roi_splits: Total number of splits for the ROI if we want to
+            compute the match fraction map in parallel.
+        roi_split: Index of the ROI split that we want to process here.
+
+    Returns:
+        A 3-tuple consisting of
+
+        1. ``mean_mfs``: A 2D numpy array containing the match fraction
+           map when using the mean to average.
+        2. ``median_mfs``: A 2D numpy array containing the match
+           fraction map when using the median to average.
+        3. ``affected_pixels``: A 4D numpy array containing which, for
+           each position `(x, y)` contains a 2D binary mask with the
+           affected mask (see :func:`get_match_fraction_for_position`).
+    """
 
     # Initialize array for the match fractions (mean and median)
     mean_mfs = np.full(frame_size, np.nan)
@@ -78,6 +108,36 @@ def get_match_fraction_for_position(
 ) -> Tuple[float, float, np.ndarray]:
     """
     Compute the match fraction for a single given position.
+
+    Args:
+        position: A tuple `(x, y)` specifying the position for which to
+            compute the match fraction.
+        hypothesis: The hypothesis (= temporal index) for the given
+            ``position``. In general, this should be an integer, but
+            the type here has to be a ``float`` because the value may
+            also be `NaN` (in case there is no hypothesis).
+        residuals: A dictionary containing the full residuals as they
+            are produced by :func:`hsr4hci.training.train_all_models`.
+        parang: A 1D numpy array of shape `(n_frames, )` containing the
+            parallactic angle for every frame.
+        psf_template: A 2D numpy array containing the unsaturated PSF
+            template.
+        signal_times: A 1D numpy array of shape `(n_signal_times, )`
+            containing the temporal grid.
+        frame_size: A tuple `(x_size, y_size)` containing the spatial
+            size of the input stack in pixels.
+
+    Returns:
+        A 3-tuple consisting of
+
+        1. ``match_fraction__mean``: The match fraction for the given
+           target ``position`` when using the mean to average.
+        2. ``match_fraction__median``: The match fraction for the given
+           target ``position`` when using the median to average.
+        3. ``affected_mask``: A 2D numpy array containing a binary mask
+           that indicates the pixels from which the match fraction was
+           computed (i.e., the pixels that are affected by the planet
+           according to the ``hypothesis``).
     """
 
     # Define shortcut for number of frames

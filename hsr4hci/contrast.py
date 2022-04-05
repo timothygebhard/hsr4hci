@@ -44,21 +44,21 @@ def get_contrast(
 ) -> dict:
     """
     Compute the contrast and flux ratio for the planet at the given
-    `polar_position` in the `signal_estimate`, and, if desired, also
-    compute the throughput (i.e., the ratio of the observed and the
-    expected flux ratio).
+    ``polar_position`` in the ``signal_estimate``, and, if desired,
+    also compute the throughput (i.e., the ratio of the observed and
+    the expected flux ratio).
 
     Args:
         signal_estimate: A 2D numpy array with the signal estimate.
-        polar_position: A 2-tuple of Quantities, (separation, angle),
-            specifying the position of the planet for which to compute
-            the contrast and flux ratio.
+        polar_position: A 2-tuple of `(separation, angle)`, specifying
+            the position of the planet for which to compute the contrast
+            and flux ratio.
         psf_template: A 2D numpy array containing the *unsaturated* (!)
             and *unnormalized* (!) PSF template for the data set on
-            which the `signal_estimate` was obtained.
+            which the ``signal_estimate`` was obtained.
         metadata: A dictionary containing metadata about the data set.
             Requires the following keys to compute the stellar flux:
-            "DIT_STACK", "DIT_PSF_TEMPLATE" and "ND_FILTER".
+            ``"DIT_STACK"``, ``"DIT_PSF_TEMPLATE"`` and ``"ND_FILTER"``.
         no_fake_planets: Optionally, a 2D numpy array with the same
             shape as the `signal_estimate` If you want to compute the
             contrast using the "classic" approach, you can use this
@@ -67,18 +67,19 @@ def get_contrast(
             from the signal estimate before measuring the planet flux.
         expected_contrast: Optionally, a float containing the expected
             contrast in magnitudes. If this value is given, the
-            throughput is computed (otherwise the throughput is NaN).
+            throughput is computed (otherwise the throughput is `NaN`).
         planet_mode: Photometry mode that is used to measure the planet
-            flux. See `hsr4hci.photometry.get_flux()` for details.
+            flux.
+            See also :class:`hsr4hci.photometry.get_flux()` for details.
         noise_mode: Photometry mode that is used to measure the flux at
-            the reference positions. See `hsr4hci.photometry.get_flux()`
-            for details.
+            the reference positions.
+            See also :class:`hsr4hci.photometry.get_flux()` for details.
         exclusion_angle: Exclusion angle that is used for determining
             the reference positions (basically: whether to ignore the
             positions left and right of the `polar_position` which may
             contain self-subtraction "wings"). For more details, see
-            `hsr4hci.positions.get_reference_positions()`. This option
-            is only used if `no_fake_planets` is None.
+            :class:`hsr4hci.positions.get_reference_positions()`.
+            This option is only used if ``no_fake_planets`` is `None`.
 
     Returns:
         A dictionary containing the observed contrast and flux ratio,
@@ -215,10 +216,10 @@ def get_contrast_curve(
     aggregation_function: Callable[[np.ndarray], float] = np.median,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Given a data frame `df` with experiment results, compute a contrast
-    curve, that is, for each separation, determine the contrast value
-    until which we can detect a planet with a confidence that matches
-    the given `sigma_threshold`.
+    Given a pandas data frame ``df`` with experiment results, compute a
+    contrast curve, that is, for each separation, determine the contrast
+    value until which we can detect a planet with a confidence that
+    matches the given ``sigma_threshold``.
 
     Args:
         df: A pandas data frame with experiment results. In particular,
@@ -238,8 +239,8 @@ def get_contrast_curve(
             min / max can give an estimate for the worst / best case.
 
     Returns:
-        A 2-tuple, (separations, detection_limits), which contains the
-        detection limit for each separation.
+        A 2-tuple, `(separations, detection_limits)`, which contains the
+        separations and the corresponding detection limit.
     """
 
     # Define an auxiliary function for transforming the FPF values

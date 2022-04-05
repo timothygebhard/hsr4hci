@@ -39,9 +39,9 @@ class SubmitFile:
 
         Args:
             clusterlogs_dir: The path to the folder where the log
-                files for this submit file will be stored. If None is
+                files for this submit file will be stored. If `None` is
                 given, no logs will be created and all output will be
-                forwarded to /dev/null.
+                forwarded to ``/dev/null``.
             executable: The executable parameter for the submit file.
             memory: How much memory (in MB) to request from the cluster.
             cpus: The number of CPUs to request from the cluster.
@@ -49,8 +49,8 @@ class SubmitFile:
             requirements: A sequence (usually: a list) with any
                 additional requirements, for example, limitations on the
                 available GPU memory, or the machines on which to run
-                (e.g., "Target.CpuFamily =!= 21" to block certain types
-                of nodes from running the job).
+                (e.g., `"Target.CpuFamily =!= 21"` to block certain
+                types of nodes from running the job).
         """
 
         # Store options for this submit file

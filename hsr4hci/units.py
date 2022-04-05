@@ -1,5 +1,5 @@
 """
-Methods related to using units and quantities (astropy.units).
+Methods related to using units and quantities from ``astropy.units``.
 """
 
 # -----------------------------------------------------------------------------
@@ -19,33 +19,44 @@ import numpy as np
 # -----------------------------------------------------------------------------
 
 class InstrumentUnitsContext:
-    """
+    r"""
     Context manager that allows to provide local, instrument-specific
-    values for the `pixscale` and `lambda_over_d` to `astropy.units`.
+    values for the ``pixscale`` and ``lambda_over_d`` to the registry
+    of ``astropy.units``.
 
-    In order to convert between pixels and arc seconds, one has to
+    In order to convert between pixels and arcseconds, one has to
     define a pixel scale; this value, however, is instrument-specific.
-    For VLT/NACO, it is typically 0.0271 arcsec / pixel, whereas for
-    VLT/SPHERE, the value is 0.1221 arcsec / pixel.
-    Similarly, the value of lambda / D obviously depends both on the
-    wavelength $lambda$ of the observation and the diameter D of the
-    primary mirror. If we want to use lambda / D as a unit (as it is a
-    characteristic scale, e.g., for the PSF size), we need to define
-    its value in terms of other units somewhere.
-    This class provides a context manager that is initialized with
-    values for the pixel scale and lambda over D, and it then provides
-    a (re-usable!) context inside which an `astropy.units.Quantity` can
-    be freely converted between pixels, arcseconds, and lambda over D.
+    Similarly, the value of $\lambda / D$ obviously depends both on the
+    wavelength $\lambda$ of the observation and the diameter $D$ of the
+    primary mirror.
+
+    If we want to use $\lambda / D$ as a unit (as it is a characteristic
+    scale, e.g., for the PSF size), we need to define its value in terms
+    of other units somewhere. This class provides a context manager that
+    is initialized with values for the pixel scale and $\lambda / D$,
+    and it then  provides a (re-usable!) context inside of which an
+    :py:class:`astropy.units.Quantity` can be converted freely between
+    units of pixels, arc seconds and $\lambda / D$.
 
     Args:
-        pixscale: An `astropy.units.Quantity` with units arcsec / pixel
-            that defines the pixel scale of the context. For NACO, this
-            value is typically `pixscale == 0.0271 arcsec / pixel`.
-        lambda_over_d: An `astropy.units.Quantity` with units arcsec
-            that defines the ratio between the wavelength lambda of the
-            observation and the diameter D of the primary mirror. For
-            L'-band data (lambda = 3800 nm) at the VLT (D = 8.2 m), this
-            value is, for example: `lambda_over_d == 0.0956 arcsec`.
+        pixscale: An :py:class:`astropy.units.Quantity` with units
+            `arcsec / pixel` that defines the pixel scale.
+
+            .. admonition:: Example
+
+                For VLT/NACO, the pixscale is typically:
+                ``PIXSCALE = 0.0271 arcsec / pixel``.
+
+        lambda_over_d: An :py:class:`astropy.units.Quantity` with units
+            `arc seconds` that defines the ratio between the wavelength
+            $\lambda$ of the observation and $D$, the diameter of the
+            primary mirror.
+
+            .. admonition:: Example
+
+                For *L'*-band data ($\lambda$ = 3800 nm) at the VLT
+                ($D$ = 8.2 m), this value is:
+                ``lambda_over_d = 0.0956 arcsec``.
     """
 
     @units.quantity_input(
@@ -53,7 +64,9 @@ class InstrumentUnitsContext:
         lambda_over_d=units.Unit('arcsec'),
     )
     def __init__(
-        self, pixscale: units.Quantity, lambda_over_d: units.Quantity
+        self,
+        pixscale: units.Quantity,
+        lambda_over_d: units.Quantity,
     ) -> None:
 
         # Store the values of the pixel scale and lambda over D
@@ -101,12 +114,17 @@ def flux_ratio_to_magnitudes(
     """
     Convert a given flux ratio to magnitudes.
 
+    Example:
+
+        >>> flux_ratio_to_magnitudes(1e-5)
+        12.5
+
     Args:
-        flux_ratio: The brightness / contrast as a flux ratio; either
-            as a single float or as a numpy array of floats.
+        flux_ratio: The brightness (or contrast) as a flux ratio;
+            either as a single float or as a numpy array of floats.
 
     Returns:
-        The brightness / contrast(s) in magnitudes.
+        The brightness (or contrast) in magnitudes.
     """
 
     if isinstance(flux_ratio, np.ndarray):
@@ -120,12 +138,16 @@ def magnitude_to_flux_ratio(
     """
     Convert magnitudes to a flux ratio.
 
+    Example:
+        >>> magnitude_to_flux_ratio(5)
+        0.01
+
     Args:
-        magnitudes: The brightness / contrast in magnitudes; either as
-            a single float or as a numpy array of floats.
+        magnitudes: The brightness (or contrast) in magnitudes; either
+            as a single float or as a numpy array of floats.
 
     Returns:
-        The brightness / contrast(s) as a flux ratio.
+        The brightness (or contrast) as a flux ratio.
     """
 
     return 10 ** (-magnitudes / 2.5)

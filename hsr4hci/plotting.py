@@ -52,21 +52,24 @@ MatplotlibColor = Union[
 # -----------------------------------------------------------------------------
 
 def get_cmap(
-    cmap_name: str = 'RdBu_r', bad_color: str = '#212121'
+    cmap_name: str = 'RdBu_r',
+    bad_color: str = '#212121',
 ) -> Union[Colormap, LinearSegmentedColormap, ListedColormap]:
     """
-    Convenience wrapper around matplotlib.cm.get_cmap() which allows to
-    also set the `bad_color` (i.e., the color for NaN value)
+    Convenience wrapper around :func:`matplotlib.cm.get_cmap` which
+    allows to also set the ``bad_color`` (i.e., the color for `NaN`
+    values).
 
     Args:
-        cmap_name: The name of a matplotlib color map (e.g., 'RdBu_r').
+        cmap_name: The name of a matplotlib color map (e.g.,
+            `"RdBu_r"` or `"viridis"`).
         bad_color: A string specifying a color in HTML format: (e.g.,
-            '#FF0000') which will be used as the 'bad color' of the
-            color map; that is, the color used, for example, for NaN
-            values in plt.imshow plots.
+            `"#FF0000"`) which will be used as the ``bad_color`` of the
+            color map; that is, the color used, for example, for `NaN`
+            values in :func:`matplotlib.pyplot.imshow` plots.
 
     Returns:
-        A matplotlib colormap with the desired `bad_color`.
+        A matplotlib colormap with the desired ``bad_color``.
     """
 
     # Get desired color map and set the desired bad_color
@@ -88,26 +91,31 @@ def get_transparent_cmap(color: MatplotlibColor = 'red') -> ListedColormap:
         color: A valid matplotlib color.
 
     Returns:
-        A ListedColormap, which gradually goes from transparent to the
-        given target color.´
+        A ``ListedColormap``, which gradually goes from transparent to
+        the given target color.
     """
 
     return ListedColormap([(0, 0, 0, 0), color])
 
 
 def add_colorbar_to_ax(
-    img: AxesImage, fig: Figure, ax: Axes, where: str = 'right'
+    img: AxesImage,
+    fig: Figure,
+    ax: Axes,
+    where: str = 'right',
 ) -> Colorbar:
     """
     Add a "nice" colorbar to an imshow plot.
 
-    Source: https://stackoverflow.com/a/18195921/4100721
+    Original source:
+    https://stackoverflow.com/a/18195921/4100721
 
     Args:
-        img: The return of the respective imshow() command.
-        fig: The figure that the plot is part of (e.g., `plt.gcf()`).
-        ax: The ax which contains the plot (e.g., `plt.gca()`).
-        where: Where to place the colorbar (left, right, top or bottom).
+        img: The return of a :func:`matplotlib.pyplot.imshow` command.
+        fig: The figure that the plot is part of.
+        ax: The ax which contains the plot.
+        where: Where to place the colorbar (`"left"`, `"right"`,
+            `"top"` or `"bottom"`).
 
     Returns:
         The colorbar that was added to the axis.
@@ -136,19 +144,20 @@ def adjust_luminosity(
     color: MatplotlibColor, amount: float = 1.4
 ) -> Tuple[float, float, float]:
     """
-    Adjusts the luminosity of the input `color` by the given `amount`.
+    Adjust the luminosity of the given ``color`` by the ``amount``.
 
     Original source:
-        https://stackoverflow.com/a/49601444/4100721
+    https://stackoverflow.com/a/49601444/4100721
 
     Args:
         color: The input color. Can either be a hex string (e.g.,
-            "#FF0000"), matplotlib color string (e.g., "C1" or "green"),
-            or an RGB tuple in float format (e.g., (1.0, 0.0, 0.0)).
+            `"#FF0000"`), matplotlib color string (e.g., `"C1"` or
+            `"green"`), or an RGB tuple in float format (e.g.,
+            `(1.0, 0.0, 0.0)`).
         amount: The amount by how much the input color should be
-            lightened. For amount > 1, the color gets brighter; for
-            amount < 1, the color is darkened. By default, colors are
-            lightened by 40%.
+            lightened. For ``amount`` > 1, the color gets brighter; for
+            ``amount`` < 1, the color is darkened. By default, colors
+            are lightened by 40%.
 
     Returns:
         An RGB tuple describing the luminosity-adjusted input color.
@@ -176,9 +185,9 @@ def adjust_luminosity(
 
 def disable_ticks(ax: Axes) -> None:
     """
-    Disable the ticks and labels on the given matplotlib `ax`. This is
-    similar to calling `ax.axis('off')`, except that the frame around
-    the plot is preserved.
+    Disable the ticks and labels on the given matplotlib ``ax``. This
+    is similar to calling ``ax.axis('off')``, except that the frame
+    around the plot is preserved.
 
     Args:
         ax: A matplotlib axis.
@@ -198,11 +207,11 @@ def disable_ticks(ax: Axes) -> None:
 
 def zerocenter_imshow(ax: Axes) -> None:
     """
-    Make sure that he `(vmin, vmax)` range of the `imshow()` plot in
-    the given `ax` object is symmetric around zero.
+    Make sure that the `(vmin, vmax)` range of the ``imshow()`` plot in
+    the given ``ax`` object is symmetric around zero.
 
     Args:
-        ax: The ax which contains the plot (e.g., `plt.gca()`).
+        ax: The ax which contains the plot.
     """
 
     # Get plot and current limits
@@ -217,11 +226,11 @@ def zerocenter_imshow(ax: Axes) -> None:
 def zerocenter_plot(ax: Axes, which: str) -> None:
     """
     Make sure that the `xlim` or `ylim` range of the plot object in the
-    given `ax` object is symmetric around zero.
+    given ``ax`` object is symmetric around zero.
 
     Args:
-        ax: The ax which contains the plot (e.g., `plt.gca()`).
-        which: Which axis to center around zero, that is, "x" or "y".
+        ax: The ax which contains the plot.
+        which: Which axis to center around zero (`"x"` or `"y"`).
     """
 
     if which == 'x':
@@ -238,11 +247,11 @@ def zerocenter_plot(ax: Axes, which: str) -> None:
 
 def set_fontsize(ax: Axes, fontsize: int) -> None:
     """
-    Set the `fontsize` for all labels (title, x- and y-label, and tick
-    labels) of a target axis at once.
+    Set the ``fontsize`` for all labels (title, x- and y-label, and tick
+    labels) of a target ``ax`` at once.
 
     Args:
-        ax: The ax which contains the plot (e.g., `plt.gca()`).
+        ax: The ax which contains the plot.
         fontsize: The target font size for the labels.
     """
 
@@ -565,27 +574,30 @@ def plot_frame(
     """
     Plot a single frame (e.g., a signal estimate) with various options.
 
+    This function was used to generate most of the result plots in the
+    paper.
+
     Args:
         frame: A 2D numpy array of shape `(x_size, y_size)` containing
             the frame to be plotted (e.g., a signal estimate).
         positions: A list of positions (which may be empty). At each
             position, an aperture is drawn with the given radius.
         labels: A list of labels (which may be empty) that are placed
-            next to the apertures drawn at the `positions`. Can be
+            next to the apertures drawn at the ``positions``. Can be
             used, for example, to add the SNR or FPF to the plot.
         pixscale: The pixel scale, in units of arcsecond / pixel. Only
-            needed if `add_scalebar` is True.
+            needed if ``add_scalebar`` is True.
         figsize: A two-tuple `(x_size, y_size)` containing the size of
             the figure in inches.
         subplots_adjust: Dictionary with parameters that will be passed
-            to fig.subplots_adjust().
+            to :func:`matplotlib.pyplot.subplots_adjust`.
         aperture_radius: The radius of the apertures to be drawn at the
-            given `positions`. If `positions` is empty, this value is
-            never used.
-        label_positions: A list of strings (either "right", "left",
-            "top" or "bottom") that indicates, for each label where
+            given ``positions``. If ``positions`` is empty, this value
+            is never used.
+        label_positions: A list of strings (either `"right`", `"left`",
+            `"top"` or `"bottom"`) that indicates, for each label where
             this label should be placed relative to the position that
-            it annotates. Default is "right" for all labels.
+            it annotates. Default is `"right"` for all labels.
         draw_color: The color that is used for drawing the apertures and
             also labels.
         scalebar_color: The color that is used for the scale bar and the
@@ -606,10 +618,11 @@ def plot_frame(
             is given, the plot is not saved.
 
     Returns:
-        A 3-tuple containing:
-        (1) the current matplotlib figure,
-        (2) the current axis containing the plot of the frame, and
-        (3) the colorbar object (or None, if add_colorbar == False).
+        A 3-tuple containing
+
+        1. the current matplotlib figure,
+        2. the current axis containing the plot of the frame, and
+        3. the colorbar object (or `None`, if no colorbar was added).
     """
 
     # Define shortcuts

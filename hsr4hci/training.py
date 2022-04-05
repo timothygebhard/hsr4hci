@@ -34,8 +34,9 @@ from hsr4hci.utils import check_consistent_size
 
 def get_signal_times(n_frames: int, n_signal_times: int) -> np.ndarray:
     """
-    Simple function to generate a temporal grid of signal times; mostly
-    to ensure consistency everywhere.
+    Generate a temporal grid of signal times. This function is just a
+    wrapper around :func:`numpy.linspace` and exists mainly to ensure
+    consistency everywhere.
 
     Args:
         n_frames: The total number of frames in the stack.
@@ -59,18 +60,18 @@ def add_obscon_as_predictors(
     max_correlation: float = 0.5,
 ) -> np.ndarray:
     """
-    Merge the `predictors` and the `obscon_array` and take into account
-    the desired maximum correlation with the expected signal.
+    Merge the ``predictors`` and the ``obscon_array`` and take into
+    account the desired maximum correlation with the expected signal.
 
     Args:
         predictors: A 2D numpy array with shape `(n_frames, n_pixels)`
-            that contains the predictors for a target pixel.
+            that contains the *predictors* for a target pixel.
         obscon_array: A 2D numpy array with shape `(n_frames, n_obscon)`
             that contains the (global) observing conditions.
         expected_signal: A 1D numpy array with shape `(n_frames,)` that
             contains the expected signal for a target pixel. In case we
-            are training a default model, the expected_signal will be
-            all NaN.
+            are training a default model, the ``expected_signal`` will
+            be all `NaN`.
         max_correlation: Maximum value for the correlation between
             the expected signal and the observing conditions. OCs with
             a higher correlation will not be added as predictors.
@@ -78,6 +79,7 @@ def add_obscon_as_predictors(
     Returns:
         A 2D numpy array with shape `(n_frames, n_predictors)` that
         contains the (full) predictors: both pixels and admissible OC.
+        This means: `n_predictors <= n_pixels + n_obscon`.
     """
 
     # Initialize the output
@@ -123,11 +125,11 @@ def train_all_models(
     return_format: str = 'full',
 ) -> Dict[str, Union[np.ndarray, Dict[str, np.ndarray]]]:
     """
-    Loop over all positions selected by the `roi_mask` (or rather, the
-    subset given by `roi_split` and `n_roi_splits`), train a model for
-    each pixel (using `train_model_for_position()`) and each potential
-    signal time from the temporal grid, and return the results formatted
-    according to the requested `return_format`.
+    Loop over all positions selected by the ``roi_mask`` (or rather, the
+    subset given by ``roi_split`` and ``n_roi_splits``), train a model
+    for each pixel (using :func:`train_model_for_position()`) and each
+    potential signal time from the temporal grid, and return the results
+    formatted according to the requested ``return_format``.
 
     Args:
         roi_mask: A 2D numpy array of shape `(x_size, y_size)` that
@@ -141,20 +143,21 @@ def train_all_models(
             containing the observing conditions that should be used as
             additional predictors.
         selection_mask_config: A dictionary containing two keys (namely
-            "radius_position" and "radius_opposite") that define the
+            `"radius_position"` and `"radius_opposite"`) that define the
             mask that is used to select the predictor pixels. The values
             of the dict should be tuples of the form `(value, "unit")`.
-        base_model_creator: An instance of `BaseModelCreator` that can
-            be used to instantiate new base models.
+        base_model_creator: An instance of ``BaseModelCreator`` that
+            can be used to instantiate new base models.
         psf_template: A 2D numpy array containing the unsaturated PSF
             template.
         train_mode: The mode to use for training; must be one of the
-            following: "default", "signal_fitting" or "signal_masking".
+            following: `"default"` (for the vanilla HSR model),
+            `"signal_fitting"` or `"signal_masking"`.
         max_oc_correlation: Maximum value for the correlation between
-            the `expected_signal` and an observing conditions for this
-            OC to be used as a predictor. (Basically, we do not want to
-            use OC that are "accidentally" strongly correlated with a
-            potential signal.)
+            the ``expected_signal`` and an observing conditions (OC) for
+            this OC to be used as a predictor. (Basically, we do not
+            want to use OC that are "accidentally" strongly correlated
+            with a potential signal.)
         n_train_splits: The number of training / test splits to use.
         n_signal_times: The size of the temporal grid, that is, the
             number of different (temporal) signal positions that are
@@ -163,23 +166,24 @@ def train_all_models(
             should be divided.
         roi_split: The index of the split for which to return the mask.
         return_format: The format in which the residuals are returned.
-            If "full", the residuals are 3D arrays that have the same
-            size as the `stack`. If "partial", the residuals are 2D
+            If `"full"`, the residuals are 3D arrays that have the same
+            size as the ``stack``. If `"partial"`, the residuals are 2D
             arrays that have the shape `(n_frames, n_pixels_in_split)`.
             The latter is recommended when training in parallel, because
-            otherwise we waste a *lot* of storage for storing NaNs in
+            otherwise we waste a *lot* of storage for storing `NaN` in
             the intermediate result files.
 
     Returns:
-        A dictionary containing three keys:
-        (1) "stack_shape": the shape of the original stack; required
-            when merging partial result files.
-        (2) "roi_mask": the *PARTIAL* ROI mask that was used for
-            training; also required when merging partial result files.
-        (3) "residuals": a dictionary with keys "default", "0", ...,
-            "N", where the latter are the signal times for which we have
-            trained models. Each key maps onto a numpy array containing
-            the residuals for the respective model.
+        A dictionary containing three keys
+
+        1. `"stack_shape"`: the shape of the original stack; required
+           when merging partial result files.
+        2. `"roi_mask"`: the *partial* ROI mask that was used for
+           training; also required when merging partial result files.
+        3. `"residuals"`: a dictionary with keys `"default"`, `"0"`,
+           ..., `"N"`, where the latter are the signal times for which
+           we have trained models. Each key maps onto a numpy array
+           containing the residuals for the respective model.
     """
 
     # Run some basic sanity checks
@@ -267,8 +271,8 @@ def train_model_for_position(
     max_oc_correlation: float = 0.5,
 ) -> Tuple[np.ndarray, Dict[str, np.ndarray]]:
     """
-    Train a model (or rather: a set of models, because of the train /
-    test splitting scheme) for a given position.
+    Train a model for a given position (or rather: a set of models,
+    because of the train / test splitting scheme).
 
     Args:
         stack: A 3D numpy array of shape `(n_frames, x_size, y_size)`
@@ -281,46 +285,49 @@ def train_model_for_position(
         position: A tuple `(x, y)` of integers containing the position
             for which to train the model(s).
         train_mode: The mode to use for training; must be one of the
-            following: "default", "signal_fitting" or "signal_masking".
-        signal_time: If `train_mode` is "default", this should be None.
-            Otherwise, this should contain the time at which the planet
-            signal is assumed to peak at the given `position` (we need
-            this value to be able to compute the forward model for
-            signal fitting / masking).
+            following: `"default"` (for the vanilla HSR model),
+            `"signal_fitting"` or `"signal_masking"`.
+        signal_time: If ``train_mode`` is `"default"`, this should be
+            `None`. Otherwise, this should contain the time at which the
+            planet signal is assumed to peak at the given ``position``
+            (we need this value to be able to compute the forward model
+            for signal fitting / masking).
         selection_mask_config: A dictionary containing two keys (namely
-            "radius_position" and "radius_opposite") that define the
+            `"radius_position"` and `"radius_opposite"`) that define the
             mask that is used to select the predictor pixels. The values
             of the dict should be tuples of the form `(value, "unit")`.
         psf_template: A 2D numpy array containing the unsaturated PSF
             template.
         n_train_splits: The number of training / test splits to use.
-        base_model_creator: An instance of `BaseModelCreator` that can
-            be used to instantiate new base models.
-        expected_signal: If the `train_mode` is signal fitting or signal
-            masking, you can *optionally* also pass the expected signal
-            explicitly to this function to avoid computing it here.
+        base_model_creator: An instance of ``BaseModelCreator`` that
+            can be used to instantiate new base models.
+        expected_signal: If the ``train_mode`` is `"signal_fitting"` or
+            `"signal_masking"`, you can *optionally* also pass the
+            expected signal explicitly to this function to avoid
+            computing it here.
             This option may be useful when the HSR is used "hypothesis-
             based" instead of for a blind search, that is, we already
             have a hypothesis about the planet position from which we
             can compute the expected signal stack, meaning we do not
             need to loop over a temporal grid but only train a single
-            model per pixel (either "default" or "signal_fitting" /
-            "signal_masking").
-            Note that the `expected_signal` should be consistent with
-            the given `signal_time`; otherwise the mask that is used for
-            the pixel predictor selection will be wrong.
+            model per pixel (either `"default"` or `"signal_fitting"` /
+            `"signal_masking"`).
+            Note that the ``expected_signal`` should be consistent with
+            the given ``signal_time``; otherwise the mask that is used
+            for the pixel predictor selection will be wrong.
         max_oc_correlation: Maximum value for the correlation between
-            the `expected_signal` and an observing conditions for this
-            OC to be used as a predictor. (Basically, we do not want to
-            use OC that are "accidentally" strongly correlated with a
-            potential signal.)
+            the ``expected_signal`` and an observing conditions (OC) for
+            this OC to be used as a predictor. (Basically, we do not
+            want to use OC that are "accidentally" strongly correlated
+            with a potential signal.)
 
     Returns:
-        A 2-tuple consisting of:
-        (1) the residual time series for the given `position`,
-        (2) a dictionary containing additional debugging information
-            about the model(s) that we have trained; for example, the
-            values of the coefficients or regularization coefficients.
+        A 2-tuple consisting of
+
+        1. the residual time series for the given `position`,
+        2. a dictionary containing additional debugging information
+           about the model(s) that we have trained; for example, the
+           values of the coefficients or regularization coefficients.
     """
 
     # -------------------------------------------------------------------------
@@ -532,10 +539,16 @@ def _train_default_model(
     train_targets: np.ndarray,
 ) -> Optional[RegressorModel]:
     """
-    Train a default model (i.e., no signal fitting or masking).
+    Train a default model (i.e., a "vanilla" HSR model with no signal
+    fitting or masking).
+
+    .. caution::
+        This function should not be used directly, but rather through
+        :func:`train_model_for_position` with ``train_mode`` set to
+        `"default"`.
 
     Args:
-        base_model_creator: Instance of `BaseModelCreator` that can be
+        base_model_creator: Instance of ``BaseModelCreator`` that can be
             used to instantiate a new model.
         train_predictors: A 2D numpy array containing the (normalized)
             predictors. Shape: `(n_time_steps, n_features)`.
@@ -544,7 +557,7 @@ def _train_default_model(
 
     Returns:
         The trained model instance, or None, if the training failed
-        with a `np.linalg.LinAlgError`.
+        with a :class:`numpy.linalg.LinAlgError`.
     """
 
     # Instantiate a new model
@@ -567,6 +580,11 @@ def _train_signal_fitting_model(
     """
     Train a model with signal fitting.
 
+    .. caution::
+        This function should not be used directly, but rather through
+        :func:`train_model_for_position` with ``train_mode`` set to
+        `"signal_fitting"`.
+
     Args:
         base_model_creator: Instance of `BaseModelCreator` that can be
             used to instantiate a new model.
@@ -579,10 +597,14 @@ def _train_signal_fitting_model(
             model. Shape: `(n_time_steps, )`.
 
     Returns:
-        A 2-tuple, consisting of (1) the trained noise model instance
-        (i.e., with the planet coefficient removed), and (2) the value
-        of the planet coefficient that was removed. In case the training
-        fails with a `np.linalg.LinAlgError`, return `(None, np.nan)`.
+        A 2-tuple, consisting of
+ 
+        1. the trained noise model instance (i.e., with the
+           planet coefficient removed), and
+        2. the value of the planet coefficient that was removed.
+
+        If the training fails with a :class:`numpy.linalg.LinAlgError`,
+        this function returns `(None, numpy.nan)`.
     """
 
     # Instantiate a new model
@@ -676,8 +698,13 @@ def _train_signal_masking_model(
     """
     Train a model with signal masking.
 
+    .. caution::
+        This function should not be used directly, but rather through
+        :func:`train_model_for_position` with ``train_mode`` set to
+        `"signal_masking"`.
+
     Args:
-        base_model_creator: Instance of `BaseModelCreator` that can be
+        base_model_creator: Instance of ``BaseModelCreator`` that can be
             used to instantiate a new model.
         train_predictors: A 2D numpy array containing the (normalized)
             predictors. Shape: `(n_time_steps, n_features)`.
@@ -689,7 +716,7 @@ def _train_signal_masking_model(
 
     Returns:
         The trained model instance, or None, if the training failed
-        with a `np.linalg.LinAlgError`.
+        with a :class:`numpy.linalg.LinAlgError`.
     """
 
     # Threshold the expected signal to find the time steps that we must not use

@@ -2,7 +2,7 @@
 Methods for dealing with HDF files.
 
 Parts of the code in the module are based on:
-    https://codereview.stackexchange.com/a/121308
+https://codereview.stackexchange.com/a/121308
 """
 
 # -----------------------------------------------------------------------------
@@ -52,7 +52,7 @@ def save_data_to_hdf(
 
     Args:
         hdf_file: An open HDF file (in write mode).
-        location: The path ("group_1/group_2/.../group_n") at which to
+        location: The path (`"group_1/group_2/.../group_n"`) at which to
             create the new data set in the HDF file. Can be empty.
         name: The name of the data set.
         data: The data to be written to the data set.
@@ -89,15 +89,15 @@ def save_dict_to_hdf(
     prefix: str = '',
 ) -> None:
     """
-    Save the given `dictionary` as an HDF file at the given `file_path`.
-    If the `dictionary` is nested, the HDF file will replicate this
+    Save the given ``dictionary`` as an HDF file at the ``file_path``.
+    If the ``dictionary`` is nested, the HDF file will replicate this
     structure using groups.
 
     Args:
         dictionary: A (possibly nested) dictionary to be saved.
         file_path: The path to the target file (including name and
             file ending).
-        mode: The mode (e.g., "w" or "a") that is used when opening
+        mode: The mode (i.e., `"w"` or `"a"`) that is used when opening
             the HDF file for writing.
         prefix: Prefix to use when writing to the HDF file. This can
             be used, for example, to write the dictionary into its own
@@ -166,7 +166,7 @@ def load_dict_from_hdf(file_path: Union[Path, str]) -> dict:
         file_path: The path to the target HDF file.
 
     Returns:
-        A `dict` containing the contents of the specified HDF file.
+        A ``dict`` containing the contents of the specified HDF file.
     """
 
     # Make sure that file_path is a proper Path
@@ -186,14 +186,14 @@ def recursively_load_dict_contents_from_group(
 ) -> dict:
     """
     Auxiliary function for recursively looping over the contents of a
-    given `hdf_object` and loading them into a dictionary.
+    given ``hdf_object`` and loading them into a dictionary.
 
     Args:
         hdf_object: A HDF object; either an HDF file (root) or a group.
-        path: The path to the `hdf_object` in the actual HDF file.
+        path: The path to the ``hdf_object`` in the actual HDF file.
 
     Returns:
-        The contents of `hdf_object[path]` as a dictionary.
+        The contents of ``hdf_object[path]`` as a dictionary.
     """
 
     # Initialize the output dict
@@ -226,22 +226,31 @@ def create_hdf_dir(experiment_dir: Path, create_on_work: bool = False) -> Path:
     Create a directory in which the HDF results files for an HSR
     experiment can be stores and return the Path to the directory.
 
-    This is slightly complicated, because the exact location depends on
-    the machine on which this code is running. When running locally, it
-    should simply be created directly in the `experiment_dir`; however,
-    when this code is running on the MPI-IS cluster, we want to store
-    the (large) HDF files on /work, with a symlink connecting it to the
-    rest of the `experiment_dir`.
+    .. attention::
+        Unless you are working on the MPI-IS cluster in Tübingen, you
+        **always** want to use ``create_on_work=False``!
+
+
+    .. admonition:: Background
+
+        This is slightly complicated, because the exact location
+        depends on the machine on which this code is running. When
+        running locally, it should simply be created directly in the
+        respective ``experiment_dir``.
+        However, when this code is running on the MPI-IS cluster, we
+        want to store the (large) HDF files on ``/work``, with a
+        symlink connecting it to the rest of the `experiment_dir`.
 
     Args:
         experiment_dir: The Path to the experiment directory for which
             we are going to create a `hdf` results directory.
-        create_on_work: If True, the HDF directory is created on /work
-            and a symlink is created in the `experiment_dir`; if False,
-            the HDF directory is created directly in `experiment_dir`.
+        create_on_work: If `True`, the HDF directory is created on
+            ``/work`` and a symlink is created in ``experiment_dir``.
+            If `False`, the HDF directory is created directly in
+            ``experiment_dir``.
 
     Returns:
-        The Path to the `hdf` directory for the given `experiment_dir`.
+        The Path to the ``hdf`` directory for the ``experiment_dir``.
     """
 
     # In case we are creating the directory locally, things are easy

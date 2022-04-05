@@ -33,10 +33,10 @@ def two_sample_t_test(
     Compute the two-sample t-test that is the basis of the
     signal-to-noise (SNR) as introduced by the following paper:
 
-        Mawet, D. et al. (2014): "Fundamental limitations of high
-            contrast imaging set by small sample statistics". *The
-            Astrophysical Journal*, 792(2), 97.
-            DOI: 10.1088/0004-637X/792/2/97
+        Mawet, D. et al. (2014):
+        "Fundamental limitations of high contrast imaging set by small
+        sample statistics". *The Astrophysical Journal*, 792(2), 97.
+        DOI: 10.1088/0004-637X/792/2/97
 
     Args:
         planet_samples: A list of floats containing the results of the
@@ -47,13 +47,17 @@ def two_sample_t_test(
             flux measurements at the reference (or noise) positions.
 
     Returns:
-        A 5-tuple consisting of the following values:
-            (signal, noise, snr, fpf, p_value)
-        The signal and noise are the numerator and denominator of the
-        SNR, which itself is the test statistic of the t-test that is
-        being performed by this function. The false positive fraction
-        (FPF) and the p-value are directly derived from the SNR under
-        the assumption of a t-distribution for the SNR.
+        A 5-tuple consisting of
+
+        1. ``signal``: The numerator of the SNR.
+        2. ``noise``: The denominator of the SNR.
+        3. ``snr``: The signal-to-noise ratio, that is, the test
+           statistic of the $t$-test that is being performed by this
+           function (see paper for details).
+        4. ``fpf``: The false positive fraction, which is computed from
+           the SNR using the survival function of a $t$-distribution.
+        5. ``p_value``: The FPF converted to a $p$-value using the
+           CDF of a $t$-distribution.
     """
 
     # Determine the number of samples; generally, for computing the SNR, there
@@ -129,22 +133,24 @@ def compute_metrics(
             2-tuple `(separation, angle)` using "astronomical" polar
             coordinates (i.e., 0 degrees = North = "up", not "right",
             as in mathematical polar coordinates).
-        aperture_radius: If the planet / noise mode is aperture-based,
-            this parameter controls the size of the apertures.
+        aperture_radius: If the ``planet_mode`` or ``noise_mode`` is
+            aperture-based, this parameter controls the size of the
+            apertures.
             Regardless of the mode, this value is required to determine
             the number of reference positions; therefore it cannot be
             optional. (Usually set this to 1/2 of the FWHM of the PSF.)
-        planet_mode: The `mode` to be used to measure the flux of the
-            planet / signal. See `hsr4hci.photometry.get_flux()` for
-            more details.
-        noise_mode: The `mode` to be used to measure the flux at the
-            reference positions. See `hsr4hci.photometry.get_flux()`
-            for more details. Note that this should be compatible with
-            the choice for the `planet_mode`; i.e., if the mode for the
-            planet is "FS", the mode for the noise should be "P", and
-            if the planet mode is "ASS", the noise mode should be "AS".
-        search_radius: If the planet mode is search-based (mode "ASS"
-            or "FS"), this parameter controls how big the area is that
+        planet_mode: The ``mode`` to be used to measure the flux of the
+            planet, or signal. See :func:`hsr4hci.photometry.get_flux`
+            for more details.
+        noise_mode: The ``mode`` to be used to measure the flux at the
+            reference positions. See :func:`hsr4hci.photometry.get_flux`
+            for more details.
+            Note that this should be compatible with the choice for the
+            ``planet_mode``, meaning that if the mode for the planet is
+            `"FS"`, the mode for the noise should be `"P"`, and if the
+            planet mode is `"ASS"`, the noise mode should be `"AS"`.
+        search_radius: If the ``planet_mode`` is search-based (`"ASS"`
+            or `"FS"`), this parameter controls how big the area is that
             should be considered for maximizing the planet flux.
         exclusion_angle: This parameter controls how the reference
             positions are chosen. It can be used, for example, to
@@ -153,21 +159,26 @@ def compute_metrics(
             (e.g., PCA), these are known to contain self-subtraction /
             over-subtraction "wings" which do not give an unbiased
             estimate of the background. For more details, see
-            `hsr4hci.positions.get_reference_positions()`.
+            :func:`hsr4hci.positions.get_reference_positions`.
         n_rotation_steps: This parameter determines the number of
             rotation steps that are applied to the reference positions:
             The exact placement of the reference positions is always
             somewhat arbitrary, but can have a rather large effect on
             the final metrics. By rotating the reference positions, we
             can at least get a feeling for the size of the effect. See
-            `hsr4hci.positions.rotate_reference_positions()` for more.
+            :func:`hsr4hci.positions.rotate_reference_positions` for
+            more details.
             If this value is set to 0, no rotations are performed.
 
     Returns:
-        A 2-tuple, consisting of (1) a (nested) dictionary containing
-        the mean, median, standard deviation, minimum and maximum of
-        each metric, and (2) the position of the planet before and
-        after a potential optimization.
+        A 2-tuple, consisting of
+
+        1. A (nested) dictionary containing the mean, median, standard
+           deviation, minimum and maximum of each metric (signal, noise,
+           snr, fpf, log_fpf, p_value), and
+        2. A (nested) dictionary containing the position of the planet
+           before and after a potential optimization, both in polar and
+           in Cartesian coordinates.
     """
 
     # Define a shortcut for the frame size

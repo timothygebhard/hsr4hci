@@ -22,22 +22,21 @@ class AlternatingSplit:
     Provides train / test indices to split data in train / test sets.
 
     The split is performed in an "alternating" way:
-    Assume that `n_splits=3`. In this case, the samples / data points
-    are labeled: A B C A B C A B C ... In the first split, all points
-    labeled A or B constitute the training set, and C is the test (or
-    hold-out) set. In the second split, all points labeled A or C are
-    used for training and B is the test split. In the final split, A
-    is held out and training is performed on B and C.
+    Assume that ``n_splits=3``. In this case, the samples / data points
+    are labeled: `A B C A B C A B C ...` In the first split, all points
+    labeled `A` or `B` constitute the training set, and `C` is the test
+    (or hold-out) set. In the second split, all points labeled `A` or
+    `C` are used for training and `B` is the test split. In the final
+    split, `A` is held out and training is performed on `B` and `C`.
 
-    In the special case of `n_splits=2`, this is "even-odd splitting",
-    that is, in the first split the points with even indices (in the
-    data matrix X) are used for training (and odd indices are used for
-    testing), and vice versa in the second split.
-
-    This splitting scheme is useful for HCI/ADI data, because it means
+    This splitting scheme is useful for HCI / ADI data, because it means
     that the effective field rotation in all splits is the same (using
-    standard k-fold splitting would---for k=2---cut the field rotation
-    in the training data in half).
+    standard $k$-fold splitting would---for $k=2$---cut the field
+    rotation in the training data in half).
+
+    .. note::
+        The syntax and usage is closely based on similar ``sklearn``
+        classes such as, e.g., :class:`sklearn.model_selection.KFold`.
     """
 
     def __init__(self, n_splits: int) -> None:
@@ -51,14 +50,16 @@ class AlternatingSplit:
         Generate indices to split data into training and test set.
 
         Args:
-            X: A 2D numpy array of shape (n_samples, n_features) that
+            X: A 2D numpy array of shape `(n_samples, n_features)` that
                 contains the training data.
 
         Yields:
-            train_idx: A 1D numpy array containing the training set
-                indices for that split.
-            test_idx: A 1D numpy array containing the testing set
-                indices for that split.
+            A 2-tuple consisting of
+
+            * ``train_idx``: A 1D numpy array containing the training
+              set indices for that split.
+            * ``test_idx``: A 1D numpy array containing the testing set
+              indices for that split.
         """
 
         # Get the number of samples (= number of rows in X)

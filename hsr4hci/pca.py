@@ -58,8 +58,10 @@ def get_pca_signal_estimates(
     has been denoised) using PCA-based PSF subtraction for different
     numbers of principal components.
 
-    Note: This function essentially provides a rather minimalistic
-    implementation of PynPoint's PcaPsfSubtractionModule.
+    .. note::
+        This function essentially provides a rather minimalistic
+        implementation of PynPoint's
+        :class:`pynpoint.processing.psfsubtraction.PcaPsfSubtractionModule`.
 
     Args:
         stack: A 3D numpy array of shape `(n_frames, width, height)`
@@ -71,16 +73,24 @@ def get_pca_signal_estimates(
         n_components: An iterable of integers, containing the values for
             the numbers of principal components for which to run PCA.
         return_components: Whether to return the principal components.
-        roi_mask: A 2D binary mask of shape `(width, height)` that can
+        roi_mask: A 2D binary mask of shape `(x_size, y_size)` that can
             be used to select the region of interest. If a ROI mask is
             given, only the pixels inside the ROI will be used to find
             the PCA basis.
 
     Returns:
-        A 3D numpy array of shape `(N, width, height)` (where N is the
-        number of elements in `pca_numbers`), which contains the signal
-        estimates for different numbers of principal components. The
-        results are ordered from lowest to highest number of PCs.
+        Depending on the value of ``return_components``, either
+
+        * A 3D numpy array of shape `(N, width, height)` (where N is
+          the number of elements in ``pca_numbers``), which contains
+          the signal estimates for different numbers of principal
+          components (ordered from lowest to highest number of PCs), or
+        * A 2-tuple containing
+
+          * A 3D numpy array with the signal estimates (see above),
+            and
+          * A 3D numpy array with the corresponding principal
+            components.
     """
 
     # -------------------------------------------------------------------------

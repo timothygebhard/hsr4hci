@@ -35,11 +35,15 @@ def crop_center(
     """
     Crop an n-dimensional array to the given size around its center.
 
+    Example:
+        >>> crop_center(np.array([1, 2, 3, 4, 5]), (3,))
+        array([2, 3, 4])
+
     Args:
         array: The numpy array to be cropped.
         size: A tuple containing the size of the cropped array. To not
             crop along a specific axis, you can specify the size of
-            that axis as -1.
+            that axis as `-1`.
 
     Returns:
         The input array, cropped to the desired size around its center.
@@ -79,30 +83,28 @@ def prestack_array(
     axis: int = 0,
 ) -> np.ndarray:
     """
-    Perform "pre-stacking" on a given `array`: The array is split into
-    blocks (each of size `stacking_factor`) along the given axis, and
-    the given `stacking_function` is applied to each block (again along
-    the specified axis). The results for each block are combined and
-    returned, resulting in a numpy array that has the same shape as the
-    input array, except that the specified axis has been reduced by the
-    given stacking factor.
-
-    Example use case: Replace each block of 50 raw frames by their
-        mean to reduce the size of the ADI stack.
+    Perform "pre-stacking" (= temporal binning) on a given ``array``:
+    The array is split into blocks (each of size ``stacking_factor``)
+    along the given axis, and the given ``stacking_function`` is applied
+    to each block (again along the specified axis). The results for each
+    block are combined and returned, resulting in a numpy array that has
+    the same shape as the input array, except that the specified axis
+    has been reduced by the given ``stacking_factor``.
 
     Args:
         array: A numpy array containing the input array.
         stacking_factor: An integer defining how many elements of the
             input go into one block and are combined for the output.
         stacking_function: The function to be used for combining the
-            blocks. Usually, this will be `np.mean` or `np.median`.
+            blocks. For most cases, this will be :func:`numpy.mean` or
+            :func:`numpy.median`.
         axis: Axis along which the stacking operation is performed. By
             default, we stack along the time axis, which by convention
-            is the first axis (0).
+            is the first axis (`0`).
 
     Returns:
-        A version of the input `stack` where blocks of the specified
-        size have been merged using the givens `stacking_function`.
+        A version of the input ``stack`` where blocks of the specified
+        size have been merged using the given ``stacking_function``.
     """
 
     # If stacking factor is 1, we do not need to stack anything
@@ -129,10 +131,10 @@ def get_from_nested_dict(
     location: Sequence,
 ) -> Any:
     """
-    Get a value from a nested dictionary at a given location, described
-    by a sequence of keys.
+    Get a value from a nested dictionary at a given ``location``,
+    described by a sequence of keys.
 
-    Examples:
+    Example:
         >>> dictionary = {'a': {'b': 42}}
         >>> get_from_nested_dict(dictionary, ['a', 'b'])
         42
@@ -144,7 +146,7 @@ def get_from_nested_dict(
             the target value.
 
     Returns:
-        The value of the `nested_dict` at the specified location.
+        The value of the ``nested_dict`` at the specified ``location``.
     """
 
     return reduce(operator.getitem, location, nested_dict)
@@ -156,10 +158,10 @@ def set_in_nested_dict(
     value: Any,
 ) -> None:
     """
-    Set a value at a given location (described by a sequence of keys)
+    Set a value at a given ``location`` (described by a sequence of keys)
     in a nested dictionary.
 
-    Examples:
+    Example:
         >>> dictionary = {'a': {'b': 42}}
         >>> set_in_nested_dict(dictionary, ['a', 'b'], 23)
         >>> dictionary
@@ -182,16 +184,17 @@ def rotate_position(
     angle: Union[float, np.ndarray],
 ) -> Union[Tuple[float, float], np.ndarray]:
     """
-    Take a `position` and rotate it around the given `center` for the
-    given `angle`. Either the `position` or the `angle` can also be an
-    array (but not both).
+    Take a ``position`` and rotate it around the given ``center`` for
+    the given ``angle``. Either the ``position`` or the ``angle`` can
+    also be a numpy array (but not both!).
 
     Args:
         position: The initial position as a 2-tuple `(x, y)`, or as a
             numpy array of shape `(2, n_positions)`.
-        center: The center of the rotation as a 2-tuple `(x_c, y_c)`.
+        center: The center of the rotation as a 2-tuple
+            `(center_x, center_y)`.
         angle: The rotation angle *in degrees* (not radian); either as
-            a float or as a numpy array of shape `(n_angles, )`.
+            a ``float`` or as a numpy array of shape `(n_angles, )`.
 
     Returns:
         The rotated position, either as a 2-tuple, or as a numpy array
@@ -225,19 +228,19 @@ def rotate_position(
 
 def find_closest(sequence: Sequence, value: Any) -> Tuple[int, Any]:
     """
-    Given a sorted `sequence`, find the entry (and its index) in it
-    that is the closest to the given `value`.
+    Given a sorted ``sequence``, find the entry (and its index) in it
+    that is the closest to the given ``value``.
 
     Original source: https://stackoverflow.com/a/12141511/4100721
 
     Args:
-        sequence: A sequence (i.e., a list, tuple or array).
-        value: A numeric value (i.e., usually an int or float).
+        sequence: A sequence (= a ``list``, ``tuple`` or numpy array).
+        value: A numeric value (i.e., usually an ``int`` or ``float``).
 
     Returns:
         A tuple `(index, value)` where `value` is the entry in
         `sequence` that is the closest to `value`, and `index`
-        is its index: `sequence[index] == value`.
+        is its index: ``sequence[index] == value``.
     """
 
     pos = bisect_left(sequence, value)
@@ -261,26 +264,27 @@ def pad_array_to_shape(
     **kwargs: Any,
 ) -> np.ndarray:
     """
-    Pad a numpy array to a given target shape (unlike `np.pad`, which
-    adds a given amount of padding). By default, zero-padding is used.
+    Pad a numpy array to a given target shape. (In a way, this is the
+    complement to :func:`numpy.pad`, which adds a given amount of
+    padding.) By default, zero-padding is used.
 
     Args:
         array: An n-dimensional numpy array.
         shape: The tuple of integers specifying the target shape to
-            which the `array` is padded. The length of this tuple must
+            which the ``array`` is padded. The length of this tuple must
             match exactly the number of dimensions of `array`, i.e.,
             this function will *not* automatically add new axes (use
-            `array.reshape()` to add a new dimension first for this).
+            ``array.reshape()`` to add a new dimension first for this).
             Also, the new `shape` must be greater or equal to the
-            current `array.shape` for every axis, i.e., this function
+            current ``array.shape`` for every axis, i.e., this function
             cannot be used for negative padding (cropping).
         kwargs: Additional keyword arguments that are passed to
-            `np.pad()`; for example `constant_values` to determine
-            the value with which the array is padded.
+            :func:`numpy.pad`; for example ``constant_values`` to
+            determine the value with which the array is padded.
 
     Returns:
-        A copy of the given `array` that has been padded to the given
-        `shape`.
+        A copy of the given ``array`` that has been padded to the given
+        target ``shape``.
     """
 
     # Make sure that `array` and `shape` have matching dimensions
@@ -316,18 +320,19 @@ def crop_or_pad(
     **kwargs: Any,
 ) -> np.ndarray:
     """
-    Take an `array` and a target `size` and either crop or pad the
-    `array` to match the given size.
+    Take an ``array`` and a target ``size`` and either crop or pad the
+    ``array`` to match the given size.
 
     Args:
         array: A numpy array.
         size: A tuple of integers specifying the target size.
         kwargs: Additional keyword arguments that are passed to
-            `pad_array_to_shape()`. For example, use `constant_values`
-            to specify the padding value (default: 0).
+            :func:`pad_array_to_shape()`.
+            For example, use  ``constant_values`` to specify the
+            padding value  (default: `0`).
 
     Returns:
-        The original `array`, cropped or padded to match the `size`.
+        The original ``array``, cropped or padded to match the ``size``.
     """
 
     # If all array dimensions are larger than the target, we crop the array
@@ -349,24 +354,26 @@ def shift_image(
     mode: str = 'constant',
 ) -> np.ndarray:
     """
-    Function to shift a 2D array (i.e., an `image`) by a given `offset`.
+    Function to shift a 2D array (i.e., an ``image``) by a given 2D
+    ``offset``.
 
     This function is essentially a simplified port of the PynPoint
-    function of the same name (`pynpoint.util.image.shift_image()`).
+    function of the same name: :func:`pynpoint.util.image.shift_image`.
 
     Args:
         image: A 2D numpy array containing the image to be shifted.
         offset: A tuple of floats `(x_shift, y_shift)` containing the
             amount (in pixels) how much the `image` should be shifted.
         interpolation: The interpolation method to be used. Must be one
-            of the following: 'spline', 'bilinear'.
-            Default is 'bilinear' because it is flux-preserving.
+            of the following: `"spline"`, `"bilinear"`.
+            Default is "`bilinear"` because it is flux-preserving.
         mode: The mode parameter determines how the input array is
-            extended beyond its boundaries. See `scipy.ndimage.shift()`
-            for a full documentation.
+            extended beyond its boundaries.
+            See :py:func:`scipy.ndimage.shift` for a full
+            documentation.
 
     Returns:
-        The `image` shifted by the amount specified in `offset`.
+        The ``image`` shifted by the amount specified in ``offset``.
     """
 
     # Ensure that the image is really 2D
@@ -394,14 +401,15 @@ def flatten_nested_dict(d: dict, parent_key: str = '', sep: str = '_') -> dict:
     """
     Flatten a nested dictionary into a dictionary with only 1 level.
 
-    Example: `flatten_nested_dict({'a': {'b': 5}, 'c': 2})` will produce
-    the following output: `{'a_b': 5, 'c': 2}`.
-
     Original source: https://stackoverflow.com/a/6027615/4100721
+
+    Example:
+        >>> flatten_nested_dict({'a': {'b': 5}, 'c': 2})
+        {'a_b': 5, 'c': 2}.
 
     Args:
         d: Dictionary to be flattened.
-        parent_key: Key of the parent of `d`; this is needed because
+        parent_key: Key of the parent of ``d``; this is needed because
             the function calls itself recursively.
         sep: The separator to use for merging keys.
 
@@ -424,17 +432,14 @@ def fast_corrcoef(
 ) -> float:
     """
     A fast(er) way to compute the correlation coefficient between
-    the variables `x` and `y`, based on `numpy.einsum()`.
-    For array sizes between 2 and 10^8, this implementation is, on
-    average, 4.2 (+-2.2) times faster than `numpy.corrcoef()`, and
-    2.9 (+-1.1) times faster than `scipy.stats.pearsonr()`.
+    the variables ``x`` and ``y``, based on :func:`numpy.einsum`.
 
     Args:
-        x: A numpy array with realizations of the random variable X.
-        y: A numpy array with realizations of the random variable Y.
+        x: A numpy array with realizations of the random variable `X`.
+        y: A numpy array with realizations of the random variable `Y`.
 
     Returns:
-        The correlation coefficient Corr(X, Y).
+        The correlation coefficient `Corr(X, Y)`.
     """
 
     n = x.shape[0]

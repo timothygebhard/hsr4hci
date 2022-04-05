@@ -28,20 +28,21 @@ def get_circle_mask(
     """
     Create a circle mask.
 
-    Note: This function uses the *numpy convention* for coordinates!
+    .. attention::
+        This function uses the ``numpy`` convention for coordinates!
 
     Args:
         mask_size: A tuple `(x_size, y_size)` containing the size of the
             mask (in pixels) to be created.
         radius: Radius of the disk (in pixels).
         center: A tuple `(x, y)` containing the center of the circle.
-            If None is given, the circle will be centered within the
+            If `None` is given, the circle will be centered within the
             mask (this is the default).
 
     Returns:
-        A numpy array of the given `mask_size` which is False
+        A numpy array of the given ``mask_size`` which is `False`
         everywhere, except in a circular region of given radius around
-        the specified `center`.
+        the specified ``center``.
     """
 
     x, y = np.ogrid[: mask_size[0], : mask_size[1]]
@@ -63,7 +64,8 @@ def get_annulus_mask(
     """
     Create an annulus-shaped mask.
 
-    Note: This function uses the *numpy convention* for coordinates!
+    .. attention::
+        This function uses the ``numpy`` convention for coordinates!
 
     Args:
         mask_size: A tuple (width, height) containing the size of the
@@ -72,12 +74,12 @@ def get_annulus_mask(
         inner_radius: Inner radius (in pixels) of the annulus mask.
         outer_radius: Outer radius (in pixels) of the annulus mask.
         center: A tuple `(x, y)` containing the center of the annulus.
-            If None is given, the annulus will be centered within the
+            If `None` is given, the annulus will be centered within the
             mask (this is the default).
 
     Returns:
-        A 2D numpy array of size `mask_size` which masks an annulus
-        with a given `inner_radius` and `outer_radius`.
+        A 2D numpy array of size ``mask_size`` which masks an annulus
+        with a given ``inner_radius`` and ``outer_radius``.
     """
 
     return np.asarray(
@@ -100,18 +102,21 @@ def get_roi_mask(
     """
     Get a numpy array masking the pixels within the region of interest.
 
-    Note: This function uses the *numpy convention* for coordinates!
+    .. attention::
+        This function uses the ``numpy`` convention for coordinates!
 
     Args:
-        mask_size: A tuple (width, height) containing the spatial size
-            of the input stack.
+        mask_size: A tuple `(x_size, y_size)` containing the spatial
+            size of the input stack.
         inner_radius: Inner radius of the region of interest (as an
-            astropy.units.Quantity that can be converted to pixels).
+            :class:`astropy.units.Quantity` that can be converted to
+            pixels).
         outer_radius: Outer radius of the region of interest (as an
-            astropy.units.Quantity that can be converted to pixels).
+            :class:`astropy.units.Quantity` that can be converted to
+            pixels).
 
     Returns:
-        A 2D numpy array of size `mask_size` which masks the pixels
+        A 2D numpy array of size ``mask_size`` which masks the pixels
         within the specified region of interest.
     """
 
@@ -131,13 +136,14 @@ def get_predictor_mask(
     """
     Create a mask that selects the potential predictors for a position.
 
-    For a given position (x, y), this mask selects all pixels in a
-    circular region with radius `radius_position` around the position,
-    and another circular region with radius `radius_opposite` centered
-    on (-x, -y), where the center of the frame is taken as the origin
+    For a given position `(x, y)`, this mask selects all pixels in a
+    circular region with radius ``radius_position`` around the position,
+    and another circular region with radius ``radius_opposite`` centered
+    on `(-x, -y)`, where the center of the frame is taken as the origin
     of the coordinate system.
 
-    Note: This function uses the *astropy convention* for coordinates!
+    .. attention::
+        This function uses the ``astropy`` convention for coordinates!
 
     Args:
         mask_size: A tuple `(x_size, y_size)` that specifies the size
@@ -145,19 +151,21 @@ def get_predictor_mask(
         position: A tuple `(x, y)` specifying the position / pixel for
             which this mask is created. The `position` is specified in
             astropy / matplotlib coordinates, *not* numpy coordinates!
-        radius_position: The radius (as an `astropy.units.Quantity` that
-            can be converted to pixels) of the circular region around
-            the `position` that is used to select potential predictors.
-        radius_opposite: The radius (as an `astropy.units.Quantity` that
-            can be converted to pixels) of the circular region around
-            the opposite `position`, that is, the position that we get
-            if we mirror `position` across the center of the frame.
+        radius_position: The radius (an :class:`astropy.units.Quantity`
+            that can be converted to pixels) of the circular region
+            around the ``position`` that is used to select potential
+            predictors.
+        radius_opposite: The radius (an :class:`astropy.units.Quantity`
+            that can be converted to pixels) of the circular region
+            around the opposite ``position``, that is, the position that
+            we get if we mirror ``position`` across the center of the
+            frame.
 
     Returns:
         A 2D numpy array containing a mask that contains all potential
-        predictors for the pixel at the given `position`, that is,
+        predictors for the pixel at the given ``position``, that is,
         including the pixels that we must not use because they are
-        not causally disconnected
+        not causally independent.
     """
 
     # Add circular selection mask at position (x, y)
@@ -190,25 +198,26 @@ def get_exclusion_mask(
 ) -> np.ndarray:
     """
     Get a mask of the pixels that we must *not* use as predictors for
-    the given target pixel at `position`.
+    the given target pixel at ``position``.
 
     For simplicity, the exclusion region is a disk where we exclude
-    everything inside a given radius around the `position`.
+    everything inside a given radius around the ``position``.
 
-    Note: This function uses the *astropy convention* for coordinates!
+    .. attention::
+        This function uses the ``astropy`` convention for coordinates!
 
     Args:
         mask_size: A tuple `(x_size, y_size)` containing the size of the
             mask (in pixels) to be created.
         position: The position (in astropy = matplotlib coordinates) for
             which to compute the exclusion mask.
-        radius_excluded: The radius (as an `astropy.units.Quantity` that
-            can be converted to pixels) around `position` inside which
-            pixels are excluded from being used as a predictor.
+        radius_excluded: The radius (an :class:`astropy.units.Quantity`
+            that can be converted to pixels) around `position` inside
+            which pixels are excluded from being used as a predictor.
 
     Returns:
         A 2D numpy array containing the (binary) exclusion mask for the
-        pixel at the given `position`.
+        pixel at the given ``position``.
     """
 
     # Create exclusion mask; flip position because get_circle_mask() uses
@@ -232,29 +241,31 @@ def get_predictor_pixel_selection_mask(
     """
     Get the mask that selects the predictor pixels for a given position.
 
-    Note: This function uses the *astropy convention* for coordinates!
+    .. attention::
+        This function uses the ``astropy`` convention for coordinates!
 
     Args:
-        mask_size: A tuple (width, height) that specifies the size of
+        mask_size: A tuple `(x_size, y_size)` that specifies the size of
             the mask to be created in pixels.
-        position: A tuple (x, y) specifying the position for which this
+        position: A tuple `(x, y)` specifying the position for which this
             mask is created, i.e., the mask selects the pixels that are
-            used as predictors for (x, y).
+            used as predictors for `(x, y)`.
         radius_position: The radius (as an astropy.units.Quantity that
             can be converted to pixels) of the circular region around
-            the `position` (and the mirrored position) that is used in
-            the get_predictor_mask() function.
-        radius_opposite: The radius (as an astropy.units.Quantity that
-            can be converted to pixels) of the circular region around
-            the opposite `position`, that is, the position that we get
-            if we mirror `position` across the center of the frame.
-        radius_excluded: The radius (as an astropy.units.Quantity that
-            can be converted to pixels) around `position` inside which
-            pixels are excluded from being used as a predictor.
+            the ``position`` (and the mirrored position) that is used in
+            the :func:`get_predictor_mask()` function.
+        radius_opposite: The radius (an :class:`astropy.units.Quantity`
+            that can be converted to pixels) of the circular region
+            around the opposite ``position``, that is, the position that
+            we get if we mirror ``position`` across the center of the
+            frame.
+        radius_excluded: The radius (an :class:`astropy.units.Quantity`
+            that can be converted to pixels) around `position` inside
+            which pixels are excluded from being used as a predictor.
 
     Returns:
         A 2D numpy array containing a mask that selects the pixels to
-        be used as predictors for the pixel at the given `position`.
+        be used as predictors for the pixel at the given ``position``.
     """
 
     # Get the mask that selects all potential predictor pixels
@@ -289,14 +300,17 @@ def get_positions_from_mask(mask: np.ndarray) -> List[Tuple[int, int]]:
     """
     Convert a numpy mask into a list of positions selected by that mask.
 
-    Note: The returned positions follow the numpy convention!
+    .. attention::
+        The returned positions follow the ``numpy`` convention for
+        coordinates!
 
     Args:
         mask: A numpy array containing only boolean values (or values
             that can be interpreted as such).
 
     Returns:
-        A sorted list of all positions (x, y) with mask[x, y] == True.
+        A sorted list of all positions `(x, y)` for which we have
+        ``mask[x, y] == True``.
     """
 
     return sorted(list((x, y) for x, y in zip(*np.where(mask))))
@@ -306,10 +320,10 @@ def get_partial_roi_mask(
     roi_mask: np.ndarray, roi_split: int, n_roi_splits: int
 ) -> np.ndarray:
     """
-    Take a `roi_mask` and return a mask that selects only a subset of
-    the ROI that is specified by the number of `n_roi_splits` and the
-    index `roi_split`. This function processing data in parallel, for
-    example on a cluster.
+    Take a ``roi_mask`` and return a mask that selects only a subset of
+    the ROI that is specified by the number of ``n_roi_splits`` and the
+    index ``roi_split``. This function is useful for processing data in
+    parallel, for example on a cluster.
 
     Args:
         roi_mask: A 2D numpy array containing a binary mask.
@@ -344,15 +358,15 @@ def remove_connected_components(
     Args:
         mask: Binary 2D numpy array from which to remove components.
         minimum_size: Components with *less* pixels than this number
-            will be removed from `mask`. Set to None to not remove
+            will be removed from ``mask``. Set to `None` to not remove
             small components.
         maximum_size: Components with *more* pixels than this number
-            will be removed from `mask`. Set to None to not remove
+            will be removed from ``mask``. Set to `None` to not remove
             large components.
 
     Returns:
-        The original `mask`, with connected components removed according
-        to `minimum_size` and `maximum_size`.
+        The original ``mask``, with connected components removed
+        according to ``minimum_size`` and ``maximum_size``.
     """
 
     # Ensure that the mask is a binary
@@ -384,14 +398,14 @@ def mask_frame_around_position(
     radius: float = 5,
 ) -> np.ndarray:
     """
-    Create a circular mask with the given `radius` at the given position
-    and set the frame outside this mask to zero. This is sometimes
-    required for the Gaussian2D-based photometry methods to prevent the
-    Gaussian to try and fit some part of the data that is far from the
-    target `position`.
+    Create a circular mask with the given ``radius`` at the given
+    position and set the frame outside this mask to zero. This is
+    sometimes required for the ``Gaussian2D``-based photometry methods
+    to prevent the Gaussian to try and fit some part of the data that
+    is far from the target ``position``.
 
     Args:
-        frame: A 2D numpy array of shape `(width, height)` containing
+        frame: A 2D numpy array of shape `(x_size, y_size)` containing
             the data on which to run the aperture photometry.
         position: A tuple `(x, y)` specifying the position at which to
             estimate the flux. The position should be in astropy /
@@ -400,7 +414,7 @@ def mask_frame_around_position(
             the size of a planet signal.
 
     Returns:
-        A masked version of the given `frame` on which we can perform
+        A masked version of the given ``frame`` on which we can perform
         photometry based on fitting a 2D Gaussian to the data.
     """
 

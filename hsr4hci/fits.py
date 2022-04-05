@@ -47,6 +47,7 @@ def read_fits(
 
     Returns:
         A numpy array containing the contents of the given FITS file.
+        Optionally also a dictionary containing the FITS header.
     """
 
     # Make sure that file_path is a proper Path
@@ -70,7 +71,7 @@ def save_fits(
     overwrite: bool = True,
 ) -> None:
     """
-    Save a numpy array as a FITS file (e.g., to inspect it with DS9).
+    Save a numpy array as a FITS file.
 
     Args:
         array: The numpy array to be saved to a FITS file.

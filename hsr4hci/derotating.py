@@ -33,17 +33,17 @@ def derotate_frames(
         stack: Stack of frames to be de-rotated.
         parang: Array of parallactic angles (one for each frame).
         mask: Mask to apply after derotating. Usually, pixels for which
-            there exist no real values are set to NaN. However, for
+            there exist no values are set to `NaN`. However, for
             derotating, these have to be cast to zeros (otherwise the
-            interpolation turns everything into a NaN). This mask here
-            allows to restore these NaN values again. Note that this
-            mask selects the pixels that will be set to NaN; that means,
-            for example, the usual ROI mask should be inverted before it
-            is passed to this function.
+            interpolation turns everything into a `NaN`). This mask here
+            allows to restore these `NaN` values again. Note that this
+            mask selects the pixels that will be set to `NaN`; that
+            means, for example, the usual ROI mask should be inverted
+            before it is passed to this function.
         order: The order of the spline interpolation for the rotation.
-            Has to be in the range [0, 5]; default is 3.
+            Has to be in the range `[0, 5]`; default is `3`.
         n_processes: Number of parallel processes to be used to derotate
-            the frames in parallel; default is 4.
+            the frames in parallel; default is `4`.
 
     Returns:
         The stack with every frame derotated by its parallactic angle.
@@ -94,24 +94,24 @@ def derotate_combine(
     Derotate all frames in the stack and combine (= average) them.
 
     Args:
-        stack: A 3D numpy array of shape (n_frames, width, height)
+        stack: A 3D numpy array of shape `(n_frames, width, height)`
             containing the stack of (residual) frames.
-        parang: A 1D numpy array of shape (n_frames, ) containing the
+        parang: A 1D numpy array of shape `(n_frames, )` containing the
             respective parallactic angle for each frame.
         mask: Mask to apply after derotating. Usually, pixels for which
-            there exist no real values are set to NaN. However, for
+            there exist no values are set to `NaN`. However, for
             derotating, these have to be cast to zeros (otherwise the
-            interpolation turns everything into a NaN). This mask here
-            allows to restore these NaN values again.
+            interpolation turns everything into a `NaN`). This mask here
+            allows to restore these `NaN` values again.
         order: The order of the spline interpolation for the rotation.
-            Has to be in the range [0, 5]; default is 3.
+            Has to be in the range `[0, 5]`; default is `3`.
         combine: A string specifying how to combine the frames after
-            derotating them. Options are "mean" or "median".
+            derotating them. Options are `"mean"` or `"median"`.
         n_processes: Number of parallel processes to be used to derotate
-            the frames in parallel; default is 4.
+            the frames in parallel; default is `4`.
 
     Returns:
-        A 2D numpy array of shape (width, height) containing the
+        A 2D numpy array of shape `(width, height)` containing the
         derotated and combined stack.
     """
 
