@@ -6,8 +6,11 @@ Tests for config.py
 # IMPORTS
 # -----------------------------------------------------------------------------
 
+from pathlib import Path
+
 import json
 
+from _pytest.monkeypatch import MonkeyPatch
 from _pytest.tmpdir import TempPathFactory
 from deepdiff import DeepDiff
 
@@ -67,17 +70,63 @@ def test__get_hsr4hci_dir() -> None:
     assert get_hsr4hci_dir().exists()
 
 
-def test__get_datasets_dir() -> None:
+def test__get_datasets_dir(monkeypatch: MonkeyPatch) -> None:
     """
     Test `hsr4hci.config.get_datasets_dir`.
     """
 
+    # Case 1
+    # Monkeypatch HSR4HCI_DATASETS_DIR to something that exists
+    monkeypatch.setenv(
+        'HSR4HCI_DATASETS_DIR',
+        Path(__file__).parent.resolve().as_posix(),
+    )
     assert get_datasets_dir().exists()
 
+    # Case 2
+    # Monkeypatch HSR4HCI_DATASETS_DIR to something that does not exist
+    monkeypatch.setenv(
+        'HSR4HCI_DATASETS_DIR',
+        (Path(__file__).parent.resolve() / 'this_does_not_exist').as_posix(),
+    )
+    with pytest.raises(NotADirectoryError) as not_a_directory_error:
+        get_datasets_dir()
+    assert 'does not exist' in str(not_a_directory_error)
 
-def test__get_experiments_dir() -> None:
+    # Case 3
+    # Monkeypatch HSR4HCI_DATASETS_DIR to ensure that it is *NOT* set
+    monkeypatch.delenv('HSR4HCI_DATASETS_DIR')
+    with pytest.raises(KeyError) as key_error:
+        get_datasets_dir()
+    assert 'HSR4HCI_DATASETS_DIR not defined' in str(key_error)
+
+
+def test__get_experiments_dir(monkeypatch: MonkeyPatch) -> None:
     """
     Test `hsr4hci.config.get_experiments_dir`.
     """
 
+    # Case 1
+    # Monkeypatch HSR4HCI_EXPERIMENTS_DIR to ensure that it is set
+    monkeypatch.setenv(
+        'HSR4HCI_EXPERIMENTS_DIR',
+        Path(__file__).parent.resolve().as_posix(),
+    )
     assert get_experiments_dir().exists()
+
+    # Case 2
+    # Monkeypatch HSR4HCI_DATASETS_DIR to something that does not exist
+    monkeypatch.setenv(
+        'HSR4HCI_EXPERIMENTS_DIR',
+        (Path(__file__).parent.resolve() / 'this_does_not_exist').as_posix(),
+    )
+    with pytest.raises(NotADirectoryError) as not_a_directory_error:
+        get_experiments_dir()
+    assert 'does not exist' in str(not_a_directory_error)
+
+    # Case 3
+    # Monkeypatch HSR4HCI_EXPERIMENTS_DIR to ensure that it is not set
+    monkeypatch.delenv('HSR4HCI_EXPERIMENTS_DIR')
+    with pytest.raises(KeyError) as key_error:
+        get_experiments_dir()
+    assert 'HSR4HCI_EXPERIMENTS_DIR not defined' in str(key_error)

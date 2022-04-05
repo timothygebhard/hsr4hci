@@ -10,6 +10,7 @@ from getpass import getuser
 from pathlib import Path
 from typing import Any
 
+from _pytest.monkeypatch import MonkeyPatch
 from _pytest.tmpdir import TempPathFactory
 from deepdiff import DeepDiff
 
@@ -107,10 +108,16 @@ def test_file(
     return file_path
 
 
-def test___resolve_name_or_path() -> None:
+def test___resolve_name_or_path(
+    test_file: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
     """
     Test `hsr4hci.data._resolve_name_or_path`.
     """
+
+    # Monkeypatch HSR4HCI_DATASETS_DIR to ensure that it is set
+    monkeypatch.setenv('HSR4HCI_DATASETS_DIR', test_file.parent.as_posix())
 
     # Case 1
     file_path = _resolve_name_or_path(name_or_path='test')
@@ -134,6 +141,14 @@ def test___resolve_name_or_path() -> None:
         # noinspection PyTypeChecker
         _resolve_name_or_path(name_or_path=5)  # type: ignore
     assert 'name_or_path must be a string or a Path!' in str(value_error)
+
+    # Monkeypatch HSR4HCI_DATA_DIR to ensure that it is *NOT* set
+    monkeypatch.delenv('HSR4HCI_DATASETS_DIR')
+
+    # Case 6
+    with pytest.raises(KeyError) as key_error:
+        _resolve_name_or_path(name_or_path='test')
+    assert 'HSR4HCI_DATASETS_DIR not defined' in str(key_error)
 
 
 def test__load_parang(
