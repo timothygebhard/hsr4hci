@@ -132,7 +132,9 @@ def load_psf_template(name_or_path: Union[str, Path], **_: Any) -> np.ndarray:
 
 
 def load_observing_conditions(
-    name_or_path: Union[str, Path], binning_factor: int = 1, **_: Any
+    name_or_path: Union[str, Path],
+    binning_factor: int = 1,
+    **_: Any,
 ) -> ObservingConditions:
     """
     Load the observing conditions.

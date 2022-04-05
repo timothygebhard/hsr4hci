@@ -598,7 +598,7 @@ def _train_signal_fitting_model(
 
     Returns:
         A 2-tuple, consisting of
- 
+
         1. the trained noise model instance (i.e., with the
            planet coefficient removed), and
         2. the value of the planet coefficient that was removed.

@@ -54,7 +54,7 @@ class BaseModelCreator:
             **base_model_config: A ``dict`` containing the configuration
                 of the base model. It needs to have exactly three keys
                 (see example above):
-    
+
                 - ``module``: A string with the module from which the
                   base model should be imported.
                 - ``class``: A string with the class (= name) of the
