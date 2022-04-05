@@ -6,9 +6,8 @@ Configuration file for the Sphinx documentation builder.
 # IMPORT
 # -----------------------------------------------------------------------------
 
-from pathlib import Path
+from os.path import join, dirname
 
-import hsr4hci
 
 # -----------------------------------------------------------------------------
 # PROJECT INFORMATION
@@ -24,8 +23,7 @@ author = u'Timothy Gebhard'
 project = u'hsrh4ci'
 
 # The short X.Y version
-file_path = Path(hsr4hci.__file__).parent / 'VERSION'
-with open(file_path) as version_file:
+with open(join(dirname(__file__), "../hsr4hci/VERSION")) as version_file:
     version = version_file.read().strip()
 
 # The full version, including alpha/beta/rc tags
