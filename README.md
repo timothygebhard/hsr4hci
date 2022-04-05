@@ -5,6 +5,8 @@
 [![Code style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
 ![Tests](https://github.com/timothygebhard/hsr4hci/workflows/Tests/badge.svg?branch=master)
 ![Coverage Badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/timothygebhard/40d8bf48dcbaf33c99e8de35ad6161f2/raw/hsr4hci.json)
+[![Documentation Status](https://readthedocs.org/projects/hsr4hci/badge/?version=latest)](https://hsr4hci.readthedocs.io/en/latest/?badge=latest)
+
 
 ---
 
@@ -39,13 +41,14 @@ pip install -e ".[develop]"
 ## 🪐 Data sets
 
 To run any experiments or reproduce our results, you will first need to [download](https://doi.org/10.17617/3.LACYPN) or create some data sets in the right format.
-Please check out the [README file in the *datasets* directory](https://github.com/timothygebhard/hsr4hci/tree/master/datasets) for more detailed information on how to do this.
+Please check out [the documentation](https://hsr4hci.readthedocs.io/en/latest/general/datasets.html) for more detailed information on how to do this.
 
 
 ## 🧪 (Re)-running our experiments
 
 All of our experiments can be found in the `experiments` directory, where we keep [another README](https://github.com/timothygebhard/hsr4hci/tree/master/experiments) with more instructions for how to replicate our results.
 A good starting point if you are just getting started could the to run the demo experiment that we have prepared in the [*demo* directory](https://github.com/timothygebhard/hsr4hci/tree/master/experiments/demo).
+
 
 ## 🐭 Tests
 
