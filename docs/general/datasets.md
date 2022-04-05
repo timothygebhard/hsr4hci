@@ -1,18 +1,33 @@
 # Data sets
 
+This guide will walk you through the steps to download and place the original data sets from the `hsr4hci` paper, and will give some advice on how to create your own data sets.
+
+
+## Setting up the environmental variable
+
+If you have not already done so, you need to set up the environmental variable that tells `hsr4hci` where the `datasets` directory is located:
+
+```bash
+export HSR4HCI_DATASETS_DIR="/path/to/datasets/dir" ;
+```
+
 
 ## Using the original data sets from the paper
 
-The final data sets that we used for the experiments in our paper are publicly available [here](https://doi.org/10.17617/3.LACYPN).
+The final data sets that we used for the experiments in our paper are [available for download from Edmond](https://doi.org/10.17617/3.LACYPN), the open source research data repository of the Max Planck Society.
+
+Each data set should have its own subdirectory in the location specified in `$HSR4HCI_DATASETS_DIR`.
 To use them with the methods available from `hsr4hci.data`, you should place them in the `output` subdirectory of the respective data set.
+
 For example, the HDF file `beta_pictoris__lp.hdf` containing the Beta Pictoris *L'* data set should be placed at the following location:
 
 ```
-<path to hsr4hci>/datasets/beta_pictoris__lp/output/beta_pictoris__lp.hdf
+$HSR4HCI_DATASETS_DIR/beta_pictoris__lp/output/beta_pictoris__lp.hdf
 ```
 
 To see how we created these data sets, feel free to take a look at the `prepare_dataset.py` script.
 
+Once you have downloaded and placed our data sets, a good next step would be to [run our demo experiment](../experiments/demo), which should help you to understand better the structure of the code base and its workflows. 
 
 
 ## Advice for creating your own data sets
@@ -57,7 +72,3 @@ As mentioned above, this is the *minimal* structure that `hsr4hci.data.load_data
 
 Note that even if you do not want to use the observing conditions as predictors, you should still create the `/observing_conditions/interpolated` group.
 You can simply leave it empty.
-
----
-
-In case you get stuck with any part of this, feel free to reach out for help! :-)

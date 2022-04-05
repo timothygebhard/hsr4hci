@@ -8,6 +8,12 @@ This is the documentation of ``hsr4hci``, a Python package that provides methods
    :maxdepth: 1
    :hidden:
 
+   general/getting-started
    general/datasets
+
+   experiments/index
    modules/index
+
+   general/citation
+   general/license
 ```
