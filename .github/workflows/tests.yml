@@ -59,7 +59,7 @@ jobs:
       id: run_pytest
     - name: Get coverage and determine badge color
       run: |
-        COVERAGE=$(cat test.log | tail -n 4 | head -n 1 | awk '{print $4}') ;
+        COVERAGE=$(cat test.log | tail -n 3 | head -n 1 | awk '{print $4}') ;
         COVERAGE="${COVERAGE:-unknown}" ;
         echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV ;
         if [ "$COVERAGE" != "unknown" ]; then
