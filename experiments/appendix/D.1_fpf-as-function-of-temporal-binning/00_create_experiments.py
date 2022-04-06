@@ -166,7 +166,7 @@ if __name__ == '__main__':
         print('Done!', flush=True)
 
     # -------------------------------------------------------------------------
-    # Create shel scripts for creating submit file and starting the jobs
+    # Create shell scripts for creating submit file and starting the jobs
     # -------------------------------------------------------------------------
 
     # Create the shell script to create submit files for all experiments;
