@@ -37,6 +37,7 @@ release = version
 # Sphins extensions
 extensions = [
     'myst_parser',
+    'pygments_pytest',
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
     'sphinx.ext.intersphinx',

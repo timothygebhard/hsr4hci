@@ -1,4 +1,4 @@
-# 📄 Scripts
+# Scripts
 
 The `scripts` directory consists of two subdirectories:
 

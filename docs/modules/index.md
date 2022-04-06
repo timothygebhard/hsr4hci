@@ -1,6 +1,6 @@
 # Modules / API
 
-Here you find the documentation for all the modules that `hsr4hci` provides.
+Here you find the documentation for all the modules that the `hsr4hci` package provides:
 
 ```{eval-rst}
 .. toctree::

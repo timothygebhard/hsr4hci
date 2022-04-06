@@ -8,4 +8,5 @@ Here you find the documentation about running experiments.
    :hidden:
 
    demo
+   general
 ```
