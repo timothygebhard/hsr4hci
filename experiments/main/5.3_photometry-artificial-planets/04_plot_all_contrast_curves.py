@@ -6,8 +6,6 @@ Plot all contrast curves.
 # IMPORTS
 # -----------------------------------------------------------------------------
 
-from pathlib import Path
-
 import argparse
 import time
 
@@ -15,6 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from hsr4hci.config import get_experiments_dir
 from hsr4hci.contrast import get_contrast_curve
 from hsr4hci.data import load_psf_template, load_metadata
 from hsr4hci.plotting import set_fontsize, adjust_luminosity
@@ -44,7 +43,7 @@ if __name__ == '__main__':
         '--dataset',
         type=str,
         required=True,
-        help='Main directory of the data set with experiments for algorithms.',
+        help='Name of the data set, e.g., "beta_pictoris__lp".',
     )
     parser.add_argument(
         '--min-contrast',
@@ -99,12 +98,14 @@ if __name__ == '__main__':
     sigma_threshold = args.sigma_threshold
 
     # Get path to main directory
-    main_dir = Path(dataset).resolve()
+    main_dir = (
+        get_experiments_dir()
+        / 'main'
+        / '5.3_photometry-artificial-planets'
+        / dataset
+    ).resolve()
     if not main_dir.exists():
         raise RuntimeError(f'{main_dir} does not exist!')
-
-    # Extract actual dataset from `dataset` (which can be a full path)
-    dataset = str(Path(dataset).name.strip())
 
     # -------------------------------------------------------------------------
     # Get the PSF FWHM of the respective data set; load the pixscale
