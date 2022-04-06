@@ -10,7 +10,9 @@
 
 ---
 
-This repository contains the code for all experiments and figures in our paper ***Half-sibling regression meets exoplanet imaging: PSF modeling and subtraction using a flexible, domain knowledge-driven, causal framework***.
+This repository contains the code for all experiments and figures in our paper:
+
+> Gebhard et al. (2022): *Half-sibling regression meets exoplanet imaging: PSF modeling and subtraction using a flexible, domain knowledge-driven, causal framework.*
 
 **[TODO: Add link to paper once it is published.]**
 
@@ -38,18 +40,6 @@ pip install -e ".[develop]"
 **Note:** The code was written for Python 3.8 and above; earlier versions will likely require some small modifications.
 
 
-## 🪐 Data sets
-
-To run any experiments or reproduce our results, you will first need to [download](https://doi.org/10.17617/3.LACYPN) or create some data sets in the right format.
-Please check out [the documentation](https://hsr4hci.readthedocs.io/en/latest/general/datasets.html) for more detailed information on how to do this.
-
-
-## 🧪 (Re)-running our experiments
-
-All of our experiments can be found in the `experiments` directory, where we keep [another README](https://github.com/timothygebhard/hsr4hci/tree/master/experiments) with more instructions for how to replicate our results.
-A good starting point if you are just getting started could the to run the demo experiment that we have prepared in the [*demo* directory](https://github.com/timothygebhard/hsr4hci/tree/master/experiments/demo).
-
-
 ## 🐭 Tests
 
 This repository comes with an extensive set of unit and integration tests (based on [`pytest`](https://pytest.org)). 
@@ -62,18 +52,38 @@ pytest tests
 You can also use these tests to ensure that the code is compatible with newer versions of the libraries than the one in `setup.py`.
 
 
+## 🪐 Data sets
+
+To run any experiments or reproduce our results, you will first need to [download](https://doi.org/10.17617/3.LACYPN) or create some data sets in the right format.
+Please check out [the documentation](https://hsr4hci.readthedocs.io/en/latest/general/datasets.html) for more detailed information on how to do this.
+
+
+## 🧪 (Re)-running our experiments
+
+All of our experiments can be found in the `experiments` directory.
+The documentation (see below) contains detailed instructions for how to (re)-run them.
+A good starting point if you are just getting started could the to [run the demo experiment](https://hsr4hci.readthedocs.io/en/latest/experiments/demo.html) that we have prepared in the `demo` directory.
+
+
+## 📚 Documentation
+
+A full documentation of the entire code base, including descriptions of the different scripts and step-by-step guides for (re)-running our experiments can be found [on ReadTheDocs](https://hsr4hci.readthedocs.io).
+
+
 ## 📜 Citing this work
 
-To cite this work, feel free to use the following BibTeX entry:
+To cite this work, please feel free to use the following BibTeX entry:
 
 ```
 [TODO: Add BibTeX entry]
 ```
 
+An APA-style version can be found at the top of this document. 
+
 
 ## ✏️ Authors
 
-All code was written by Timothy Gebhard, with some contributions from Markus Bonse.
+All code was written by Timothy Gebhard, with additional contributions from Markus Bonse.
 
 
 ## ⚖️ License and copyright
