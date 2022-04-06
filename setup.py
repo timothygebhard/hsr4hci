@@ -59,6 +59,7 @@ setup(
         'docs': [
             'furo',
             'myst-parser',
+            'pygments-pytest',
             'sphinx',
             'sphinx-copybutton',
             'sphinx-math-dollar',
