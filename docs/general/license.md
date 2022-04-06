@@ -1,4 +1,4 @@
-# License and copyright
+# License ⚖️
 
 The code in this repository is property of the [Max Planck Society](https://www.mpg.de/en).
 It was written by Timothy Gebhard, with additional contributions from Markus Bonse.

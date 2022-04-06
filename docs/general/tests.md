@@ -1,4 +1,4 @@
-# Tests
+# Tests 🐭
 
 Once you have set up `hsr4hci`, you can make sure that everything works as intended by running the set of unit and integration tests that we provide in the `tests` directory.
 The tests are based on [pytest](https://docs.pytest.org).

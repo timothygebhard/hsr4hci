@@ -1,4 +1,4 @@
-# Getting started
+# Getting started ⚡️
 
 This short guide will walk you through the required steps to set up and install `hsr4hci`.
 
@@ -42,12 +42,22 @@ The workflows of this code base rely on two environmental variables that you nee
 To this end, please use:
 
 ```bash
-export HSR4HCI_DATASETS_DIR="/path/to/datasets/dir" ;
-export HSR4HCI_EXPERIMENTS_DIR="/path/to/experiments/dir" ;
+export HSR4HCI_DATASETS_DIR="/path/to/datasets" ;
+export HSR4HCI_EXPERIMENTS_DIR="/path/to/experiments" ;
 ```
 
 To make these changes more permanent, you can add these lines to your `.bashrc`, `.zshrc`, ...
 
-*Background:* The `datasets` and the `experiments` folder are contained at the top level of the `hsr4hci` repository.
-However, if you do not install the package in edit mode, the code has no way of knowing where you placed these folders when you cloned the repository :)
+```{admonition} Background
+The `datasets` and the `experiments` folder are contained at the top level of the `hsr4hci` repository.
+However, if you do not install the package in edit mode, the code has no way of knowing where you placed these folders when you cloned the repository 🙂
 Additionally, you might also want to move them to a different location or disk than the code itself (e.g., due to storage reasons).
+```
+
+There is one more environmental variable that you can set, namely for the location of the `scripts` directory (see [Scripts](scripts) for more details about this directory):
+
+```bash
+export HSR4HCI_SCRIPTS_DIR="/path/to/scripts" ;
+```
+
+Strictly speaking, this variable is not *needed* (i.e., the `hsr4hci` code never uses it), but the documentation relies on it when specifying which scripts you should run.

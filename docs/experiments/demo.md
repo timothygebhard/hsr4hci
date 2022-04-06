@@ -1,7 +1,7 @@
 # Run the demo experiment
 
 A good way to familiarize yourself with the code base and how to use it is to run the small demo experiment that we are providing in the `/hsr4hci/experiments/demo` folder.
-It is essentially a simplified version of experiment 5.1 from our paper that uses a smaller temporal grid and a heavily binned version of our Beta Pictoris *L'* data set to make sure it runs quickly even on a single machine.
+It is essentially a simplified version of [Experiment 5.1](experiment-5.1) from our paper that uses a smaller temporal grid and a heavily binned version of our Beta Pictoris *L'* data set to make sure it runs quickly even on a single machine.
 
 To run the demo experiment, you will need to perform the following steps:
 
@@ -11,19 +11,20 @@ To run the demo experiment, you will need to perform the following steps:
    Check the guide about [Data sets](../general/datasets) for more information.
 3. Now, to start and run the experiment, use:
    ```bash
-   python <path-to-hsr4hci-repository>/scripts/experiments/single-script/01_run_pipeline.py --experiment-dir $HSR4HCI_EXPERIMENTS_DIR/demo 
+   python $HSR4HCI_SCRIPTS_DIR/experiments/single-script/01_run_pipeline.py \
+     --experiment-dir $HSR4HCI_EXPERIMENTS_DIR/demo 
    ```
-   Of course, you need to replace the `<path-to-hsr4hci-repository>` with the correct path to the `hsr4hci` repository.
-   `$HSR4HCI_EXPERIMENTS_DIR` is the location of the `experiments` directory.
+   See [Getting started](../general/getting-started) for more information about the environmental variables.
 4. Depending on your hardware, the experiment should take about 10 to 20 minutes to run.
    If you find this too long, you can, for example, open the `config.json` in the `demo` folder and try to increase the `binning_factor` further.
-5. Once they experiment has finished, you can find the results in `./plots`.
+5. Once they experiment has finished, you can find the results in `$HSR4HCI_EXPERIMENTS_DIR/demo/results`.
    The signal estimate is stored as a FITS file, which you can view, for example, using [SAOImageDS9](https://sites.google.com/cfa.harvard.edu/saoimageds9).
 6. You can also generate a plot as a PDF by calling the following script:
    ```bash
-   python <path>/scripts/experiments/evaluate-and-plot/evaluate_and_plot_signal_estimate.py --experiment-dir ./experiments/demo
+   python $HSR4HCI_SCRIPTS_DIR/experiments/evaluate-and-plot/evaluate_and_plot_signal_estimate.py \
+     --experiment-dir $HSR4HCI_EXPERIMENTS_DIR/demo
    ```
-   You will find the final result plot in `./plots`.
+   You will find the final result plot in `$HSR4HCI_EXPERIMENTS_DIR/demo/plots`.
 
 ---
 

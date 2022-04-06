@@ -1,4 +1,4 @@
-# Modules / API
+# Modules / API 📚
 
 Here you find the documentation for all the modules that the `hsr4hci` package provides:
 

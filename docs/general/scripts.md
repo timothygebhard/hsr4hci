@@ -1,4 +1,4 @@
-# Scripts
+# Scripts 📄
 
 The `scripts` directory consists of two subdirectories:
 
@@ -17,3 +17,5 @@ Here are some additional details about the scripts in the `experiments` folder:
 * `pixel-coefficients`: Scripts for running the experiments in Sect. 5.2.
 * `run-pca`: Scripts for running a PCA-based post-processing pipeline (e.g., for the baseline results in Fig. 6)
 * `single-script`: Scripts for running an HSR-based post-processing pipeline in a single step.
+
+For more information about the `00_make_submit_files.py` scripts that are found in several places, please have a look at our explanations about {ref}`Running experiments with HTCondor <running-experiments-with-htcondor>`.

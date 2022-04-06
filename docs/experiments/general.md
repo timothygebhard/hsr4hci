@@ -1,4 +1,4 @@
-# General
+# General information
 
 This page contains information about the basic structure of the `experiments` directory, as well as additional information regarding how to run the experiments on a HTCondor-based computing cluster.
 
@@ -32,6 +32,19 @@ python <path-to-hsr4hci-repository>/scripts/experiments/single-script/01_run_pip
 More detailed information about how to run specific experiments can be found on the following pages.
 
 
+(running-experiments-with-htcondor)=
 ## Running experiments with HTCondor
 
-Scripts named `00_make_submit_files.py` can be used to create submission files for running our experiments on a [HTCondor-based cluster](https://htcondor.org/) with [DAGMan](https://research.cs.wisc.edu/htcondor/dagman/dagman.html).
+Some experiments are computationally rather expensive (hundreds to thousands of CPU hours). 
+However, many parts of the HSR-method can be easily parallelized.
+Therefore, when running the experiments to produce the results in the paper, we made use of a computational cluster based on [HTCondor](https://htcondor.org/) in combination with [DAGMan](https://research.cs.wisc.edu/htcondor/dagman/dagman.html) to handle the dependencies between the different steps of the pipeline.
+
+Running experiments as a job on an HTCondor cluster requires a submission file which specifies the hardware requirements and the exact code / command to be run.
+For simplicity and reproducibility, we have written scripts that can generate these submission files (and additionally any DAGMan files, if needed) automatically.
+These scripts are typically named `00_make_submit_files.py`.
+
+```{tip} 
+If you are not working on an HTCondor-based cluster, you can safely ignore these scripts.
+``` 
+
+However, even if you are not using HTCondor, but want to run experiments on your own cluster infrastructure (e.g., Slurm), you might want to draw some inspiration from our approach 🙂 

@@ -1,4 +1,4 @@
-# Data sets
+# Data sets 🪐
 
 This guide will walk you through the steps to download and place the original data sets from the `hsr4hci` paper, and will give some advice on how to create your own data sets.
 
@@ -42,7 +42,7 @@ The script needs those to be able to access the headers of the original FITS fil
 
 If you are using a different pre-processing pipeline, or data from a different instrument, you will have to write your own script to bring your data into the right format.
 (Or, alternatively, just use your own methods for loading the data and feeding it to the post-processing methods implemented in this repository.)
-The methods in `hsr4hci.data` expect the inputs to be HDF files with the following minimal structure:
+The methods in {class}`hsr4hci.data` expect the inputs to be HDF files with the following minimal structure:
 
 ```text
 /metadata                Group
@@ -68,7 +68,7 @@ The methods in `hsr4hci.data` expect the inputs to be HDF files with the followi
 ```
 
 Most of this should be self-explanatory.
-As mentioned above, this is the *minimal* structure that `hsr4hci.data.load_dataset()` expects; for debugging and transparency reasons, the data sets that we provide for download contain even more information.
+As mentioned above, this is the *minimal* structure that {class}`hsr4hci.data.load_dataset` expects; for debugging and transparency reasons, the data sets that we provide for download contain even more information.
 
 Note that even if you do not want to use the observing conditions as predictors, you should still create the `/observing_conditions/interpolated` group.
 You can simply leave it empty.
