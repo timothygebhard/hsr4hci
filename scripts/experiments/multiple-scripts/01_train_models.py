@@ -67,8 +67,13 @@ if __name__ == '__main__':
         '--hdf-location',
         type=str,
         choices=['local', 'work'],
-        default='work',
-        help='Where to create the HDF directory: locally or on /work.',
+        default='local',
+        help=(
+            'Where to create the HDF directory: "locally" or on /work. '
+            'Note: Unless you are the author of this code and are running an '
+            'experiment on the cluster at the MPI-IS, you *always* want to '
+            'use "local" here!'
+        ),
     )
     args = parser.parse_args()
 

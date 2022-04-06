@@ -178,6 +178,12 @@ if __name__ == '__main__':
     name = '01_train_models'
 
     # Create submit file and add job
+    #
+    # Attention:
+    # The `--hdf-location` parameter assumes that this code is being run on
+    # the MPI-IS cluster in Tübingen. If you are running this code on another
+    # HTCondor-based cluster, you will likely want to change this to "local".
+    #
     print(f'Creating {name}.sub...', end=' ', flush=True)
     submit_file = SubmitFile(
         clusterlogs_dir=clusterlogs_dir.as_posix(),
@@ -195,6 +201,7 @@ if __name__ == '__main__':
         ).as_posix(),
         arguments={
             'experiment-dir': experiment_dir.as_posix(),
+            'hdf-location': 'work',
             'roi-split': '$(Process)',
             'n-roi-splits': str(n_splits),
         },
