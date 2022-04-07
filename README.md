@@ -18,6 +18,13 @@ This repository contains the code for all experiments and figures in our paper:
 
 ---
 
+
+## 📚 Documentation
+
+A full documentation of the entire code base, including descriptions of the different scripts and step-by-step guides for (re)-running our experiments can be found [on ReadTheDocs](https://hsr4hci.readthedocs.io).
+
+
+
 ## ⚡ Getting started
 
 The code in this repository is organized as a Python package named `hsr4hci` together with a set of scripts that use the functions and classes of the package.
@@ -40,6 +47,7 @@ pip install -e ".[develop]"
 **Note:** The code was written for Python 3.8 and above; earlier versions will likely require some small modifications.
 
 
+
 ## 🐭 Tests
 
 This repository comes with an extensive set of unit and integration tests (based on [`pytest`](https://pytest.org)). 
@@ -52,10 +60,12 @@ pytest tests
 You can also use these tests to ensure that the code is compatible with newer versions of the libraries than the one in `setup.py`.
 
 
+
 ## 🪐 Data sets
 
 To run any experiments or reproduce our results, you will first need to [download](https://doi.org/10.17617/3.LACYPN) or create some data sets in the right format.
 Please check out [the documentation](https://hsr4hci.readthedocs.io/en/latest/general/datasets.html) for more detailed information on how to do this.
+
 
 
 ## 🧪 (Re)-running our experiments
@@ -64,10 +74,6 @@ All of our experiments can be found in the `experiments` directory.
 The documentation (see below) contains detailed instructions for how to (re)-run them.
 A good starting point if you are just getting started could the to [run the demo experiment](https://hsr4hci.readthedocs.io/en/latest/experiments/demo.html) that we have prepared in the `demo` directory.
 
-
-## 📚 Documentation
-
-A full documentation of the entire code base, including descriptions of the different scripts and step-by-step guides for (re)-running our experiments can be found [on ReadTheDocs](https://hsr4hci.readthedocs.io).
 
 
 ## 📜 Citing this work
@@ -81,9 +87,11 @@ To cite this work, please feel free to use the following BibTeX entry:
 An APA-style version can be found at the top of this document. 
 
 
+
 ## ✏️ Authors
 
 All code was written by Timothy Gebhard, with additional contributions from Markus Bonse.
+
 
 
 ## ⚖️ License and copyright
