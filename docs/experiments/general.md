@@ -15,21 +15,62 @@ There are three main directories:
 For some experiments (e.g., the mini-experiments from the appendix), the respective subdirectory will already contain all the scripts needed to run the experiment (e.g., a `make_plot.py` script).
 This is also true for "evaluation scripts" which are only applicable to a specific experiment.
 
-Experiments that use a workflow that can be recycled across various experiments (e.g., running our half-sibling regression algorithm) typically consist of a `config.json` file that specifies the exact experiment configuration (data set, algorithm, hyperparameters, ...). 
-To run the experiments, we use the scripts in the `/hsr4hci/scripts/experiments` directory.
 
-There are two main ways of running the half-sibling regression pipeline:
-1. The version in `/hsr4hci/scripts/experiments/multiple-scripts`, where the pipeline is broken up into multiple scripts. 
-   This is useful, for example, if you want to run experiments in parallel on a cluster. 
-2. The version in `/hsr4hci/scripts/experiments/single-script`, which contains the entire pipeline in a single file.
+## Experiment configurations
 
-To give a practical example, here is the command that you need to re-run the first experiment using HSR with signal fitting on the Beta Pictoris *L'* data set:
+Every experiment essentially consists of a configuration file, `config.json`, which contains all the information about the data set, the parameters of the post-processing algorithm, and so on.
+Here is an example of such a configuration file (taken from the [demo experiment](demo.md)):
 
-```bash
-python <path-to-hsr4hci-repository>/scripts/experiments/single-script/01_run_pipeline.py --experiment-dir $HSR4HCI_EXPERIMENTS_DIR/main/5.1_first-results/signal_fitting/beta_pictoris__lp
+```{eval-rst}
+.. literalinclude:: ../../experiments/demo/config.json
+   :language: json
 ```
 
-More detailed information about how to run specific experiments can be found on the following pages.
+
+## Running the HSR pipeline
+
+To actually run an experiments, we use the scripts in the `$HSR4HCI_SCRIPTS_DIR/experiments` directory.
+There are two main ways of running our half-sibling regression pipeline:
+
+1. The version in `$HSR4HCI_SCRIPTS_DIR/experiments/single-script` contains the entire pipeline in a single file.
+   Running an experiment is as easy as calling:
+   ```bash
+   python $HSR4HCI_SCRIPTS_DIR/experiments/single-script/01_run_pipeline.py \
+     --experiment-dir /path/to/folder/with/experiment/config/file
+   ```
+2. The version in `$HSR4HCI_SCRIPTS_DIR/experiments/multiple-scripts` breaks up the pipeline into multiple scripts. 
+   This is useful, for example, if you want to run experiments in parallel on a cluster (see below).
+   In this case you need to run the following scripts in order:
+   ```bash
+   # (1) Train models
+   python $HSR4HCI_SCRIPTS_DIR/experiments/multiple-scripts/01_train_models.py \
+     --experiment-dir /path/to/folder/with/experiment/config/file ;
+   
+   # (2) Merge HDF files with residuals
+   python $HSR4HCI_SCRIPTS_DIR/experiments/multiple-scripts/02_merge_hdf_files.py \
+     --experiment-dir /path/to/folder/with/experiment/config/file ;
+   
+   # (3) Run stage 2
+   python $HSR4HCI_SCRIPTS_DIR/experiments/multiple-scripts/03_run_stage_2.py \
+     --experiment-dir /path/to/folder/with/experiment/config/file ;
+   
+   # (4) Merge FITS files with match fractions etc.
+   python $HSR4HCI_SCRIPTS_DIR/experiments/multiple-scripts/04_merge_fits_files.py \
+     --experiment-dir /path/to/folder/with/experiment/config/file ;
+   
+   # (5) Select residuals and construct signal estimate
+   python $HSR4HCI_SCRIPTS_DIR/experiments/multiple-scripts/05_get_signal_estimate.py \
+     --experiment-dir /path/to/folder/with/experiment/config/file ;
+   ```
+   Steps (1) and (3) can be parallelized by making use of the `--n-roi-splits` and `--roi-split` options, which cause the scripts to only process a certain part of the total region of interest (at these stage, all pixels can be processed independently).
+
+In both cases, you might want to create the final result plot (as a PDF) by calling:
+```bash
+python $HSR4HCI_SCRIPTS_DIR/experiments/evaluate-and-plot/evaluate_and_plot_signal_estimate.py \
+  --experiment-dir /path/to/folder/with/experiment/config/file
+```
+
+More detailed information about how to run the experiments in our paper can be found on the following pages.
 
 
 (running-experiments-with-htcondor)=
