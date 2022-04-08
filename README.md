@@ -6,15 +6,14 @@
 ![Tests](https://github.com/timothygebhard/hsr4hci/workflows/Tests/badge.svg?branch=master)
 ![Coverage Badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/timothygebhard/40d8bf48dcbaf33c99e8de35ad6161f2/raw/hsr4hci.json)
 [![Documentation Status](https://readthedocs.org/projects/hsr4hci/badge/?version=latest)](https://hsr4hci.readthedocs.io/en/latest/?badge=latest)
+[![arXiv](https://img.shields.io/badge/arXiv-2204.03439-b31b1b.svg)](https://arxiv.org/abs/2204.03439) 
 
 
 ---
 
 This repository contains the code for all experiments and figures in our paper:
 
-> Gebhard et al. (2022): *Half-sibling regression meets exoplanet imaging: PSF modeling and subtraction using a flexible, domain knowledge-driven, causal framework.*
-
-**[TODO: Add link to paper once it is published.]**
+> Gebhard et al. (2022): *Half-sibling regression meets exoplanet imaging: PSF modeling and subtraction using a flexible, domain knowledge-driven, causal framework.* Accepted for publication in Astronomy & Astrophysics. [Available on arXiv:2204.03439](https://arxiv.org/abs/2204.03439).
 
 ---
 
