@@ -1,0 +1,89 @@
+#!/bin/bash
+
+# Convenience scripts for downloading all the datasets from Edmond.
+# Should be called from the root of the folder $HSR4HCI_DATASETS_DIR
+# See: https://hsr4hci.readthedocs.io/en/latest/general/datasets.html
+
+# datasets name and corresponding url declaration
+declare -A datasets
+datasets=( ["beta_pictoris__lp"]=https://edmond.mpdl.mpg.de/api/access/datafile/181835 \
+	   ["beta_pictoris__mp"]=https://edmond.mpdl.mpg.de/api/access/datafile/181836 \
+	   ["hr_8799__lp"]=https://edmond.mpdl.mpg.de/api/access/datafile/181837 \
+	   ["r_cra__lp"]=https://edmond.mpdl.mpg.de/api/access/datafile/181838 )
+current_dir=$(pwd)
+
+download_dataset(){
+
+    # root dir being the current directory, in which a subdirectory dataset (e.g. called "beta_pictoris__lp")
+    # is expected to exist, download the dataset file to the subdirectory dataset/output (e.g. beta_pictoris__lp/output)
+    # from the provided url.
+    # Download is skipped if the subdirectory dataset does not exists or if the dataset file already exists.
+
+    echo -e "\n== Downloading ${dataset} from ${url} ==\n"
+    
+    root_dir=$1
+    dataset=$2
+    url=$3
+
+    # the dataset subdirectory
+    dataset_dir=${root_dir}/${dataset}
+
+    # this subdirectory does not exists, skipping this dataset
+    if [ ! -d "${dataset_dir}" ]; then
+	>&2 echo "failed to find directory ${dataset_dir} for dataset ${dataset}, skipping download"
+	return 1
+    fi
+
+    # the folder where the dataset should be downloaded (e.g. abs/path/to/beta_pictoris__lp/output)
+    output_dir=${dataset_dir}/output
+    mkdir -p ${output_dir}
+
+    # the final complete path to the dataset, e.g. abs/path/to/beta_pictoris__lp/output/beta_pictoris__lp.hdf
+    dataset_file=${output_dir}/${dataset}.hdf
+
+    # the dataset seems to be already downloaded, skipping
+    if [ -f ${dataset_file} ]; then
+	>&2 echo "file ${dataset_file} already exists, skipping download"
+	return 1
+    fi
+
+    # the download will not download a file of the proper name (e.g.
+    # but a file named as the last part of the url (e.g. 181835).
+    # Deleting all previous downloads
+    filename=${url##*/}
+    rm -f ${output_dir}/${filename}.*
+    rm -f ${output_dir}/${filename}
+    
+    # downloading
+    echo "downloading dataset ${dataset} from url ${url} ..."
+    wget ${url} -P ${output_dir}
+
+    # skipping with error if downloading failed
+    wget_result=$?
+    if [ ${wget_result} -eq 1 ]; then
+	>&2 echo "failed to download ${dataset} with wget error code ${wget_result}"
+	return 1
+    fi
+
+    echo "   ... done"
+
+    # wget did not get a file of the expected name, fixing the
+    # final name
+
+    mv ${output_dir}/${filename} ${dataset_file}
+
+    # return with success
+    return 0
+}
+
+
+# downloading all datasets one by one
+for dataset in ${!datasets[@]}
+do
+    url=${datasets[${dataset}]}
+    download_dataset ${current_dir} ${dataset} ${url}
+done    
+
+    
+echo " "
+exit 0

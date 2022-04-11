@@ -25,6 +25,13 @@ For example, the HDF file `beta_pictoris__lp.hdf` containing the Beta Pictoris *
 $HSR4HCI_DATASETS_DIR/beta_pictoris__lp/output/beta_pictoris__lp.hdf
 ```
 
+For convenience, a script that will download all datasets from Edmond and place them in the correct directory is provided:
+
+```
+cd $HSR4HCI_DATASETS_DIR
+./download_datasets
+```
+
 To see how we created these data sets, feel free to take a look at the `prepare_dataset.py` script.
 
 Once you have downloaded and placed our data sets, a good next step would be to [run our demo experiment](../experiments/demo), which should help you to understand better the structure of the code base and its workflows. 
