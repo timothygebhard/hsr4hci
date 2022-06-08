@@ -118,25 +118,6 @@ if __name__ == '__main__':
         markeredgecolor='black',
     )
 
-    axes[0].text(
-        2 * center[0] - position[0],
-        2 * center[1] - position[1],
-        "1",
-        ha="center",
-        va="center",
-        size=5.5,
-        bbox=dict(boxstyle="circle,pad=0.3", fc="white", ec="k", lw=0.5),
-    )
-    axes[0].text(
-        position[0] - 9,
-        position[1] - 9,
-        "2",
-        ha="center",
-        va="center",
-        size=6,
-        bbox=dict(boxstyle="circle,pad=0.3", fc="white", ec="k", lw=0.5),
-    )
-
     # -------------------------------------------------------------------------
     # Add custom legend to the plot
     # -------------------------------------------------------------------------
