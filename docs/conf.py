@@ -20,7 +20,7 @@ copyright = (
     u'Max Planck Institute for Intelligent Systems'
 )
 author = u'Timothy Gebhard'
-project = u'hsrh4ci'
+project = u'hsr4hci'
 
 # The short X.Y version
 with open(join(dirname(__file__), "../hsr4hci/VERSION")) as version_file:
