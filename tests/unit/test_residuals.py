@@ -127,9 +127,9 @@ def test__get_residual_selection_mask() -> None:
     for (rho, phi) in [(16, 150)]:
         alpha = np.deg2rad(field_rotation / 2)
         for offset in np.linspace(-alpha, alpha, 100):
-            x = float(rho * np.cos(np.deg2rad(phi) + offset))
-            y = float(rho * np.sin(np.deg2rad(phi) + offset))
-            shifted = shift_image(psf_resized, (x, y))
+            x_ = float(rho * np.cos(np.deg2rad(phi) + offset))
+            y_ = float(rho * np.sin(np.deg2rad(phi) + offset))
+            shifted = shift_image(psf_resized, (x_, y_))
             planet_traces += shifted
     planet_traces /= np.max(planet_traces)
     match_fraction += planet_traces
