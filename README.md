@@ -13,7 +13,7 @@
 
 This repository contains the code for all experiments and figures in our paper:
 
-> Gebhard et al. (2022): *Half-sibling regression meets exoplanet imaging: PSF modeling and subtraction using a flexible, domain knowledge-driven, causal framework.* Accepted for publication in Astronomy & Astrophysics. [Available on arXiv:2204.03439](https://arxiv.org/abs/2204.03439).
+> Gebhard, T. D., Bonse, M. J., Quanz, S. P., & Schölkopf, B. (2022). *Half-sibling regression meets exoplanet imaging: PSF modeling and subtraction using a flexible, domain knowledge-driven, causal framework.* [Astronomy & Astrophysics, 666, A9](https://doi.org/10.1051/0004-6361/202142529). Also available on [arXiv:2204.03439](https://arxiv.org/abs/2204.03439). 
 
 ---
 
@@ -80,10 +80,18 @@ A good starting point if you are just getting started could the to [run the demo
 To cite this work, please feel free to use the following BibTeX entry:
 
 ```
-[TODO: Add BibTeX entry]
+@article{Gebhard_2022,
+  title         = {{Half-sibling regression meets exoplanet imaging: PSF modeling and subtraction using a flexible, domain knowledge-driven, causal framework}},
+  author        = {Timothy D. Gebhard and Markus J. Bonse and Sascha P. Quanz and Bernhard Schölkopf},
+  year          = 2022,
+  month         = 9,
+  doi           = {10.1051/0004-6361/202142529},
+  publisher     = {{EDP} Sciences},
+  volume        = 666,
+  pages         = {A9},
+  journal       = {Astronomy \& Astrophysics},
+}
 ```
-
-An APA-style version can be found at the top of this document. 
 
 
 
