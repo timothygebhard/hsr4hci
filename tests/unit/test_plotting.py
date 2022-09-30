@@ -198,6 +198,8 @@ def test__determine_limit() -> None:
     Test `hsr4hci.plotting.determine_limit`.
     """
 
+    frame: np.ndarray
+
     # Case 1
     frame = np.arange(10_000).reshape(100, 100)
     limit = _determine_limit(frame=frame, positions=[])
