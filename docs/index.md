@@ -3,8 +3,7 @@
 This is the documentation of ``hsr4hci``, a Python package (and a set of scripts) that provides methods for applying a post-processing scheme based on Half-Sibling Regression (HSR) to High-Contrast Imaging (HCI) data.
 It contains all the code for the following research paper (see also [Citation](general/citation)):
 
-> Gebhard et al. (2022): 
-> *Half-sibling regression meets exoplanet imaging: PSF modeling and subtraction using a flexible, domain knowledge-driven, causal framework.*  
+> Gebhard, T. D., Bonse, M. J., Quanz, S. P., & Schölkopf, B. (2022). *Half-sibling regression meets exoplanet imaging: PSF modeling and subtraction using a flexible, domain knowledge-driven, causal framework.* [Astronomy & Astrophysics, 666, A9](https://doi.org/10.1051/0004-6361/202142529). Also available on [arXiv:2204.03439](https://arxiv.org/abs/2204.03439).
 
 In this documentation, we explain the structure of the code base and provide some guides to help you [get started](general/getting-started) if you want to reproduce our results or use our code for your own experiments.
 
