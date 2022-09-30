@@ -205,8 +205,8 @@ def add_fake_planet(
         planet_positions = np.column_stack(
             (x_shift + center[0], y_shift + center[1])
         )
-        return output_stack, planet_positions
-    return np.array(output_stack)
+        return np.asarray(output_stack), planet_positions  # type: ignore
+    return np.asarray(output_stack)
 
 
 def get_time_series_for_position(

@@ -352,7 +352,7 @@ def get_residual_selection_mask(
     # Define shortcuts
     x_size, y_size = cartesian.shape
     frame_size = (x_size, y_size)
-    center = get_center(cartesian.shape)
+    center = get_center((cartesian.shape[0], cartesian.shape[1]))
 
     # Compute field rotation
     field_rotation = get_field_rotation(parang=parang)

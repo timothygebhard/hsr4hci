@@ -50,8 +50,8 @@ def _gaussian_integral(
         2
         * np.pi
         * amplitude
-        * sigma ** 2
-        * (1 - np.exp(-(radius ** 2) / (2 * sigma ** 2)))
+        * sigma**2
+        * (1 - np.exp(-(radius**2) / (2 * sigma**2)))
     )
 
 
@@ -92,8 +92,11 @@ def _get_flux__ass(
     # will compute the flux in order to maximize it
     offset = float(search_radius.to('pixel').value)
     offsets = np.linspace(-offset, offset, 21)
-    positions_grid = np.meshgrid(offsets + position[0], offsets + position[1])
-    positions_grid = np.asarray(positions_grid).reshape(2, -1).T
+    positions_grid = (
+        np.asarray(np.meshgrid(offsets + position[0], offsets + position[1]))
+        .reshape(2, -1)
+        .T
+    )
 
     # Set up a 2D grid of apertures of the given size
     aperture = CircularAperture(
@@ -185,7 +188,7 @@ def _get_flux__f(
     # the fit result to the right units:
     flux = _gaussian_integral(
         amplitude=float(gaussian_model.amplitude.value),
-        sigma=float(gaussian_model.x_stddev.value)
+        sigma=float(gaussian_model.x_stddev.value),
     )
 
     return final_position, flux
@@ -246,7 +249,7 @@ def _get_flux__fs(
     # the fit result to the right units:
     flux = _gaussian_integral(
         amplitude=float(gaussian_model.amplitude.value),
-        sigma=float(gaussian_model.x_stddev.value)
+        sigma=float(gaussian_model.x_stddev.value),
     )
 
     return final_position, flux
@@ -379,7 +382,9 @@ def get_stellar_flux(
     # Compute the flux at the center of the PSF template
     _, flux = get_flux(
         frame=psf_normalized,
-        position=get_center(psf_normalized.shape),
+        position=get_center(
+            (psf_normalized.shape[0], psf_normalized.shape[1])
+        ),
         mode=mode,
         aperture_radius=aperture_radius,
         search_radius=search_radius,

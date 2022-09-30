@@ -221,8 +221,8 @@ def get_match_fraction_for_position(
 
     # Compute mean and median match fraction for current position
     if matches:
-        match_fraction__mean = np.nanmean(matches)
-        match_fraction__median = np.nanmedian(matches)
+        match_fraction__mean = float(np.nanmean(matches))
+        match_fraction__median = float(np.nanmedian(matches))
     else:
         match_fraction__mean = np.nan
         match_fraction__median = np.nan

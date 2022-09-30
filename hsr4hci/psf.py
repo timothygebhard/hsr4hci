@@ -45,7 +45,7 @@ def get_psf_fwhm(psf_template: np.ndarray) -> float:
     )
 
     # Create a new Gaussian2D object
-    center = get_center(psf_cropped.shape)
+    center = get_center((psf_cropped.shape[0], psf_cropped.shape[1]))
     gaussian = models.Gaussian2D(x_mean=center[0], y_mean=center[1])
 
     # Define auxiliary function for tieing the standard deviations

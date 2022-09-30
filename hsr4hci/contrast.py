@@ -160,10 +160,10 @@ def get_contrast(
         )
 
         # Estimate the background flux by averaging the reference fluxes
-        background_flux = np.median(reference_fluxes)
+        background_flux = float(np.median(reference_fluxes))
 
     else:
-        background_flux = 0
+        background_flux = 0.0
 
     # Subtract the background from the raw flux
     flux = raw_flux - background_flux
@@ -173,7 +173,7 @@ def get_contrast(
     # -------------------------------------------------------------------------
 
     # Compute the *observed* flux ratio and contrast
-    observed_flux_ratio = flux / stellar_flux
+    observed_flux_ratio = float(flux / stellar_flux)
     if observed_flux_ratio > 0 and not np.isclose(observed_flux_ratio, 0):
         observed_contrast = flux_ratio_to_magnitudes(observed_flux_ratio)
     else:
@@ -188,7 +188,7 @@ def get_contrast(
     # Compute the throughput (if applicable). The throughput is the ratio of
     # the observed and the expected flux ratio.
     if expected_contrast is not None:
-        throughput = max(observed_flux_ratio / expected_flux_ratio, 0)
+        throughput = max(float(observed_flux_ratio / expected_flux_ratio), 0)
     else:
         throughput = np.nan
 
