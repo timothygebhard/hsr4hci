@@ -4,7 +4,7 @@ If you have found any part of this useful, please consider citing our paper 🙂
 
 You can use the following BibTeX entry:
 
-```
+```bibtex
 @article{Gebhard_2022,
   title         = {{Half-sibling regression meets exoplanet imaging: PSF modeling and subtraction using a flexible, domain knowledge-driven, causal framework}},
   author        = {Timothy D. Gebhard and Markus J. Bonse and Sascha P. Quanz and Bernhard Schölkopf},
