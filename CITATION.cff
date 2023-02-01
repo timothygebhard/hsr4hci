@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+title: hsrh4ci
+message: Half-Sibling Regression for High-Contrast Imaging
+type: software
+authors:
+  - given-names: Timothy
+    family-names: Gebhard
+  - given-names: Markus
+    family-names: Bonse
+identifiers:
+  - type: url
+    value: 'https://github.com/timothygebhard/hsr4hci'
+repository-code: 'https://github.com/timothygebhard/hsr4hci'
+license: BSD-3-Clause
+
