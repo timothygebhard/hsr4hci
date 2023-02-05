@@ -506,13 +506,13 @@ def train_model_for_position(
             # For regularized models: store the regularization strength of
             # this split (for debugging purposes)
             if hasattr(model, 'alpha_'):
-                if np.isscalar(model.alpha_):  # type: ignore
+                if np.isscalar(model.alpha_):
                     alphas[i] = float(model.alpha_)  # type: ignore
 
             # For linear models: store pixel coefficients. In the case of a
             # linear model, this is basically the model (up to the intercept).
             if hasattr(model, 'coef_'):
-                pixel_coefs[i] = model.coef_[:n_pred_pixels]  # type: ignore
+                pixel_coefs[i] = model.coef_[:n_pred_pixels]
 
     # -------------------------------------------------------------------------
     # Compute residuals and return results
